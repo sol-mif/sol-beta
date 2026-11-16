@@ -20,12 +20,14 @@ export function request(rid: string, cmd: string) {
   if (!sender?.sessionId) return;
   const cur = runs.get(rid);
   if (cur && !cur.done) return;
-  runs.set(rid, { cmd, out: "", done: false, code: null });
+  const run: Ran = { cmd, out: "", done: false, code: null };
+  runs.set(rid, run);
   // nothing went out (the socket is down): say so now, not after the wait
-  if (!sender.send({ type: "run", rid, seat: sender.seat, sessionId: sender.sessionId, work: !!sender.work, cmd })) Object.assign(runs.get(rid)!, { done: true, why: "not connected" });
+  if (!sender.send({ type: "run", rid, seat: sender.seat, sessionId: sender.sessionId, work: !!sender.work, cmd })) Object.assign(run, { done: true, why: "not connected" });
   tell();
-  // an engine older than the run button never answers: say so instead of "running" forever
-  setTimeout(() => { const r = runs.get(rid); if (r && !r.done && !r.heard) { r.done = true; r.why = "the engine did not answer: restart it to run blocks"; tell(); } }, 5000);
+  // an engine older than the run button never answers: say so instead of "running" forever. This run's own wait: a
+  // run of the same block started since has its own (#892)
+  setTimeout(() => { if (runs.get(rid) === run && !run.done && !run.heard) { run.done = true; run.why = "the engine did not answer: restart it to run blocks"; tell(); } }, 5000);
 }
 export const stopRun = (rid: string) => sender?.send({ type: "run.stop", rid });
 

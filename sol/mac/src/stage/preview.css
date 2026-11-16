@@ -1,0 +1,12 @@
+/* The drop preview in pearl (#774, #751 B11; previewPaint.ts writes each one's place, opacity and z from the kit). The
+   layer makes no stacking context of its own, so its guides (250) and outlines (240) sit in the stage's z-order table */
+.st-pv { position: absolute; inset: 0; pointer-events: none; }
+.st-pv-guide { position: absolute; left: 0; top: 0; background: var(--c-pearl); pointer-events: none; }
+.st-pv-guide.v { width: var(--hair); height: 100%; }
+.st-pv-guide.h { height: var(--hair); width: 100%; }
+.st-pv-out { position: absolute; left: 0; top: 0; display: none; pointer-events: none; }
+.st-pv-out svg { position: absolute; inset: 0; overflow: visible; }
+.st-pv-out path { fill: color-mix(in srgb, var(--c-pearl) 2.5%, transparent); stroke: var(--c-pearl-line); }
+/* a trade's target: dimmed (its opacity is the kit's, written inline) and rimmed in pearl, a hairline of its own over
+   whatever the block wears, so a live target gets the rim too and a waiting one keeps its yellow (#858 B11-4) */
+.st-block[data-target]::after { content: ""; position: absolute; inset: 0; z-index: 4; border-radius: var(--curve-block); box-shadow: inset 0 0 0 var(--hair) var(--c-pearl-line); pointer-events: none; }

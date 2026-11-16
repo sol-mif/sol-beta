@@ -7,12 +7,12 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, copyFileSync, chmodSync, rmSync, statSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer, type AddressInfo } from "node:net";
+import { freePort } from "./test-engine.ts";
 
 const KEEP = join(import.meta.dirname, "..", "keep");
 // a port the system says is free, not a random one of 90: two test runs at once picked the same one, and the second
 // stand-in died on it (EADDRINUSE) after the keeper had seen the first one's /health
-const PORT = await new Promise<number>((ok) => { const s = createServer().listen(0, "127.0.0.1", () => { const p = (s.address() as AddressInfo).port; s.close(() => ok(p)); }); });
+const PORT = await freePort();
 const FAKE = (dieMs: number) => `
 const http = require("node:http");
 http.createServer((q, r) => { r.end('{"ok":true}'); }).listen(${PORT}, "127.0.0.1");

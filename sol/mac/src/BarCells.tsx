@@ -27,13 +27,13 @@ export function BarCells({ on }: { kind: "side"; on: boolean }) {
       const put = () => { el.style.transform = `translate(${s.x.v * C}px, ${s.y.v * C}px)`; };
       if (!s) {
         const [i0, j0] = first.current ? [i, j] : on ? c.from : c.to;
-        s = sp.current[n] = { x: spring(i0, CFG.snap, put), y: spring(j0, CFG.snap, put) };
+        s = sp.current[n] = { x: spring(i0, CFG.settle, put), y: spring(j0, CFG.settle, put) };
         put();
       }
       if (first.current) { s.x.set(i); s.y.set(j); return; }
       const far = Math.abs(c.from[0] - c.to[0]);
       const delay = (on ? 6 - far : far) * 16;
-      s.x.to(i, { delay, cfg: { k: 380, z: 0.58, eps: 0.01 } }); s.y.to(j, { delay: delay + 14, cfg: { k: 380, z: 0.58, eps: 0.01 } });
+      s.x.to(i, { delay, cfg: CFG.settle }); s.y.to(j, { delay: delay + 14, cfg: CFG.settle });
     });
     first.current = false;
   }, [on]); // eslint-disable-line react-hooks/exhaustive-deps

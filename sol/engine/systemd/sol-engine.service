@@ -1,9 +1,9 @@
-# The live engine on the NucBox, as a user unit (Two Sols, sol/PROTOCOL.md). Install once:
+# The live engine on the NucBox, as a user unit (Two Sols). Install once:
 #   mkdir -p ~/.config/systemd/user && cp ~/sol-live/sol/engine/systemd/sol-engine.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload && systemctl --user enable --now sol-engine
 # It runs the engine through its keeper (engine/keep: the last good build after three failed starts) from the live
 # checkout (~/sol-live, branch "live") and points at the synced home/, so what Sol writes lands in the same back room
-# on every machine. sol/promote installs this file again each time, so a change here reaches the NucBox with it. Log: journalctl --user -u sol-engine -f
+# on every machine. Each install of a new version writes this file again, so a change here reaches the NucBox with it. Log: journalctl --user -u sol-engine -f
 [Unit]
 Description=Sol engine (live)
 After=network-online.target

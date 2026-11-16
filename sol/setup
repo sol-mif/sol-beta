@@ -22,8 +22,8 @@
 #   --no-face      do not offer to open the face at the end
 #   --dev          a dev's second door (#124), after the rest: your Sol on its own `<login>/mine` branch with
 #                  sol/mine/setup (made from stable, when it is on stable or main), the workshop beside it (a second
-#                  clone of sol-dev on main, where take, brief and PRs happen; SOL_WORKSHOP=<folder> picks another),
-#                  the stage started once (sol/mine/stage, when this Sol has it), then the one rule. A checkout on a
+#                  clone of the team's repository on main, where issues, branches and PRs happen; SOL_WORKSHOP=<folder>
+#                  picks another), the stage started once (when this Sol has one), then the one rule. A checkout on a
 #                  work branch is a workshop already, and the step stops there. With --check it only reports.
 set -u
 # umask stays the person's: every file with a secret in it (.env, team.json) is written with its own mode, 0600
@@ -72,11 +72,12 @@ else
   ENGINE_LOG="journalctl --user -u sol-engine -n 30"
 fi
 ROOTP=$(cd "$SOL/.." && pwd -P)
-# a dev checkout (its origin is sol-dev, or --dev): the team's tools are needed. A Sol from the public repo comes with
+# a dev checkout (its origin is the team's repository, or --dev): the team's tools are needed. A Sol from the public repo comes with
 # its app built and its own relay-less engine: Codex, Rust, Tailscale and ffmpeg are optional there (#169); gh is
 # fetched as Sol's own in any checkout when there is none (#174)
 devco="$dev"
-case $(git -C "$ROOTP" remote get-url origin 2>/dev/null) in *sol-dev|*sol-dev.git|*sol-dev/) devco=1 ;; esac
+# the same names as isSolDev in sol/harness (#479): the team's repository, and its old name, ecosystem
+case $(git -C "$ROOTP" remote get-url origin 2>/dev/null) in *sol-dev|*sol-dev.git|*sol-dev/|*/ecosystem|*/ecosystem.git|*:ecosystem|*:ecosystem.git) devco=1 ;; esac
 # the checkout a job is installed from, empty when it is not installed: the plist launchd loaded (or the one in
 # LaunchAgents), a link followed to its file, else read for its WorkingDirectory. On Linux: the unit systemd loaded
 # (or the one in ~/.config/systemd/user), read for its WorkingDirectory (%h is the home, as in the NucBox's live unit)
@@ -86,7 +87,7 @@ installed_from() {
     p=$(launchctl print "gui/$uid/$1" 2>/dev/null | sed -n 's/^[[:space:]]path = //p' | head -1)
     [ -n "$p" ] || p="$LA/$1.plist"
     [ -e "$p" ] || return 0
-    # a link into a checkout's tracked plists names that checkout; any other (sol/mine/live's, in sol/engine/.live/) is read
+    # a link into a checkout's tracked plists names that checkout; any other (a moved Sol's, in sol/engine/.live/) is read
     if [ -L "$p" ] && case $(readlink "$p") in */sol/engine/launchd/*) true ;; *) false ;; esac; then
       perl -MCwd=abs_path -e 'print abs_path(shift)' "$p" | sed 's|/sol/engine/launchd/[^/]*$||'
     else sed -n 's|.*<key>WorkingDirectory</key><string>\(.*\)/sol/engine</string>.*|\1|p' "$p"; fi
@@ -147,9 +148,12 @@ nodehint() {
 health() { curl -sf -m 1 "http://127.0.0.1:$PORT/health" >/dev/null; }
 
 # ---- 6. the second door, for a dev (--dev, #124) ----
-# A user has one folder, their Sol. A dev adds a second, the workshop, a clone of sol-dev beside it: take, brief, the
+# A user has one folder, their Sol. A dev adds a second, the workshop, a clone of the team's repository beside it: the
 # harness, PRs and Try happen there, so the Sol they live in is never the dev checkout.
-DEV_REPO=marcocyl04-ux/sol-dev
+DEV_REPO=sol-mif/sol-dev
+DEV_RECORD=sol-mif/sol-record   # the team's record (#507): its main is PR-only, so the record files live beside it. The
+                                # engine asks GitHub which repository a room's record is (#510, findrecord.ts); --dev
+                                # writes both names anyway, since this is the known team, and the lookup agrees with it
 dev_step() {
   echo "== the workshop (--dev)"
   local br login="" base ws url top wbr out line was
@@ -186,8 +190,8 @@ dev_step() {
   elif [ -n "$check" ]; then miss "sol/mine/setup has not run in your Sol (bash sol/setup --dev runs it)"
   elif out=$(cd "$ROOTP" && bash sol/mine/setup 2>&1); then ok "your commits there get \"mine: \" in front (sol/mine/setup)"
   else miss "sol/mine/setup said: $out"; fi
-  # 3. the workshop: SOL_WORKSHOP, else the checkout this Sol is a worktree of (Marco's: the folder beside MY SOL),
-  #    else a folder sol-dev beside your Sol
+  # 3. the workshop: SOL_WORKSHOP, else the checkout this Sol is a worktree of (the folder beside it),
+  #    else a folder beside your Sol named for the team's repository
   ws=${SOL_WORKSHOP:-}
   if [ -z "$ws" ]; then
     ws=$(g worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
@@ -199,29 +203,29 @@ dev_step() {
   if [ -e "$ws" ]; then
     url=$(git -C "$ws" remote get-url origin 2>/dev/null); top=$(git -C "$ws" rev-parse --show-toplevel 2>/dev/null)
     wbr=$(git -C "$ws" symbolic-ref --short -q HEAD)
-    if [ "$top" != "$(cd "$ws" && pwd -P)" ] || case $url in *sol-dev|*sol-dev.git|*sol-dev/) false ;; *) true ;; esac; then
-      miss "$ws is there but is not a checkout of sol-dev; not touching it (SOL_WORKSHOP=<folder> picks another)"; return
+    if [ "$top" != "$(cd "$ws" && pwd -P)" ] || case $url in *sol-dev|*sol-dev.git|*sol-dev/|*/ecosystem|*/ecosystem.git) false ;; *) true ;; esac; then
+      miss "$ws is there but is not a checkout of the team's repository; not touching it (SOL_WORKSHOP=<folder> picks another)"; return
     fi
     case $wbr in */mine) miss "$ws is on $wbr, someone's Sol, not a workshop; not touching it (SOL_WORKSHOP=<folder> picks another)"; return ;; esac
     ok "the workshop is $ws, on ${wbr:-a detached head}"
-  elif [ -n "$check" ]; then miss "no workshop yet (bash sol/setup --dev clones sol-dev to $ws)"
+  elif [ -n "$check" ]; then miss "no workshop yet (bash sol/setup --dev clones the team's repository to $ws)"
   else
     url=$(g remote get-url origin 2>/dev/null)
-    say "cloning sol-dev into $ws, on main (the workshop)"
+    say "cloning the team's repository into $ws, on main (the workshop)"
     case $url in
-      *sol-dev|*sol-dev.git|*sol-dev/) git clone -q --branch main "$url" "$ws" </dev/null ;;
+      *sol-dev|*sol-dev.git|*sol-dev/|*/ecosystem|*/ecosystem.git) git clone -q --branch main "$url" "$ws" </dev/null ;;
       *) gh repo clone "$DEV_REPO" "$ws" -- -q --branch main </dev/null ;;
-    esac && ok "the workshop is $ws, a clone of sol-dev on main" \
-      || { miss "could not clone sol-dev into $ws (your GitHub account needs access to $DEV_REPO; ask Marco)"; return; }
+    esac && ok "the workshop is $ws, a clone of the team's repository on main" \
+      || { miss "could not clone the team's repository into $ws (your GitHub account needs access to $DEV_REPO; ask your team's lead)"; return; }
   fi
   # 4. the stage: a second engine and face from your Sol's own code (7779 and 1422), so a change is tried before the
-  #    window you live in takes it. Started once here; bash sol/mine/stage down stops it.
-  if [ ! -f "$ROOTP/sol/mine/stage" ]; then skip "no stage in this Sol yet (sol/mine/stage, #114); nothing to start"
+  #    window you live in takes it. Started once here; its own down command stops it.
+  if [ ! -f "$ROOTP/sol/mine/stage" ]; then skip "no stage in this Sol yet (#114); nothing to start"
   elif [ -n "$check" ]; then
     (cd "$ROOTP" && bash sol/mine/stage status 2>&1) | head -2 | sed 's/^mine\/stage: /  note  the stage: /'
   elif out=$(cd "$ROOTP" && bash sol/mine/stage up 2>&1 </dev/null); then
     line=$(printf '%s\n' "$out" | grep -m1 -E 'up|Open' | sed 's/^mine\/stage: //')
-    ok "the stage: ${line:-up} (bash sol/mine/stage down stops it)"
+    ok "the stage: ${line:-up} (its down command stops it)"
   else miss "the stage did not come up: $(printf '%s\n' "$out" | tail -1 | sed 's/^mine\/stage: //')"; fi
   # the one rule
   tilde() { case $1 in "$HOME"/*) echo "~${1#"$HOME"}" ;; *) echo "$1" ;; esac; }
@@ -229,7 +233,7 @@ dev_step() {
   echo "        your Sol       $(tilde "$ROOTP")"
   echo "                       you live in it and make it yours; after a new stable, bash sol/mine/rebase"
   echo "        the workshop   $(tilde "$ws")"
-  echo "                       issues, branches, PRs and Try: cd there, then bash sol/take <issue>"
+  echo "                       issues, branches, PRs and Try: cd there, then Take an issue"
 }
 if [ -n "${SOL_SETUP_DEV_ONLY:-}" ]; then dev_step; [ "$bad" -eq 0 ]; exit; fi   # the step alone, for engine/test/setup-dev
 
@@ -351,12 +355,12 @@ if ! command -v codex >/dev/null; then opt "Codex" "a second agent for later" "C
 elif codex login status </dev/null >/dev/null 2>&1; then ok "Codex, signed in"
 else opt "Codex" "a second agent for later" "Codex is not signed in: codex login"; fi
 TS=$(command -v tailscale || { [ -n "$mac" ] && [ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ] && echo /Applications/Tailscale.app/Contents/MacOS/Tailscale; })
-team_only="(only to join Marco's team; a Sol on its own runs without it)"
-if [ -z "$TS" ] && [ -n "$mac" ]; then opt "Tailscale" "only a team's relay needs it" "Tailscale is not installed: https://tailscale.com/download (then accept Marco's invite to his tailnet)"
-elif [ -z "$TS" ]; then opt "Tailscale" "only a team's relay needs it" "Tailscale is not installed $team_only: curl -fsSL https://tailscale.com/install.sh | sh, then sudo tailscale up, signed in with the account Marco invited"
+team_only="(only to join a team's relay; a Sol on its own runs without it)"
+if [ -z "$TS" ] && [ -n "$mac" ]; then opt "Tailscale" "only a team's relay needs it" "Tailscale is not installed: https://tailscale.com/download (then accept your team's invite to its tailnet)"
+elif [ -z "$TS" ]; then opt "Tailscale" "only a team's relay needs it" "Tailscale is not installed $team_only: curl -fsSL https://tailscale.com/install.sh | sh, then sudo tailscale up, signed in with the account your team invited"
 elif "$TS" status </dev/null >/dev/null 2>&1; then ok "Tailscale, up"
-elif [ -n "$mac" ]; then opt "Tailscale" "only a team's relay needs it" "Tailscale is installed but not up: open Tailscale and sign in (with the account Marco invited)"
-else opt "Tailscale" "only a team's relay needs it" "Tailscale is installed but not up $team_only: sudo tailscale up, signed in with the account Marco invited"; fi
+elif [ -n "$mac" ]; then opt "Tailscale" "only a team's relay needs it" "Tailscale is installed but not up: open Tailscale and sign in (with the account your team invited)"
+else opt "Tailscale" "only a team's relay needs it" "Tailscale is installed but not up $team_only: sudo tailscale up, signed in with the account your team invited"; fi
 if command -v ffmpeg >/dev/null; then ok "ffmpeg"
 else opt "ffmpeg" "dictation converts clips with it" "ffmpeg (dictation converts clips with it): $(pkghint ffmpeg)"; fi
 if command -v whisper-cli >/dev/null || command -v whisper-cpp >/dev/null; then ok "whisper.cpp (dictation)"
@@ -471,7 +475,7 @@ fi
 # ---- 4. your team settings: sol/engine/team.json ----
 echo "== the team (sol/engine/team.json)"
 TEAM="${SOL_TEAM:-$ENG/team.json}"
-SKIPPED="$ENG/.setup-team-key-skipped"   # no key from Marco yet; the engine then makes up its own, which the relay refuses
+SKIPPED="$ENG/.setup-team-key-skipped"   # no team key yet; the engine then makes up its own, which the relay refuses
 TYPED="$ENG/.setup-team-key-typed"       # the typed key's hash, never the key: until the engine has restarted with it
 # keystate: none (nothing typed here) | fresh (team.json holds the typed key and the engine started after, or is down)
 #   | stale (it holds it, the engine still runs on the one before) | other (the engine wrote its made-up key back)
@@ -486,7 +490,7 @@ keystate() {
 }
 nokey() {
   skip "no team key: Hand and the team relay (who is here, pings, Talk) will not reach the team."
-  echo "        Get the key from Marco and run sol/setup again in Terminal; it asks only for what is missing."
+  echo "        Get the key from your team's lead and run sol/setup again in Terminal; it asks only for what is missing."
   echo "        Settings → \"what leaves this machine\" shows whether a key is set."
 }
 if [ ! -f "$TEAM" ]; then
@@ -495,9 +499,11 @@ if [ ! -f "$TEAM" ]; then
     login=""; name=""
     if gh auth status </dev/null >/dev/null 2>&1; then login=$(gh api user --jq .login </dev/null 2>/dev/null); name=$(gh api user --jq '.name // .login' </dev/null 2>/dev/null); fi
     # the relay is a WebSocket address (wss://, path /relay): the engine drops an http(s) one (team/settings.ts)
-    TLOGIN="$login" TNAME="$name" TURL="$RELAY" node -e '
+    # the tracker (#441): a dev checkout (devco) names the team's record first (#507) and the team's repository; any other Sol
+    # names none (the engine's default is no repository, so a stranger's board never reads ours)
+    TLOGIN="$login" TNAME="$name" TURL="$RELAY" TREPO="${devco:+$DEV_REPO}" TRECORD="${devco:+$DEV_RECORD}" node -e '
       const e=process.env;
-      const t={me:{login:e.TLOGIN||"",name:e.TNAME||""},relay:{url:e.TURL,key:"",host:false}};
+      const t={me:{login:e.TLOGIN||"",name:e.TNAME||""},...(e.TREPO?{repos:[e.TRECORD,e.TREPO]}:{}),relay:{url:e.TURL,key:"",host:false}};
       require("fs").writeFileSync(process.argv[1],JSON.stringify(t,null,2)+"\n",{mode:0o600});' "$TEAM" \
       && touch "$SKIPPED" && ok "team.json written${RELAY:+, relay: $RELAY}${login:+, you are $login}"
   fi
@@ -520,10 +526,10 @@ if [ -f "$TEAM" ]; then
     else ok "team key saved; Sol has not restarted since, so it restarts below"; restart=1; fi
   elif [ ! -f "$SKIPPED" ] && [ -n "$haskey" ]; then ok "team key is set"; [ -z "$check" ] && [ "$ks" = fresh ] && rm -f "$TYPED"
   elif [ -z "$hasrelay" ]; then skip "no team key needed without a relay (to join a team: SOL_RELAY=wss://HOST/relay bash sol/setup, with the key the team gives you)"
-  elif [ -n "$check" ]; then miss "no team key from Marco yet (run sol/setup again in Terminal to paste it)"
+  elif [ -n "$check" ]; then miss "no team key yet (run sol/setup again in Terminal to paste it)"
   elif [ -z "$tty" ]; then needed+=("the team key"); skip "team key: asked only in your own Terminal"
   else
-    echo "  The team key joins your Sol to the team's relay on Marco's NucBox. Marco gives it to you in person;"
+    echo "  The team key joins your Sol to your team's relay. Your team's lead gives it to you in person;"
     echo "  it is never shown in Sol. Paste it here (it stays hidden), or press return to skip."
     ask "  Team key:" key secret
     if [ -n "$key" ]; then
@@ -600,14 +606,14 @@ else
   force=""; [ -n "$tty" ] && [ -n "$uselaunchd" ] && force=1
   for job in $JOBS; do
     dst="$LA/$job.plist"; mine=""
-    # the plists in sol/engine/launchd are Marco's Mac's; yours get your paths, and your node's folder first on
+    # the plists in sol/engine/launchd are one Mac's; yours get your paths, and your node's folder first on
     # PATH for both jobs (keep starts `node` from PATH), wherever it came from (Homebrew, nvm, the installer)
     nodedir=$(dirname "$(command -v node)")
     want=$(sed -e "s|/Users/marcol04/computer/personal/projects/ecosystem/sol/engine|$ENG|g" \
                -e "s|/usr/local/bin/node|$(command -v node)|g" \
                -e "s|<string>/Users/marcol04/.local/bin:|<string>$nodedir:/Users/marcol04/.local/bin:|" \
                -e "s|/Users/marcol04|$HOME|g" "$ENG/launchd/$job.plist")
-    # a link is a hand-made install (Marco's points into his checkout's tracked plists): compared, never written
+    # a link is a hand-made install (one that points into a checkout's tracked plists): compared, never written
     if [ -L "$dst" ]; then
       target=$(perl -MCwd=abs_path -e 'print abs_path(shift)' "$dst")
       if [ "$(cat "$dst")" = "$want" ]; then ok "$job installed (a link to $target), started and stopped by hand"

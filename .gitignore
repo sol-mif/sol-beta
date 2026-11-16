@@ -12,12 +12,18 @@ sol/home/voice/
 # Sol: how Sol is used, as counts (engine/src/track.ts, #356): the tester code and the day files
 sol/home/track/
 sol/home/attachments/
+# Sol: the stage's blocks and each session's stage.json (#695, engine/src/work/blocks.ts)
+sol/home/*/blocks/
+sol/home/*/sessions/
 
 # Sol: the keeper's copies of the engine build and its try count (engine/launchd/keep)
 sol/engine/dist.good/
 sol/engine/dist.good.new/
 sol/engine/dist.bad/
 sol/engine/.keep
+
+# Sol developers' runs: the first-timer's and the morning run's reports (#485), beside the gate's (#481)
+.sol-gate/
 
 # Sol: keys (ElevenLabs, Gemini)
 sol/engine/.env
@@ -31,6 +37,7 @@ sol/engine/doors.json
 sol/engine/sticky.json
 # Sol: the team settings, each person's own (Together, BUILD.md)
 sol/engine/team.json
+sol/engine/night.json
 sol/engine/team.cloud.json
 
 # Claude Code session lock, machine-local
@@ -42,7 +49,7 @@ sol/home/desk/pages/
 # Sol: the seat's scratch downloads while studying
 sol/home/school/*/tmp/
 
-# Sol: the back room's data is each person's own (CONTRIBUTING.md). The instructions stay shared.
+# Sol: the back room's data is each person's own. The instructions stay shared.
 sol/home/memory/*
 !sol/home/memory/.keep
 sol/home/life/*
@@ -53,7 +60,7 @@ sol/home/talk/
 sol/home/output/
 sol/home/tmp/
 # a person's own buttons (sol/mac/src/buttons/index.ts takes them in) and their arrangement (engine/src/arrange.ts):
-# a stamp, sol/promote and a rebase of <you>/mine never touch either
+# a new version and a rebase of <you>/mine never touch either
 sol/home/buttons/
 sol/home/arrangement.json
 sol/home/arrangement.bad-*.json
@@ -74,3 +81,17 @@ sol/engine/.live/
 sol/engine/.live-build.log
 sol/engine/*.before-live
 sol/engine/*.before-unlive
+
+# Sol: the saved data's version and the copies taken before each conversion step (engine/src/convert, #422)
+sol/home/.sol/
+
+# The gate (#481): its last result per commit and the face build it opened
+.sol-gate/
+
+# freeform (#630): a person's things and their own atlas live in the home, never committed; the atlas drawn from the fixture likewise
+sol/home/things/
+sol/home/atlas.html
+# the kernel (#633): the home's log and the data its blocks read and write through the gate
+sol/home/log/
+sol/home/data/
+sol/design/system/fixtures/atlas.html

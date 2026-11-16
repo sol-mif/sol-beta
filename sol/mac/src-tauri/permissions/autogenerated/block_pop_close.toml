@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-block-pop-close"
+description = "Enables the block_pop_close command without any pre-configured scope."
+commands.allow = ["block_pop_close"]
+
+[[permission]]
+identifier = "deny-block-pop-close"
+description = "Denies the block_pop_close command without any pre-configured scope."
+commands.deny = ["block_pop_close"]

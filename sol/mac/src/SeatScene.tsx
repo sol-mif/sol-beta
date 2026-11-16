@@ -2,15 +2,13 @@
 // the side, in place of the brand line. Home is Sol alone, plainly. Cowork is Sol with two of the team's buds beside
 // him, and the switch is the visit: the buds bud out of his body (under a goo filter, so each one swells, stretches a
 // bridge and lets go), travel out on a spring with a little hop, land squashed and open their eyes, then bob. Back to
-// home they drift in, the bridge comes back, and he takes them in. Sol is the vibe switch here (vibe.ts toggleVibe), as
-// the old sidebar mark was: a click turns vibe on or off, a hold opens its settings (WorkApp.tsx hears sol-vibe-edit).
+// home they drift in, the bridge comes back, and he takes them in.
 // Each side (Home, Cowork) mounts its own scene, so the mode it came from is kept here between mounts: a fresh scene in
 // Cowork after Home plays the arrival. Reduced motion: a hard switch, nothing travels, nobody bobs.
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Sol } from "./Sol";
 import { Bands, Light, reduced, rnd } from "./creature/goo";
 import { SOL_BODY, SOL_PATH } from "./solShape";
-import { toggleVibe } from "./vibe";
 import type { AppMode } from "./ModeSwitch";
 
 // two families from the direction's palette (mine/look/direction/build.py FAM)
@@ -137,16 +135,6 @@ export function SeatScene({ mode, size = 46 }: { mode: AppMode; size?: number })
     return () => cancelAnimationFrame(raf.current);
   }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sol is the vibe switch (vibe.ts): a click toggles, a hold opens its settings
-  const timer = useRef(0), held = useRef(false);
-  const down = () => {
-    held.current = false;
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => { held.current = true; window.dispatchEvent(new CustomEvent("sol-vibe-edit")); }, 450);
-  };
-  const clear = () => window.clearTimeout(timer.current);
-  const up = (ev: React.PointerEvent<SVGGElement>) => { clear(); if (!held.current) toggleVibe(ev.currentTarget as unknown as HTMLElement); };
-
   const fid = `${id}goo`;
   return (
     <svg className={`seat-scene ${reduced ? "still" : ""}`} width={(size * W) / H} height={size} viewBox={`0 0 ${W} ${H}`} data-mode={mode}>
@@ -160,7 +148,7 @@ export function SeatScene({ mode, size = 46 }: { mode: AppMode; size?: number })
         <Light id={`${id}l`} cx={38} cy={32} r={40} />
       </defs>
       {/* the goo: a copy of Sol's outline (hidden under him, only its bridges show), the bridges and the buds; the friends
-          never take the pointer, so a press on Sol is his even while they pass over him */}
+          never take the pointer */}
       <g ref={goo} filter={`url(#${fid})`} pointerEvents="none">
         <g ref={proxy}><g transform={`translate(${SC.x} ${SC.y}) scale(0.9) translate(${-SC.x} ${-SC.y}) translate(${SX} ${SY}) scale(${S / 100})`}><path d={SOL_PATH} fill={SOL_BODY} /></g></g>
         {FRIENDS.map((f, i) => (
@@ -176,8 +164,8 @@ export function SeatScene({ mode, size = 46 }: { mode: AppMode; size?: number })
           </g>
         ))}
       </g>
-      <g ref={sol} className="seat-sol" onPointerDown={down} onPointerUp={up} onPointerCancel={clear}>
-        <title>vibe mode: click to turn it on or off, hold to set it up</title>
+      {/* Sol here follows the pointer with his eyes (Sol.tsx listens on the window) and takes no press: no poke, no flash */}
+      <g ref={sol} className="seat-sol" pointerEvents="none">
         <g transform={`translate(${SX} ${SY})`}><Sol size={S} watch /></g>
       </g>
       {/* the friends' eyes, crisp on top: each looks toward Sol */}

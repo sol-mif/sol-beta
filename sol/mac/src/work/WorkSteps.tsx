@@ -114,7 +114,7 @@ export function WorkSteps({ items, all, view, old, nested }: { items: Item[]; al
   const card = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
   useLayoutEffect(() => {
-    if (card.current && !old && !nested) { enter(card.current, { y: 14, cfg: CFG.arrive }); growTo(card.current, 0); }
+    if (card.current && !old && !nested) { enter(card.current, { y: 14, cfg: CFG.travel }); growTo(card.current, 0); }
     mounted.current = true;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!list.length) return null;
@@ -139,8 +139,8 @@ const StepRow = memo(function StepRow({ r, all, view, arrive, ran }: { r: Row; a
   const [seenView, setSeenView] = useState(view);
   if (seenView !== view) { setSeenView(view); setOpen(null); }
   // a new step draws in left to right as it slides (the show), on a spring: the clip opens from the right edge
-  const draw = useSpring(0, CFG.slide, (v) => { if (ref.current) ref.current.style.clipPath = v > 0.5 ? `inset(-4px ${v}% -4px 0)` : ""; });
-  useLayoutEffect(() => { if (ref.current && arrive) { enter(ref.current, { x: -16, cfg: CFG.arrive }); growTo(ref.current, 0); draw.set(100); draw.to(0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const draw = useSpring(0, CFG.travel, (v) => { if (ref.current) ref.current.style.clipPath = v > 0.5 ? `inset(-4px ${v}% -4px 0)` : ""; });
+  useLayoutEffect(() => { if (ref.current && arrive) { enter(ref.current, { x: -16, cfg: CFG.travel }); growTo(ref.current, 0); draw.set(100); draw.to(0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   let k: Kind = "note", text = "", meta: React.ReactNode = null, detail: React.ReactNode = null, running = false, ok: boolean | undefined, cls = "", why = "";
   if (r.group) {
@@ -197,7 +197,7 @@ const StepRow = memo(function StepRow({ r, all, view, arrive, ran }: { r: Row; a
   return (
     <div ref={ref} data-item={r.it?.id} data-ping={r.it && /__ping$/.test(String(r.it.name)) ? pingKey(String(r.it.input?.line ?? "")) : undefined} className={`step wstep ${k} ${cls} ${running ? "running" : ""} ${ok === false ? "failed" : ""} ${can ? "can" : ""} ${open ? "open" : ""}`}>
       <div className="step-row" onClick={can ? () => setOpen(!open) : undefined}>
-        <span className="glyph"><Swap k={running ? "run" : "glyph"} dist={14} cfg={CFG.snap}>{running ? <Runner /> : GLYPH[k]}</Swap></span>
+        <span className="glyph"><Swap k={running ? "run" : "glyph"} dist={14} cfg={CFG.settle}>{running ? <Runner /> : GLYPH[k]}</Swap></span>
         <span className="step-text">{k === "reasoning" ? <><span className="pre">{running ? "thinking… " : "thought: "}</span>{text}</> : text}</span>
         {meta && <span className="step-meta">{meta}</span>}
         <span className="step-state">{running ? <Elapsed at={r.it?.at} /> : ok === false ? <i className="bad" /> : ok === true ? <CellCheck land={ran} /> : null}</span>

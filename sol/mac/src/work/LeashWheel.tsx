@@ -50,7 +50,7 @@ export function LeashWheel({ r, kind, items, mode, onPick, onClose, chip }: { r:
   };
   useLayoutEffect(() => {
     if (plain) return;
-    box.current?.querySelectorAll<HTMLElement>(".lwspot").forEach((b, i) => { const s = spot(i); enter(b, { x: ox - s.x, y: oy + r.height / 2 - s.y, cfg: CFG.pop, delay: i * 24, scale: 0.3 }); });
+    box.current?.querySelectorAll<HTMLElement>(".lwspot").forEach((b, i) => { const s = spot(i); enter(b, { x: ox - s.x, y: oy + r.height / 2 - s.y, cfg: CFG.settle, delay: i * 24, scale: 0.3 }); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const up = () => { if (stick.current) return; const o = over.current; if (o !== null) choose(o); else onClose(); };

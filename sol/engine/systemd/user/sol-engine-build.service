@@ -1,5 +1,5 @@
 # The build watcher beside sol-engine.service on Linux or WSL (#22, 2026-10-20): tsc --watch writes engine/dist again
-# when engine/src changes, and the engine renews itself at the next quiet moment (sol/README.md, "It renews itself").
+# when engine/src changes, and the engine renews itself at the next quiet moment (it renews itself).
 # sol/setup fills the @BLANKS@ and writes it to ~/.config/systemd/user/sol-engine-build.service.
 # Log: journalctl --user -u sol-engine-build -n 50 -f
 [Unit]

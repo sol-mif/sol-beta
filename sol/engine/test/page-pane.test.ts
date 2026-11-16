@@ -7,7 +7,7 @@ import { assetOf, assetPath } from "../src/work/page.js";
 
 // The page pane (#54): a page's relative assets are served from beside it, and from nowhere else.
 test("an asset url names the page's folder and the path under it", () => {
-  const dir = "/Users/marco/computer/personal/projects/x/design";
+  const dir = "/Users/someone/computer/personal/projects/x/design";
   const at = assetOf(`/pane-asset/${encodeURIComponent(dir)}/img/a%20b.png?t=1`);
   assert.deepEqual(at, { dir, rel: "img/a b.png" });
   assert.equal(assetOf("/pane-asset/"), null);

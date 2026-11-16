@@ -13,6 +13,8 @@ const MEANT = new Set([
   "pane+wpane", "tabs+ttabs", "row+woask", "wdiff+wdlines", "wlink+wopen", "cstage+page-in", "desk-stage+stage",
   "cpage+cshared",
   "me+msg",   // away.css's .me is the Away page's own line; that page never draws a chat message
+  "ccols+tb-board", "cgantt+tb-tl",   // a table's board and timeline (#434) are the dashboard's own, on any table
+  "v5-box+v5-open",   // Join's link box (fr-30 slice 5) is Setup's answer box, capped in width on purpose
 ]);
 
 const root = new URL(".", import.meta.url).pathname;
@@ -22,7 +24,8 @@ const LAYOUT = /\b(width|height|display|position|padding|margin|flex|inset)\s*:/
 
 // a bare one-class rule that sizes or lays out: ".bad { width: 6px }", not ".wticket.bad i" or "i.bad"
 const sized = new Map<string, string>();
-for (const f of files.filter((f) => f.endsWith(".css"))) {
+// the kit's type steps (kit/type.css, #762) are worn on top of any part on purpose: a size and line, never a box
+for (const f of files.filter((f) => f.endsWith(".css") && relative(root, f) !== join("kit", "type.css"))) {
   const src = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   for (const m of src.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (!LAYOUT.test(m[2])) continue;

@@ -8,6 +8,10 @@ import type { Effort, Health, Part, Seat, SeatInfo } from "./useEngine";
 import { prettyModel } from "./models";
 import { Menu, type MenuItem } from "./work/Menu";
 import { EffortPill } from "./EffortPill";
+import { WhoPill } from "./work/Who";
+import { ContextRing, type Usage } from "./work/Context";
+import { useElapsed } from "./work/Listen";
+import { Button } from "./kit";
 
 // The model pill (mine/look/SITTING-5-model.md): the friendly name alone, the id in its title; a click opens a Sol menu above it,
 // the same `.menu` as the mode menu (work/Menu.tsx), with only the toggled seat's models under a small-caps head naming the
@@ -84,8 +88,12 @@ const Mic = () => (
 );
 
 export function Picker({ seat, info, model, effort, efforts, up, health, context, win, parts, rec, notice, locked,
-  onSeat, onModel, onEffort, onMicDown, onMicUp, noSeat, children, call, lockedWhy }: {
-  lockedWhy?: string;       // the locked switch's own reason, where it is not "this conversation lives on …"
+  onSeat, onModel, onEffort, onSeatModel, onMicDown, onMicUp, noSeat, noEngine, children, call, lockedWhy, row, seats, usage, turns = 0, busy, onCompact, lead, tail }: {
+  /** #954, stage.whole: the row's first and last (whole.html's box: the + first, the send arrow last) */
+  lead?: React.ReactNode; tail?: React.ReactNode;
+  usage?: Usage; turns?: number; busy?: boolean; onCompact?: () => void;   // the row's context circle and its card (work/Context.tsx)
+  lockedWhy?: string;
+  noEngine?: boolean;       // no engine dots in the bar: the clean Home shows them once, top right (#589)       // the locked switch's own reason, where it is not "this conversation lives on …"
   noSeat?: boolean; children?: React.ReactNode; // the mode lives in the side now; Work puts its own controls in
   call?: React.ReactNode;   // the call, beside dictate (buttons/call.tsx CallKey): every talk's bar has it (#24)
   seat: Seat; info?: SeatInfo; seats: SeatInfo[]; model?: string; effort: Effort; efforts: Effort[]; locked?: boolean;
@@ -93,35 +101,47 @@ export function Picker({ seat, info, model, effort, efforts, up, health, context
   onSeat: (s: Seat) => void; onModel: (m: string) => void; onEffort: (e: Effort) => void;
   onSeatModel?: (s: Seat, m: string) => void;   // kept for the callers; the list shows one seat's models now, the seat switch does the rest (sitting 5)
   onMicDown: () => void; onMicUp: () => void;
+  row?: boolean;              // the clean Home's bar, the row (#647, Marco's pick 2026-11-06): the provider pill carries the model, no seat switch
 }) {
   const fill = Math.min(1, context / (win || 1));
   const r = 5.5;
   const c = 2 * Math.PI * r;
   const label = (s: SeatInfo) => s.label ?? s.seat;
   const models = info?.models ?? [];
+  // dictating: the row's pills step back and a pearl "done" stands where the mic was (#647, Marco 2026-11-06)
+  const listening = rec || forcedState === "listening";
+  // the row's dictation (#647 round 4, work/Listen.tsx): the box's rim hears you; the row keeps its pills, quiet, the time and "done"
+  const time = useElapsed(!!row && listening);
   return (
     <>
-      <div className="picker">
-        {!noSeat && <SeatSwitch seat={seat} locked={locked} onPick={onSeat}
+      <div className={`picker${row ? " inrow" : ""}${row && listening ? " listening" : ""}`}>
+        {lead}
+        {!noSeat && !row && <SeatSwitch seat={seat} locked={locked} onPick={onSeat}
           title={locked && lockedWhy ? lockedWhy : locked ? `this conversation lives on ${info ? label(info) : seat}${info?.via ? ` (via ${info.via})` : ""}; a new conversation (cmd+N) can be on the other seat` : `${info?.via ? `via ${info.via}. ` : ""}switching starts a new conversation`} />}
-        <ModelPill options={models} value={model} onChange={onModel} label="model" seatName={info ? label(info) : seat} seat={seat} />
+        {row && <WhoPill seat={seat} seats={seats} model={model} onSeat={onSeat} onModel={onModel} onSeatModel={onSeatModel} />}
+        {!row && <ModelPill options={models} value={model} onChange={onModel} label="model" seatName={info ? label(info) : seat} seat={seat} />}
         <EffortPill options={efforts} value={effort} onChange={(v) => onEffort(v as Effort)} label="effort" />
         {children}
         <span className="grow" />
-        {call}
-        <button className={`icon ${rec ? "rec" : ""}`} onPointerDown={onMicDown} onPointerUp={onMicUp} title="dictate (click, or hold)">
-          {rec || forcedState === "listening" ? <VoiceRibbon size={20} /> : <Mic />}
-        </button>
-        {up && health && <Dots h={health} />}
-        <div className="state">
+        {row && listening && <span className="wlistening">{time}</span>}
+        {!row && call}
+        {row && listening
+          ? <span className="wdone" title="done: the words stay in the box (enter, or this)"><Button h={24} onClick={onMicDown}>done</Button></span>
+          : row ? <span className="wmic" onPointerDown={onMicDown} onPointerUp={onMicUp} title="dictate (click, or hold)"><Button h={24} label="dictate"><Mic /></Button></span>
+          : <button className={`icon ${rec ? "rec" : ""}`} onPointerDown={onMicDown} onPointerUp={onMicUp} title="dictate (click, or hold)" aria-label="dictate">
+              {listening && !row ? <VoiceRibbon size={20} /> : <Mic />}
+            </button>}
+        {!noEngine && up && health && <Dots h={health} />}
+        {row ? <ContextRing context={context} win={win} usage={usage} turns={turns} busy={busy} onCompact={onCompact} /> : <div className="state">
           <svg className="ring" viewBox="0 0 14 14" aria-hidden="true">
             <circle cx="7" cy="7" r={r} fill="none" stroke="var(--line)" strokeWidth="2" />
             <circle cx="7" cy="7" r={r} fill="none" stroke="var(--ink)" strokeWidth="2"
               strokeDasharray={`${c * fill} ${c}`} transform="rotate(-90 7 7)" />
           </svg>
-          <Status up={up} />
+          {!noEngine && <Status up={up} />}
           <Card context={context} win={win} parts={parts} />
-        </div>
+        </div>}
+        {tail}
       </div>
       {notice && <div className="notice">{notice}</div>}
     </>

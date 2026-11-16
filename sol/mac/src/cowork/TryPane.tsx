@@ -203,7 +203,7 @@ function Steps({ steps, t, onAgain }: { steps: Step[]; t: Trying | null; onAgain
   const n = useRef(0);
   useLayoutEffect(() => {
     const els = ref.current?.children;
-    if (els && els.length > n.current) for (let i = n.current; i < els.length; i++) enter(els[i] as HTMLElement, { y: 8, cfg: CFG.slide });
+    if (els && els.length > n.current) for (let i = n.current; i < els.length; i++) enter(els[i] as HTMLElement, { y: 8, cfg: CFG.travel });
     n.current = els?.length ?? 0;
   }, [steps.length]);
   const failed = steps.some((x) => x.ok === false);
@@ -230,7 +230,7 @@ function Review({ team, r }: { team: Team; r: NonNullable<S["review"]> }) {
   const remarks = head ? r.items.filter((i) => !i.head && i.round === head.round && i.state !== "dismissed") : [];
   const me = team.me || "me";
   const ref = useRef<HTMLUListElement>(null);
-  useLayoutEffect(() => { const els = ref.current?.children; if (els) Array.from(els).forEach((el, i) => enter(el as HTMLElement, { y: 10, delay: i * 40, cfg: CFG.slide })); }, [head?.round, remarks.length]);
+  useLayoutEffect(() => { const els = ref.current?.children; if (els) Array.from(els).forEach((el, i) => enter(el as HTMLElement, { y: 10, delay: i * 40, cfg: CFG.travel })); }, [head?.round, remarks.length]);
   return (
     <div className="trev">
       <div className="trhead">
@@ -260,7 +260,7 @@ function Review({ team, r }: { team: Team; r: NonNullable<S["review"]> }) {
 
 function SaidCap({ said }: { said: Said | null }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (said && ref.current) enter(ref.current, { y: 14, cfg: CFG.snap }); }, [said?.at]);
+  useLayoutEffect(() => { if (said && ref.current) enter(ref.current, { y: 14, cfg: CFG.settle }); }, [said?.at]);
   if (!said) return null;
   return (
     <div ref={ref} className={`tsaid ${said.ok ? "" : "bad"}`} role="status">

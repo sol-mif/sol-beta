@@ -61,11 +61,13 @@
 //                                            { type: "creature.ask", ask } and { type: "creature.turn", turn } likewise (#6)
 //      { type: "health", health }            kept, build, face, reverted (src/health.ts), to every face when it changes;
 //                                            also in settings' up object
-// HTTP: GET /health, POST /claim (the harness, a file another branch changed: a claim ping to its holder, #202), POST /letgo (a window going back to the NucBox, One Sol #62), GET /file?path= (only inside home/), GET /pane-image?path= (an image the file pane opened), GET /pane-asset/<folder>/<rel> (a page's own files, for the page pane, #54), POST /tool (used by src/mcp-stdio.ts; /browser is an alias).
+// HTTP: GET /health (says the contract, #630), GET /things (the home's things, for the frame, #630; with sol.frame on each says its engine half, #633, and the after-release card, #634), POST /things/release/undo and /close (the card's presses, #634), GET /log?since= and POST /things/:id/undo and GET /things/tools (#633), POST /claim (the harness, a file another branch changed: a claim ping to its holder, #202), POST /letgo (a window going back to the NucBox, One Sol #62), GET /file?path= (only inside home/), GET /pane-image?path= (an image the file pane opened), GET /pane-asset/<folder>/<rel> (a page's own files, for the page pane, #54), POST /tool (used by src/mcp-stdio.ts; /browser is an alias).
 // Both seats also get the browser and desk tools as an MCP server named "sol" (src/browser.ts, src/desk.ts,
 // routed by src/tools.ts): one invisible Chromium, tabs per conversation; a desk of cards per conversation. What each seat may do is src/inventory.ts (Home: read anywhere, write in home/).
 
-import { doorOpen, tailnetOk as tailnetDoor } from "./door.js";
+import { conversions } from "./convert/start.js";   // first: the saved data's conversion steps run before any module reads it (#422)
+import { doorOpen, appPage, tailnetOk as tailnetDoor } from "./door.js";
+import { turnOn, registerSeats, seatFor } from "./seatturn.js";   // the seat seam (step 6, seats.ts): a turn on a seat, and Sol's own two as seats
 import { plan as goBackPlan, goBack } from "./goback.js";
 import { join as joinBusy, idle as engineIdle, busyList, busyLine, onBusy, lockSession, relockSession, Held, letGo, refusedWhileLettingGo } from "./busy.js";
 import { createServer } from "node:http";
@@ -77,19 +79,20 @@ import { homedir, userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 import { Relay, relayFor } from "./relay.js";
+import { parts, type Engine } from "./parts.js";   // a new part is a file in src/parts/, not a line here (#934)
 import { query, createSdkMcpServer, tool, type Options, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Codex, type ModelReasoningEffort, type ThreadEvent, type UserInput } from "@openai/codex-sdk";
 import { listThreads, openThread, codexLastUsage, threadExists, threadSettings, codexCwd, invalidateCodex, type Seat } from "./threads.js";
 import { saveFiles, attachedLines, serveFile, servePaneImage, type FileIn } from "./files.js";
+import { blocksNow } from "./work/blocks.js";   // GET /blocks (#695)
 import { setBrowserProfile, browserProfileDir, addFace, removeFace, watch, openTab, closeTab, selectTab, navigateTab, resizeTab, inputTab, inspectTab, locateTab, adoptTabs, type TurnCtx } from "./browser.js";
 import { setDeskHome, addFace as addDeskFace, removeFace as removeDeskFace, adoptDesk, actDesk, deskMsg, takeDeskLines } from "./desk.js";
-import { addStickyFace, removeStickyFace, stickyMsg, actSticky } from "./sticky.js";
-import { SOL_TOOLS, runSolTool } from "./tools.js";
+import { seatTools, runSolTool } from "./tools.js";
 import { setSuggestSend } from "./suggest.js";   // Home offers a group once (#321): its card goes to every face
 import { HOME_INVENTORY, solScript, type Inventory } from "./inventory.js";
 import { transcribe, DICTATION_MODEL } from "./voice.js";
 import { makeCall, haveVoiceKey, voiceKeyName, voiceVendor, type VoiceCall } from "./call.js";
-import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES } from "./settings.js";
+import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, frameOn } from "./settings.js";
 import { setArrangeHome, arrangeMsg, setArrangement, undoArrangement, addUsage, oneAsk } from "./arrange.js";
 import { setTitle, nameConversation, namingModel } from "./titles.js";
 import { Sample } from "./sample.js";
@@ -102,7 +105,7 @@ import { servePaneAsset, keyedAsset } from "./work/page.js";
 import { getRun, allRuns } from "./work/runs.js";
 import { renewOnBuild } from "./renew.js";
 import { addWorkFace, removeWorkFace, handleWork, setWorkChanging, broadcastSessions, askInSession } from "./work/wire.js";
-import { addTeamFace, removeTeamFace, handleTeam, startTeam, setRegistry, hearClaim, moveNow, cloudNow } from "./team/wire.js";
+import { addTeamFace, removeTeamFace, handleTeam, startTeam, setRegistry, hearClaim, moveNow, cloudNow, tonightNow, v3Health } from "./team/wire.js";
 import { relayServer, relayRoutes, RelayHub, hubHttp, restartRelay, CLOUD_FILE, ENGINE_HUB } from "./team/relay.js";
 import { signIn, signOut, accounts as cloudAccounts } from "./team/cloud.js";
 import { Spool, Registry, Guesses, Proofs, REGISTRY_MAX, makeCode } from "./hub/index.js";   // the hub, built alone for the box as the package sol/hub (#208)
@@ -117,10 +120,17 @@ import { addPingFace, removePingFace, seenPing, ackPing, pingFaceIs } from "./pi
 import { workState, STATE_DIR, mark } from "./work/state.js";
 import { storeDictation } from "./dictations.js";
 import { setTrackHome, setTrackVersion, trackIn, trackOut, startTrackSender, trackUrlOf, EVERY } from "./track.js";
+import { setErrorCount, countError, audienceOf, shippedOf, countsErrors, type Audience } from "./errcount.js";
+import { STAGE, stageRefusal } from "./stage.js";
 import { startOthers } from "./track-files.js";
-import { addCreatureFace, removeCreatureFace, setRole, setPresence, setDictation, sent as creatureSent, lifeTurn, type Role } from "./creature.js";
+import { addCreatureFace, removeCreatureFace, setRole, markSolWindow, setPresence, setDictation, sent as creatureSent, lifeTurn, type Role } from "./creature.js";
 import { watchHealth, noteRevert, type Health } from "./health.js";
 import { watchVersion, versionNow, versionLine } from "./version.js";   // the release plus my own layer (#417)
+import { contractNow } from "./things.js";   // freeform's foundation (#630): the contract number, the home's things
+import { kernelNow, syncKernel, thingTools, runThingTool } from "./kernel.js";   // #633: the log, the loader, the gate, undo (behind sol.frame)
+import { logAnswer } from "./log.js";   // the answer to GET /log (WIRE.md §1)
+import { turnStarted, turnEnded, stepTaken, sentAtStart, fileOf, sizeOf, claudeTokens, codexTokens, codexStepOf } from "./seatlog.js";   // a seat's own steps on the log (design step 1)
+import { afterRelease } from "./release.js";   // the first start after a release (#634)
 import { setShelfHome, startSweep } from "./shelf.js";
 import { handleGrab } from "./grab.js";
 import { setAnticipate, handleAnticipate } from "./anticipate.js";
@@ -166,6 +176,24 @@ setArrangeHome(HOME, (m) => everyone(m));   // the arrangement (#133): its own f
 const TRACK_OFF = /^(off|none|0|false)$/i.test((process.env.SOL_TRACK ?? "").trim());
 if (!TRACK_OFF) setTrackHome(HOME, { consent: () => getSettings().track, who: () => ({ name: cloudNow().login, user: userInfo().username }) });
 execFile("git", ["log", "-1", "--format=%h"], { cwd: HERE, timeout: 5000 }, (_e, out) => setTrackVersion(String(out ?? "").trim()));
+// error counts per feature (#485, errcount.ts): counts only, the engine's file, the type of error and where it was caught,
+// for Sol testers (origin sol-beta) and Sol developers (sol-dev); a Sol user (any other origin) is not counted. The
+// origin is read once after the start; until then nothing is counted. An uncaught error is counted as it brings the
+// engine down (the monitor changes nothing about the crash); the catches below count theirs
+// Which files are Sol's own is read from git once too: the engine's src as the release this Sol follows has it
+// (origin/stable for a Sol tester, origin/main for a Sol developer), so a file the person added is never named
+let AUDIENCE: Audience = "user";
+let SHIPPED: Set<string> | null = null;
+if (!TRACK_OFF && !STAGE) {
+  setErrorCount(resolve(HERE, ".."), () => AUDIENCE, () => SHIPPED);
+  execFile("git", ["remote", "get-url", "origin"], { cwd: HERE, timeout: 5000 }, (_e, out) => {
+    AUDIENCE = audienceOf(String(out ?? ""));
+    if (AUDIENCE === "user") return;
+    const ref = AUDIENCE === "tester" ? "origin/stable" : "origin/main";
+    execFile("git", ["ls-tree", "-r", "--name-only", ref, "--", "src"], { cwd: resolve(HERE, ".."), timeout: 10_000, maxBuffer: 8 << 20 }, (e2, list) => { if (!e2) SHIPPED = shippedOf(String(list ?? "")); });
+  });
+  process.on("uncaughtExceptionMonitor", (err) => countError(err, "uncaught"));
+}
 // SOL_TRACK_URL: unset is the team's hub; an http(s) address is that; any other word is off (never a silent fallback)
 const trackUrl = () => { const u = (process.env.SOL_TRACK_URL ?? "").trim(); return TRACK_OFF ? null : !u ? trackUrlOf(sharedHub()) : /^https?:\/\/\S+$/.test(u) ? u : null; };
 if (!TRACK_OFF) { startTrackSender(trackUrl); startOthers(); }
@@ -176,6 +204,12 @@ setAnticipate(HOME, resolve(HERE, "..", ".."), (m) => everyone(m));
 setTalks(HOME, (m) => everyone(m));   // Conversations (talks.ts): talks.changed reaches every face
 setSuggestSend((m) => everyone(m));   // home.suggest (#321): the face draws it under that conversation only
 setPrivateHome(HOME);   // the clean screen's private list (#253): home/private.json
+// the first start after a release (#634, release.ts): a block made under an older contract is migrated, every block
+// re-linted, one that cannot be carried marked remake; the face's one card says so (GET /things). Once per contract.
+try {
+  const pass = afterRelease(HOME);
+  if (pass) console.log(`after release: contract ${pass.contract}, ${pass.moved.length} moved, ${pass.marked.length} marked remake`);
+} catch (e) { console.error(`after release: ${(e as Error)?.message ?? e}`); }
 // every edit a seat makes to Sol's face, and every mutate and undo, goes out to every window (src/changing.ts)
 const changing = new Changing(HOME, (m) => {
   const r = m as { type?: string; line?: string };
@@ -191,7 +225,7 @@ if (REVERTED) { console.log(`keep: this engine is the last good build, put back 
 const health = watchHealth(resolve(HERE, ".."), (h: Health) => everyone({ type: "health", health: h }));
 // what this Sol runs (#417): read from git after the start, never before it; /health, the relay and Cowork say it
 watchVersion(resolve(HERE, ".."));
-// Ship (#33): stamp stable from this checkout, and a new stable heard on the relay offered to every face (team/ship.ts)
+// Ship (#33, #418): a new release heard on the relay or asked of GitHub: offered to every face, a dev one installed at a quiet moment (team/ship.ts)
 startShip(resolve(HERE, "..", ".."), (m) => everyone(m));
 
 const EFFORTS = ["low", "medium", "high", "max"];
@@ -310,10 +344,13 @@ async function doorConversation(door: Door | undefined, seat: Seat, sessionId?: 
   return id && (await threadExists(HOME, seat, id)) ? id : undefined;
 }
 
-// Two seats, both on Marco's subscriptions. Codex is Home's seat; Claude is Work's.
+// Two seats, both on Marco's subscriptions: Codex is Home's, Claude is Work's. Both are on the seam (seats.ts), where a block may put one more; a seat not on it (taken out, broken) is said, and Claude takes the turn.
 async function handleSay(conn: Conn, say: Say, abort: AbortController) {
   const ws = conn.ws;
-  const seat = say.seat ?? "codex";
+  const { seat: provider, instead } = seatFor(say.seat ?? "codex");
+  // the seat named is gone: Claude takes the turn as a fresh one (the gone seat's conversation is not Claude's)
+  if (instead) { send(ws, { type: "seat.instead", why: instead }); say = { ...say, sessionId: undefined }; }
+  const seat = (provider.builtIn ? provider.name : say.seat) as Seat;
   // The browser tools know which conversation and which face they belong to through this.
   const turn: TurnCtx = { sessionId: say.sessionId ?? say.draft, seat, sink: (step) => send(ws, { type: "tool", seat, ...step }) };
   conn.sessionId = say.sessionId;
@@ -322,11 +359,11 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
   let ended = false;
   const end = (m: object) => { if (ended) return; ended = true; send(conn.ws, { type: "done", seat, ...m }); };
   try {
-    if (say.sessionId && !(await threadExists(HOME, seat, say.sessionId))) {
+    if (provider.builtIn && say.sessionId && !(await threadExists(HOME, seat, say.sessionId))) {
       send(ws, { type: "error", message: `this conversation is not a ${seat} conversation; start a new one on this seat` });
       return;
     }
-    if (say.sessionId && conn.chars === 0) {
+    if (provider.builtIn && say.sessionId && conn.chars === 0) {
       const old = await openThread(HOME, seat, say.sessionId).catch(() => []);
       conn.chars = old.reduce((n, m) => n + m.text.length, 0);
     }
@@ -337,7 +374,7 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
     // A brand-new conversation gets a name after its first answer: watch the wire for the text and the done.
     const fresh = !say.sessionId;
     let answer = "";
-    if (fresh) {
+    if (fresh && provider.builtIn) {
       conn.ws = {
         get readyState() { return ws.readyState; },
         send: (line: string) => {
@@ -349,7 +386,8 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
       };
     }
     try {
-      return seat === "codex" ? await sayCodex(conn, say, abort, saved, turn, deskLines, end) : await sayClaude(conn, say, abort, saved, turn, deskLines, end);
+      if (provider.home) return await (provider.home as unknown as typeof sayClaude)(conn, { ...say, seat }, abort, saved, turn, deskLines, end);
+      return await turnOn(provider, conn, say, abort, end, [deskLines, attachedLines(saved)].filter(Boolean).join("\n\n"), send);
     } finally {
       conn.ws = ws;
       if (say.door && conn.sessionId) touchDoor(say.door, conn.sessionId);
@@ -357,12 +395,16 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
   } catch (err) {
     // a turn that could not start (an attachment that would not save: disk full, #11 adverse run) still ends, so the
     // box does not stay thinking
+    countError(err, "turn", "say");
     send(ws, { type: "error", message: err instanceof Error ? err.message : String(err) });
   } finally {
     end({ sessionId: conn.sessionId, ...(abort.signal.aborted ? { stopped: true } : { ok: false }) });
   }
 }
 type End = (m: object) => void;
+
+
+registerSeats(handleSay, sayClaude, sayCodex);   // Sol's own two seats on the seam (seatturn.ts)
 
 // ---- names, settings: shared by every connected face ----
 
@@ -410,7 +452,11 @@ function talkSay(ws: Wire, text: string, sessionId?: string, title?: string): Pr
 }
 const settingsMsg = () => ({
   type: "settings",
-  settings: { ...getSettings(), voiceNow: voiceVendor() },   // voiceNow: the maker that carries a call now, "auto" resolved (read-only)
+  // voiceNow: the maker that carries a call now, "auto" resolved; errorCounts: whether this Sol counts its errors (a Sol
+  // tester's or developer's, errcount.ts), so the counting card says it (both read-only)
+  settings: { ...getSettings(), voiceNow: voiceVendor(), errorCounts: !TRACK_OFF && !STAGE && countsErrors(AUDIENCE),
+    // Cowork v3 (fr-30): SOL_COWORK_V3 wins over the setting, so the face reads the switch as the engine does; absent, today's
+    ...(coworkV3Env() ? { cowork: { v3: coworkV3Env() === "on" }, coworkEnv: coworkV3Env() } : {}) },
   haveVoiceKey: haveVoiceKey(),
   dictationModel: DICTATION_MODEL,
   up: { since: STARTED, port: PORT, health: health() },
@@ -521,6 +567,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
   let leave = joinBusy("life", say.sessionId ?? say.draft ?? token, "codex", folder);
   const thread = say.sessionId ? codex.resumeThread(say.sessionId, opts) : codex.startThread(opts);
   let sessionId = say.sessionId;
+  let began = false;   // a turn is on the log and not yet ended there
   const seen = new Map<string, string>(); // agent_message id -> text already sent
   const announced = new Set<string>(); // steps already started, so an update does not start them twice
   const step = (s: Step) => send(ws, { type: "tool", seat: "codex", ...s });
@@ -564,6 +611,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
         }
         if (inFolder) { invalidateCodex(); broadcastSessions(); }   // the row is in its folder at once
         send(ws, { type: "start", sessionId, seat: "codex", ...(inFolder ? { cwd: folder } : {}) });
+        turnStarted("codex", sessionId, say.model); sentAtStart("codex", sessionId, saved, deskLines); began = true;   // on the log: a turn, and what Sol handed it
       } else if (e.type === "item.started" || e.type === "item.updated" || e.type === "item.completed") {
         const done = e.type === "item.completed";
         if (e.item.type === "agent_message") {
@@ -571,6 +619,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
         } else {
           // One step when it starts, one when it completes. Codex files notices as "error" items too
           // (e.g. "resumed with another model"): a note, not part of the answer. A turn that really fails says so on turn.failed.
+          if (done && sessionId) { const cs = codexStepOf(e.item); if (cs) stepTaken("codex", sessionId, cs.tool, cs); }   // on the log: the step, not its words
           const s = codexStep(e.item, done, folder);
           if (s && (done || !announced.has(s.id))) {
             announced.add(s.id);
@@ -583,18 +632,21 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
         // The rollout's last token_count says what is in the window now, and the window Codex really uses.
         const last = sessionId ? await codexLastUsage(sessionId) : null;
         send(ws, usageMsg(conn, last?.context ?? 0, last?.window || window));
+        if (began && sessionId) turnEnded("codex", sessionId, { ok: true, tokensTotal: codexTokens(e.usage) }); began = false;   // on the log: the thread's tokens so far
         end({ sessionId, ok: true });   // a late abort (a new say while the child drains) is then no stop
         // every door hears what Sol just said (the notch and the island show it, whichever door asked)
         const said = [...seen.values()].join("\n").trim();
         if (said) everyone({ type: "said", seat: "codex", sessionId, text: said, ...(say.door ? { door: say.door } : {}) });
       } else if (e.type === "turn.failed") {
         send(ws, { type: "error", message: e.error.message });
+        if (began && sessionId) turnEnded("codex", sessionId, { ok: false }); began = false;
         end({ sessionId, ok: false });
       }
     }
   } catch (err) {
-    if (!abort.signal.aborted) send(ws, { type: "error", message: err instanceof Error ? err.message : String(err) });   // handleSay ends it
+    if (!abort.signal.aborted) { countError(err, "turn", "say"); send(ws, { type: "error", message: err instanceof Error ? err.message : String(err) }); }   // handleSay ends it
   } finally {
+    if (began && sessionId) turnEnded("codex", sessionId, { ok: false });   // the stream ended without a turn.completed: stopped, or broke
     turns.delete(token);
     unlock(); leave();
     if (inFolder) { invalidateCodex(); broadcastSessions(); }   // the row's time, and it is not running any more
@@ -637,11 +689,12 @@ function resultText(content: unknown): string {
 async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Awaited<ReturnType<typeof saveFiles>>, turn: TurnCtx, deskLines: string, end: End) {
   const ws = conn.ws;
   const model = say.model ?? "claude-opus-5-5";
-  // The browser tools, in this process, as MCP server "sol".
+  // The browser tools, in this process, as MCP server "sol"; with the frame on, the tools the home's blocks registered (#633)
+  const blockTools = thingTools(), offered = seatTools();   // the install tool only with the frame on (the off switch)
   const sol = createSdkMcpServer({
     name: "sol",
     version: "1.0.0",
-    tools: SOL_TOOLS.map((t) => tool(t.name, t.description, t.shape, async (args) => (await runSolTool(t.name, args, turn)) as any)),
+    tools: [...offered, ...blockTools].map((t) => tool(t.name, t.description, t.shape, async (args) => (await runSolTool(t.name, args, turn)) as any)),
   });
   const options: Options = {
     model,
@@ -653,7 +706,7 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
     systemPrompt: { type: "preset", preset: "claude_code", append: speakParagraph(getTeam()) },   // where my agent may speak (Control)
     permissionMode: INV.claude.permissionMode,
     allowedTools: INV.claude.allowedTools,
-    tools: INV.claude.tools.concat(SOL_TOOLS.map((t) => "mcp__sol__" + t.name)),
+    tools: INV.claude.tools.concat([...offered, ...blockTools].map((t) => "mcp__sol__" + t.name)),
     canUseTool: guardSpeak(INV.claude.canUseTool(HOME)),
     includePartialMessages: true,
     maxTurns: 50,
@@ -693,6 +746,8 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
   let window = claudeWindowGuess(model);
   const step = (s: Step) => send(ws, { type: "tool", seat: "claude", ...s });
   const pending = new Map<string, { step: Step; prefix: string }>(); // tool_use id -> its step, until the tool_result pairs it
+  const uses = new Map<string, { name: string; file?: string }>(); // every tool_use, for the log's step when its result comes
+  let began = false;   // a turn is on the log and not yet ended there
   const thinking: string[] = []; // reasoning steps started while the stream was thinking, completed by the assistant message
   try {
     for await (const m of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
@@ -703,6 +758,7 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
         conn.sessionId = sessionId;
         if (!say.sessionId) { adoptTabs(say.draft, sessionId); adoptDesk(say.draft, sessionId); listSoon(); }
         send(ws, { type: "start", sessionId, seat: "claude" });
+        turnStarted("claude", sessionId, model); sentAtStart("claude", sessionId, saved, deskLines); began = true;   // on the log: a turn, and what Sol handed it
       } else if (m.type === "stream_event") {
         const ev = m.event;
         if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
@@ -719,6 +775,7 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
           if (b.type === "text") said += String(b.text ?? "") + "\n";
           if (b.type === "tool_use") {
             changing.tool("claude", sessionId, String(b.id), b.name, b.input, HOME, said);
+            uses.set(String(b.id), { name: String(b.name), file: fileOf(b.input) });
             const s = claudeStep(String(b.id), b.name, b.input);
             if (s) { pending.set(String(b.id), s); step(s.step); }
           } else if (b.type === "thinking") {
@@ -737,6 +794,8 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
         if (Array.isArray(content)) for (const b of content) {
           if (b?.type !== "tool_result") continue;
           void changing.result(String(b.tool_use_id), !b.is_error, b.content);
+          const u = uses.get(String(b.tool_use_id));   // on the log: the tool, the file it named, the bytes that came back; not the words
+          if (u && sessionId) { uses.delete(String(b.tool_use_id)); stepTaken("claude", sessionId, u.name, { file: u.file, bytes: sizeOf(b.content), ok: !b.is_error }); }
           const p = pending.get(String(b.tool_use_id));
           if (!p) continue;
           pending.delete(String(b.tool_use_id));
@@ -752,6 +811,7 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
           window = real;
           send(ws, usageMsg(conn, context, window));
         }
+        if (began) turnEnded("claude", m.session_id, { ok: m.subtype === "success", turns: m.num_turns, tokens: claudeTokens(m.usage), costTotal: m.total_cost_usd }); began = false;   // on the log: the turn's tokens, the session's cost so far
         end({
           sessionId: m.session_id,
           turns: m.num_turns,
@@ -762,8 +822,9 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
       }
     }
   } catch (err) {
-    if (!abort.signal.aborted) send(ws, { type: "error", message: err instanceof Error ? err.message : String(err) });
+    if (!abort.signal.aborted) { countError(err, "turn", "say"); send(ws, { type: "error", message: err instanceof Error ? err.message : String(err) }); }
   } finally {
+    if (began && sessionId) turnEnded("claude", sessionId, { ok: false });   // the stream ended without a result: stopped, or broke
     changing.turn("claude", sessionId);   // whatever is still taped on the face peels
     unlock(); leave();
   }
@@ -817,6 +878,8 @@ const http = createServer(async (req, res) => {
   if (req.method === "GET" && keyedAsset((req.url ?? "").split("?")[0]) && tailnetOk(req.headers)) return servePaneAsset(req, res);
   if (!tailnetOk(req.headers) || !solPage(req)) { res.writeHead(403); res.end(); return; }
   const path = (req.url ?? "").split("?")[0];
+  const asked = parts.asked(req.method, path);   // a part's route (parts.ts, src/parts/) answers first; else the ones below
+  if (asked) return asked({ ...engine, req, res, path });
   if ((path === "/away" || path === "/away/") && req.method === "GET") return serveDist("away.html", res);
   if (path.startsWith("/assets/") && req.method === "GET") {
     let rel = "";
@@ -829,64 +892,40 @@ const http = createServer(async (req, res) => {
     // quiet before it goes back to the NucBox (One Sol, #62)
     const origin = req.headers.origin;
     res.writeHead(200, { "content-type": "application/json", ...(typeof origin === "string" ? { "access-control-allow-origin": origin, vary: "origin" } : {}) });
-    res.end(JSON.stringify({ ok: true, engine: "sol", pid: process.pid, port: PORT, since: STARTED, busy: busyList(), version: versionNow(), release: versionLine(versionNow()) }));
+    res.end(JSON.stringify({ ok: true, engine: "sol", pid: process.pid, port: PORT, since: STARTED, busy: busyList(), version: versionNow(), release: versionLine(versionNow()), contract: contractNow(), data: conversions, ...(v3Health() ? { trail: v3Health() } : {}) }));   // the v3 trail only once it is loaded (fr-30)
     return;
   }
-  if (path === "/letgo" && req.method === "POST") {
-    // the same page, going back: granted only while quiet, and then no new turn starts here for a moment (busy.ts)
+  if (path === "/blocks" && req.method === "GET") {
+    // the stage's blocks (#695, work/blocks.ts): each project's, with its last ledger line; ?project=<name> for one.
+    // Read-only
+    const origin = req.headers.origin;
+    const only = new URL(req.url ?? "/", "http://x").searchParams.get("project") ?? undefined;
+    res.writeHead(200, { "content-type": "application/json", ...(typeof origin === "string" ? { "access-control-allow-origin": origin, vary: "origin" } : {}) });
+    res.end(JSON.stringify({ on: true, projects: blocksNow(only) }));
+    return;
+  }
+  if (path === "/log" && req.method === "GET") {
+    // the log (#633): every step since a seq, read-only; written only by the engine (kernel.ts)
+    // a page at most (log.ts PAGE and logAnswer, whose names WIRE.md §1 writes down)
     const origin = req.headers.origin;
     res.writeHead(200, { "content-type": "application/json", ...(typeof origin === "string" ? { "access-control-allow-origin": origin, vary: "origin" } : {}) });
-    res.end(JSON.stringify(letGo() ? { ok: true } : { ok: false, busy: busyList() }));
+    res.end(JSON.stringify(logAnswer(kernelNow(), new URL(req.url ?? "/", "http://x").searchParams)));
     return;
   }
-  if (path === "/file" && req.method === "GET") return serveFile(HOME, req, res);
-  if (path === "/pane-image" && req.method === "GET") return servePaneImage(req, res);
-  if (path.startsWith("/pane-asset/") && req.method === "GET") return servePaneAsset(req, res);   // a page's own files, the page pane (#54)
-  if (path === "/claim" && req.method === "POST") {
-    // the harness (sol/harness/guard), fire and forget: a hit becomes a claim ping to the holder (team/wire.ts hearClaim)
-    if (!(req.headers["content-type"] ?? "").startsWith("application/json")) { res.writeHead(415); res.end(); return; }
-    let body = "";
-    for await (const chunk of req) { body += chunk; if (body.length > 4000) break; }
-    let ok = false;
-    try { ok = hearClaim(JSON.parse(body)); } catch {}
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok }));
-    return;
-  }
-  if ((path === "/cloud/signin" || path === "/cloud/signout") && req.method === "POST") {
-    // a Sol account on a cloud (#214, team/cloud.ts): sign in with Google in the system browser, or sign this machine
-    // out. A program of this Mac's or a page of Sol's own (the door let it in), and JSON, which a web page cannot send
-    // without a preflight. Waits for the person, up to ten minutes. { hub } names the cloud; none is SOL_HUB
+  if (path === "/tonight" && req.method === "POST") {
+    // the review session opened now (#416, team/tonight.ts), by a program of this Mac's: { role: "dev" | "beta", repo? };
+    // or the hand-in session (#420, team/handin.ts): { role: "hand-in", repo? }.
+    // JSON only, which a web page cannot send without a preflight. Answers { session } or { error }
     if (!(req.headers["content-type"] ?? "").startsWith("application/json")) { res.writeHead(415); res.end(); return; }
     let body = "";
     for await (const chunk of req) { body += chunk; if (body.length > 2000) break; }
-    let given = "";
-    try { const v = JSON.parse(body || "{}"); if (typeof v?.hub === "string") given = v.hub.trim(); } catch {}
-    const hub = hubHttp(given || sharedHub());
-    const out = !/^https:\/\//.test(hub) ? { ok: false, error: "which cloud? (SOL_HUB, or { hub: \"wss://…/relay\" })" }
-      : path === "/cloud/signin" ? await signIn(hub, { file: CLOUD_FILE })
-      : { ok: await signOut(hub, { file: CLOUD_FILE }) };
-    if (out.ok) restartRelay();   // the next knock carries the new ticket, or none
+    let out: { session?: string; error?: string };
+    try {
+      const v = JSON.parse(body || "{}");
+      out = v?.role === "dev" || v?.role === "beta" || v?.role === "hand-in" ? await tonightNow(v.role, typeof v.repo === "string" ? v.repo : undefined) : { error: "which session? { \"role\": \"dev\" }, { \"role\": \"beta\" } or { \"role\": \"hand-in\" }" };
+    } catch (e) { out = { error: String((e as Error)?.message ?? e).split("\n")[0] }; }
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify(out));
-    return;
-  }
-  if (path === "/cloud/move" && req.method === "POST") {
-    // a GitHub room of mine moved to the cloud (#216, C15; team/move.ts): backed up here first, then copied and read back.
-    // The same door and JSON as /cloud/signin. { room: <id>, as?: <a name on the cloud> }
-    if (!(req.headers["content-type"] ?? "").startsWith("application/json")) { res.writeHead(415); res.end(); return; }
-    let body = "";
-    for await (const chunk of req) { body += chunk; if (body.length > 2000) break; }
-    let v: Record<string, unknown> = {};
-    try { const x = JSON.parse(body || "{}"); if (x && typeof x === "object") v = x; } catch {}
-    const out = await moveNow(v.room, v.as).catch((e) => ({ error: String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200) }));
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify("error" in out ? { ok: false, error: out.error } : { ok: true, ...out }));
-    return;
-  }
-  if (path === "/cloud/accounts" && req.method === "GET") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ accounts: cloudAccounts(CLOUD_FILE) }));   // names and hubs only, never a token
     return;
   }
   if ((path === "/tool" || path === "/browser") && req.method === "POST") { // /browser: alias for one round
@@ -933,6 +972,10 @@ http.on("upgrade", (req, socket, head) => {
   socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
   socket.destroy();
 });
+// the parts (parts.ts): every file in src/parts/, loaded and started before the engine listens; two that answer the
+// same thing stop it here, naming both
+const engine: Engine = { HOME, PORT, send, everyone };
+await parts.load(join(HERE, "parts"), engine);
 
 // The heartbeat (#17): a protocol ping to every socket every 20 s; one that has not answered the one before is closed
 // (after a Mac sleeps, its socket stays open here for good otherwise, and a turn keeps writing into it). A beat far
@@ -966,6 +1009,7 @@ const findRun: Finder = async (seat, sessionId, work?: boolean) => {
 
 wss.on("connection", (ws, req) => {
   const fromSol = solPage(req);
+  const fromApp = appPage(req.headers, DOOR);   // the app's own page with an Origin: the review card's presses (#416)
   let current: AbortController | null = null;
   let call: VoiceCall | null = null;
   let dialing: { hung: boolean } | null = null;   // a call whose conversation is still being read, before its Call exists
@@ -997,7 +1041,6 @@ wss.on("connection", (ws, req) => {
   addFace(face);
   if (REVERTED) send(ws, { type: "engine.reverted", at: REVERTED });
   addDeskFace(face);
-  addStickyFace(face);
   addWorkFace(face);
   addTeamFace(face);
   addPingFace(face);
@@ -1013,6 +1056,10 @@ wss.on("connection", (ws, req) => {
     answered.set(ws, true);
     if ((msg as any).type === "ping") return send(ws, { type: "pong", at: (msg as any).at });   // the face's heartbeat (#17)
     trackIn(ws, msg);   // counted by its kind and the few fields its table keeps, never its words (src/track.ts)
+    if (STAGE) {   // the first-timer's stage (src/stage.ts): nothing that reaches past it
+      const why = stageRefusal(msg.type);
+      if (why) return send(ws, String(msg.type).startsWith("team.") ? { type: "team.error", rid: (msg as any).rid, message: why } : msg.type === "run" ? { type: "ran", rid: String((msg as any).rid ?? ""), done: true, code: null, why } : { type: "error", message: why });
+    }
     if (refusedWhileLettingGo(msg.type)) {
       // a window just went back to the NucBox (One Sol, #62): nothing new starts on this Mac meanwhile
       const message = "Sol is moving to the NucBox; say it again there in a moment";
@@ -1029,11 +1076,16 @@ wss.on("connection", (ws, req) => {
         // once it went (the mode mark is written), the threads show it moved
         if (handover && workState().marks[handover]?.mode === "work") void broadcastThreads();
       } catch (err) {
+        countError(err, "work", msg.type);
         send(ws, { type: "work.error", sessionId: (msg as any).sessionId, message: err instanceof Error ? err.message.split("\n")[0] : String(err) });
       }
     } else if (typeof msg.type === "string" && msg.type.startsWith("team.")) {
+      // the review session's card (#416): whether this socket is the app's own page (an Origin, never none) is the
+      // engine's word, never the message's
+      if (msg.type.startsWith("team.tonight.") || msg.type.startsWith("team.handin.") || msg.type.startsWith("team.checkpoint.")) (msg as any).fromSol = fromApp;   // and the hand-in card's (#476), Scoped/Approve (#482)
+      if (msg.type === "team.v3.running") (msg as any).fromSol = fromApp;   // Cowork v3's Start the review (fr-30, #556): Sol's own window only
       try { await handleTeam(face, msg); }
-      catch (err) { send(ws, { type: "team.error", rid: (msg as any).rid, message: err instanceof Error ? err.message.split("\n")[0] : String(err) }); }
+      catch (err) { countError(err, "team", msg.type); send(ws, { type: "team.error", rid: (msg as any).rid, message: err instanceof Error ? err.message.split("\n")[0] : String(err) }); }
     } else if (typeof msg.type === "string" && (msg.type.startsWith("shelf.") || msg.type.startsWith("grab."))) {
       await handleGrab(face, msg);   // Grab and Shelf (grab.ts): answers with the same type and rid, or its error
     } else if (typeof msg.type === "string" && msg.type.startsWith("anticipate.")) {
@@ -1050,6 +1102,7 @@ wss.on("connection", (ws, req) => {
     } else if (msg.type === "hello") {
       const role = (msg as any).face as Role;
       if (role === "window" || role === "notch" || role === "phone") { setRole(ws, role); pingFaceIs(face, role); }
+      if (role === "window" && fromApp) markSolWindow(ws);   // the review session opens only where this is (#416)
     } else if (msg.type === "presence") {
       const m = msg as any;
       setPresence(ws, !!m.focused, typeof m.idleSeconds === "number" ? m.idleSeconds : null);
@@ -1059,21 +1112,6 @@ wss.on("connection", (ws, req) => {
       setSolHidden((msg as any).invisible);   // the notch's eye (eye.ts): while closed, a Sol grab and File it's shot refuse
     } else if (msg.type === "dictation") {
       setDictation(ws, !!(msg as any).on);
-    } else if (msg.type === "dictated") {
-      // the notch typed a dictation into an app (#110): one line in home/voice/dictations/<day>.jsonl
-      try { storeDictation(HOME, msg as any); } catch (err) { console.log(`dictated: not stored: ${err instanceof Error ? err.message : err}`); }
-    } else if (msg.type === "goback.plan" || msg.type === "goback") {
-      // the Go back row (#18): only Sol's own windows; `goback` runs sol/back and ends this engine at once, not at a
-      // quiet moment (it is for a broken Sol), so its keeper brings the good build up
-      if (!fromSol) send(ws, { type: "goback.plan", line: "only Sol's own windows can go back" });
-      else if (msg.type === "goback.plan") send(ws, { type: "goback.plan", ...(await goBackPlan(resolve(HERE, "..", ".."))) });
-      else {
-        console.log("goback: Marco pressed go back");
-        const r = await goBack(resolve(HERE, "..", ".."));
-        for (const l of r.lines) console.log(`goback: ${l}`);
-        everyone({ type: "goback.done", ok: r.ok, lines: r.lines });
-        if (r.ok) setTimeout(() => process.exit(0), 300);   // the word gets out, then the keeper starts the good build
-      }
     } else if (msg.type === "stop") {
       // { type: "stop", sessionId } (Notch buttons #6): the Life turn on that conversation, whichever face runs it
       // (the notch's Stop; the window's turn runs on the window's socket). Without one: this socket's own turn.
@@ -1165,16 +1203,7 @@ wss.on("connection", (ws, req) => {
     } else if (msg.type === "settings.set") {
       patchSettings((msg as any).patch);
       everyone(settingsMsg());
-    } else if (msg.type === "arrange.get") {
-      send(ws, arrangeMsg());
-    } else if (msg.type === "arrange.set") {
-      // a change is told to every face; a refusal only to the one that asked, with its line
-      const r = setArrangement((msg as any).patch);
-      if (!r.ok) send(ws, { ...arrangeMsg(), refused: r.why });
-    } else if (msg.type === "arrange.undo") {
-      undoArrangement();   // the undo note's press: the agent's last change taken back, every face told
-    } else if (msg.type === "arrange.used") {
-      addUsage((msg as any).counts);   // a minute's presses, added in; no face is told
+      void syncKernel(HOME, frameOn()).catch((e) => console.error("the kernel:", e));   // the frame's switch turned (#633)
     } else if (msg.type === "thread.rename") {
       const m = msg as any;
       if (typeof m.sessionId === "string" && /^[A-Za-z0-9_-]+$/.test(m.sessionId)) {
@@ -1254,33 +1283,19 @@ wss.on("connection", (ws, req) => {
       if (!fromSol) send(ws, { type: "ran", rid: String(m.rid ?? ""), done: true, code: null, why: "only Sol's own windows can run" });
       else if (m.type === "run.stop") stopBlock(String(m.rid));
       else void runBlock(m, (seat, id) => findRun(seat, id, !!m.work), HOME, (o) => send(ws, o));
-    } else if (typeof msg.type === "string" && msg.type.startsWith("sticky.")) {
-      // the sticky note (sticky.ts): get, add, mark, remove, turn
-      if (msg.type === "sticky.get") send(ws, stickyMsg());
-      else { const why = actSticky(msg as any); if (why) send(ws, { type: "sticky.refused", message: why }); }
     } else if (msg.type === "desk.act" || msg.type === "desk.get") {
       const m = msg as any;
       try {
         if (m.type === "desk.get") send(ws, deskMsg(m.sessionId));
         else await actDesk(m.sessionId, String(m.id), String(m.act), m);
       } catch (err) {
+        countError(err, "desk", m.type);
         send(ws, { type: "error", message: "desk: " + (err instanceof Error ? err.message.split("\n")[0] : String(err)) });
       }
-    } else if (typeof msg.type === "string" && msg.type.startsWith("browser.")) {
-      const m = msg as any;
-      try {
-        if (m.type === "browser.watch") await watch(face, m.tab ?? null);
-        else if (m.type === "browser.open") await openTab(String(m.url ?? ""), m.sessionId);
-        else if (m.type === "browser.close") await closeTab(String(m.tab));
-        else if (m.type === "browser.select") selectTab(String(m.tab));
-        else if (m.type === "browser.input") await inputTab(String(m.tab), m.event);
-        else if (m.type === "browser.navigate") await navigateTab(String(m.tab), m.action);
-        else if (m.type === "browser.resize") await resizeTab(String(m.tab), Number(m.w), Number(m.h));
-        else if (m.type === "browser.inspect") await inspectTab(face, m);
-        else if (m.type === "browser.locate") await locateTab(face, m);
-      } catch (err) {
-        send(ws, { type: "error", message: "browser: " + (err instanceof Error ? err.message.split("\n")[0] : String(err)) });
-      }
+    } else {
+      // a part's message (parts.ts, src/parts/): what the cases above do not take
+      const heard = parts.heard(msg.type);
+      if (heard) await heard(msg, { ...engine, ws, face, conn, fromSol, fromApp });
     }
   });
   ws.on("close", () => {
@@ -1292,7 +1307,6 @@ wss.on("connection", (ws, req) => {
     sample?.cancel(); sample = null;
     removeFace(face);
     removeDeskFace(face);
-    removeStickyFace(face);
     removeWorkFace(face);
     removeTeamFace(face);
     removePingFace(face);
@@ -1308,4 +1322,5 @@ http.listen(PORT, HOST, () => {
   renewOnBuild(resolve(HERE), engineIdle, everyone, busyLine);
   onBusy((jobs) => everyone({ type: "engine.busy", jobs }));
   void namingModel().then((m) => console.log("naming model:", m ?? "none (titles stay the cut first message)"));
+  void syncKernel(HOME, frameOn()).catch((e) => console.error("the kernel:", e));   // the home's blocks, with the frame on (#633)
 });

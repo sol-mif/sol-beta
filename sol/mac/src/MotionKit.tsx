@@ -18,7 +18,7 @@ export function Fold({ open, children, className, lazy, from = { y: 12 }, gap = 
   if (open && !render) setRender(true);
   const first = useRef(true);
   const H = useRef(0);
-  const p = useSpring(open ? 1 : 0, CFG.fold, (v, s) => {
+  const p = useSpring(open ? 1 : 0, CFG.travel, (v, s) => {
     const o = outer.current, i = inner.current;
     if (!o || !i) return;
     if (s.resting && v === 1 && s.target === 1) { o.style.height = ""; o.style.overflow = ""; i.style.translate = ""; return; }
@@ -38,11 +38,11 @@ export function Fold({ open, children, className, lazy, from = { y: 12 }, gap = 
     }
     H.current = i.offsetHeight;
     if (open) {
-      p.cfg = CFG.fold;
+      p.cfg = CFG.travel;
       if (p.resting && p.v === 0) { o.style.height = "0px"; o.style.overflow = "hidden"; }
       if (!reducedMotion()) stagger(i.children, { ...from, gap, delay: 40 });
     } else {
-      p.cfg = CFG.tuck;
+      p.cfg = CFG.fade;
       if (p.resting && p.v === 1) { o.style.height = `${H.current}px`; o.style.overflow = "hidden"; }
     }
     p.to(open ? 1 : 0);
@@ -68,7 +68,7 @@ export function Fold({ open, children, className, lazy, from = { y: 12 }, gap = 
 // Change `k` and the old content slides out (up by default) while the new slides in from the other side; the box
 // between them resizes on the same spring. Same `k` just updates in place (a sentence still being written).
 type Layer = { k: string; node: ReactNode };
-export function Swap({ k, children, className, style, dir = 1, dist = 22, cfg = CFG.arrive }: {
+export function Swap({ k, children, className, style, dir = 1, dist = 22, cfg = CFG.travel }: {
   k: string; children: ReactNode; className?: string; style?: CSSProperties; dir?: 1 | -1; dist?: number; cfg?: Cfg;
 }) {
   const [shown, setShown] = useState<Layer>({ k, node: children });
@@ -112,7 +112,7 @@ export function Swap({ k, children, className, style, dir = 1, dist = 22, cfg = 
 }
 
 // ---- Turn: rotate to a new angle with a spring that overshoots, like a caret that is let go of ----
-export function Turn({ to, children, className, cfg = CFG.snap }: { to: number; children: ReactNode; className?: string; cfg?: Cfg }) {
+export function Turn({ to, children, className, cfg = CFG.settle }: { to: number; children: ReactNode; className?: string; cfg?: Cfg }) {
   const el = useRef<HTMLSpanElement>(null);
   const s = useSpring(to, { ...cfg, eps: 0.05 }, (v) => { if (el.current) el.current.style.rotate = `${v}deg`; });
   useLayoutEffect(() => { if (el.current) el.current.style.rotate = `${s.v}deg`; }, [s]);

@@ -44,5 +44,11 @@ export function doorOpen(headers: IncomingHttpHeaders, opts: DoorOpts): boolean 
   // Referer and "cross-site" (the app's scheme is not the engine's): the Referer's origin must be a page of Sol's own
   return one(headers["sec-fetch-mode"]) === "no-cors" && own(originOf(one(headers.referer)));
 }
+/** Sol's own app page (#416, the review session's card): an Origin of the app's, never none (a program on this Mac) and
+ *  never the engine's own port (the away page). A program may still fake an Origin; this keeps out the plain ones */
+export function appPage(headers: IncomingHttpHeaders, opts: DoorOpts): boolean {
+  const o = one(headers.origin);
+  return typeof o === "string" && APP.has(o) && doorOpen(headers, opts);
+}
 // the origin of a URL; a custom scheme (tauri://localhost) has none in Node, so it is put together
 const originOf = (u: string | undefined) => { try { if (!u) return ""; const x = new URL(u); return x.origin !== "null" ? x.origin : `${x.protocol}//${x.host}`; } catch { return ""; } };

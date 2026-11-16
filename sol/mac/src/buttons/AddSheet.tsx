@@ -98,7 +98,7 @@ export function Tile({ b, lit, onClick, onHover, sel, away }: {
 // a sheet under the bar: it slides in, and goes at Esc or a press outside it (a menu it opened, and the rail, are not
 // outside)
 export function useSheet(el: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
-  useLayoutEffect(() => { if (el.current) enter(el.current, { y: -6, cfg: CFG.snap }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (el.current) enter(el.current, { y: -6, cfg: CFG.settle }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {

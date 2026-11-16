@@ -1,13 +1,21 @@
-// The owner's press (#117), in the action board's head beside the stamp: "leads" opens who leads each label. The
-// repo's owner (GitHub's admin, the board says) picks one or two people for a label and presses "set": the engine
-// lands it on main at once (CODEOWNERS, no PR) and the team is pinged. Anyone else sees the same rows, read-only.
-// A setting is the owner's word; a change to how Sol works still goes through Work, and the panel says so.
+// Who leads each label (#117, reshaped by #438), in the action board's head: "leads" opens who leads each label. The
+// repo's owner (GitHub's admin, the board says) picks one or two people for a label and presses "ask": the engine asks
+// the change of the project's settings (a proposal the label's leads before and after agree to) and pings who it waits
+// for. Once agreed, CODEOWNERS follows by a PR the morning's release folds. Anyone else sees the same rows, read-only.
 import { useEffect, useRef, useState } from "react";
 import { PersonDot, StateMark } from "./bits";
 import { LABELS, leadsOf, type Team } from "./useTeam";
 import "./leads.css";
 
 type Said = { label: string; ok: boolean; text: string };
+
+/** what the press says once the project took it (pure) */
+export function saidOf(r: { unchanged?: boolean; proposal?: { state: string; needs: string[] }; pinged?: string[] }): string {
+  if (r.unchanged) return "already so";
+  const told = r.pinged?.length ? ` · asked ${r.pinged.join(", ")}` : "";
+  if (r.proposal?.state === "applied") return `agreed · CODEOWNERS follows by a PR${r.pinged?.length ? ` · told ${r.pinged.join(", ")}` : ""}`;
+  return `waits for ${r.proposal?.needs.join(", ") || "agreement"}${told}`;
+}
 
 export function Leads({ team }: { team: Team }) {
   const b = team.board;
@@ -44,11 +52,11 @@ export function Leads({ team }: { team: Team }) {
   const press = async () => {
     if (!edit) return;
     setBusy(true);
-    const r = await team.ask<{ ok?: boolean; leads?: string[]; commit?: string; pinged?: string[]; unchanged?: boolean; error?: string }>(
+    const r = await team.ask<{ ok?: boolean; leads?: string[]; proposal?: { state: string; needs: string[] }; pinged?: string[]; unchanged?: boolean; error?: string }>(
       "team.leads.set", { repo, label: edit.label, leads: edit.pick }, 60_000);
     setBusy(false);
     if (r.ok) {
-      setSaid({ label: edit.label, ok: true, text: r.unchanged ? "already so" : `on main ${String(r.commit ?? "").slice(0, 7)}${r.pinged?.length ? ` · told ${r.pinged.join(", ")}` : ""}` });
+      setSaid({ label: edit.label, ok: true, text: saidOf(r) });
       setEdit(null);
       void team.refresh();
     } else setSaid({ label: edit.label, ok: false, text: r.error ?? "not set" });
@@ -82,12 +90,12 @@ export function Leads({ team }: { team: Team }) {
                       </div>
                       <p className="lq">
                         {edit.pick.length
-                          ? <>{edit.pick.join(" and ")} {edit.pick.length > 1 ? "lead" : "leads"} <b>{l}</b>; it lands on main at once and the team hears it</>
+                          ? <>{edit.pick.join(" and ")} {edit.pick.length > 1 ? "lead" : "leads"} <b>{l}</b>, once {now.length ? `${now.join(" and ")} and ` : ""}the new leads agree; CODEOWNERS follows</>
                           : <>pick one or two people</>}
                       </p>
                       {said?.label === l && !said.ok && <p className="lsaid no"><StateMark kind="failed" />{said.text}</p>}
                       <div className="lmoves">
-                        <button className="wbtn" disabled={busy || !edit.pick.length || same(edit.pick, now)} onClick={() => void press()}>{busy ? "setting…" : "set"}</button>
+                        <button className="wbtn" disabled={busy || !edit.pick.length || same(edit.pick, now)} onClick={() => void press()}>{busy ? "asking…" : "ask"}</button>
                         <button className="wbtn ghost" disabled={busy} onClick={() => setEdit(null)}>keep</button>
                       </div>
                     </div>
@@ -97,8 +105,8 @@ export function Leads({ team }: { team: Team }) {
             })}
           </ul>
           <footer className="cdim">
-            {owner ? "a setting lands on main at once, no PR; a change to how Sol works goes through a session"
-              : `the owner of ${repo.split("/")[1]} sets these; a change to how Sol works goes through a session`}
+            {owner ? "kept in the project's settings; CODEOWNERS is written from them. A change to how Sol works goes through a session"
+              : `the owner of ${repo.split("/")[1]} asks these; the leads agree. A change to how Sol works goes through a session`}
           </footer>
         </div>
       )}

@@ -108,7 +108,7 @@ export function GithubJoin({ team, keeps, onPane, connectors }: { team: Team; ke
         <button className="wlink cgh-no" onClick={google}>no account? make one with Google</button>
       </>}
       {!connectors && step.k === "ask" && <>
-        <p className="cgh-lead">this group keeps its things in GitHub.</p>
+        <p className="cgh-lead">this project keeps its things in GitHub.</p>
         <div className="cgh-picks">
           <button className="wbtn" onClick={() => void f.have()}>I have GitHub</button>
           <button className="wbtn cgh-make" onClick={() => void f.signup()}>no, make one with Google <small>(about 1 minute)</small></button>

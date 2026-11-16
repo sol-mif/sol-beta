@@ -22,28 +22,28 @@ beforeEach(() => {
   mkdirSync(proj, { recursive: true });
   const at = (h: number, day = 28) => new Date(2026, 9, day, h, 0, 0).toISOString();
   writeFileSync(join(proj, "s1.jsonl"),
-    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { role: "user", content: "remind sarah about the rent, secret plan" } }) +
-    j({ type: "assistant", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { id: "msg_1", model: "claude-opus-5-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 300, cache_creation_input_tokens: 4 } } }) +
-    j({ type: "assistant", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { id: "msg_1", model: "claude-opus-5-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 300, cache_creation_input_tokens: 4 } } }) +   // the same answer's second content block: the same id, the same usage
-    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", isMeta: true, message: { role: "user", content: "<command-name>/clear</command-name>" } }) +
-    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { role: "user", content: "[Request interrupted by user]" } }) +
-    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { role: "user", content: [{ type: "tool_result", content: "a file's words" }] } }) +
-    j({ type: "assistant", timestamp: at(11), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { id: "msg_2", model: "claude-opus-5-5", usage: { input_tokens: 1, output_tokens: 2, cache_read_input_tokens: 3, cache_creation_input_tokens: 0 } } }) +
-    j({ type: "assistant", timestamp: at(12, 29), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { model: "claude-opus-5-5", usage: { input_tokens: 999, output_tokens: 999 } } }) +   // today: not yet
+    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { role: "user", content: "remind sarah about the rent, secret plan" } }) +
+    j({ type: "assistant", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { id: "msg_1", model: "claude-opus-5-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 300, cache_creation_input_tokens: 4 } } }) +
+    j({ type: "assistant", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { id: "msg_1", model: "claude-opus-5-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 300, cache_creation_input_tokens: 4 } } }) +   // the same answer's second content block: the same id, the same usage
+    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", isMeta: true, message: { role: "user", content: "<command-name>/clear</command-name>" } }) +
+    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { role: "user", content: "[Request interrupted by user]" } }) +
+    j({ type: "user", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { role: "user", content: [{ type: "tool_result", content: "a file's words" }] } }) +
+    j({ type: "assistant", timestamp: at(11), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { id: "msg_2", model: "claude-opus-5-5", usage: { input_tokens: 1, output_tokens: 2, cache_read_input_tokens: 3, cache_creation_input_tokens: 0 } } }) +
+    j({ type: "assistant", timestamp: at(12, 29), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { model: "claude-opus-5-5", usage: { input_tokens: 999, output_tokens: 999 } } }) +   // today: not yet
     j({ type: "progress", timestamp: at(10), sessionId: "s1" }) + "not json\n");
   // a workflow's subagent, folders deep under the session
   mkdirSync(join(proj, "s1", "subagents", "workflows", "wf_1"), { recursive: true });
   writeFileSync(join(proj, "s1", "subagents", "workflows", "wf_1", "a.jsonl"),
-    j({ type: "assistant", timestamp: at(10), sessionId: "s1", cwd: "/Users/frank/projects/sol", entrypoint: "cli", message: { id: "msg_3", model: "claude-opus-5-5", usage: { input_tokens: 100, output_tokens: 200 } } }));
+    j({ type: "assistant", timestamp: at(10), sessionId: "s1", cwd: "/Users/someone/projects/sol", entrypoint: "cli", message: { id: "msg_3", model: "claude-opus-5-5", usage: { input_tokens: 100, output_tokens: 200 } } }));
   // Sol's own session, the SDK, another folder with a space in its name
   writeFileSync(join(proj, "s2.jsonl"),
-    j({ type: "assistant", timestamp: at(15), sessionId: "s2", cwd: "/Users/frank/mission market", entrypoint: "sdk-ts", message: { model: "claude-fable-5-1", usage: { input_tokens: 5, output_tokens: 6, cache_read_input_tokens: 7, cache_creation_input_tokens: 8 } } }));
+    j({ type: "assistant", timestamp: at(15), sessionId: "s2", cwd: "/Users/someone/mission market", entrypoint: "sdk-ts", message: { model: "claude-fable-5-1", usage: { input_tokens: 5, output_tokens: 6, cache_read_input_tokens: 7, cache_creation_input_tokens: 8 } } }));
   // a Codex session on the 28th
   const cx = join(roots.codex, "2026", "10", "28");
   mkdirSync(cx, { recursive: true });
   writeFileSync(join(cx, "rollout-2026-10-28T10-00-00-abc.jsonl"),
-    j({ type: "session_meta", payload: { id: "c1", cwd: "/Users/frank/projects/sol", timestamp: "2026-10-28T10:00:00Z" } }) +
-    j({ type: "turn_context", payload: { model: "gpt-5.6-sol", cwd: "/Users/frank/projects/sol" } }) +
+    j({ type: "session_meta", payload: { id: "c1", cwd: "/Users/someone/projects/sol", timestamp: "2026-10-28T10:00:00Z" } }) +
+    j({ type: "turn_context", payload: { model: "gpt-5.6-sol", cwd: "/Users/someone/projects/sol" } }) +
     j({ type: "response_item", payload: { type: "message", content: "the words of the answer" } }) +
     j({ type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 100, cached_input_tokens: 60, output_tokens: 9 } } } }) +
     j({ type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 200, cached_input_tokens: 120, output_tokens: 19 } } } }));

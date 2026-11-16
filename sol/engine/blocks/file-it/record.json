@@ -1,0 +1,56 @@
+{
+  "id": "file-it",
+  "title": "File it",
+  "place": "engine",
+  "reads": [],
+  "writes": [],
+  "versions": [
+    {
+      "v": 1,
+      "engine": "engine.ts",
+      "at": "2026-11-08"
+    }
+  ],
+  "current": 1,
+  "room": "big",
+  "needs": {
+    "why": "To file what you saw as one issue on your team's tracker, with a picture of Sol's window on it.",
+    "domains": [
+      "api.github.com"
+    ],
+    "folders": [
+      "~/Library/Caches/Sol/file-it"
+    ],
+    "programs": [
+      "gh",
+      "screencapture",
+      "sips",
+      "sol-windows"
+    ],
+    "sol": [
+      "tracker"
+    ],
+    "keys": [
+      "github"
+    ],
+    "screen": true,
+    "tools": [
+      {
+        "name": "shot",
+        "description": "Take a picture of Sol's window now and hold it for ten minutes; its id, for file."
+      },
+      {
+        "name": "file",
+        "description": "File one issue on the team's tracker: the mode's label (life, work, cowork), the words, the screen they were on, and the shot taken (its id) or a picture (image, base64). Its number comes back.",
+        "args": {
+          "mode": "string",
+          "words": "string",
+          "page": "string",
+          "conversation": "string",
+          "shot": "string",
+          "image": "string"
+        }
+      }
+    ]
+  }
+}

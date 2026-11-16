@@ -1,15 +1,18 @@
 // The dashboard (Together, See #31): the view, read first and drawn second. The columns say where each thing stands,
-// the gantt says when, the tiles say what the team added. Nothing on it is a button; the action board acts.
+// the gantt says when, the tiles say what the team added. Nothing on it is a button; the action board acts. The board is
+// the project's first table (#434, tables/): the columns are its board view and the weeks its timeline view, the same
+// rows a list or a calendar of it shows in the tables tab.
 import { useLayoutEffect, useRef } from "react";
 import { CFG, stagger } from "../motion";
 import { leadsOf, type Board, type Card, type Column, type Team } from "./useTeam";
 import { PersonDot, Sig, useLift, readAgo } from "./bits";
 import { TILES } from "./tiles";
+import { useLiveBlocks } from "./blocks";   // team blocks (#429): the tiles live in the project in use
+import { boardTableRows, groupsOf, spansOf, across, monday } from "./tables/views";   // tables (#434): the board is a table
+import { BOARD_COLS, BOARD_VIEW, BOARD_WEEKS } from "./tables/shapes";
 
-export const LINE: { col: Column; name: string }[] = [
-  { col: "waiting", name: "waiting" }, { col: "branch", name: "on a branch" }, { col: "pr", name: "in a PR" },
-  { col: "main", name: "on main" }, { col: "stable", name: "stable" },
-];
+/** the board's one line: the board view's columns, in tables.json's order (closed is hidden) */
+export const LINE: { col: Column; name: string }[] = groupsOf([], BOARD_VIEW, BOARD_COLS).map((g) => ({ col: g.id as Column, name: g.name }));
 
 export function CardLine({ c, team, sign, children, onMenu, here }: {
   c: Card; team: Team; sign: "agent" | "always"; children?: React.ReactNode; onMenu?: (ev: React.MouseEvent) => void; here?: boolean;
@@ -46,11 +49,11 @@ export function Columns({ board, team, sign, cardExtra, onMenu, cap, here }: {
   cap?: number;   // the dashboard shows the newest few of a long column and says how many more; the action board shows all
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (ref.current) stagger(ref.current.querySelectorAll(".ccol"), { y: 16, cfg: CFG.arrive, gap: 40 }); }, []);
+  useLayoutEffect(() => { if (ref.current) stagger(ref.current.querySelectorAll(".ccol"), { y: 16, cfg: CFG.travel, gap: 40 }); }, []);
   return (
     <div ref={ref} className="ccols">
-      {LINE.map(({ col, name }) => {
-        const cards = board.cards.filter((c) => c.column === col).sort((a, b) => b.number - a.number);
+      {groupsOf(boardTableRows(board.cards), BOARD_VIEW, BOARD_COLS).map(({ id: col, name, rows }) => {
+        const cards = rows.map((r) => r._card);   // the board view: by where each stands, newest number first
         return (
           <section key={col} className={`ccol ${col}`}>
             <h3><span>{name}</span><small>{cards.length || ""}</small></h3>
@@ -64,19 +67,14 @@ export function Columns({ board, team, sign, cardExtra, onMenu, cap, here }: {
   );
 }
 
-const DAY = 86_400_000, WEEK = 7 * DAY;
-const monday = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; };
-
-/** the same cards across the weeks: created to closed (or today), one row each, this week marked */
+/** the same cards across the weeks: created to closed (or today), one row each, this week marked; the board table's
+ *  timeline view (it hides the closed, as the dashboard always did) */
 export function Gantt({ cards }: { cards: Card[] }) {
   const now = Date.now();
   if (!cards.length) return null;
-  const first = Math.max(Math.min(...cards.map((c) => Date.parse(c.created) || now)), now - 8 * WEEK);
-  const start = monday(first), end = monday(now) + WEEK, span = end - start;
-  const x = (t: number) => `${((Math.min(Math.max(t, start), end) - start) / span) * 100}%`;
-  const weeks: number[] = [];
-  for (let t = start; t < end; t += WEEK) weeks.push(t);
-  const rows = [...cards].sort((a, b) => Date.parse(a.created) - Date.parse(b.created));
+  const { spans, weeks, start, end } = spansOf(boardTableRows(cards), BOARD_WEEKS, BOARD_COLS, now);
+  const x = (t: number) => `${across(t, start, end) * 100}%`;
+  const week = 7 * 86_400_000, thisWeek = monday(now);
   return (
     <div className="cgantt">
       <div className="cgrow chead">
@@ -86,9 +84,9 @@ export function Gantt({ cards }: { cards: Card[] }) {
         </div>
       </div>
       <div className="cgbody">
-        <div className="cgband"><i className="cgnow" style={{ left: x(monday(now)), width: `${(WEEK / span) * 100}%` }} title="this week" /></div>
-        {rows.map((c) => {
-          const a = Date.parse(c.created) || now, b = c.closed ? Date.parse(c.closed) : now;
+        <div className="cgband"><i className="cgnow" style={{ left: x(thisWeek), width: `${(week / (end - start)) * 100}%` }} title="this week" /></div>
+        {spans.map(({ row, a, b }) => {
+          const c = row._card;
           return (
             <div key={c.repo + c.number} className="cgrow" title={`#${c.number} ${c.title}\n${new Date(a).toLocaleDateString()} to ${c.closed ? new Date(b).toLocaleDateString() : "today"}`}>
               <span className="cgl"><span className="cnum">#{c.number}</span><span className="ct">{c.title}</span></span>
@@ -105,6 +103,7 @@ export function Gantt({ cards }: { cards: Card[] }) {
 
 // a full stage in Cowork, or a pane in Home (buttons/dashboard.tsx); issue: the open session's, its card marked
 export function Dashboard({ team, issue }: { team: Team; issue?: number }) {
+  const live = useLiveBlocks(team);
   const b = team.board;
   if (!b) return <p className="wpempty">{team.up ? "reading the board…" : "not connected"}</p>;
   const shown = b.cards.filter((c) => c.column !== "closed");
@@ -121,8 +120,8 @@ export function Dashboard({ team, issue }: { team: Team; issue?: number }) {
       <Gantt cards={shown} />
       <h4 className="csub">the team added</h4>
       <div className="ctiles">
-        {TILES.map(({ name, Tile }) => (
-          <section key={name} className="ctile"><h5>{name}</h5><Tile team={team} board={b} /></section>
+        {TILES.filter((t) => live.has(t.id)).map(({ id, name, Tile }) => (
+          <section key={id} className="ctile"><h5>{name}</h5><Tile team={team} board={b} /></section>
         ))}
       </div>
     </div>

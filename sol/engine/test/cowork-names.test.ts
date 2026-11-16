@@ -118,7 +118,7 @@ function maker(fail?: string) {
 }
 const deps = (f: typeof fetch, record: ReturnType<typeof maker>["record"], local: InstanceType<typeof Registry> | null = null) =>
   ({ team: T.getTeam, patch: T.patchTeam, local, fetch: f, token: async () => "tok-frank", ticket: async (hub: string) => `sol1.for ${hub}`, record });
-const start = () => T.patchTeam({ me: { login: "frank" }, relay: { key: "engine-key" }, rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }], room: "sol" });
+const start = () => T.patchTeam({ me: { login: "frank" }, relay: { key: "engine-key" }, rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }], room: "sol" });
 
 test("make: a free name on the shared hub, the repository made, the room in use, met as GitHub, registered with its code", async () => {
   start();

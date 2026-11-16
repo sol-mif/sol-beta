@@ -1,0 +1,146 @@
+/* Cowork v3, slice 6 (fr-30, #559): the studio and the nights. face.css tokens only, Sol's flavour: the candy/amber glow
+   on what is on, the gradient line under the head, the creature marks, the notch's dark slab for the studio itself.
+   Ember only for what needs you (the owner's yes). Loaded only with the switch on, with Studio.tsx. */
+.v3s { --v3s-grad: linear-gradient(95deg, #fb5ad0 0 14%, #f8478e 26% 40%, #ef3a2a 52% 64%, #fb7111 76% 100%);
+  --v3s-slab: #000; position: relative; min-height: 100%; padding: 34px clamp(22px, 5vw, 64px) 120px; color: var(--ink); }
+.v3s .quiet { color: var(--mute); font-size: 12px; }
+.v3s-head { margin-bottom: 30px; }
+.v3s-head .kicker, .v3s-studio .kicker { display: inline-flex; gap: 6px; align-items: center; font: 500 10.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+.v3s-head h1 { font-size: 30px; font-weight: 600; letter-spacing: -.02em; margin: 8px 0 0; padding-bottom: 12px; position: relative; }
+.v3s-head h1::after { content: ""; position: absolute; left: 0; bottom: 0; width: 72px; height: 2px; border-radius: 2px; background: var(--v3s-grad); }
+.v3s-sec { margin: 0 0 44px; }
+.v3s-sec h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+.v3s-sec .sub { color: var(--mute); font-size: 12.5px; max-width: 620px; margin: 0 0 20px; line-height: 1.5; }
+
+/* the marks: whose face, where it lives */
+.v3s-marks { display: inline-flex; align-items: center; gap: 6px; }
+.v3s-marks .where { display: inline-flex; color: var(--mute); }
+
+/* our nights: one line through the day, a stop each */
+.v3s-arc { position: relative; display: grid; gap: 22px; padding-top: 10px; }
+.v3s-arc .line { position: absolute; left: 6px; right: 6px; top: 19px; height: 1px; background: var(--line); }
+.v3s-arc .stop { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.v3s-arc .time { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mono); position: relative; }
+.v3s-arc .time .quiet { font-family: inherit; }
+.v3s .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--ink); display: inline-block; flex: none; }
+.v3s .dot.moon { background: var(--ink); box-shadow: inset -3px -2px 0 0 var(--surface); }
+
+/* cards */
+.v3s-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+.v3s-card { background: var(--raised); border: 1px solid var(--line); border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: box-shadow .25s, transform .25s; min-width: 0; }
+.v3s-card:hover { box-shadow: 0 0 0 1px var(--line), 0 10px 30px -14px var(--glow); transform: translateY(-1px); }
+.v3s-card.off { opacity: .6; }
+.v3s-card .top { display: flex; align-items: center; gap: 8px; }
+.v3s-card .n { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3s-card .on { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.v3s-card .on.yes { background: var(--amber); box-shadow: 0 0 10px var(--glow); }
+.v3s-card .words { font-size: 12.5px; color: var(--mute); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.v3s-card .foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.v3s-mini { display: flex; align-items: center; }
+.v3s-mini .mf { display: inline-flex; align-items: center; }
+.v3s-mini .ln { width: 12px; height: 1px; background: var(--ink); opacity: .45; }
+.v3s-mini .pic { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); }
+.v3s-new { border: 1.5px dashed var(--line); border-radius: 16px; min-height: 150px; display: grid; place-content: center; justify-items: center; gap: 4px; cursor: pointer; color: var(--mute); transition: border-color .2s, color .2s; }
+.v3s-new:hover { border-color: var(--ink); color: var(--ink); }
+.v3s-new .plus { font-size: 26px; line-height: 1; }
+
+/* the budget line */
+.v3s-spend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--mute); }
+.v3s-spend .bar { width: 54px; height: 4px; border-radius: 3px; background: var(--line); overflow: hidden; flex: none; }
+.v3s-spend .bar i { display: block; height: 100%; background: var(--v3s-grad); }
+.v3s-spend.over { color: var(--ember); }
+.v3s-spend.over .bar i { background: var(--ember); }
+
+/* what needs you: ember */
+.v3s-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 99px; color: var(--ember); border: 1px solid color-mix(in srgb, var(--ember) 45%, transparent); background: color-mix(in srgb, var(--ember) 9%, transparent); }
+.v3s-yes { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin: 0 0 22px; border-radius: 16px; background: var(--v3s-slab); color: #f2efe9; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ember) 55%, transparent), 0 12px 34px -18px var(--ember); }
+.v3s-yes .dot { width: 8px; height: 8px; border: 0; background: var(--ember); box-shadow: 0 0 10px var(--ember); }
+.v3s-yes .l { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.v3s-yes .l b { font-weight: 600; font-size: 13px; }
+.v3s-yes .l span { font-size: 11.5px; color: #a9a59d; }
+
+/* presses: one accent */
+.v3s-press { font: inherit; font-size: 12px; border-radius: 99px; padding: 6px 14px; cursor: pointer; border: 1px solid var(--line); background: transparent; color: inherit; white-space: nowrap; }
+.v3s-press.ink { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.v3s-yes .v3s-press.ink, .v3s-studio .v3s-press.ink { background: #f2efe9; color: #000; border-color: #f2efe9; }
+.v3s-press.ghost { border-color: transparent; color: var(--mute); }
+.v3s-press.ghost:hover { color: inherit; }
+.v3s-press:disabled { opacity: .5; cursor: default; }
+
+/* the agent at hand: one field, low on the room */
+.v3s-hand { position: sticky; bottom: 18px; margin: 30px auto 0; max-width: 560px; display: flex; flex-direction: column; gap: 8px; }
+.v3s-hand input { width: 100%; font: inherit; font-size: 13px; padding: 11px 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--raised); color: var(--ink); outline: none; box-shadow: 0 10px 30px -18px var(--glow); }
+.v3s-hand input:focus { border-color: var(--ink); }
+.v3s-hand .offer { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; border-radius: 99px; background: var(--v3s-slab); color: #f2efe9; font-size: 12.5px; }
+.v3s-hand .offer span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3s-hand .offer .v3s-press.ink { background: #f2efe9; color: #000; }
+
+/* the side's row */
+.v3s-row .v3s-row-ic { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--mute); }
+.v3s-row.on .v3s-row-ic { color: var(--amber); filter: drop-shadow(0 0 4px var(--glow)); }
+
+/* the studio: the notch's dark slab */
+.v3s-stage { max-width: 1040px; margin: 0 auto; }
+.v3s-back { font: inherit; font-size: 12px; color: var(--mute); background: none; border: 0; padding: 0; margin: 0 0 14px; cursor: pointer; }
+.v3s-back:hover { color: var(--ink); }
+.v3s-studio { --ink: #f2efe9; --mute: #8f8b84; --line: #2a2826; --surface: #000; --raised: #121110;
+  background: var(--v3s-slab); color: var(--ink); border-radius: 24px; padding: 26px 30px 22px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; }
+.v3s-studio::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--v3s-grad); opacity: .9; }
+.v3s-studio .top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.v3s-studio .name { font-size: 24px; font-weight: 600; letter-spacing: -.015em; outline: none; border-radius: 6px; }
+.v3s-studio .name[contenteditable="true"]:focus { box-shadow: 0 0 0 1px var(--line); }
+.v3s-dest { font-size: 12px; color: var(--mute); }
+.v3s-studio .own { display: flex; align-items: center; gap: 10px; }
+.v3s-next { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mono); }
+.v3s-next .quiet { font-family: inherit; }
+.v3s-studio .words { font-size: 13.5px; line-height: 1.5; color: #cfcbc4; max-width: 720px; }
+.v3s-say { font: inherit; font-size: 13px; padding: 10px 14px; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); color: var(--ink); outline: none; }
+.v3s-say:focus { border-color: #5a5650; box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 14%, transparent); }
+
+.v3s-canvas { position: relative; min-height: 180px; border-radius: 18px; padding: 28px 26px; background: radial-gradient(circle at 1px 1px, #1d1c1a 1px, transparent 1.4px) 0 0 / 18px 18px; border: 1px solid var(--line); transition: border-color .2s, box-shadow .2s; }
+.v3s-canvas.over { border-color: var(--amber); box-shadow: inset 0 0 40px -20px var(--glow); }
+.v3s-canvas.preview .v3s-box .pic { border-style: dashed; }
+.v3s-canvas .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); font-size: 12.5px; pointer-events: none; }
+.v3s-canvas .boxes { position: relative; display: flex; flex-wrap: wrap; gap: 30px 34px; }
+.v3s-canvas .lines { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.v3s-canvas .lines path { fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 1.3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: v3s-draw .5s ease forwards; animation-delay: inherit; }
+.v3s-canvas .lines g { animation: none; }
+.v3s-canvas .lines circle { fill: var(--ink); opacity: .7; }
+.v3s-canvas .caret { position: absolute; width: 2px; height: 40px; border-radius: 2px; background: var(--amber); box-shadow: 0 0 10px var(--glow); }
+.v3s-box { position: relative; width: 108px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; cursor: pointer; opacity: 0; animation: v3s-in .4s ease forwards; }
+.v3s-box .pic { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--raised); border: 1px solid var(--line); color: var(--ink); transition: box-shadow .2s, border-color .2s; }
+.v3s-box:hover .pic { border-color: #5a5650; }
+.v3s-box .pn { font: 500 9.5px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+.v3s-box .label { font-size: 12px; line-height: 1.3; }
+.v3s-box .call { font: 10px/1.2 var(--mono); color: var(--mute); }
+.v3s-box .res { font-size: 10.5px; line-height: 1.3; color: var(--amber); opacity: 0; animation: v3s-in .4s ease forwards; }
+.v3s-box .res:empty { display: none; }
+.v3s-in { width: 100%; font: inherit; font-size: 12px; text-align: center; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--raised); color: var(--ink); outline: none; }
+.v3s-canvas.running .v3s-box .pic { animation: v3s-run 1.6s ease-in-out infinite; animation-delay: var(--run-delay, 0s); }
+
+.v3s-palette { display: flex; gap: 10px; flex-wrap: wrap; }
+.v3s-palette.off { opacity: .45; }
+.v3s-palette .part, .v3s-ghost { width: 70px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10.5px; color: var(--mute); cursor: grab; user-select: none; touch-action: none; }
+.v3s-palette .part .pic, .v3s-ghost .pic { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--raised); color: var(--ink); }
+.v3s-palette .part:hover .pic { border-color: #5a5650; }
+.v3s-ghost { position: fixed; z-index: 50; pointer-events: none; color: #f2efe9; }
+.v3s-ghost .pic { background: #000; border-color: var(--amber); color: #f2efe9; box-shadow: 0 0 18px var(--glow); }
+
+.v3s-line { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: #cfcbc4; }
+.v3s-studio .foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--line); }
+.v3s-studio .foot .grow { flex: 1; }
+.v3s-studio .foot .v3s-spend { flex-basis: 100%; }
+
+.v3s-log { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+.v3s-log .run { display: flex; flex-direction: column; gap: 4px; }
+.v3s-log .rh { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.v3s-log .pr { display: grid; grid-template-columns: 18px 92px minmax(0, 1fr) minmax(0, 1.3fr); gap: 8px; align-items: center; font-size: 11.5px; padding-left: 21px; color: #cfcbc4; }
+.v3s-log .pr .pn { font: 500 9.5px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--mute); }
+.v3s-log .pr .pres { color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3s-log .pr.waiting .pres { color: var(--ember); }
+.v3s-log .pr.failed .pres { color: var(--ember); }
+
+@keyframes v3s-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes v3s-draw { to { stroke-dashoffset: 0; } }
+@keyframes v3s-run { 0%, 100% { box-shadow: none; } 40% { box-shadow: 0 0 0 1px var(--amber), 0 0 22px var(--glow); border-color: var(--amber); } }
+@media (prefers-reduced-motion: reduce) { .v3s-box, .v3s-box .res { animation: none; opacity: 1; } .v3s-canvas .lines path { animation: none; stroke-dashoffset: 0; } .v3s-canvas.running .v3s-box .pic { animation: none; } }

@@ -133,8 +133,14 @@ function add(l: TalkLine) { const room = l.room ?? roomNow(); keep(room, l.threa
 /** a line said on this machine: kept, told to the faces, and sent on the relay (false there: the team is not in sight).
  *  `mustSend` (a line with an attachment, #315): sent first, and kept only when it went, so a file nobody heard of is
  *  never left named here */
+// the time a line said here gets: never before the line said here before it. The machine's clock can be set back (WSL
+// under load: about 0.8 s every half minute), and a line stamped before the one typed just ahead of it would be sorted
+// above it, and dropped first by the cap (#989)
+let saidAt = 0;
+const sayNow = () => (saidAt = Math.max(Date.now(), saidAt));
+
 export function say(thread: string, text: string, s: TeamSettings, agent: boolean, extra: Partial<TalkLine> = {}, mustSend = false): { line: TalkLine; sent: boolean } {
-  const line: TalkLine = { id: randomUUID(), thread, from: signature(s, agent), at: Date.now(), text, source: "relay", room: roomNow(), ...(agent ? { agent } : {}), ...extra };
+  const line: TalkLine = { id: randomUUID(), thread, from: signature(s, agent), at: sayNow(), text, source: "relay", room: roomNow(), ...(agent ? { agent } : {}), ...extra };
   if (!mustSend) add(line);
   const sent = send("talk", { thread, text, id: line.id, ...(extra.to ? { to: extra.to } : {}), ...(line.file ? { file: line.file } : {}) }, agent);
   if (mustSend && !sent) return { line, sent };
@@ -453,7 +459,7 @@ const tx = (t: string, isError = false): ToolResult => ({ content: [{ type: "tex
 export const TALK_TOOLS = [
   {
     name: "talk",
-    description: "Say one line in the team's chat in Sol (Cowork's group chat), signed as the person's agent. thread is " +
+    description: "Say one line in the team's chat in Sol (Cowork's project chat), signed as the person's agent. thread is " +
       "\"general\" or an issue's thread like \"#31\". Only for something the team should read (a build is up, a question for " +
       "a teammate); never progress chatter. It goes to the team's chat only, never to Discord or WhatsApp.",
     shape: {

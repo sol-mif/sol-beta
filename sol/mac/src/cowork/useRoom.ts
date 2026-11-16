@@ -22,7 +22,7 @@ export type CalEvent = { id: string; title: string; start: string; end?: string;
 export type Decision = { id: string; title: string; lines: string; by: string; at: string; agent?: true };
 export type Poll = { id: string; question: string; options: string[]; votes: Record<string, number>; by: string; at: string; agent?: true; closed?: { by: string; at: string } };
 export type Tools = { calendar: CalEvent[] | null; decisions: Decision[] | null; polls: Poll[] | null; note?: string };
-export type ToolId = "calendar" | "decisions" | "polls";
+export type ToolId = "calendar" | "decisions" | "polls" | "settings" | (string & {});   // settings: the project's own (#428, Project.tsx); any other, a team tool (#436, teamtools/)
 // folders: undefined when the engine is older than folders (it sends no field), so the face offers none
 /** the room moved to the cloud (#246): its new room's code and name, and my room of that code when I am in it */
 export type MovedTo = { code: string; hub: string; name: string; at: string; by?: string; have?: string };
@@ -228,7 +228,7 @@ function fakeConn(): Connectors {
   return {
     record: "cloud",
     repos: [
-      { repo: "marcocyl04-ux/sol-dev", by: "marco", at: ago(60 * 40), in: ["marcocyl04-ux", "franktsai2008-eng"], members: 3, checked: true },
+      { repo: "sol-mif/sol-dev", by: "marco", at: ago(60 * 40), in: ["marcocyl04-ux", "franktsai2008-eng"], members: 3, checked: true },
       { repo: "franktsai2008-eng/room", by: "frank", at: ago(60 * 30), in: ["franktsai2008-eng"], members: 3 },
     ],
     tools: [],   // the tiles say the fake tools below, as an older engine's would
@@ -247,18 +247,18 @@ const FAKE: RoomNow = {
     { id: "c1b2c3d4", name: "give-up points", url: "https://docs.google.com/spreadsheets/d/x", kind: "sheet", addedBy: "frank", at: ago(60 * 27), parent: "f1a1b2c3", lastTouch: { who: "frank", at: ago(9) }, inNow: ["isaac"] },
     { id: "c2b2c3d4", name: "October launch deck", url: "https://docs.google.com/presentation/d/y", kind: "slides", addedBy: "marco", at: ago(60 * 19), parent: "f0a1b2c3", lastTouch: { who: "marco", at: ago(60 * 2) }, inNow: [] },
     { id: "c3b2c3d4", name: "ad copy", url: "https://docs.google.com/document/d/z", kind: "doc", addedBy: "marco", at: ago(60 * 18), parent: "f0a1b2c3", lastTouch: { who: "marco", at: ago(60 * 3) }, inNow: [] },
-    { id: "d1b2c3d4", name: "marcocyl04-ux/sol-dev", url: "https://github.com/marcocyl04-ux/sol-dev", kind: "github", addedBy: "marco", at: ago(60 * 40), agent: true, lastTouch: { who: "frank", at: ago(12) }, inNow: ["frank"] },
+    { id: "d1b2c3d4", name: "sol-mif/sol-dev", url: "https://github.com/sol-mif/sol-dev", kind: "github", addedBy: "marco", at: ago(60 * 40), agent: true, lastTouch: { who: "frank", at: ago(12) }, inNow: ["frank"] },
     { id: "e1b2c3d4", name: "studio mockups", url: "https://www.figma.com/file/x", kind: "figma", addedBy: "frank", at: ago(60 * 12), lastTouch: { who: "frank", at: ago(60 * 12) }, inNow: [] },
     { id: "f1b2c3d4", name: "sol-beta page", url: "https://sol.matterfold.tech", kind: "web", addedBy: "marco", at: ago(60 * 5), lastTouch: { who: "marco", at: ago(60 * 5) }, inNow: [] },
   ],
   feed: [
-    { id: "0", at: ago(2), who: "isaac", agent: false, kind: "showing", text: "stopped showing their sessions in this room", ephemeral: true },
-    { id: "1", at: ago(4), who: "frank", agent: true, kind: "thing-changed", text: "is in marcocyl04-ux/sol-dev", ephemeral: true },
+    { id: "0", at: ago(2), who: "isaac", agent: false, kind: "showing", text: "stopped showing their sessions in this project", ephemeral: true },
+    { id: "1", at: ago(4), who: "frank", agent: true, kind: "thing-changed", text: "is in sol-mif/sol-dev", ephemeral: true },
     { id: "1b", at: ago(6), who: "frank", agent: false, kind: "session-started", text: "started a session: the goal page", ephemeral: true },
-    { id: "2", at: ago(25), who: "frank", agent: false, kind: "took", text: "took #5", ref: { repo: "marcocyl04-ux/sol-dev", number: 5 } },
-    { id: "3", at: ago(48), who: "isaac", agent: true, kind: "pr-opened", text: "opened a draft #6 the box opens a session", ref: { repo: "marcocyl04-ux/sol-dev", number: 6 } },
+    { id: "2", at: ago(25), who: "frank", agent: false, kind: "took", text: "took #5", ref: { repo: "sol-mif/sol-dev", number: 5 } },
+    { id: "3", at: ago(48), who: "isaac", agent: true, kind: "pr-opened", text: "opened a draft #6 the box opens a session", ref: { repo: "sol-mif/sol-dev", number: 6 } },
     { id: "4", at: ago(70), who: "frank", agent: false, kind: "thing-added", text: "added Cowork studio · PRD" },
-    { id: "4b", at: ago(60 * 3), who: "frank", agent: true, kind: "landed", text: "#237 a thing opens inside Sol landed on main", ref: { repo: "marcocyl04-ux/sol-dev", number: 237 } },
+    { id: "4b", at: ago(60 * 3), who: "frank", agent: true, kind: "landed", text: "#237 a thing opens inside Sol landed on main", ref: { repo: "sol-mif/sol-dev", number: 237 } },
     { id: "5", at: ago(60 * 9), who: "marco", agent: true, kind: "digest", text: "the night digest: what landed, what is open, what may clash" },
     { id: "6", at: ago(60 * 26), who: "marco", agent: false, kind: "goal-set", text: "set the goal: finding where a first-time user gives up" },
   ],
@@ -272,8 +272,8 @@ const FAKE: RoomNow = {
     ],
     decisions: [
       { id: "d3", title: "polls are one file, one vote a write", lines: "two to five people: a conflict is rare and read again", by: "frank", at: ago(60 * 4), agent: true },
-      { id: "d2", title: "a cloud room's sessions open in ~/Sol/rooms/<id>", lines: "the other choice was the home folder", by: "frank", at: ago(60 * 20) },
-      { id: "d1", title: "rooms meet on the cloud by default", lines: "the NucBox keeps its own hub for the common space until Marco turns it off\nnothing is stored off the machine but the room's own files", by: "marco", at: ago(60 * 30) },
+      { id: "d2", title: "a cloud project's sessions open in ~/Sol/rooms/<id>", lines: "the other choice was the home folder", by: "frank", at: ago(60 * 20) },
+      { id: "d1", title: "projects meet on the cloud by default", lines: "the NucBox keeps its own hub for the common space until Marco turns it off\nnothing is stored off the machine but the project's own files", by: "marco", at: ago(60 * 30) },
     ],
     polls: [
       { id: "p2", question: "which mark for the beta page?", options: ["the sun", "the creature", "the word Sol"], votes: { marco: 1, frank: 1 }, by: "marco", at: ago(50) },
@@ -281,7 +281,7 @@ const FAKE: RoomNow = {
     ],
   },
   foryou: [
-    { kind: "hand", id: "marcocyl04-ux/sol-dev#4", at: ago(30), line: "frank handed you #4 the goal page", actions: ["take", "pass", "later"], ref: { repo: "marcocyl04-ux/sol-dev", number: 4 } },
+    { kind: "hand", id: "sol-mif/sol-dev#4", at: ago(30), line: "frank handed you #4 the goal page", actions: ["take", "pass", "later"], ref: { repo: "sol-mif/sol-dev", number: 4 } },
     { kind: "clash", id: "p1", at: ago(90), line: "a clash predicted between #163 and #176 on team/wire.ts", actions: ["seen"] },
     { kind: "named", id: "p2", at: ago(200), line: "marco: marco, look at the goal band", actions: ["seen"] },
   ],

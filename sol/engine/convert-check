@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# A change to a saved shape brings its conversion step (#422). Usage: convert-check <base> [<head>]
+# Fails when the changes from <base> to <head> touch a file listed in sol/engine/src/convert/SHAPES and add no new step
+# sol/engine/src/convert/NNNN-name.ts. NO_CONVERSION=true (the PR's label `no-conversion`) lets it through, and says so.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+base=${1:?usage: convert-check <base> [<head>]}
+head=${2:-HEAD}
+list=sol/engine/src/convert/SHAPES
+
+shapes=$(grep -vE '^[[:space:]]*(#|$)' "$list" || true)
+hit=$(git diff --name-only "$base...$head" | grep -Fx -f <(printf '%s\n' "$shapes") || true)
+if [ -z "$hit" ]; then echo "no saved shape changed"; exit 0; fi
+
+added=$(git diff --name-only --diff-filter=A "$base...$head" | grep -E '^sol/engine/src/convert/[0-9]{4}-[a-z0-9-]+\.ts$' || true)
+if [ -n "$added" ]; then
+  echo "a saved shape changed, and a conversion step came with it:"
+  printf '%s\n' "$added" | sed 's/^/  /'
+  exit 0
+fi
+if [ "${NO_CONVERSION:-false}" = true ]; then
+  echo "a saved shape's file changed with no new step; the label no-conversion says the shape stays as it was:"
+  printf '%s\n' "$hit" | sed 's/^/  /'
+  exit 0
+fi
+echo "These files hold the shape of saved data and changed, but no conversion step was added:"
+printf '%s\n' "$hit" | sed 's/^/  /'
+echo "If the saved shape changed, add sol/engine/src/convert/NNNN-name.ts (the next number) and its line in steps.ts."
+echo "If it did not (a comment, a new read, a fix), put the label no-conversion on the PR."
+exit 1

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { movedTo, twinIn, workFolderIn } from "../src/work/sessions.ts";
 import { _reset, join, letGo, LET_GO_MS, refusedWhileLettingGo } from "../src/busy.ts";
 
-const NUC = "/home/mcyl04", MAC = "/Users/marcol04";
+const NUC = "/home/mcyl04", MAC = "/Users/someone";
 const on = (...dirs: string[]) => (p: string) => dirs.includes(p);
 
 test("the twin: a folder under either home is the same folder under this one; anything else stays", () => {
@@ -13,7 +13,7 @@ test("the twin: a folder under either home is the same folder under this one; an
   assert.equal(twinIn(`${NUC}/computer`, MAC), `${MAC}/computer`);
   assert.equal(twinIn(MAC, NUC), NUC, "the home itself");
   assert.equal(twinIn("/tmp/x", NUC), "/tmp/x");
-  assert.equal(twinIn("/Users/marcol04x/y", NUC), `${NUC}/y`, "a home is one path part, whatever its name");
+  assert.equal(twinIn("/Users/someone-else/y", NUC), `${NUC}/y`, "a home is one path part, whatever its name");
 });
 
 test("the work folder: its own when it is here, else the twin, else none", () => {

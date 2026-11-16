@@ -32,10 +32,10 @@ export type Tools = { skills: string[]; plugins: string[]; mcp: { name: string; 
 export const DEV = typeof location !== "undefined" && new URLSearchParams(location.search).get("dev") === "control";
 
 const FAKE_TEAM: Team = {
-  me: { login: "marcocyl04-ux", name: "Marco" }, org: "", repos: ["marcocyl04-ux/sol-dev"],
+  me: { login: "marcocyl04-ux", name: "Marco" }, org: "", repos: ["sol-mif/sol-dev"],
   relay: { url: "", key: "", host: false },
   rooms: [
-    { id: "team", name: "sol-dev", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"], hub: "", key: "" },
+    { id: "team", name: "sol-dev", provider: "github", org: "", repos: ["sol-mif/sol-dev"], hub: "", key: "" },
     { id: "kao", name: "Kao", provider: "github", org: "kao-ai", repos: ["kao-ai/site"], hub: "wss://nucbox.example.ts.net/relay", key: "set" },
   ],
   room: "team",

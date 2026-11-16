@@ -1,0 +1,19 @@
+{
+  "why": "One verdict, two readers: the face (mac/src/home/frameRules.ts setsFixed, test: mac/src/sets-fixed.test.ts) and the engine (engine/src/release.ts setsFixed, test: engine/test/after-release.test.ts) must say the same for each. Only a custom-property declaration in css (a <style> body, a style attribute) sets a fixed colour.",
+  "fixed": ["error", "write", "live"],
+  "cases": [
+    { "html": "<style>.x { color: var(--error); } :root { --live: red; --write : blue; --lively: x; }</style><p style=\"--error:red\">", "sets": ["live", "write", "error"], "why": "declarations in a style body and a style attribute" },
+    { "html": "<p style='color: var(--error)'>", "sets": [], "why": "reading one is the point of it" },
+    { "html": "<p style='--write: blue'>x</p>", "sets": ["write"], "why": "a single-quoted style attribute" },
+    { "html": "<p style=--error:red>x</p><i STYLE=color:var(--live)>y</i>", "sets": ["error"], "why": "an unquoted style attribute, set and read" },
+    { "html": "<p>set --error: red to break it</p>", "sets": [], "why": "prose" },
+    { "html": "<!-- --error: red --><p>x</p>", "sets": [], "why": "an html comment" },
+    { "html": "<style>/* --error: red */ .x { color: var(--error); }</style>", "sets": [], "why": "a css comment" },
+    { "html": "<style>.x::after { content: \"--live: on\"; }</style>", "sets": [], "why": "a css string" },
+    { "html": "<script>const s = '--write: 1'; el.style.cssText = \"--error: red\";</script>", "sets": [], "why": "a script and its strings" },
+    { "html": "<p title=\"--error: red\" data-x='--live: 1'>x</p>", "sets": [], "why": "another attribute's value" },
+    { "html": "<textarea>--error: red</textarea><title>--live: x</title>", "sets": [], "why": "raw text that is not css" },
+    { "html": "<style>a[title=\"--error: x\"] { --live: green; }</style>", "sets": ["live"], "why": "a selector's string is not, its declaration is" },
+    { "html": "<style>:root { --error-soft: red; --my-error: red; }</style>", "sets": [], "why": "another property whose name holds the word" }
+  ]
+}

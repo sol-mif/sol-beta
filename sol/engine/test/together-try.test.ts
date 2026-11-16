@@ -69,11 +69,11 @@ test("the names: the branch, the copy's folder, the review id, a signature line"
   assert.equal(T.tryBranch("", 29), "try/me/29");
   assert.equal(T.tryCopyPath("/r/ecosystem", "", 29), "/r/ecosystem/.claude/worktrees/try-29");
   assert.equal(T.tryCopyPath("/r/ecosystem", "/copies", 29), "/copies/ecosystem/try-29");
-  assert.equal(T.reviewId("marcocyl04-ux/sol-dev", 29), "review-marcocyl04-ux-sol-dev-29");
-  assert.match(T.reviewId("marcocyl04-ux/sol-dev", 29), /^[A-Za-z0-9_-]{8,80}$/);   // Work's session-id shape
+  assert.equal(T.reviewId("sol-mif/sol-dev", 29), "review-sol-mif-sol-dev-29");
+  assert.match(T.reviewId("sol-mif/sol-dev", 29), /^[A-Za-z0-9_-]{8,80}$/);   // Work's session-id shape
   assert.equal(T.signed("looks good\n", "marco's agent"), "looks good\n\n— marco's agent");
   assert.equal(T.lastLine("a\n\x1b[32mbuilt in 2s\x1b[0m\n\n"), "built in 2s");
-  assert.ok(T.okRepo("marcocyl04-ux/sol-dev") && !T.okRepo("../x") && !T.okRepo("a/b/c"));
+  assert.ok(T.okRepo("sol-mif/sol-dev") && !T.okRepo("../x") && !T.okRepo("a/b/c"));
   assert.ok(T.okPr(29) && !T.okPr(0) && !T.okPr("x") && !T.okPr(1.5));
 });
 
@@ -91,7 +91,7 @@ test("try makes the copy on try/<login>/<pr> from the PR's head, then updates it
 
   // frank pushes again: the same copy, updated
   writeFileSync(join(f.frank, "wake.txt"), "two\n");
-  git(f.frank, "commit", "-qam", "wake: two"); git(f.frank, "push", "-q");
+  git(f.frank, "add", "-u", "--renormalize"); git(f.frank, "commit", "-qm", "wake: two"); git(f.frank, "push", "-q");
   const again = await T.makeTryCopy({ repoDir: f.marco, wtDir: "", pr: 29, login: "marco", head: "frank/sleep-wake" });
   assert.equal(again.made, false);
   assert.equal(again.path, c.path);
@@ -253,7 +253,7 @@ test("the wire: a repo off the team is refused, team.try.get answers the state",
   addTeamFace(face);
   await handleTeam(face, { type: "team.pr.ready", rid: 1, repo: "someone/else", pr: 3 });
   assert.match(got.at(-1).error, /not one of the team's repositories/);
-  await handleTeam(face, { type: "team.pr.comment", rid: 2, repo: "marcocyl04-ux/sol-dev", pr: 0, body: "x" });
+  await handleTeam(face, { type: "team.pr.comment", rid: 2, repo: "sol-mif/sol-dev", pr: 0, body: "x" });
   assert.equal(got.at(-1).error, "which pull request?");
   await handleTeam(face, { type: "team.try.get", rid: 3 });
   assert.equal(got.at(-1).type, "team.try.state");

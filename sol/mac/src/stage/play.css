@@ -1,0 +1,26 @@
+/* the stage's dev page (play.tsx): the window around the stage, as the design page's shots draw it */
+html, body, #root { height: 100%; margin: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Helvetica Neue", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; overflow: hidden; }
+* { box-sizing: border-box; }
+.pl-desk { position: fixed; inset: 0; background-position: center; background-size: cover; }
+.pl-win { position: absolute; inset: var(--s3); background: var(--base); backdrop-filter: blur(var(--base-blur)); -webkit-backdrop-filter: blur(var(--base-blur)); display: grid; grid-template-columns: 44px 196px 1fr; overflow: hidden; }
+.pl-spine { background: var(--side); border-right: var(--hair) solid var(--line); display: flex; flex-direction: column; align-items: center; padding: var(--s8) 0 var(--s3); gap: var(--s1); }
+.pl-mark { width: 44px; height: 44px; display: grid; place-items: center; }
+.pl-mode { width: 28px; height: 28px; display: grid; place-items: center; font-size: var(--t-label); color: var(--dim); }
+.pl-mode.on { color: var(--c-deep); background: var(--c-pearl); }
+.pl-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--s2); color: var(--mute); font-size: var(--t-label); align-items: center; }
+.pl-side { background: var(--side); border-right: var(--hair) solid var(--line); padding: var(--s8) var(--s2) var(--s3); display: flex; flex-direction: column; gap: var(--s3); min-width: 0; font-size: var(--t-body); }
+.pl-side h4 { margin: 0; padding: 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--mute); }
+.pl-row { height: var(--h-row); display: flex; align-items: center; padding: 0 var(--s3); color: var(--dim); white-space: nowrap; overflow: hidden; }
+.pl-row span { margin-left: auto; font-size: var(--t-label); opacity: 0.7; }
+.pl-row.on { background: var(--c-pearl); color: var(--c-deep); }
+.pl-main { display: grid; grid-template-rows: 1fr auto auto; min-width: 0; min-height: 0; }
+.pl-stage { position: relative; min-height: 0; }
+.pl-strip { position: relative; border-top: var(--hair) solid var(--line); padding: var(--s2) var(--s4) var(--s1) 72px; height: 64px; overflow: hidden; display: flex; flex-direction: column; gap: var(--hair); }
+.pl-jelly { position: absolute; left: var(--s6); top: var(--s3); }
+.pl-line { display: flex; gap: var(--s3); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); white-space: nowrap; }
+.pl-line b { font-weight: 500; color: var(--mute); width: 28px; flex: none; }
+.pl-line.you { color: var(--ink); }
+.pl-ctx { font-size: var(--t-label); color: var(--mute); background: var(--line); padding: 0 var(--s1); }
+.pl-bar { padding: var(--s1) var(--s4) var(--s3); }
+.pl-box { position: relative; height: 44px; display: flex; align-items: center; padding: 0 var(--s4); color: var(--mute); font-size: var(--t-read); z-index: 0; }

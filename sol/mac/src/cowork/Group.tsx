@@ -20,10 +20,11 @@
 // line and, for its maker, the gradient "connect GitHub to keep going" (quota.ts says when); my own 50 MB line under
 // it. The press moves the group's files to a private repository of the maker's (team.room.take); without GitHub the
 // device-flow card comes first. A group that moved hangs one card from the bar (MovedAwayLine, in CoworkApp).
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Team, Member } from "./useTeam";
 import type { Room as RoomData, Thing, ThingKind, FeedLine, Folder, ToolId } from "./useRoom";
 import { Body, STATE_WORD, since } from "./bits";
+import { agentFor, agentWord } from "./agents";   // agents as members (#435)
 import { hhmm, date } from "./util";
 import { Sol } from "../Sol";
 import { link } from "../socket";
@@ -33,6 +34,8 @@ import { ThingPane } from "./ThingPane";   // S2: a thing opened in the centre (
 import { PersonMain, PersonSide, personOf } from "./Person";   // S3: a person (#238)
 import { GoalPage } from "./Goal";   // S6: the goal (#238)
 import { ToolPage, TOOLS, toolLine, tileLine } from "./Tools";   // the room's own tools (#245)
+import { Walk, useWalk } from "./Onboard";   // the walk through a project when someone joins (#430)
+import { useLiveBlocks } from "./blocks";   // team blocks (#429): the tools live in the project
 import { GithubJoin } from "./GithubJoin";   // the device-flow card (#252), re-homed
 import { DriveRow, useDrive } from "./DriveRoom";
 import { versionLine, versionShort, sameRelease } from "./version";   // everyone's version, side by side (#417)   // Google on this Mac; a Drive group's folder and its people (#152)
@@ -45,12 +48,18 @@ import { rowAction, inOf, repoOf, type Connectors as Conn, type RepoRow, type Me
 import { bannerOf, keepNotNow, type UsageNow } from "./quota";   // the nearly-full banner (#326)
 import type { MovedAway } from "./useRoom";
 import { DEV_TEAM } from "./useTeam";
-import { openUrl as openOut } from "./util";
+import { TimelinePage } from "./Timeline";   // the timeline (#424): every release, who runs which, the night's rhythm
+import { openUrl as openOut, mayBreak } from "./util";   // mayBreak: "this broke" on a folded change's line (#421)
+import { useUsed } from "./Used";   // who used what (#431)
+import { stripLine } from "./usedWords";
+import { PagesTab } from "./pages/Page";   // pages (#433): the project's own pages, a team block of kind "page"
+import { TablesTab } from "./tables/Table";   // tables (#434): the project's tables, a team block of kind "table"
+import "./tables/onPage";   // a table on a page: ::table[<id>] and "/table" (#434)
 import "./group.css";
 
-export type Tab = "talk" | "updates" | "connectors";
+export type Tab = "talk" | "updates" | "connectors" | "pages" | "tables";
 const TAB_KEY = "sol.cowork.tab";
-const readTab = (): Tab => { try { const t = sessionStorage.getItem(TAB_KEY); return t === "updates" || t === "connectors" ? t : "talk"; } catch { return "talk"; } };
+const readTab = (): Tab => { try { const t = sessionStorage.getItem(TAB_KEY); return t === "updates" || t === "connectors" || t === "pages" || t === "tables" ? t : "talk"; } catch { return "talk"; } };
 // when this Mac last showed each group's build updates (ms, by room id): the tab's count is the lines after it
 const SEEN_KEY = "sol.cowork.seenfeed";
 const seenOf = (room: string): number | undefined => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}")[room]; } catch { return undefined; } };
@@ -73,14 +82,20 @@ export function Group({ team, room, flash, onPerson, onGoal, onThing, onRepo, on
   const up = !!s?.relay.up;
   const roomId = s?.settings.room ?? "";
   const r = s?.settings.rooms.find((x) => x.id === roomId);
-  const name = r?.name ?? "this group";
+  const name = r?.name ?? "this project";
   // the people: me first, then who is on, then every member of the room
   const people = useMemo(() => [...new Set([me, ...roster.map((m) => m.who), ...(s?.members ?? [])].filter(Boolean))], [me, roster, s?.members]);
   const entryOf = (who: string): Member | undefined => roster.find((m) => m.who === who);
   const myVer = entryOf(me)?.version ?? s?.version ?? undefined;   // what my Sol runs (#417), for "the same release as you"
-  const [tab, setTabS] = useState<Tab>(readTab);
+  const used = useUsed(team, roomId);   // whose agents read which parts lately (#431)
+  const [tabK, setTabS] = useState<Tab>(readTab);
+  // pages (#433): its tab while the block is live in the project (off as Sol ships it; on by agreement)
+  const blocksLive = useLiveBlocks(team);
+  const pagesOn = blocksLive.has("pages") || DEV_TEAM;
+  const tablesOn = blocksLive.has("tables") || DEV_TEAM;   // tables (#434): the same, by its own block
+  const tab: Tab = (tabK === "pages" && !pagesOn) || (tabK === "tables" && !tablesOn) ? "talk" : tabK;
   const sub = !!(open || person || goal || tool);   // a page opened from the group stands in for the tab
-  const setTab = (t: Tab) => { setTabS(t); try { sessionStorage.setItem(TAB_KEY, t); } catch { /* private */ } if (sub) onBack(); };
+  const setTab = (t: Tab) => { setTabS(t); setLine(false); try { sessionStorage.setItem(TAB_KEY, t); } catch { /* private */ } if (sub) onBack(); };
   // build updates: what this Mac has seen; showing the tab sees the newest line
   const [seen, setSeen] = useState(() => seenOf(roomId));
   useEffect(() => setSeen(seenOf(roomId)), [roomId]);
@@ -95,12 +110,17 @@ export function Group({ team, room, flash, onPerson, onGoal, onThing, onRepo, on
   // S3: their conversation is open on the right until closed; a new person opens it again
   const [convo, setConvo] = useState(true);
   useEffect(() => setConvo(true), [person]);
+  // the timeline (#424): opened from the strip's end, in the tab's place; a tab or another page closes it
+  const [line, setLine] = useState(false);
+  useEffect(() => { if (sub) setLine(false); }, [sub]);
+  // the walk through the project (#430): while it is due (new, or left partway) it stands in for the page
+  const walk = useWalk(team, roomId);
 
   return (
     <div className="gp">
       <div className="gp-tabs" role="tablist" aria-label={`${name}'s page`}>
-        {([["talk", "talk", undefined], ["updates", "build updates", fresh], ["connectors", "connectors", rows.length]] as const).map(([k, word, n]) => (
-          <button key={k} role="tab" aria-selected={tab === k && !sub} className={`gp-tab ${tab === k && !sub ? "on" : ""}`} onClick={() => setTab(k)}>
+        {([["talk", "talk", undefined], ["updates", "build updates", fresh], ["connectors", "connectors", rows.length], ...(pagesOn ? [["pages", "pages", undefined]] as const : []), ...(tablesOn ? [["tables", "tables", undefined]] as const : [])] as const).map(([k, word, n]) => (
+          <button key={k} role="tab" aria-selected={tab === k && !sub && !line} className={`gp-tab ${tab === k && !sub && !line ? "on" : ""}`} onClick={() => setTab(k)}>
             {word}{n ? <small>{n}</small> : null}
           </button>
         ))}
@@ -122,20 +142,38 @@ export function Group({ team, room, flash, onPerson, onGoal, onThing, onRepo, on
           // what their Sol runs (#417), side by side: the release and their own layer; mine from my engine when the relay is down
           const ver = m?.version ?? (mine ? s?.version ?? undefined : undefined);
           const same = !mine && sameRelease(ver, myVer);
+          const usedNow = stripLine(used?.people[who], (at) => since(at));
+          // their agent (#435): a member through them, beside them and drawn apart; what it read of Cowork is its line
+          const ag = agentFor(s?.agents, who);
           const word = sh ? (sh.issue ? `showing #${sh.issue}` : "live in a session")
             : dark ? "not seen" : state === "here" || state === "away" || !m ? STATE_WORD[state ?? "here"] : `${STATE_WORD[state ?? "here"]} · ${since(m.since)}`;
-          return (
-            <button key={who} role="listitem" className={`gp-who ${dark || state === "away" ? "away" : ""} ${person === who ? "on" : ""}`} onClick={() => onPerson(who)}
-              title={`${who}${mine ? " (you)" : ""}: ${m?.session?.title ?? word}. Runs ${versionLine(ver)}${same ? ", the same release as you" : ""}. Click for what they did here.`}>
+          return (<Fragment key={who}>
+            <button role="listitem" className={`gp-who ${dark || state === "away" ? "away" : ""} ${person === who ? "on" : ""}`} onClick={() => onPerson(who)}
+              title={`${who}${mine ? " (you)" : ""}: ${m?.session?.title ?? word}. Runs ${versionLine(ver)}${same ? ", the same release as you" : ""}.${usedNow ? ` Their agent ${usedNow.replace(/ · /, " of the project, ")} ago.` : ""} Click for what they did here.`}>
               <Body login={who} size={28} away={dark || state === "away"} />
               <span className="tx"><span className="n">{who}</span><span className="l">{word}</span>
-                <span className={`v ${ver ? "" : "unknown"} ${same ? "same" : ""}`} aria-label={`runs ${versionLine(ver)}`}>{versionShort(ver)}</span></span>
+                <span className={`v ${ver ? "" : "unknown"} ${same ? "same" : ""}`} aria-label={`runs ${versionLine(ver)}`}>{versionShort(ver)}</span>
+                {usedNow && !ag && <span className="u"><span className="us-dot" aria-hidden />{usedNow}</span>}</span>
             </button>
-          );
+            {ag && (
+              <button role="listitem" className={`gp-ag ${ag.working ? "on" : ""} ${dark || state === "away" ? "away" : ""}`} onClick={() => onPerson(who)}
+                title={`${ag.name}: a member of ${name} through ${who}. What it writes is signed "${ag.name}"; it never votes or agrees for ${who}.${ag.working ? ` At work now${ag.session ? `: ${ag.session}` : ""}.` : ""}${usedNow ? ` Read ${usedNow.replace(/ · /, " of the project, ")} ago.` : ""}`}>
+                <span className="gp-ag-tie" aria-hidden />
+                <Body login={who} size={22} agent away={!ag.working && (dark || state === "away")} />
+                <span className="tx"><span className="n">{ag.name}</span><span className="l">{agentWord(ag)}</span>
+                  {usedNow && <span className="u"><span className="us-dot" aria-hidden />{usedNow}</span>}</span>
+              </button>
+            )}
+          </Fragment>);
         })}
+        <button className={`gp-tl ${line ? "on" : ""}`} onClick={() => { if (sub) onBack(); setLine((x) => !x); }} title="every release, who runs which, what never made it, and tonight's rhythm">timeline ›</button>
       </div>
 
-      {person ? (
+      {walk.show && walk.view ? (
+        <div className="gp-sub"><Walk key={roomId} team={team} view={walk.view} name={name} flash={flash} onDone={(v) => walk.set(v ?? { ...walk.view!, due: false })} /></div>
+      ) : line && !sub ? (
+        <div className="gp-sub"><TimelinePage ask={team.ask} onBack={() => setLine(false)} /></div>
+      ) : person ? (
         <div className="gp-two">
           <div className="gp-sub"><PersonMain team={team} room={room} login={person} entry={personOf(roster, person)} roomName={name} onBack={onBack}
             onThing={(t) => (t.kind === "github" ? onRepo() : onThing(t))} convo={convo} onConvo={() => setConvo(true)} /></div>
@@ -155,28 +193,30 @@ export function Group({ team, room, flash, onPerson, onGoal, onThing, onRepo, on
         {driveGate ? (
           // one state in place of the goal band, not an empty group; the body stays (talk rides the relay, not Drive)
           <div className="gp-moved" role="status">
-            <span>connect Google Drive to see this group: its goal, files and updates are in a Drive folder this Mac cannot open yet{dr.bad ? ` · ${dr.bad}` : ""}</span>
+            <span>connect Google Drive to see this project: its goal, files and updates are in a Drive folder this Mac cannot open yet{dr.bad ? ` · ${dr.bad}` : ""}</span>
             <button className="gp-quiet" disabled={dr.busy} onClick={() => void dr.connect().then(() => void room.read())}>{dr.busy ? "finish in your browser…" : "connect Google Drive ›"}</button>
           </div>
         ) : (
-        <button className="gp-goal" onClick={onGoal} title="the group's goal: set by hand, read by every agent before it works. Click to open it and its files.">
+        <button className="gp-goal" onClick={onGoal} title="the project's goal: set by hand, read by every agent before it works. Click to open it and its files.">
           <span className="k">goal</span>
           {room.goal?.title ? <span className="t">{room.goal.title}</span> : <span className="t dim">nothing set yet · set a goal</span>}
         </button>)}
         {/* this room moved to the cloud (#246): one click joins the new one by its code, or goes there when I am in it */}
         {room.moved && (
           <div className="gp-moved" role="status">
-            <span>this group moved to the cloud as {room.moved.name}{room.moved.by ? `, moved by ${room.moved.by}` : ""}{room.moved.at ? ` · ${date(room.moved.at)}` : ""}</span>
+            <span>this project moved to the cloud as {room.moved.name}{room.moved.by ? `, moved by ${room.moved.by}` : ""}{room.moved.at ? ` · ${date(room.moved.at)}` : ""}</span>
             <button className="gp-quiet" onClick={() => void (room.moved!.have
               ? team.ask("team.settings", { patch: { room: room.moved!.have } })
-              : team.ask<{ room?: { name?: string }; error?: string }>("team.room.join", { code: room.moved!.code }).then((x) => flash(x.error ? `couldn't join: ${x.error}` : `you are in ${x.room?.name ?? "the new group"} on the cloud`)))}>
+              : team.ask<{ room?: { name?: string }; error?: string }>("team.room.join", { code: room.moved!.code }).then((x) => flash(x.error ? `couldn't join: ${x.error}` : `you are in ${x.room?.name ?? "the new project"} on the cloud`)))}>
               {room.moved.have ? "go there ›" : `join it (${room.moved.code}) ›`}
             </button>
           </div>
         )}
         <div className="gp-body" data-tab={tab}>
           {tab === "talk" && <div className="gp-talk"><Talk team={team} flash={flash} /></div>}
-          {tab === "updates" && <Updates lines={room.feed} error={room.feedError} />}
+          {tab === "updates" && <Updates lines={room.feed} error={room.feedError} team={team} flash={flash} />}
+          {tab === "tables" && <TablesTab team={team} people={people} flash={flash} />}
+          {tab === "pages" && <PagesTab team={team} people={people} live={blocksLive} onTool={onTool} flash={flash} />}
           {tab === "connectors" && <Connectors team={team} room={room} rows={rows} name={name} flash={flash} onThing={onThing} onRepo={onRepo} onTool={onTool} />}
         </div>
       </>)}
@@ -217,14 +257,14 @@ function Quota({ team, roomId, flash }: { team: Team; roomId: string; flash: (s:
     if (a.need === "github") return setTake({ gh: true });
     if (a.error) { setTake({ error: a.error }); return again(); }
     setTake({});
-    flash(`the group's files are in ${a.repo ?? "your repository"} now`);
+    flash(`the project's files are in ${a.repo ?? "your repository"} now`);
   }
   return (<>
     {b && (
-      <div className={`gp-quota ${b.moving || take.busy ? "moving" : ""}`} role="status" aria-label={`the group holds ${b.words}`}>
+      <div className={`gp-quota ${b.moving || take.busy ? "moving" : ""}`} role="status" aria-label={`the project holds ${b.words}`}>
         <div className="tx">
           <div className="gp-meter"><span className="tr" aria-hidden="true"><i style={{ transform: `scaleX(${b.share})` }} /></span><span className="w">{b.words}</span></div>
-          <div className="ln">{take.busy ? "moving the group's files to a private repository of yours…" : take.error ?? b.line}</div>
+          <div className="ln">{take.busy ? "moving the project's files to a private repository of yours…" : take.error ?? b.line}</div>
         </div>
         {b.button && !take.gh && <button className="gp-go" disabled={take.busy} onClick={() => void go()}><span>{take.busy ? "moving…" : take.error ? "try again" : "connect GitHub to keep going"}</span></button>}
       </div>
@@ -251,12 +291,12 @@ export function MovedAwayLine({ team, roomId, moved, flash, onGone }: { team: Te
     setBusy(false);
     if (a.need === "github") return setGh(false);
     if (a.error) return flash(`couldn't join it: ${a.error}`);
-    flash(`the group is ${moved.repo} now`);
+    flash(`the project is ${moved.repo} now`);
   };
   return (
     <div className="gline" role="status">
       <span className="from">moved</span>
-      <span className="t"><b>the group moved to {moved.repo}</b><small>{gh === false ? "connect GitHub to see the files" : `by ${moved.by}${moved.at ? ` · ${date(moved.at)}` : ""}`}</small></span>
+      <span className="t"><b>the project moved to {moved.repo}</b><small>{gh === false ? "connect GitHub to see the files" : `by ${moved.by}${moved.at ? ` · ${date(moved.at)}` : ""}`}</small></span>
       {gh && <button className="wbtn" disabled={busy} onClick={() => void join()}>{busy ? "…" : "join it"}</button>}
       <button className="wbtn ghost" onClick={() => { keepNotNow(roomId, moved.repo); onGone(); }}>not now</button>
     </div>
@@ -275,7 +315,7 @@ function Share({ team }: { team: Team }) {
   const code = r.code || asked.code;
   if (!code) {
     if (r.provider === "cloud") return null;   // a cloud room always has its code; none yet is a moment, not a step
-    return <button className="gp-quiet" disabled={asked.busy} title={asked.error ?? "a code a friend types to join this group"}
+    return <button className="gp-quiet" disabled={asked.busy} title={asked.error ?? "a code a friend types to join this project"}
       onClick={() => { setAsked({ busy: true }); void team.ask<{ code?: string; error?: string }>("team.room.share", { id: r.id }).then((a) => setAsked(a.code ? { code: a.code } : { error: a.error ?? "no code came back" })); }}>
       {asked.busy ? "…" : asked.error ? "share · try again" : "share"}</button>;
   }
@@ -289,17 +329,38 @@ function Share({ team }: { team: Team }) {
 }
 
 /** build updates: what happened, one line each, newest first; each line wears its person's small Sol (an agent's in a
- *  thin white ring), Sol's own when no one */
-function Updates({ lines, error }: { lines: FeedLine[]; error?: string }) {
+ *  thin white ring), Sol's own when no one. A folded change's line has "this broke" (#421): one line of what broke, then
+ *  the PR wears `broke`, its author and the beta reviewer get a card, and no beta pass takes a release that holds it */
+function Updates({ lines, error, team, flash }: { lines: FeedLine[]; error?: string; team: Team; flash: (s: string) => void }) {
+  const [broke, setBroke] = useState<string | null>(null);   // the line whose "what broke?" is open
+  const [why, setWhy] = useState("");
+  const [busy, setBusy] = useState(false);
+  const say = async (l: FeedLine) => {
+    if (!why.trim() || busy) return;
+    setBusy(true);
+    const r = await team.ask<{ told?: string[]; error?: string }>("team.broke", { repo: l.ref!.repo, number: l.ref!.number, why: why.trim() }, 60_000);
+    setBusy(false);
+    if (r?.error) return flash(`couldn't say it broke: ${r.error}`);
+    setBroke(null); setWhy("");
+    flash(`#${l.ref!.number} wears broke now${r?.told?.length ? `; ${r.told.join(" and ")} got a card` : ""}`);
+  };
   return (
     <ol className="gp-feed" aria-label="build updates">
       {error && <li className="none">couldn't read the updates just now: {error}</li>}
-      {!error && lines.length === 0 && <li className="none">nothing yet: what anyone does in this group shows here</li>}
+      {!error && lines.length === 0 && <li className="none">nothing yet: what anyone does in this project shows here</li>}
       {lines.slice(0, 100).map((l) => (
-        <li key={l.id} className={l.agent ? "ag" : ""} title={l.ephemeral ? "live: seen as it happened, not kept" : "from the group's record"}>
+        <li key={l.id} className={l.agent ? "ag" : ""} title={l.ephemeral ? "live: seen as it happened, not kept" : "from the project's record"}>
           <time dateTime={l.at}>{hhmm(l.at)}</time>
           {l.who ? <Body login={l.who} size={20} agent={l.agent} /> : <span className="cbody"><Sol alone size={20} /></span>}
-          <span className="tx"><b>{l.who ? (l.agent ? `${l.who}'s agent` : l.who) : "sol"}</b> {l.text}</span>
+          <span className="tx"><b>{l.who ? (l.agent ? `${l.who}'s agent` : l.who) : "sol"}</b> {l.text}
+            {mayBreak(l) && broke !== l.id && <button className="gp-broke" onClick={() => { setBroke(l.id); setWhy(""); }} title="it broke something: its author and the beta reviewer get a card, and beta waits until it is fixed">this broke</button>}
+          </span>
+          {broke === l.id && (
+            <form className="gp-brokeform" onSubmit={(e) => { e.preventDefault(); void say(l); }}>
+              <input autoFocus value={why} maxLength={300} onChange={(e) => setWhy(e.target.value)} placeholder={`what broke after #${l.ref!.number}, in a line`} />
+              <button className="gp-quiet" type="submit" disabled={!why.trim() || busy}>{busy ? "…" : "say it broke"}</button>
+              <button className="gp-quiet" type="button" onClick={() => setBroke(null)}>cancel</button>
+            </form>)}
         </li>
       ))}
     </ol>
@@ -327,7 +388,7 @@ export function connectorRows(room: Pick<RoomData, "things" | "folders">, r?: { 
 }
 
 const KIND_WORD: Record<ThingKind, string> = { doc: "a doc", slides: "slides", sheet: "a sheet", github: "a repository", figma: "a Figma file", web: "a page", file: "a file" };
-const KIND_COLOR: Record<string, string> = { doc: "#4a8df8", sheet: "#34a853", slides: "#fbbc04", figma: "#fb5ad0", web: "#9a9a97", github: "#ebebe8", file: "#9a9a97", folder: "#f4c82a", tool: "#9a9a97" };
+const KIND_COLOR: Record<string, string> = { doc: "#4a8df8", sheet: "#34a853", slides: "#fbbc04", figma: "#fb5ad0", web: "#9a9a97", github: "#ebebe8", file: "#9a9a97", folder: "#f4c82a", tool: "#9a9a97", settings: "#9a9a97" };
 /** a connector's flat glyph, 16px, one colour per kind (#314: no pixel glyphs on the group page) */
 export function KindGlyph({ kind }: { kind: string }) {
   const c = KIND_COLOR[kind] ?? KIND_COLOR.web;
@@ -341,10 +402,12 @@ export function KindGlyph({ kind }: { kind: string }) {
       {kind === "web" && <><rect x="1.5" y="3" width="13" height="10" rx="2" {...line} /><path d="M1.5 6h13" {...line} /></>}
       {kind === "github" && <><circle cx="4.5" cy="3.5" r="1.6" {...line} /><circle cx="4.5" cy="12.5" r="1.6" {...line} /><circle cx="11.5" cy="5.5" r="1.6" {...line} /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2 3-5.5 4" {...line} /></>}
       {kind === "file" && <><path d="M4 1.5h5.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1z" {...line} /><path d="M9.5 1.5V5H13" {...line} /></>}
+      {kind === "settings" && <><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" {...line} /><circle cx="6" cy="4.5" r="1.5" fill={c} /><circle cx="10.5" cy="8" r="1.5" fill={c} /><circle cx="5" cy="11.5" r="1.5" fill={c} /></>}
       {kind === "folder" && <path d="M1.5 4.2a1.2 1.2 0 0 1 1.2-1.2h3.4l1.5 1.6h5.7a1.2 1.2 0 0 1 1.2 1.2v6.5a1.2 1.2 0 0 1-1.2 1.2H2.7a1.2 1.2 0 0 1-1.2-1.2z" fill={c} />}
       {kind === "calendar" && <><rect x="2" y="3" width="12" height="11" rx="2" {...line} /><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" {...line} /></>}
       {kind === "decisions" && <><circle cx="8" cy="8" r="6" {...line} /><path d="M5.4 8.2l1.8 1.8 3.5-3.6" {...line} /></>}
       {kind === "polls" && <path d="M3 13.5V8M8 13.5V3M13 13.5V6" {...line} strokeWidth="2" />}
+      {kind === "folds" && <><circle cx="4.5" cy="3.5" r="1.6" {...line} /><circle cx="11.5" cy="12.5" r="1.6" {...line} /><path d="M4.5 5.1v2.4c0 2.4 2 3.4 5.4 3.4M4.5 7.5v7" {...line} /></>}   {/* this week's folds, a team tool (#436) */}
     </svg>
   );
 }
@@ -356,6 +419,7 @@ function Connectors({ team, room, rows, name, flash, onThing, onRepo, onTool }: 
 }) {
   const s = team.state;
   const r = s?.settings.rooms.find((x) => x.id === s.settings.room);
+  const live = useLiveBlocks(team);
   const folders = room.folders ?? [];
   const [inside, setInside] = useState<Record<string, boolean>>({});   // folders opened in place
   const [at, setAt] = useState("");   // the folder opened last: "+ connect" adds into it, as the grid added into the folder it showed
@@ -405,7 +469,7 @@ function Connectors({ team, room, rows, name, flash, onThing, onRepo, onTool }: 
         </button>
         {inIt(t).length > 0 && <span className="gp-in" title={`${inIt(t).join(", ")} in it now`}>{inIt(t).slice(0, 4).map((who) => <Body key={who} login={who} size={18} />)}</span>}
         {removing === t.id ? (
-          <span className="gp-ask" role="group" aria-label={`take ${t.name} off the group?`}>
+          <span className="gp-ask" role="group" aria-label={`take ${t.name} off the project?`}>
             <span>take it off for everyone?</span>
             <button className="gp-quiet" autoFocus onClick={() => { setRemoving(""); void room.remove(t.id).then((x) => x.error && flash(x.error)); }}>yes</button>
             <button className="gp-quiet" onClick={() => setRemoving("")}>no</button>
@@ -413,7 +477,7 @@ function Connectors({ team, room, rows, name, flash, onThing, onRepo, onTool }: 
         ) : !room.readOnly && (
           <span className="gp-cn-acts">
             {targets.length > 0 && <button className="gp-x" aria-haspopup="menu" aria-expanded={menu === t.id} aria-label={`move ${t.name} to…`} title="move to a folder" onClick={() => setMenu(menu === t.id ? "" : t.id)}>⋯</button>}
-            <button className="gp-x" title={`take ${t.name} off this group (the link itself is untouched; the group's record keeps who did)`} aria-label={`remove ${t.name}`} onClick={() => setRemoving(t.id)}>×</button>
+            <button className="gp-x" title={`take ${t.name} off this project (the link itself is untouched; the project's record keeps who did)`} aria-label={`remove ${t.name}`} onClick={() => setRemoving(t.id)}>×</button>
           </span>
         )}
         {menu === t.id && (
@@ -451,21 +515,21 @@ function Connectors({ team, room, rows, name, flash, onThing, onRepo, onTool }: 
 
   return (
     <div className="gp-conn">
-      <section className="gp-col" aria-label="this group">
-        <h3 className="gp-hd"><span>this group</span>
-          {canFold && !making && <button className="gp-link-btn" onClick={() => setMaking({ name: "" })} title="a folder for some of the group's things, as in Google Drive">+ new folder</button>}</h3>
+      <section className="gp-col" aria-label="this project">
+        <h3 className="gp-hd"><span>this project</span>
+          {canFold && !making && <button className="gp-link-btn" onClick={() => setMaking({ name: "" })} title="a folder for some of the project's things, as in Google Drive">+ new folder</button>}</h3>
         {making && (
           <form className="gp-mk" onSubmit={(e) => { e.preventDefault(); void makeFolder(); }}>
             <input autoFocus value={making.name} maxLength={60} placeholder="the folder's name" aria-label="the new folder's name" onChange={(e) => setMaking({ name: e.target.value })} onKeyDown={(e) => e.key === "Escape" && setMaking(null)} />
             <button type="submit" className="gp-quiet">{folders.length === 0 ? "all updated, make it" : "make"}</button><button type="button" className="gp-quiet" onClick={() => setMaking(null)}>cancel</button>
-            {making.error ? <span className="err" role="alert">{making.error}</span> : folders.length === 0 && <span className="dim">the first folder: older Sols then only read this group's things</span>}
+            {making.error ? <span className="err" role="alert">{making.error}</span> : folders.length === 0 && <span className="dim">the first folder: older Sols then only read this project's things</span>}
           </form>
         )}
         {room.thingsNote && <p className="none">{room.thingsNote}: connectors and the goal show once it has one</p>}
-        {room.readOnly && <p className="none">this group's things were written by a newer Sol: you can open them; update Sol to add, move or take any off</p>}
+        {room.readOnly && <p className="none">this project's things were written by a newer Sol: you can open them; update Sol to add, move or take any off</p>}
         <ul className="gp-cn-list">
           {/* the group's own tools, pinned first (#245): Sol's own pages */}
-          {TOOLS.map((t) => (
+          {TOOLS.filter((t) => live.has(t.id)).map((t) => (
             <li key={t.id} className="gp-cn tool">
               <button className="gp-cn-in" onClick={() => onTool(t.id)} title={`${t.name}: ${t.line}`}>
                 <KindGlyph kind={t.id} />
@@ -490,7 +554,7 @@ function Connectors({ team, room, rows, name, flash, onThing, onRepo, onTool }: 
           <div className="gp-add on gp-pick" role="group" aria-label="connect" onKeyDown={(e) => { if (e.key === "Escape") setChoosing(false); }}>
             <span aria-hidden="true">+</span> connect
             <button className="gp-quiet" autoFocus onClick={() => { setChoosing(false); setAdding({ url: "" }); }} title="a Google Doc, Slides, a Sheet, Figma or a page: paste its link">a link</button>
-            <button className="gp-quiet" onClick={() => { setChoosing(false); setAdding({ url: "", repo: true }); }} title="a private repository you are an admin of: its build updates come to the group, and members ask to be let in">a repository</button>
+            <button className="gp-quiet" onClick={() => { setChoosing(false); setAdding({ url: "", repo: true }); }} title="a private repository you are an admin of: its build updates come to the project, and members ask to be let in">a repository</button>
             <button className="gp-quiet" onClick={() => setChoosing(false)}>cancel</button>
           </div>
         ) : (
@@ -516,7 +580,7 @@ function RepoItem({ team, room, repo, row, conn, flash, onRepo, onGithub }: {
   const [menu, setMenu] = useState(false);
   if (!row || !conn) return (
     <li className="gp-cn">
-      <button className="gp-cn-in" onClick={onRepo} title={`the group's repository, ${repo}: its board, hands, try and ship`}>
+      <button className="gp-cn-in" onClick={onRepo} title={`the project's repository, ${repo}: its board, hands, try and ship`}>
         <KindGlyph kind="github" />
         <span className="nm">{repo}</span>
         <span className="dd">the repository</span>
@@ -545,19 +609,19 @@ function RepoItem({ team, room, repo, row, conn, flash, onRepo, onGithub }: {
   const n = inOf(row);
   return (<>
     <li className="gp-cn gp-repo">
-      <button className="gp-cn-in" onClick={onRepo} title={cloud ? `${repo}, connected by ${row.by || "someone"}: its board, hands, try and ship` : `the group's repository, ${repo}: its board, hands, try and ship`}>
+      <button className="gp-cn-in" onClick={onRepo} title={cloud ? `${repo}, connected by ${row.by || "someone"}: its board, hands, try and ship` : `the project's repository, ${repo}: its board, hands, try and ship`}>
         <KindGlyph kind="github" />
         <span className="nm">{repo}</span>
         <span className="dd">{row.by ? `${row.by} · ${ago(row.at)}` : "the repository"}</span>
-        {cloud && !row.checked && <span className="dd gp-unv" title="your own GitHub has not checked this repository; it is the group's word for now">unverified</span>}
+        {cloud && !row.checked && <span className="dd gp-unv" title="your own GitHub has not checked this repository; it is the project's word for now">unverified</span>}
         {!cloud && <span className="gp-go-on">open the board ›</span>}
       </button>
       {cloud && row.in.length > 0 && <span className="gp-in" title={`let in: ${row.in.join(", ")}`}>{row.in.slice(0, 4).map((who) => <Body key={who} login={who} size={18} />)}</span>}
-      {cloud && n && <span className="gp-nof" title={`${row.in.length} of the group's ${row.members} let into ${repo}`}>{n}</span>}
+      {cloud && n && <span className="gp-nof" title={`${row.in.length} of the project's ${row.members} let into ${repo}`}>{n}</span>}
       {act === "connect GitHub" && <button className="gp-quiet" onClick={onGithub} title="your GitHub, on this Mac, is how you are let in">connect GitHub</button>}
       {act === "ask to be let in" && <button className="gp-quiet" disabled={busy} onClick={() => void ask()} title={`asks ${row.by || "its maker"} to let your GitHub into ${repo}; nothing happens until they press`}>{busy ? "…" : "ask to be let in"}</button>}
       {act === "asked" && <span className="gp-dimw" title={`${row.by || "its maker"} has your ask; it waits a day`}>asked</span>}
-      {act === "add the workflow" && <button className="gp-quiet" disabled={busy} onClick={() => void workflow(true)} title={`a small GitHub workflow in ${repo} tells the group what happens there: pushes, pull requests, issues`}>{busy ? "…" : "add the workflow"}</button>}
+      {act === "add the workflow" && <button className="gp-quiet" disabled={busy} onClick={() => void workflow(true)} title={`a small GitHub workflow in ${repo} tells the project what happens there: pushes, pull requests, issues`}>{busy ? "…" : "add the workflow"}</button>}
       {act === "build updates on" && <>
         <span className="gp-dimw">build updates on</span>
         <button className="gp-x" aria-haspopup="menu" aria-expanded={menu} aria-label={`more for ${repo}`} onClick={() => setMenu(!menu)}>⋯</button>
@@ -616,7 +680,7 @@ function ScopeCard({ team, say, onAgain, onClose }: { team: Team; say: string; o
             <button className="wbtn" disabled={s.k === "wait"} onClick={() => void allow()}>{s.k === "wait" ? "asking GitHub…" : "allow"}</button>
             <button className="wlink" onClick={stop}>not now</button>
           </span>
-          <p className="cgh-note">the workflow sends the group what happens in the repository; GitHub asks before Sol may add one</p>
+          <p className="cgh-note">the workflow sends the project what happens in the repository; GitHub asks before Sol may add one</p>
         </>}
         {said && <p className="cgh-said" role="status">{said}</p>}
       </div>
@@ -707,9 +771,9 @@ export function FirstGroup({ team, onHold }: { team: Team; onHold: (holding: boo
     <div className="gp-first">
       <div className="gp-hero">
         <Sol size={64} alone />
-        <h1>make your first group</h1>
-        <p>a group is you, your friends, and each one's agent, in one place</p>
-        <button className="gp-go" onClick={() => { setForm(true); requestAnimationFrame(() => document.querySelector<HTMLInputElement>(".gp-form .wfield")?.focus()); }}><span>make a group</span></button>
+        <h1>make your first project</h1>
+        <p>a project is you, your friends, and each one's agent, in one place</p>
+        <button className="gp-go" onClick={() => { setForm(true); requestAnimationFrame(() => document.querySelector<HTMLInputElement>(".gp-form .wfield")?.focus()); }}><span>make a project</span></button>
       </div>
       <div className={`gp-half ${form ? "on" : ""}`}>
         {form && <RoomForm team={team} first onMade={() => onHold(true)} onDone={() => { setForm(false); onHold(false); }} />}

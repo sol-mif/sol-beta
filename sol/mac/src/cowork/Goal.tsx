@@ -52,15 +52,15 @@ export function GoalPage({ team, room, onBack, flash }: { team: Team; room: Room
   return (
     <div className="rm-page rm-gp">
       <div className="rm-pg-top">
-        <button className="rm-th-link" onClick={onBack}>‹ the room</button>
+        <button className="rm-th-link" onClick={onBack}>‹ the project</button>
         <span className="rm-th-sp" />
         {g && !g.note && !editing && <button className="rm-th-link u" onClick={startEdit}>edit</button>}
       </div>
-      {!g ? <p className="rm-pg-foot">reading the room's goal…</p> : g.note ? <p className="rm-pg-foot">{g.note}: the goal shows once it has one</p> : (<>
+      {!g ? <p className="rm-pg-foot">reading the project's goal…</p> : g.note ? <p className="rm-pg-foot">{g.note}: the goal shows once it has one</p> : (<>
         <Glyph kind="flag" size={56} />
         {editing ? (
           <form className="rm-sh-form rm-gp-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="one line: what this room is for" aria-label="the goal" maxLength={120} />
+            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="one line: what this project is for" aria-label="the goal" maxLength={120} />
             <textarea value={lines} onChange={(e) => setLines(e.target.value)} placeholder="a few plain lines: what done looks like (optional)" rows={4} aria-label="what done looks like" />
             <span className="acts"><button className="wbtn" type="submit" disabled={!title.trim()}>set the goal</button>{g.title && <button className="wbtn ghost" type="button" onClick={() => setEdit(false)}>cancel</button>}</span>
           </form>

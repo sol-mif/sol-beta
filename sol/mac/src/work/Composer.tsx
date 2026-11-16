@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { stageWhole } from "../flag";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { composing } from "../ime";
 import type { FileOut, Seat } from "../useEngine";
@@ -9,15 +10,27 @@ import { prettyModel } from "../models";
 import { Aurora } from "../creature/indicators";
 import { CFG, enter, reducedMotion, useSpring } from "../motion";
 import { startRecording, type Recorder } from "../voice";
-import { AsideCard } from "./Cards";
+import { AsideCard, PermCard } from "./Cards";
 import { Menu, type MenuItem } from "./Menu";
 import { LeashWheel } from "./LeashWheel";
+import { ModePick, BYPASS_SURE } from "./ModePick";
+import { Hears, useLevel } from "./Listen";
+import { Field, Pill } from "../kit";
+import type { Usage } from "./Context";
+import { FolderPick, type Place } from "./FolderPick";
+import { Chips } from "./Chips";
+import { VoiceBody } from "../creature/Voice";
+import { forcedState } from "../creature/state";
 import type { Mode, Work } from "./useWork";
 import { HELD } from "./WorkSidebar";
 import { StableLine } from "../cowork/StableLine";   // Ship (#33): a new stable is out, over the composer
 import { FileLine } from "../FileLine";               // File it (#119): the field and the receipt, over the composer
 import { Plus } from "./Plus";
 import { CallKey } from "../buttons/call";
+import { v3On, v3Make, V3Stage } from "../cowork/v3/hooks";   // Cowork v3 (fr-30): the stage, only with the switch on
+import { BarChips, OnToken } from "../stage/BarChips";                // the stage's bar (#698): the chips and "on ·"
+import { askStage, preview } from "../stage/ask";
+import { barState, sent as barSent, setThings, useBar } from "../stage/bar";
 
 // Work's box: the words, and around them what Claude Code's composer has. + opens attach / mention / command; @
 // lists the folder's files as you type, / the session's commands and skills; under the box the model, effort, the
@@ -53,14 +66,39 @@ const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); ret
 const knownCommands = (): string[] => { try { return JSON.parse(localStorage.getItem("sol.work.commands") ?? "null") ?? BUILTIN; } catch { return BUILTIN; } };
 
 export type Draft = { text: string; atts: Att[] };
-export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, onSent, onRec, d, setD, cowork, toChat, switchTo }: {
+
+/** #954 (whole.html's .send): the round send arrow at the row's end, always there; lit by the jelly when the box holds
+ *  something to send, dim and pressing nothing when it is empty */
+function GoKey({ go, busy, onSend, onStop }: { go: boolean; busy: boolean; onSend: () => void; /** at work with nothing typed: the key stops the turn (as Esc does) */ onStop?: () => void }) {
+  const what = busy ? "queue it: it goes when this turn ends (enter)" : "send (enter)";
+  if (!go && onStop) return (
+    <button className="wgo stop" onClick={onStop} title="stop this turn (esc)" aria-label="stop">
+      <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1" /></svg>
+    </button>
+  );
+  return (
+    <button className={`wgo${go ? " go" : ""}`} onClick={go ? onSend : undefined} aria-disabled={!go} title={go ? what : "nothing to send yet"} aria-label={busy ? "queue" : "send"}>
+      <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 11.5V2.5M3 6.5l4-4 4 4" /></svg>
+    </button>
+  );
+}
+export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, onSent, onRec, d, setD, cowork, toChat, switchTo, clean, staged }: {
   w: Work; e: ReturnType<typeof useEngine>; busy: boolean; working?: boolean; cwd?: string; asideOn: boolean; setAsideOn: (v: boolean) => void;
   box: React.RefObject<HTMLTextAreaElement | null>; onSent: () => void; onRec: (on: boolean) => void;
   d: Draft; setD: React.Dispatch<React.SetStateAction<Draft>>;   // kept by WorkApp: the words outlive a trip to Settings
   cowork?: boolean;   // Cowork's session: file it labels it cowork
   toChat?: (s: Seat, m?: string) => void;   // Home: a session runs on Claude Code; picking Codex in a new one opens a GPT talk (#141, #182)
   switchTo?: (s: Seat, m?: string) => void; // the same pick in a running session: a GPT talk carries it on in its folder (#182)
+  clean?: boolean;   // the clean Home (#589, Marco 2026-11-02): clicks only (no hold, right-click or keys on the mode), no
+                     // codex | claude until it works (#590), the engine dots only in the title bar
+  staged?: boolean;  // the stage is the session's main column (#698; a session not started has none): the words split into chips as you type, and
+                     // the chips and what you point at go with them (useWork say's `stage`)
 }) {
+  // #954, stage.whole: the box's words as whole.html draws them, one short line (a new session, at work, next)
+  const whole = stageWhole() && !cowork;
+  // #954 (scene 14): the box of whole.html: the words the whole width, under them one row, the + first and a round send
+  // arrow last (lit by the jelly when there is something to send); what you point at is the words' first token
+  const wbox = whole && !!clean;
   const draft = d.text, atts = d.atts;
   const held = w.live ? w.sessions.find((s) => s.id === w.live)?.held : undefined;
   const [forking, setForking] = useState(false);
@@ -81,22 +119,30 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   };
   const setDraft = (v: string | ((s: string) => string)) => setD((x) => ({ ...x, text: typeof v === "function" ? v(x.text) : v }));
   const setAtts = (v: Att[] | ((a: Att[]) => Att[])) => setD((x) => ({ ...x, atts: typeof v === "function" ? v(x.atts) : v }));
-  const [, setBoxFocus] = useState(false);   // the box knows its focus (the engine asks); its look is CSS :focus-within since sitting 2
+  const [boxFocus, setBoxFocus] = useState(false);   // the box knows its focus (the engine asks); on the clean Home the kit Field deepens with it (#647)
   const [pop, setPop] = useState<Pop | null>(null);
   const [hits, setHits] = useState<Hit[]>([]);
   const [hitsFor, setHitsFor] = useState("");   // the query the hits answer: older ones show, but Enter waits
   const [sel, setSel] = useState(0);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [drop, setDrop] = useState(false);
+  // the row (#647, clean Home): words sent while it works wait under the box, one line each, editable (a click puts them
+  // back in the box) and removable; the first goes the moment the run settles, then the next. Per session: a switch clears it.
+  const [queue, setQueue] = useState<(Draft & { stage?: object })[]>([]);
+  // the stage's bar (#698, play.html's preview): the chips follow the words; the slot a chip was dropped on stays with it
+  const bar = useBar();
+  useEffect(() => { if (staged) setThings(preview(draft, barState().things, barState().room?.size, barState().room?.places)); }, [draft, staged]);
+  const stageOf = () => (staged ? askStage(bar.things, bar.on.map(({ id, part }) => ({ id, ...(part ? { part } : {}) }))) : undefined);
+  useEffect(() => { setQueue([]); }, [w.live]);
 
   // the box grows on a spring; sending presses it down and lets it come back past rest
-  const boxH = useSpring(0, CFG.grow, (v) => { if (box.current) box.current.style.height = `${v}px`; });
+  const boxH = useSpring(0, CFG.settle, (v) => { if (box.current) box.current.style.height = `${v}px`; });
   const grow = () => {
     const t = box.current;
     if (!t) return;
     const prev = boxH.v || t.offsetHeight;
     t.style.height = "auto";
-    const nat = Math.min(240, t.scrollHeight);
+    const nat = Math.min(240, Math.max(t.scrollHeight, mirror.current?.scrollHeight ?? 0));
     t.style.overflowY = nat >= 240 ? "auto" : "hidden";
     t.style.height = `${prev}px`;
     if (!boxH.v || reducedMotion()) boxH.set(nat); else boxH.to(nat);
@@ -104,7 +150,10 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   // words put in from outside (a brief from Life, a review remark) grow the box too; typing grows it in onChange
   useEffect(() => { if (document.activeElement !== box.current) requestAnimationFrame(grow); }, [draft]); // eslint-disable-line react-hooks/exhaustive-deps
   const askBox = useRef<HTMLDivElement>(null);
-  const sendP = useSpring(0, CFG.pop, (v) => { const el = askBox.current; if (el) el.style.scale = v === 0 ? "" : `${1 - 0.012 * v} ${1 - 0.075 * v}`; });
+  const mirror = useRef<HTMLDivElement>(null);
+  // the mirror under the box scrolls with it, so the words not final yet stay after the box's own (#647)
+  const follow = () => { const t = box.current, m = mirror.current; if (t && m) m.scrollTop = t.scrollTop; };
+  const sendP = useSpring(0, CFG.settle, (v) => { const el = askBox.current; if (el) el.style.scale = v === 0 ? "" : `${1 - 0.012 * v} ${1 - 0.075 * v}`; });
   const attach = async (fs: File[]) => { const got = await Promise.all(fs.map(readFile)); setAtts((a) => [...a, ...got]); };
   const attachRef = useRef(attach);
   attachRef.current = attach;
@@ -129,11 +178,33 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
       else resume(cmd[2] ?? "");
       return;
     }
-    if (w.say(draft.trim(), atts.map(({ name, mime, dataBase64 }) => ({ name, mime, dataBase64 })))) {
+    // Cowork v3 (fr-30): in a session with a project chip, words that make a thing go to the stage, not the session
+    if (v3On(e.settings) && !atts.length && v3Make(w, e, draft.trim(), (t) => w.say(t, []))) { setDraft(""); setPop(null); requestAnimationFrame(grow); onSent(); return; }
+    if (clean && busy && !held && w.live) {
+      if (!draft.trim() && !atts.length) return;
+      setQueue((q) => [...q, { text: draft.trim(), atts, stage: stageOf() }]);
+      if (staged) barSent();
       setDraft(""); setAtts([]); setPop(null); requestAnimationFrame(grow);
-      sendP.set(1); sendP.to(0, { cfg: CFG.pop, delay: 60 });
+      sendP.set(1); sendP.to(0, { cfg: CFG.settle, delay: 60 });
+      return;
+    }
+    if (w.say(draft.trim(), atts.map(({ name, mime, dataBase64 }) => ({ name, mime, dataBase64 })), stageOf())) {
+      if (staged) barSent();
+      setDraft(""); setAtts([]); setPop(null); requestAnimationFrame(grow);
+      sendP.set(1); sendP.to(0, { cfg: CFG.settle, delay: 60 });
       onSent();
     }
+  };
+  // the queue's head goes when the run settles (busy falls and nothing is asked)
+  useEffect(() => {
+    if (busy || !queue.length || !w.live) return;
+    const [h, ...rest] = queue;
+    if (w.say(h.text, h.atts.map(({ name, mime, dataBase64 }) => ({ name, mime, dataBase64 })), h.stage)) { setQueue(rest); onSent(); }
+  }, [busy, queue.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unqueue = (i: number, back: boolean) => {
+    const h = queue[i];
+    setQueue((q) => q.filter((_, j) => j !== i));
+    if (back && h) { setDraft((d) => (d.trim() ? d + "\n" : "") + h.text); setAtts((a) => [...a, ...h.atts]); requestAnimationFrame(() => { grow(); box.current?.focus(); }); }
   };
   useEffect(() => { if (!busy) box.current?.focus(); }, [busy, w.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -144,12 +215,13 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
     const upto = t.value.slice(0, caret), after = t.value.slice(caret);
     const qt = /(?:^|\s)@"([^"@]*)$/.exec(upto);
     const at = qt ? null : /(?:^|\s)@([^\s@"]*)$/.exec(upto);
-    const sl = /^\/([\w:.-]*)$/.exec(upto);
+    // a / at the start or after a space, up to the caret: a command anywhere in the words (#647, Marco 2026-11-06; #655 for the engine's side)
+    const sl = /(?:^|\s)\/([\w:.-]*)$/.exec(upto);
     // the rest of the token after the caret goes too when a hit replaces it
     const tail = (re: RegExp) => caret + (re.exec(after)?.[0].length ?? 0);
     setPop(qt ? { kind: "at", q: qt[1], start: caret - qt[1].length - 2, end: tail(/^[^"\n]*"?/) }
       : at ? { kind: "at", q: at[1], start: caret - at[1].length - 1, end: tail(/^[^\s@"]*/) }
-      : sl ? { kind: "slash", q: sl[1], start: 0, end: tail(/^[\w:.-]*/) } : null);
+      : sl ? { kind: "slash", q: sl[1], start: caret - sl[1].length - 1, end: tail(/^[\w:.-]*/) } : null);
   };
   const cmds = w.run?.commands;
   useEffect(() => { if (cmds?.length) try { localStorage.setItem("sol.work.commands", JSON.stringify(cmds)); } catch { /* private window */ } }, [cmds]);
@@ -195,12 +267,23 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   const popRef = useRef<HTMLDivElement>(null);
   const shown = !!pop && hits.length > 0;
   const current = !!pop && hitsFor === (pop.kind === "at" ? "@" : "/") + pop.q;
-  useLayoutEffect(() => { if (shown && popRef.current) enter(popRef.current, { y: 8, cfg: CFG.snap }); }, [shown, pop?.kind]);
+  useLayoutEffect(() => { if (shown && popRef.current) enter(popRef.current, { y: 8, cfg: CFG.settle }); }, [shown, pop?.kind]);
 
   // ---- dictation: Life's recorder, the words landing at the caret ----
   const [rec, setRec] = useState<"off" | "on" | "ending">("off");
+  const listening = rec !== "off" || forcedState === "listening";   // forcedState: dev ?creature=listening, shown without a microphone
   const [heard, setHeard] = useState({ kept: "", open: "" });
+  // the words not final yet grow the box as they come (the mirror is taller than the box's own words), and the mirror keeps its place
+  useEffect(() => { if (listening) requestAnimationFrame(() => { grow(); follow(); }); }, [heard.open, listening]); // eslint-disable-line react-hooks/exhaustive-deps
   const settledWords = useRef("");
+  // the live transcript (#647 round 3): words the recognizer has settled go into the box as they settle, so they are
+  // the person's to edit at once; the words still open show after them in a lighter tone (the mirror under the box)
+  const keptIn = useRef("");
+  const land = (words: string) => {
+    if (!words) return;
+    setDraft((d) => d + (d && !/\s$/.test(d) ? " " : "") + words);
+    requestAnimationFrame(grow);
+  };
   const recorder = useRef<Recorder | null>(null);
   const recStart = useRef(0);
   useEffect(() => () => { const r = recorder.current; recorder.current = null; void r?.stop().catch(() => {}); }, []);
@@ -220,15 +303,31 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
     try {
       recorder.current = await startRecording(e.settings?.mic, (clip, tag) => e.hear(clip, false, tag));
       recStart.current = Date.now();
-      setHeard({ kept: "", open: "" }); setRec("on");
+      setHeard({ kept: "", open: "" }); keptIn.current = ""; setRec("on");
     } catch (err) { e.flash((err as Error).message || "the microphone is not available"); }
   };
   const micUp = () => { if (recStart.current > 0 && Date.now() - recStart.current > 500) void micStop(); };
-  e.partialCb.current = (text, tag) => { const r = recorder.current; if (r) setHeard(r.heard(tag, text)); };
+  e.partialCb.current = (text, tag) => {
+    const r = recorder.current;
+    if (!r) return;
+    const h = r.heard(tag, text);
+    if (clean && h.kept.length > keptIn.current.length && h.kept.startsWith(keptIn.current)) { land(h.kept.slice(keptIn.current.length).trim()); keptIn.current = h.kept; }
+    setHeard(h);
+    requestAnimationFrame(grow);
+  };
   e.heardCb.current = (last) => {
-    const text = [settledWords.current, last].filter(Boolean).join(" ");
+    const settled = settledWords.current;
     settledWords.current = "";
     setRec("off"); setHeard({ kept: "", open: "" });
+    if (clean) {
+      // what settled and is not in the box yet, then the last open stretch read once more: all of it normal text now
+      const rest = settled.startsWith(keptIn.current) ? settled.slice(keptIn.current.length).trim() : "";
+      land([rest, last].filter(Boolean).join(" "));
+      keptIn.current = "";
+      requestAnimationFrame(() => { grow(); const t = box.current; if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } });
+      return;
+    }
+    const text = [settled, last].filter(Boolean).join(" ");
     if (text) {
       const t = box.current, at = t?.selectionStart ?? draft.length, end = t?.selectionEnd ?? at;
       setDraft((d) => d.slice(0, at) + (at > 0 && d[at - 1] && !/\s/.test(d[at - 1]) ? " " : "") + text + d.slice(end));
@@ -272,11 +371,13 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
       : [{ head: "the effort" }, ...(info?.efforts ?? e.efforts).map((x) => ({ label: String(x), on: x === w.effort, run: () => w.adjust({ effort: String(x) }) }))];
     setMenu({ x: (r?.left ?? 40) + 10, y: (r?.top ?? 400) - 6, items });
   };
+  const cleanR = useRef(clean);
+  cleanR.current = clean;
   useEffect(() => {
     const key = (ev: KeyboardEvent) => {
       if (!ev.metaKey || !ev.shiftKey) return;
       const k = ev.key.toLowerCase();
-      if (k === "m") { ev.preventDefault(); cycle.current(); }
+      if (k === "m") { if (!cleanR.current) { ev.preventDefault(); cycle.current(); } }
       else if (k === "i" || k === "e") { ev.preventDefault(); pickMenu.current(k === "i" ? "model" : "effort"); }
     };
     window.addEventListener("keydown", key);
@@ -291,7 +392,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
       { label: "a command", key: "/", run: () => { setDraft((d) => (d.startsWith("/") ? d : "/" + d)); requestAnimationFrame(() => { const t = box.current; if (t) { t.focus(); t.setSelectionRange(1, 1); scan(t); } }); } },
       ...(skills.length ? [{ label: "a skill", sub: skills.slice(0, 14).map((s) => ({ label: s, run: () => { setDraft((d) => `/${s} ${d}`); requestAnimationFrame(() => box.current?.focus()); } })) }] : []),
       { sep: true },
-      { label: "ask on the side", key: "⌘;", disabled: !w.live, run: () => { setAsideOn(true); box.current?.focus(); } },
+      { label: "ask on the side", key: clean ? undefined : "⌘;", disabled: !w.live, run: () => { setAsideOn(true); box.current?.focus(); } },
   ];
   // the mode chip: a click opens the wheel and it stays; a hold (350 ms) or a right-click opens it for a release-pick (LeashWheel.tsx)
   const leashBtn = useRef<HTMLButtonElement>(null);
@@ -301,6 +402,19 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   const leashStop = () => { window.clearTimeout(leashTimer.current); leashTimer.current = undefined; };
   const leashDown = (ev: React.PointerEvent) => { if (ev.button !== 0) return; leashHeld.current = false; leashStop(); leashTimer.current = window.setTimeout(() => { leashHeld.current = true; leashOpen("hold"); }, 350); };
   const leash = () => { if (leashHeld.current) { leashHeld.current = false; return; } if (wheel) setWheel(null); else leashOpen("stick"); };
+  // the clean Home: the mode chip lifts the ladder (ModePick), the folder chip the folder card (FolderPick)
+  const folderBtn = useRef<HTMLButtonElement>(null);
+  const [lift, setLift] = useState<null | { kind: "mode" | "folder"; r: DOMRect }>(null);
+  const lifted = (kind: "mode" | "folder", el: HTMLElement | null) => setLift((x) => (x?.kind === kind || !el ? null : { kind, r: el.getBoundingClientRect() }));
+  // the folders a new session can start in: the engine's projects; else the folders the sessions ran in, counted;
+  // the side's "new in" and the current folder always among them
+  const places = useMemo<Place[]>(() => {
+    const m = new Map<string, Place>();
+    for (const p of w.projects) m.set(p.path, { name: p.name || base(p.path), path: p.path, count: p.count });
+    if (!w.projects.length) for (const x of w.sessions) { const k = x.project || x.cwd; if (!k) continue; const p = m.get(k); if (p) p.count++; else m.set(k, { name: base(k), path: k, count: 1 }); }
+    for (const k of [w.prefs.newIn, w.freshCwd, cwd]) if (k && k !== "~" && !m.has(k)) m.set(k, { name: base(k), path: k, count: 0 });
+    return [...m.values()];
+  }, [w.projects, w.sessions, w.prefs.newIn, w.freshCwd, cwd]);
   const folder = (ev: React.MouseEvent) => at(ev, [
     { head: "a new session starts in" },
     ...[...w.projects].sort((a, b) => b.count - a.count).slice(0, 8).map((p) => ({ label: p.name || base(p.path), on: p.path === w.freshCwd, run: () => w.fresh(p.path) })),
@@ -329,10 +443,25 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   its.forEach((i, n) => { if (i.kind === "suggest") sugAt = n; else if (i.kind === "me") meAt = n; });
   const ghost = !busy && !asideOn && !draft && sugAt > meAt && its[sugAt]?.text && localStorage.getItem("sol.work.suggest") !== "0" ? String(its[sugAt].text) : "";
   const atLabel = w.freshCwd && w.freshCwd !== "~" ? base(w.freshCwd) : "~";
+  // the row (#647): a question Claude asks (a permission, a plan, a choice) stands in the bar, over the words, not in
+  // the talk; ↑ in an empty box brings the last thing you said back. (The busy line went, Marco 2026-11-06: "unhelpful".)
+  const asking = clean ? its.find((i) => i.kind === "perm" && i.state === "ask") : undefined;
+  // the clean Home's field: the box over its mirror (the words still being heard, in a lighter tone)
+  useLevel(askBox, !!clean && listening);
+  const wrapField = (x: React.ReactNode) => (clean ? <div className={`wtype${listening ? " hearing" : ""}`}>{x}</div> : x);
+  // bypass sticks (#647 round 3): once confirmed, the person's default mode for every new session
+  const def = e.settings?.defaults?.mode;
+  const sureBypass = () => { try { localStorage.setItem(BYPASS_SURE, "1"); } catch { /* private window */ } setDefaultMode("bypassPermissions"); w.adjust({ mode: "bypassPermissions" }); };
+  const setDefaultMode = (m: string) => e.setSettings({ defaults: { mode: m } });
+  const turns = its.filter((i) => i.kind === "me").length;
+  const usage = (w.run as (typeof w.run & { usage?: Usage }) | undefined)?.usage;
+  const compact = w.live ? () => e.send({ type: "work.compact", sessionId: w.live, model: w.model, effort: w.effort, mode: w.mode, fast: w.fast }) : undefined;
+  const lastSaid = clean && meAt >= 0 ? String(its[meAt]?.text ?? "") : "";
   return (
     <div className="ask">
       <div className="ask-col">
         <StableLine />
+        {v3On(e.settings) && <V3Stage w={w} e={e} />}
         <FileLine mode={cowork ? "cowork" : "work"} page={`${cowork ? "Cowork" : "Home"} · ${w.live ? "session" : "new session"} · ${cwd ? base(cwd) : "~"}`} conversation={w.live} />
         {held && !asideOn && (
           <div className="wheld">
@@ -345,7 +474,10 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
         )}
         {w.sideAnswer && <AsideCard key={w.sideAnswer.id} a={w.sideAnswer} onClose={() => w.dropAside()} />}
         <EngineBack up={e.up} />
-        <div className={`ask-inner ${asideOn ? "aside" : ""} ${drop ? "drop" : ""} ${(busy || working) && !held ? "running" : ""}`} ref={askBox} onFocus={() => setBoxFocus(true)} onBlur={() => setBoxFocus(false)}>
+        {clean && staged && <BarChips noOn={wbox} />}
+        <div className={`ask-inner${wbox ? " wbox" : ""} ${asideOn ? "aside" : ""} ${drop ? "drop" : ""} ${(busy || working) && !held ? "running" : ""}${clean ? " kit" : ""}${clean && listening ? " listening" : ""}`} ref={askBox} onFocus={() => setBoxFocus(true)} onBlur={() => setBoxFocus(false)}>
+          {clean && <Field focus={boxFocus || listening} />}
+          {clean && listening && <Hears />}
           {shown && (
             <div ref={popRef} className={`wpop ${pop!.kind}`} role="listbox">
               {hits.map((h, i) => (
@@ -356,26 +488,28 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
               ))}
             </div>
           )}
-        {atts.length > 0 && (
-            <div className="chips">
-              {atts.map((a, i) => (
-                <div className="chip" key={i}>{a.thumb && <img src={a.thumb} alt="" />}<span>{a.name}</span>
-                  <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} title="remove">×</button></div>
-              ))}
-            </div>
-          )}
+        {atts.length > 0 && <Chips atts={atts} onRemove={(i) => setAtts((x) => x.filter((_, j) => j !== i))} />}
+          {asking && <div className="wask"><PermCard key={asking.id} it={asking} w={w} /></div>}
           <div className="ask-line">
-          <Plus more={plusMore} onFiles={(fs) => void attach(fs)} />
-          {rec !== "off" && (
+          {wbox ? null : clean ? <Plus kit more={plusMore} onFiles={(fs) => void attach(fs)} />
+            : listening ? <span className="wlisten" title="listening: say it, the words land here"><VoiceBody kind="listening" size={24} /></span>
+            : <Plus more={plusMore} onFiles={(fs) => void attach(fs)} />}
+          {!clean && rec !== "off" && (
             <p className="live" aria-live="polite">
               {draft.trim() || heard.kept || heard.open ? <>{[draft.trim(), heard.kept].filter(Boolean).join(" ")}{heard.open && <span className="said">{(draft.trim() || heard.kept) ? " " : ""}{heard.open}</span>}{rec === "ending" && <span className="said">…</span>}</>
                 : <span className="said">{rec === "ending" ? "…" : "listening…"}</span>}
             </p>
           )}
+          {wrapField(<>
+          {wbox && staged && <OnToken onClear={() => box.current?.focus()} />}
+          {clean && listening && (
+            <div ref={mirror} className="wmirror" aria-hidden="true"><span className="wsaid">{draft}</span>{heard.open && <span className="wunsure">{draft && !/\s$/.test(draft) ? " " : ""}{heard.open}</span>}{rec === "ending" && <span className="wunsure"> …</span>}</div>
+          )}
           <textarea ref={box} rows={1} value={draft} disabled={!e.up}
             className={ghost ? "ghost" : undefined}
-            placeholder={!e.up ? "engine is starting" : held && !asideOn ? `words for it: fork here takes them along; copy puts them on the clipboard` : ghost ? `${ghost}   ⇥` : asideOn ? "ask on the side: the task goes on (esc to leave)" : busy ? "say more: it waits for the next step" : "tell Claude what to do  ·  @ a file  ·  / a command"}
+            placeholder={clean && listening ? (heard.open ? "" : "listening: say it, the words land here") : !e.up ? "engine is starting" : held && !asideOn ? `words for it: fork here takes them along; copy puts them on the clipboard` : ghost ? `${ghost}   ⇥` : asideOn ? "ask on the side: the task goes on (esc to leave)" : whole ? (busy ? "say more: it hears you while it works" : w.thread?.items?.length ? "tell it what is next" : `what are we doing in ${base(cwd ?? "") || "here"}?`) : busy ? "say more: it waits for the next step" : "tell Claude what to do  ·  @ a file  ·  / a command"}
             onChange={(ev) => { setDraft(ev.target.value); grow(); scan(ev.target); }}
+            onScroll={follow}
             onSelect={(ev) => scan(ev.currentTarget)}
             onBlur={() => setPop(null)}
             onPaste={async (ev) => { const fs = Array.from(ev.clipboardData.files); if (fs.length) { ev.preventDefault(); await attach(fs); } }}
@@ -386,23 +520,53 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
                 if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); setPop(null); return; }
               }
               if (ghost && (ev.key === "Tab" || ev.key === "ArrowRight") && !ev.shiftKey) { ev.preventDefault(); setDraft(ghost); requestAnimationFrame(grow); return; }
+              if (clean && ev.key === "ArrowUp" && !draft && lastSaid && !composing(ev)) { ev.preventDefault(); setDraft(lastSaid); requestAnimationFrame(() => { grow(); const t = box.current; if (t) t.setSelectionRange(lastSaid.length, lastSaid.length); }); return; }
+              if (clean && ev.key === "Escape" && !composing(ev)) {
+                // esc: an aside closes; a turn at work stops; an empty box lets the keys go
+                if (asideOn) { ev.preventDefault(); setAsideOn(false); return; }
+                if (busy && !held) { ev.preventDefault(); w.stop(); return; }
+                if (!draft) { ev.preventDefault(); box.current?.blur(); return; }
+              }
+              if (clean && listening && ev.key === "Enter" && !ev.shiftKey && !composing(ev)) { ev.preventDefault(); void micDown(); return; }   // enter ends the dictation; the next enter sends
               if (ev.key === "Enter" && !ev.shiftKey && !composing(ev)) { ev.preventDefault(); send(); }
             }} />
-          {(busy || working) && !held && <button className="stop" onClick={() => w.stop()}>stop</button>}
+          </>)}
+          {!wbox && clean && (draft.trim() || atts.length > 0) && !held && !asideOn && <button className="wsend" onClick={send} title={busy ? "queue it: it goes when this turn ends (enter)" : "send (enter)"} aria-label={busy ? "queue" : "send"}>{busy ? "queue" : "send"}</button>}
+          {!wbox && (busy || working) && !held && <button className="stop" onClick={() => w.stop()}>stop</button>}
           </div>
+          {queue.length > 0 && (
+            <div className="wqueue" aria-label="waiting to be sent">
+              {queue.map((q, i) => (
+                <div className="wq" key={i}>
+                  <button className="wq-text" onClick={() => unqueue(i, true)} title="back in the box">{q.text || `${q.atts.length} file${q.atts.length === 1 ? "" : "s"}`}{q.text && q.atts.length ? ` · ${q.atts.length} file${q.atts.length === 1 ? "" : "s"}` : ""}</button>
+                  <span className="wq-when">{i === 0 ? "next" : `then`}</span>
+                  <button className="wq-x" onClick={() => unqueue(i, false)} title="drop it">×</button>
+                </div>
+              ))}
+            </div>
+          )}
         {/* the same bar as a chat's (#24): the seat switch is always there; in Cowork it stays on Claude, a group's
             sessions being Claude Code ones, and says so */}
-        <Picker locked={!toChat} lockedWhy={toChat ? undefined : "a group's session runs on Claude Code; Codex talks live in Home"} seat="claude" info={info} seats={e.models.seats} model={w.model} effort={w.effort as never} efforts={info?.efforts ?? e.efforts}
+        <Picker locked={!toChat} lockedWhy={toChat ? undefined : "a project's session runs on Claude Code; Codex talks live in Home"} seat="claude" info={info} seats={e.models.seats} model={w.model} effort={w.effort as never} efforts={info?.efforts ?? e.efforts}
           up={e.up} health={e.health} context={w.run?.context ?? 0} win={w.run?.window || 200000} rec={rec !== "off"} notice={w.error}
           onSeat={(s) => { if (s !== "claude") (w.live ? switchTo : toChat)?.(s); }} onModel={(m) => w.adjust({ model: m })} onEffort={(v) => w.adjust({ effort: v })}
           onSeatModel={toChat ? (w.live ? switchTo : toChat) : undefined}
-          onMicDown={micDown} onMicUp={micUp} call={<CallKey e={e} at={w.live ? { work: true, session: w.live } : null} />}>
-          <button ref={leashBtn} className={`wchip leash ${w.mode}${wheel ? " lifted" : ""}`} onClick={leash} onPointerDown={leashDown} onPointerUp={leashStop} onPointerLeave={leashStop}
-            onContextMenu={(ev) => { ev.preventDefault(); leashStop(); leashOpen("stick"); }} title="mode: what Claude may do without asking (hold it for the wheel; cmd+shift+M steps)">
-            {w.mode === "bypassPermissions" && <Aurora />}<span className="leash-w">{mode.label}</span>
+          onMicDown={micDown} onMicUp={micUp} call={clean ? undefined : <CallKey e={e} at={w.live ? { work: true, session: w.live } : null} />} noSeat={clean} noEngine={clean} row={clean}
+          usage={usage} turns={turns} busy={busy} onCompact={compact}
+          lead={wbox ? <Plus kit more={plusMore} onFiles={(fs) => void attach(fs)} /> : undefined}
+          tail={wbox ? <GoKey go={!!(draft.trim() || atts.length > 0) && !held && !asideOn} busy={busy} onSend={send} onStop={(busy || working) && !held ? () => w.stop() : undefined} /> : undefined}>
+          <button ref={leashBtn} className={`wchip leash ${w.mode}${clean ? " kit" : ""}${wheel || lift?.kind === "mode" ? " lifted" : ""}`} onClick={clean ? () => lifted("mode", leashBtn.current) : leash} onPointerDown={clean ? undefined : leashDown} onPointerUp={leashStop} onPointerLeave={leashStop}
+            onContextMenu={clean ? undefined : (ev) => { ev.preventDefault(); leashStop(); leashOpen("stick"); }} title={clean ? "mode: what Claude may do without asking" : "mode: what Claude may do without asking (hold it for the wheel; cmd+shift+M steps)"}>
+            {clean
+              ? <Pill words={[mode.label]} picked={lift?.kind === "mode" ? 0 : -1} h={24} wash={w.mode === "bypassPermissions" ? 0.9 : 0} />   // Bypass: the pill lit by the jelly's colours, never a warning mark
+              : <>{w.mode === "bypassPermissions" && <Aurora />}<span className="leash-w">{mode.label}</span></>}
           </button>
           {wheel && createPortal(<LeashWheel r={wheel.r} kind={wheel.kind} items={MODES} mode={w.mode} onPick={(m) => w.adjust({ mode: m as Mode })} onClose={() => setWheel(null)} chip={leashBtn.current} />, document.body)}
-          {!w.live && <button className="wchip" onClick={folder} title={(w.freshCwd ? tilde(w.freshCwd) : "your home folder") + (w.copy ? "\nin a side copy of its repo (its own branch)" : "")}>in {atLabel}{w.copy ? " · side copy" : ""}</button>}
+          {clean && lift?.kind === "mode" && <ModePick r={lift.r} items={MODES} mode={w.mode} def={def} onPick={(m) => w.adjust({ mode: m as Mode })} onSure={sureBypass} onDefault={setDefaultMode} onClose={() => setLift(null)} chip={leashBtn.current} />}
+          {clean && lift?.kind === "folder" && <FolderPick r={lift.r} places={places} cwd={w.freshCwd} copy={w.copy} onPick={(p) => w.fresh(p)} onCopy={w.setCopy} chip={folderBtn.current} onClose={() => setLift(null)}
+            onOther={async (v) => { const r = await w.files(v, ""); return r.missing || !r.cwd ? null : r.cwd; }} />}
+          {!w.live && <button ref={folderBtn} className={`wchip folder${clean ? " kit" : ""}${lift?.kind === "folder" ? " lifted" : ""}`} onClick={clean ? () => lifted("folder", folderBtn.current) : folder} title={(w.freshCwd ? tilde(w.freshCwd) : "your home folder") + (w.copy ? "\nin a side copy of its repo (its own branch)" : "")}>
+            {clean ? <Pill words={[`in ${atLabel}${w.copy ? " · side copy" : ""}`]} picked={lift?.kind === "folder" ? 0 : -1} h={24} /> : <>in {atLabel}{w.copy ? " · side copy" : ""}</>}</button>}
         </Picker>
         </div>
       </div>

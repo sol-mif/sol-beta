@@ -254,7 +254,7 @@ test("each room keeps its own talk; the files from before rooms show in the firs
   const dir = tmp("sol-talk-rooms-");
   writeFileSync(join(dir, "general.json"), JSON.stringify([{ id: "old", thread: "general", from: "frank", at: 1, text: "from before rooms", source: "relay" }]));
   _talkAt(dir, tmp("sol-home-"));
-  const room = (id: string, code: string) => ({ id, name: id, provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"], hub: "", key: "", code, gate: "github", folder: "", mine: true, joined: false });
+  const room = (id: string, code: string) => ({ id, name: id, provider: "github", org: "", repos: ["sol-mif/sol-dev"], hub: "", key: "", code, gate: "github", folder: "", mine: true, joined: false });
   patchTeam({ rooms: [room("first", "ABC234"), room("second", "ABC235")], room: "first" } as never);
   assert.deepEqual(history("general").map((l) => l.id), ["old"]);
   hearRelay({ kind: "talk", id: "in-first", thread: "general", from: { login: "isaac", agent: false }, at: 50, text: "hi first" } as never);

@@ -151,7 +151,7 @@ test("askIn: a room of mine I can write to and have no folder for is cloned with
 test("askIn: a room of mine whose repo a Work folder of mine holds already is not cloned", async () => {
   as("frank", [made("worked", ["frank/ask-worked"])]);
   const asked: string[] = [];
-  const { d, c } = deps({ canWrite: () => true, have: async (repo) => { asked.push(repo); return "/Users/frank/code/ask-worked"; } });
+  const { d, c } = deps({ canWrite: () => true, have: async (repo) => { asked.push(repo); return "/Users/someone/code/ask-worked"; } });
   await L.askIn(d);
   assert.deepEqual([asked, c.git], [["frank/ask-worked"], []]);
 });

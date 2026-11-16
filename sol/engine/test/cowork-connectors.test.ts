@@ -13,7 +13,7 @@ const HUB = "wss://cloud.example.net/relay";
 const FILE = join(mkdtempSync(join(tmpdir(), "sol-team-")), "team.json");
 writeFileSync(FILE, JSON.stringify({ me: { login: "frank", name: "Frank" }, rooms: [
   { id: "study", name: "Study", provider: "cloud", hub: HUB, code: "BKQ2CL", mine: true },
-  { id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"] },
+  { id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"] },
 ], room: "study" }));
 process.env.SOL_TEAM = FILE;
 process.env.SOL_TEAM_OFFLINE = "1";
@@ -111,9 +111,9 @@ test("a patch in the words from before rooms never writes a cloud group's repos 
   assert.deepEqual(S.getTeam().repos, before.repos);
   // a GitHub room in use still takes them, as Control's org field always did
   S.patchTeam({ room: "sol" });
-  S.patchTeam({ repos: ["marcocyl04-ux/sol-dev", "o/two"] });
-  assert.deepEqual(S.getTeam().rooms.find((r) => r.id === "sol")!.repos, ["marcocyl04-ux/sol-dev", "o/two"]);
-  S.patchTeam({ repos: ["marcocyl04-ux/sol-dev"], room: "study" });
+  S.patchTeam({ repos: ["sol-mif/sol-dev", "o/two"] });
+  assert.deepEqual(S.getTeam().rooms.find((r) => r.id === "sol")!.repos, ["sol-mif/sol-dev", "o/two"], "as written: the record comes from GitHub's answer (#510), never a name in the code");
+  S.patchTeam({ repos: ["sol-mif/sol-dev"], room: "study" });
 });
 
 test("joined by a code: a cloud group takes no repository from the hub's answer (review P1-2)", async () => {
@@ -169,7 +169,7 @@ test("connectors.json through the store: compare-and-swap, a conflict read again
 test("connect: refused in a GitHub group and a Drive group, before GitHub is asked anything", async () => {
   const { gh, calls } = fakeGh({});
   const d = { record: () => fakeRecord().rec, gh, github: async () => true, who: () => "frank" };
-  const github = S.cleanRoom({ id: "sol", repos: ["marcocyl04-ux/sol-dev"] })!;
+  const github = S.cleanRoom({ id: "sol", repos: ["sol-mif/sol-dev"] })!;
   const drive = S.cleanRoom({ id: "d", provider: "drive", repos: ["1AbCdEfGhIjKlMnOp"] })!;
   assert.deepEqual(await C.connectRepo(d, github, "o/r", true), { error: "this group's record is its repository" });
   assert.deepEqual(await C.connectRepo(d, drive, "o/r", true), { error: C.SAY.drive });

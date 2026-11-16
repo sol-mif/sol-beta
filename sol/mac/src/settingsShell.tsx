@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 // pane on the right shows one section. The drawers (Settings, Control, Work) stay as they were written: a Drawer
 // inside the shell registers its name and draws only when it is the one picked. Map: sol/design/maps/settings.html.
 
-export type IconName = "me" | "key" | "screens" | "agent" | "shield" | "chip" | "wave" | "mic" | "music" | "palette"
+export type IconName = "me" | "key" | "screens" | "agent" | "shield" | "chip" | "wave" | "mic" | "palette"
   | "branch" | "copies" | "session" | "bell" | "power" | "pulse" | "tools" | "search" | "dot";
 
 const P: Record<IconName, ReactNode> = {
@@ -17,7 +17,6 @@ const P: Record<IconName, ReactNode> = {
   chip: <><rect x="6.5" y="6.5" width="11" height="11" rx="2" /><path d="M9.5 3v3.5M14.5 3v3.5M9.5 17.5V21M14.5 17.5V21M3 9.5h3.5M3 14.5h3.5M17.5 9.5H21M17.5 14.5H21" /></>,
   wave: <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" />,
   mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></>,
-  music: <><path d="M9 18V5.5l11-2.5v13" /><circle cx="6" cy="18" r="3" /><circle cx="17" cy="16" r="3" /></>,
   palette: <><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.9-.8 1.9-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.9-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7" r="1" /><circle cx="15" cy="7" r="1" /></>,
   branch: <><circle cx="6" cy="5" r="2" /><circle cx="6" cy="19" r="2" /><circle cx="18" cy="6" r="2" /><path d="M6 7v10M18 8v1.5a4 4 0 0 1-4 4H9a3 3 0 0 0-3 3" /></>,
   copies: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
@@ -37,16 +36,15 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
 // it by (the row labels inside, and the words a person would type). A drawer missing here still shows, under "more".
 type Sec = { group: string; icon: IconName; title: string; line: string; words: string };
 export const SECTIONS: Record<string, Sec> = {
-  "me": { group: "you", icon: "me", title: "me", line: "your name, your sign-ins and the rooms you are in", words: "name github org sol google sign in rooms room forget profile login" },
+  "me": { group: "you", icon: "me", title: "me", line: "your name, your sign-ins and the projects you are in", words: "name github org sol google sign in projects project rooms room groups group forget profile login" },
   "my accounts": { group: "you", icon: "key", title: "accounts", line: "Claude and Codex on this machine, and which one answers a new chat", words: "claude code codex sign in subscription who answers new chat session seat login" },
   "my machines": { group: "you", icon: "screens", title: "machines", line: "the Sols this window can use; switching reloads the window", words: "machine nucbox mac address wss add remove use switch engine computer" },
   "my agent": { group: "your agent", icon: "agent", title: "my agent", line: "where it may speak for you, and which pings it brings to you", words: "github cowork discord whatsapp speak post sign signed pings dials clash contract claim decision named chat card" },
-  "what leaves this machine": { group: "your agent", icon: "shield", title: "what leaves", line: "what stays on this Mac, and the few things that may go", words: "privacy prompts memory transcripts audit share room sessions show quiet sign-ins logins browser cookies data" },
+  "what leaves this machine": { group: "your agent", icon: "shield", title: "what leaves", line: "what stays on this Mac, and the few things that may go", words: "privacy prompts memory transcripts audit share project room group sessions show quiet sign-ins logins browser cookies data" },
   "defaults": { group: "chats", icon: "chip", title: "models", line: "the model and effort a new conversation starts with", words: "model effort codex claude opus sonnet gpt default work may permission mode plan bypass accept edits auto" },
   "voice": { group: "chats", icon: "wave", title: "voice", line: "how Sol sounds when it talks, and when it answers", words: "voice speak sound patience pause language english dutch cantonese hear sample gemini" },
   "microphone": { group: "chats", icon: "mic", title: "microphone", line: "which input Sol hears", words: "mic microphone input audio device allow record dictation" },
   "look": { group: "look", icon: "palette", title: "look", line: "the window's colour, the glass, and your bubble", words: "colour color base opacity transparency blur glass bubble text size font theme appearance dark" },
-  "music": { group: "look", icon: "music", title: "music", line: "vibe mode: Sol's colours moving with what this Mac plays", words: "vibe music sound screen frame ring glow colours size brightness beat" },
   "work": { group: "work", icon: "branch", title: "folders & branches", line: "where side copies live, where new sessions start, branch names and tidying up", words: "side copies folder worktree new sessions start branch prefix archive pull request untouched" },
   "sessions": { group: "work", icon: "session", title: "sessions", line: "what a Claude session may do, and how it writes", words: "suggested prompts box tab browser drive pages output style writing" },
   "side copies": { group: "work", icon: "copies", title: "side copies", line: "the scratch copies sessions work in, and what they hold", words: "worktree copies stale remove clean disk size transcripts" },

@@ -57,7 +57,7 @@ const seen: { sessions: WorkSession[]; projects: Project[]; groups: Group[]; ord
 // solo: a window of its own showing one session (a pop-out); it keeps nothing in this machine's Work state.
 // store: where Cowork keeps its open session, so the two modes do not open each other's; Home keeps none here, its
 // open talk is `sol.home.open` (WorkApp.tsx, migrate.ts), and its session starts from it
-export function useWork(e: { up: boolean; send: (o: object) => boolean; subscribe: (f: (m: any) => void) => () => void }, solo?: string, store?: string) {
+export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: string } } | null; send: (o: object) => boolean; subscribe: (f: (m: any) => void) => () => void }, solo?: string, store?: string) {
   const [sessions, setSessions] = useState<WorkSession[]>(seen.sessions);
   const [projects, setProjects] = useState<Project[]>(seen.projects);
   const [groups, setGroups] = useState<Group[]>(seen.groups);
@@ -72,13 +72,19 @@ export function useWork(e: { up: boolean; send: (o: object) => boolean; subscrib
   const [freshCwd, setFreshCwd] = useState<string>(() => load("sol.work.cwd", ""));
   const [model, setModel] = useState(() => load("sol.work.model", "claude-opus-5-5"));
   const [effort, setEffort] = useState(() => load("sol.work.effort", "high"));
-  // the mode starts at the Work default in Settings (#94), never at what a session last set; the pick lasts the window
+  // the mode starts at the Work default in Settings (#94), never at what a session last set; the pick lasts the window.
+  // The default is taken until a pick is made: a later settings message (any Settings change) must not undo the pick (#646, #647)
   const [mode, setMode] = useState<Mode>("default");
+  const modePicked = useRef(false);
   useEffect(() => {
-    const off = e.subscribe((m) => { const d = m?.type === "settings" ? m.settings?.defaults?.mode as Mode | undefined : undefined; if (d) setMode(d); });
-    e.send({ type: "settings.get" });
+    const off = e.subscribe((m) => { const d = m?.type === "settings" ? m.settings?.defaults?.mode as Mode | undefined : undefined; if (d && !modePicked.current) setMode(d); });
+    // asked again whenever the socket comes up: a send before it is up is dropped, and a reload starts there (#647)
+    if (e.up) e.send({ type: "settings.get" });
     return off;
-  }, [e.subscribe, e.send]);
+  }, [e.subscribe, e.send, e.up]);
+  // the engine hook keeps the settings it was sent; they may have come before this hook listened (#647)
+  const defMode = e.settings?.defaults?.mode as Mode | undefined;
+  useEffect(() => { if (defMode && !modePicked.current) setMode(defMode); }, [defMode]);
   const [fast, setFast] = useState(() => load("sol.work.fast", false));
   const [copy, setCopyS] = useState(() => load("sol.work.copy", false));   // a new session starts in a side copy
   const setCopy = useCallback((v: boolean) => { setCopyS(v); keep("sol.work.copy", v); }, []);
@@ -222,7 +228,8 @@ export function useWork(e: { up: boolean; send: (o: object) => boolean; subscrib
     send({ type: "work.view", sessionId: null });
   }, [send, freshCwd, prefs.newIn]);
 
-  const say = useCallback((text: string, files: FileOut[] = []) => {
+  // `stage`: the stage's bar (#698): its chips and what the person points at, sent beside the words (engine runs.ts)
+  const say = useCallback((text: string, files: FileOut[] = [], stage?: object) => {
     if (!text.trim() && !files.length) return false;
     let id = cur.current;
     const isFresh = !id || id.startsWith("new:");
@@ -237,7 +244,7 @@ export function useWork(e: { up: boolean; send: (o: object) => boolean; subscrib
     const r = isFresh ? undefined : runsNow.current[id!];
     const parent = isFresh ? parentNext.current : undefined;
     if (isFresh) parentNext.current = undefined;
-    send({ type: "work.say", sessionId: id, fresh: isFresh, cwd: isFresh ? freshCwd || undefined : undefined, ...(isFresh && copy ? { worktree: true } : {}), ...(parent ? { parent } : {}), text, files,
+    send({ type: "work.say", sessionId: id, fresh: isFresh, cwd: isFresh ? freshCwd || undefined : undefined, ...(isFresh && copy ? { worktree: true } : {}), ...(parent ? { parent } : {}), ...(isFresh ? { opening: true } : {}), text, files, ...(stage ? { stage } : {}),
       model: r?.model ?? model, effort: r?.effort ?? effort, mode: r?.mode ?? mode, fast: r?.fast ?? fast });
     return true;
   }, [send, freshCwd, model, effort, mode, fast, copy]);
@@ -254,7 +261,7 @@ export function useWork(e: { up: boolean; send: (o: object) => boolean; subscrib
   const adjust = useCallback((p: Partial<{ model: string; effort: string; mode: Mode; fast: boolean }>) => {
     if (p.model) { setModel(p.model); keep("sol.work.model", p.model); }
     if (p.effort) { setEffort(p.effort); keep("sol.work.effort", p.effort); }
-    if (p.mode) setMode(p.mode);
+    if (p.mode) { modePicked.current = true; setMode(p.mode); }
     if (p.fast !== undefined) { setFast(p.fast); keep("sol.work.fast", p.fast); }
     if (live) send({ type: "work.adjust", sessionId: live, ...p });
   }, [send, live]);
@@ -307,10 +314,41 @@ export function useWork(e: { up: boolean; send: (o: object) => boolean; subscrib
     peek: (id: string) => { beside.current.add(id); retrim(); send({ type: "work.peek", sessionId: id }); },
     unpeek: (id: string) => { beside.current.delete(id); retrim(); },   // its items go now
     term: (type: "in" | "size" | "close" | "list", a: object = {}) => send({ type: `work.term.${type}`, ...a }),
+    // a press on a hand-in card (#476, engine team/handin.ts): the card's key first, which the engine gives Sol's own
+    // window only, then the press; the engine does it and sends the card back changed
+    handIn: async (card: string, choice: "in" | "not", id = live): Promise<{ ok?: true; already?: true; error?: string }> => {
+      if (!id) return { error: "no session" };
+      const k = await ask<{ key?: string; error?: string }>("team.handin.key", { sessionId: id }, 10_000);
+      if (!k?.key) return { error: k?.error || "this session has no hand-in card" };
+      return ask<{ ok?: true; already?: true; error?: string }>("team.handin.press", { sessionId: id, id: card, choice, key: k.key }, 60_000);
+    },
+    // a press on the wrap-up box's merge (#579, engine team/handin.ts mergePress): the same key, then ready if a draft
+    // and merged; nothing is said to the agent
+    merge: async (pr?: number | string, id = live): Promise<{ ok?: true; number?: number; url?: string; error?: string }> => {
+      if (!id) return { error: "no session" };
+      const k = await ask<{ key?: string; error?: string }>("team.handin.key", { sessionId: id, box: true }, 10_000);
+      if (!k?.key) return { error: k?.error || "the engine gave no key for this box" };
+      return ask<{ ok?: true; number?: number; url?: string; error?: string }>("team.handin.merge", { sessionId: id, key: k.key, ...(pr !== undefined ? { pr } : {}) }, 120_000);
+    },
     // Codex reviews the session's change in this folder and scope (review.ts on the engine); its remarks come as items
     review: (cwd: string, scope: string, id = live) => id ? ask<{ round?: string; error?: string }>("work.review", { sessionId: id, cwd, scope }, 30_000) : Promise.resolve({ error: "a new session has no change yet" }),
     reviewStop: (id = live) => id && send({ type: "work.review", sessionId: id, stop: true }),
     reviewMark: (item: string, state: "sent" | "dismissed", id = live) => id && send({ type: "work.review.mark", sessionId: id, id: item, state }),
+    // a press on the review session's card (#416): the engine does it, then sends the card back changed
+    // the review session's press (#416): the card's key first, which the engine gives Sol's own window only, then the press
+    tonight: async (verdict: string, number?: number, fix?: string, id = live): Promise<{ ok?: true; error?: string }> => {
+      if (!id) return { error: "no session" };
+      const k = await ask<{ key?: string; error?: string }>("team.tonight.key", { sessionId: id }, 10_000);
+      if (!k?.key) return { error: k?.error || "this session has no review card" };
+      return ask<{ ok?: true; error?: string }>("team.tonight.press", { sessionId: id, verdict, key: k.key, ...(number ? { number } : {}), ...(fix ? { fix } : {}) }, 90_000);
+    },
+    // Scoped and Approve (#482): the card's key first, which the engine gives Sol's own window only, then the press
+    checkpoint: async (card: string, id = live): Promise<{ ok?: true; line?: string; error?: string }> => {
+      if (!id) return { error: "no session" };
+      const k = await ask<{ key?: string; error?: string }>("team.checkpoint.key", { sessionId: id }, 10_000);
+      if (!k?.key) return { error: k?.error || "this session has no checkpoint card" };
+      return ask<{ ok?: true; line?: string; error?: string }>("team.checkpoint.press", { sessionId: id, id: card, key: k.key }, 30_000);
+    },
     dropAside: (id = live) => id && setAsides((a) => { if (a[id]) dropped.current.add(a[id].id); const n = { ...a }; delete n[id]; return n; }),
     setPref: (patch: SidePrefs) => { setPrefsS((p) => ({ ...p, ...patch })); void ask<{ prefs?: SidePrefs }>("work.prefs", { patch }).then((r) => keepPrefs(r.prefs)); },
   }), [send, live, ask, model, effort, mode, fast, keepPrefs, retrim]);
@@ -335,5 +373,8 @@ export function scoped(w: Work, id: string): Work {
     adjust: (p) => w.send2adjust(id, p),
     review: (cwd: string, scope: string) => w.review(cwd, scope, id), reviewStop: () => w.reviewStop(id),
     reviewMark: (item: string, state: "sent" | "dismissed") => w.reviewMark(item, state, id),
+    tonight: (verdict: string, number?: number, fix?: string) => w.tonight(verdict, number, fix, id),
+    handIn: (card: string, choice: "in" | "not") => w.handIn(card, choice, id),   // the side pane's card presses for its own session (#476)
+    merge: (pr?: number | string) => w.merge(pr, id),   // and its box's merge (#579)
   };
 }

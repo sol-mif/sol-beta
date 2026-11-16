@@ -13,6 +13,7 @@ import { span, useNow } from "./Elapsed";
 import { Unseen } from "../Site";
 import { WHICH, type Thread } from "../useEngine";
 import { useTalksWaiting } from "../Conversations";
+import { useV3On, V3RowMark } from "../cowork/v3/hooks";   // Cowork v3 (fr-30): a project's fold is where things land
 
 // Home's side (#132): every Claude Code session on this machine, under the folder it ran in, and below them the chats
 // (Life's conversations, in no folder). Pinned on top, then Marco's own groups, then the folders (or dates, or states). A row says its state with one mark: the runner while Claude
@@ -126,6 +127,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
   const pin = (id: string) => setPins((p) => { const n = p.includes(id) ? p.filter((x) => x !== id) : [id, ...p]; localStorage.setItem(CHAT_PINS, JSON.stringify(n)); return n; });
   const [view, setView] = useState<View>(loadView);
   const waiting = useTalksWaiting();   // talks not opened yet, from this Mac's engine: the dot on conversations
+  const v3 = useV3On();
   const setV = (p: Partial<View>) => setView((v) => { const n = { ...v, ...p }; localStorage.setItem("sol.work.view", JSON.stringify(n)); return n; });
   const [q, setQ] = useState("");
   const [folded, setFolded] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem("sol.work.folded") ?? "{}"); } catch { return {}; } });
@@ -249,7 +251,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     // a group I left says so
     const byRoom = new Map<string, WorkSession[]>();
     for (const s of cowork) byRoom.set(s.roomId ?? "", [...(byRoom.get(s.roomId ?? "") ?? []), s]);
-    const roomName = (id: string) => (id ? w.roomNames[id] ?? "a group you left" : "no group");
+    const roomName = (id: string) => (id ? w.roomNames[id] ?? "a project you left" : "no project");
     const rooms = [...byRoom.keys()].sort((a, b) => Math.max(...byRoom.get(b)!.map((s) => s.updatedAt)) - Math.max(...byRoom.get(a)!.map((s) => s.updatedAt)));
     if (rooms.length) sections.push({ key: "rooms", label: "cowork", rows: [], topics: rooms.map((id) => ({ key: "room:" + id, label: roomName(id), rows: byRoom.get(id)!.sort(sorter) })) });
   }
@@ -456,7 +458,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     const mine = (p as (Project & { mine?: { base: string; count: number; subjects: string[] } }) | undefined)?.mine;
     return (
       <div key={sec.key} className={`wsec ${over === sec.key ? "over" : ""} ${(p && dragging === "f:" + p.path) || (sec.top && moving === sec.top) ? "dragged" : ""} ${line && line.key === sec.top ? "line-" + line.at : ""}`} {...dropOn(sec)}>
-        <div className={`group tog ${isFolded ? "" : "open"}`} data-s onClick={() => fold(sec.key)} onContextMenu={(ev) => sectionMenu(ev, sec)}
+        <div className={`group tog ${isFolded ? "" : "open"}`} data-s data-v3-room={v3 && sec.key.startsWith("room:") ? sec.key.slice(5) : undefined} onClick={() => fold(sec.key)} onContextMenu={(ev) => sectionMenu(ev, sec)}
           title={p ? p.path + (w.prefs.newIn === p.path ? "\nnew sessions start here" : "") : undefined}
           draggable={(!!p || ordering(sec)) && !words.length}
           onDragStart={(p || ordering(sec)) ? ((ev) => {
@@ -465,9 +467,10 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
             ev.dataTransfer.effectAllowed = "move";
           }) : undefined}
           onDragEnd={(p || ordering(sec)) ? endDrag : undefined} {...orderOn(sec)}>
-          <Turn to={isFolded ? 0 : 90} cfg={{ k: 380, z: 0.5 }}><Caret /></Turn>
+          <Turn to={isFolded ? 0 : 90} cfg={CFG.settle}><Caret /></Turn>
           {p && <Folder />}<span className="gl">{sec.label}</span>
           {count > 0 && <small>{count}</small>}
+          {v3 && sec.key.startsWith("room:") && <V3RowMark room={sec.key.slice(5)} />}
           {p && <button className="here" title={`new session in ${p.path}`} onClick={(ev) => { ev.stopPropagation(); onFresh(p.path); }}><Plus /></button>}
         </div>
         {mine && <p className="wmine" title={mine.subjects.length ? `over ${mine.base}:\n` + mine.subjects.join("\n") + (mine.count > mine.subjects.length ? `\n…and ${mine.count - mine.subjects.length} more` : "") : `on ${mine.base}`}>
@@ -509,7 +512,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     return (
       <div key="chats" className="wsec wchats">
         <div className={`group tog ${isFolded ? "" : "open"}`} data-s onClick={() => fold("chats")}>
-          <Turn to={isFolded ? 0 : 90} cfg={{ k: 380, z: 0.5 }}><Caret /></Turn>
+          <Turn to={isFolded ? 0 : 90} cfg={CFG.settle}><Caret /></Turn>
           <span className="gl">{words.length ? `chats · ${chatRows.length} found` : "Chats"}</span>
           {chatRows.length > 0 && <small>{chatRows.length}</small>}
           <button className="here" title="new chat" onClick={(ev) => { ev.stopPropagation(); c.onNew(); }}><Plus /></button>
@@ -553,7 +556,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
   const holdOff = () => { if (held.current.t !== null) clearTimeout(held.current.t); held.current.t = null; };
   const layClick = () => { holdOff(); if (held.current.fired) { held.current.fired = false; return; } setLayout(nextLayout(layout)); };
   const pick = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (picking && pick.current) enter(pick.current, { x: -10, cfg: CFG.snap }); }, [picking]);
+  useLayoutEffect(() => { if (picking && pick.current) enter(pick.current, { x: -10, cfg: CFG.settle }); }, [picking]);
   useEffect(() => {
     if (!picking) return;
     const down = (ev: MouseEvent) => { if (!(ev.target as HTMLElement).closest(".wlay")) setPicking(false); };
@@ -583,7 +586,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
   const car = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0);
   const here = Math.min(at, Math.max(0, laid.length - 1));
-  const carSp = useSpring(0, CFG.glide, (v, s) => { const el = car.current; if (!el) return; el.scrollLeft = v; if (s.resting) el.style.scrollSnapType = ""; });
+  const carSp = useSpring(0, CFG.travel, (v, s) => { const el = car.current; if (!el) return; el.scrollLeft = v; if (s.resting) el.style.scrollSnapType = ""; });
   const goPage = (i: number) => { const el = car.current; if (!el) return; el.style.scrollSnapType = "none"; carSp.set(el.scrollLeft); carSp.to(i * el.clientWidth); setAt(i); };
   // and the keys: with the side focused (not its search), left and right go a page; the pages not showing are inert, so
   // tab never lands in one, and the focus moves with the page
@@ -676,6 +679,6 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
 
 function Arrive({ on, children }: { on: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (on && ref.current) enter(ref.current, { x: -24, cfg: CFG.slide }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (on && ref.current) enter(ref.current, { x: -24, cfg: CFG.travel }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <div ref={ref} data-s>{children}</div>;
 }

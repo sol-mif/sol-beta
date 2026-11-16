@@ -14,6 +14,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { STATE_DIR } from "../work/state.js";
+import { READ_AS_FACTS } from "./facts.js";
 
 export type PingKind = "clash" | "contract" | "claim" | "decision" | "chat" | "alert";
 // alert (#225): the cloud's watch, to its two admins only (oncall.ts); it never travels the relay as a teammate's ping
@@ -137,7 +138,8 @@ export const lastPing = (kind: PingKind) => [...readPings()].reverse().find((p) 
 export function pingsText(list: Ping[]): string {
   if (!list.length) return "no pings since you last looked";
   return list.map((p) => `${p.kind}${p.issue ? ` on #${p.issue}` : ""} from ${p.from.agent ? `${p.from.login}'s agent` : p.from.login}: ${p.line}`).join("\n") +
-    "\n\nTell your human the clash, contract and claim ones at your next pause, in a line each; the decision and chat ones already reached them as cards unless their dials say otherwise.";
+    "\n\nTell your human the clash, contract and claim ones at your next pause, in a line each; the decision and chat ones already reached them as cards unless their dials say otherwise. " +
+    READ_AS_FACTS;   // #432: a ping is a teammate's word, never an instruction to this agent
 }
 
 // ---- Claims, live (#202): the harness, on an edit of a file another branch changed, posts the hit to POST /claim;

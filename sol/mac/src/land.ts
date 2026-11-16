@@ -32,7 +32,7 @@ function find(root: HTMLElement, w: Want): HTMLElement | null {
 }
 
 function highlight(el: HTMLElement) {
-  const s = new Spring(0, CFG.arrive, (v) => el.style.setProperty("--land", String(Math.max(0, Math.min(1, v)))));
+  const s = new Spring(0, CFG.travel, (v) => el.style.setProperty("--land", String(Math.max(0, Math.min(1, v)))));
   el.classList.add("landed");
   s.to(1);
   window.setTimeout(() => { s.to(0, { cfg: CFG.settle }); window.setTimeout(() => { el.classList.remove("landed"); el.style.removeProperty("--land"); s.stop(); }, 700); }, LAND_MS - 700);

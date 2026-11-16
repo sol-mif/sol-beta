@@ -50,7 +50,7 @@ test("the tester code is made once, kept in home/track/id, and is the only ident
 
 test("a prop that is not small and plain drops the whole event and counts a track.dropped naming the event and the prop", () => {
   assert.equal(badProp({ n: 3, ok: true, kind: "read", hash: hashOf("/Users/x/p") }), null);
-  assert.equal(badProp({ path: "/Users/marco/secret" }), "path");
+  assert.equal(badProp({ path: "/Users/someone/secret" }), "path");
   assert.equal(badProp({ url: "https://example.com" }), "url");
   assert.equal(badProp({ text: "a".repeat(65) }), "text");
   assert.equal(badProp({ say: "remind sarah about rent" }), "say", "a space makes a sentence, not a word");
@@ -195,8 +195,8 @@ test("the tables name only words, and every name is fixed: no slash, nothing ove
   assert.equal(band(0), "0"); assert.equal(band(20), "1-20"); assert.equal(band(21), "21-100"); assert.equal(band(5000), "2001-");
   assert.equal(hashOf("/a").length, 12);
   assert.notEqual(hashOf("/a"), hashOf("/b"));
-  const salted = hashOf("/Users/franktsai/projects/sol");
-  assert.notEqual(salted, createHash("sha256").update("/Users/franktsai/projects/sol").digest("hex").slice(0, 12), "salted with a secret made on this Mac, so a common path cannot be guessed");
+  const salted = hashOf("/Users/someone/projects/sol");
+  assert.notEqual(salted, createHash("sha256").update("/Users/someone/projects/sol").digest("hex").slice(0, 12), "salted with a secret made on this Mac, so a common path cannot be guessed");
   assert.match(readFileSync(join(home, "track", "salt"), "utf8").trim(), /^[a-f0-9]{32}$/);
 });
 

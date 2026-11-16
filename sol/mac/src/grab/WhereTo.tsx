@@ -1,5 +1,5 @@
 // Where to? The picture folds up to a 260 px card at the top centre (from wherever it was: the markup's picture, or a
-// thumb in the tray; CFG.glide) and the list unfolds under it row by row (70 ms apart, CFG.slide): a new session, the
+// thumb in the tray; CFG.travel) and the list unfolds under it row by row (70 ms apart, CFG.travel): a new session, the
 // last six sessions (from `threads`, newest first), the tracker. ↑↓ slide a pearl light (slidePill), Return or a click
 // picks; a small field under the list takes optional words (the tracker needs them: one line).
 //
@@ -43,14 +43,14 @@ export function WhereTo({ out, from, bead, threads, say, onSent, auto }: {
   };
   useLayoutEffect(() => {
     say("Where to?");
-    fold.current = new Spring(0, CFG.glide, put);
-    fly.current = new Spring(0, { k: 150, z: 0.9 }, put);
+    fold.current = new Spring(0, CFG.travel, put);
+    fly.current = new Spring(0, CFG.travel, put);
     put(); fold.current.to(1);
-    void bead?.hop(card.x - BEAD / 2 - 2, card.y - BEAD / 2 - 2, { lift: 18, ms: 620 }).then(() => bead?.look(0, 3));
+    void bead?.hop(card.x - BEAD / 2 - 2, card.y - BEAD / 2 - 2, { lift: 18 }).then(() => bead?.look(0, 3));
     const l = list.current!;
-    growTo(l, 0, CFG.fold);
-    l.querySelectorAll<HTMLElement>(".where-row, .where-field").forEach((r, i) => enter(r, { y: 10, delay: 180 + i * 70, cfg: CFG.slide }));
-    light.current = slidePill(l, pill.current!, { cfg: CFG.snap });
+    growTo(l, 0, CFG.travel);
+    l.querySelectorAll<HTMLElement>(".where-row, .where-field").forEach((r, i) => enter(r, { y: 10, delay: 180 + i * 70, cfg: CFG.travel }));
+    light.current = slidePill(l, pill.current!, { cfg: CFG.settle });
     window.setTimeout(() => field.current?.focus(), 60);
     return () => { fold.current?.stop(); fly.current?.stop(); light.current?.destroy(); };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -88,8 +88,8 @@ export function WhereTo({ out, from, bead, threads, say, onSent, auto }: {
     say(line, true);
     fly.current?.to(1);
     // the list slides down off the screen (no fade) while the card flies up
-    const l = list.current; if (l) new Spring(0, CFG.away, (v) => { l.style.translate = `-50% ${v}px`; }).to(innerHeight - l.offsetTop + 40);
-    void bead?.hop(innerWidth / 2 - BEAD / 2, -BEAD - 30, { lift: 50, ms: 640 });
+    const l = list.current; if (l) new Spring(0, CFG.fade, (v) => { l.style.translate = `-50% ${v}px`; }).to(innerHeight - l.offsetTop + 40);
+    void bead?.hop(innerWidth / 2 - BEAD / 2, -BEAD - 30, { lift: 50 });
     window.setTimeout(onSent, 1200);
   };
   const pickRef = useRef(pick); pickRef.current = pick;

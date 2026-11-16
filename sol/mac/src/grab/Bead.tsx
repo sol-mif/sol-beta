@@ -32,26 +32,24 @@ export class Bead {
   private landed: (() => void) | null = null;
   private hold = 0;
   constructor(private el: HTMLElement, private pose: Pose, private life: { current: Life | null }) {
-    this.p = new Spring(1, { k: 150, z: 1, eps: 0.002 }, (v) => this.fly(v), () => { const f = this.landed; this.landed = null; if (this.stretch) this.sq.kick(-3.2 * this.stretch); f?.(); });
-    this.sq = new Spring(0, { k: 520, z: 0.42, eps: 0.002 }, () => this.draw());
-    this.ex = new Spring(0, CFG.snap, (v) => { this.pose.gx = v; });
-    this.ey = new Spring(0, CFG.snap, (v) => { this.pose.gy = v; });
-    this.gw = new Spring(0, CFG.snap, (v) => { this.pose.gw = v; });
+    this.p = new Spring(1, { ...CFG.travel, eps: 0.002 }, (v) => this.fly(v), () => { const f = this.landed; this.landed = null; if (this.stretch) this.sq.kick(-3.2 * this.stretch); f?.(); });
+    this.sq = new Spring(0, { ...CFG.lift, eps: 0.002 }, () => this.draw());
+    this.ex = new Spring(0, CFG.settle, (v) => { this.pose.gx = v; });
+    this.ey = new Spring(0, CFG.settle, (v) => { this.pose.gy = v; });
+    this.gw = new Spring(0, CFG.settle, (v) => { this.pose.gw = v; });
   }
   /** jump there, no travel */
   place(x: number, y: number) { this.p.stop(); this.x = x; this.y = y; this.from = this.dest = { x, y }; this.stretch = 0; this.draw(); }
   /** travel on an arc to (x, y): stretched on the way, squashed on landing. `ms` is a rough length (the spring's stiffness). */
-  hop(x: number, y: number, o: { lift?: number; ms?: number } = {}): Promise<void> {
+  hop(x: number, y: number, o: { lift?: number } = {}): Promise<void> {
     const dx = x - this.x, dy = y - this.y, dist = Math.hypot(dx, dy);
     if (dist < 1) { this.place(x, y); return Promise.resolve(); }
-    const ms = o.ms ?? Math.min(720, 380 + dist * 0.4);
     this.from = { x: this.x, y: this.y }; this.dest = { x, y };
     this.lift = o.lift ?? Math.min(48, 14 + dist * 0.06);
     this.stretch = Math.min(1, 0.35 + dist / 500);
     this.ang = Math.atan2(dy, dx);
-    const k = (4.6 / (ms / 1000)) ** 2;      // a critically damped spring settles in about 4.6 / sqrt(k) seconds
     this.landed?.();
-    return new Promise((ok) => { this.landed = ok; this.p.set(0); this.p.to(1, { cfg: { k, z: 1, eps: 0.002 } }); });
+    return new Promise((ok) => { this.landed = ok; this.p.set(0); this.p.to(1, { cfg: { ...CFG.travel, eps: 0.002 } }); });
   }
   /** hold the gaze toward (dx, dy) (each up to about 3) for a moment; then the creature watches the pointer again */
   look(dx: number, dy: number) {

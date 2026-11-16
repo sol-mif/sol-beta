@@ -1,0 +1,74 @@
+{
+  "v": 1,
+  "own": {
+    "columns": [
+      { "key": "title", "name": "title", "type": "text" },
+      { "key": "status", "name": "status", "type": "choice", "choices": [{ "id": "to do", "name": "to do" }, { "id": "doing", "name": "doing" }, { "id": "done", "name": "done" }] },
+      { "key": "who", "name": "who", "type": "person" },
+      { "key": "start", "name": "start", "type": "date" },
+      { "key": "due", "name": "due", "type": "date" }
+    ],
+    "views": [
+      { "id": "list", "kind": "list", "name": "list" },
+      { "id": "board", "kind": "board", "name": "board", "by": "status" },
+      { "id": "calendar", "kind": "calendar", "name": "calendar", "date": "due" },
+      { "id": "timeline", "kind": "timeline", "name": "timeline", "start": "start", "end": "due" }
+    ]
+  },
+  "sources": {
+    "board": {
+      "name": "the board",
+      "reads": "the project's issues on GitHub and where each stands, read again every minute",
+      "columns": [
+        { "key": "title", "name": "title", "type": "text" },
+        { "key": "number", "name": "#", "type": "number" },
+        { "key": "column", "name": "where", "type": "choice", "choices": [
+          { "id": "waiting", "name": "waiting" }, { "id": "branch", "name": "on a branch" }, { "id": "pr", "name": "in a PR" },
+          { "id": "main", "name": "on main" }, { "id": "stable", "name": "stable" }, { "id": "closed", "name": "closed" }] },
+        { "key": "domain", "name": "label", "type": "text" },
+        { "key": "who", "name": "who", "type": "person" },
+        { "key": "created", "name": "opened", "type": "date" },
+        { "key": "closed", "name": "closed", "type": "date" },
+        { "key": "pr", "name": "PR", "type": "number" }
+      ],
+      "views": [
+        { "id": "board", "kind": "board", "name": "board", "by": "column", "sort": { "key": "number", "desc": true }, "hide": { "column": ["closed"] } },
+        { "id": "list", "kind": "list", "name": "list", "sort": { "key": "number", "desc": true } },
+        { "id": "calendar", "kind": "calendar", "name": "calendar", "date": "created" },
+        { "id": "timeline", "kind": "timeline", "name": "timeline", "start": "created", "end": "closed", "sort": { "key": "created" }, "hide": { "column": ["closed"] } }
+      ]
+    },
+    "feed": {
+      "name": "what happened",
+      "reads": "the project's feed: what was opened, handed, landed and said, newest first",
+      "columns": [
+        { "key": "text", "name": "what", "type": "text" },
+        { "key": "kind", "name": "kind", "type": "choice", "choices": [] },
+        { "key": "who", "name": "who", "type": "person" },
+        { "key": "at", "name": "when", "type": "date" }
+      ],
+      "views": [
+        { "id": "list", "kind": "list", "name": "list", "sort": { "key": "at", "desc": true } },
+        { "id": "board", "kind": "board", "name": "board", "by": "who", "sort": { "key": "at", "desc": true } },
+        { "id": "calendar", "kind": "calendar", "name": "calendar", "date": "at" },
+        { "id": "timeline", "kind": "timeline", "name": "timeline", "start": "at", "sort": { "key": "at" } }
+      ]
+    },
+    "sessions": {
+      "name": "my sessions",
+      "reads": "the sessions each person started in this project, on their own Sol: titles and times only, never what was said",
+      "columns": [
+        { "key": "title", "name": "title", "type": "text" },
+        { "key": "state", "name": "state", "type": "choice", "choices": [{ "id": "open", "name": "open" }, { "id": "done", "name": "done" }, { "id": "archived", "name": "archived" }] },
+        { "key": "started", "name": "started", "type": "date" },
+        { "key": "last", "name": "last", "type": "date" }
+      ],
+      "views": [
+        { "id": "list", "kind": "list", "name": "list", "sort": { "key": "last", "desc": true } },
+        { "id": "board", "kind": "board", "name": "board", "by": "state", "sort": { "key": "last", "desc": true } },
+        { "id": "calendar", "kind": "calendar", "name": "calendar", "date": "started" },
+        { "id": "timeline", "kind": "timeline", "name": "timeline", "start": "started", "end": "last", "sort": { "key": "started" } }
+      ]
+    }
+  }
+}

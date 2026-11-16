@@ -97,7 +97,7 @@ function Card({ name, right, open, onToggle, chev, children }: {
 function Switch({ on, busy, onChange, label }: { on: boolean; busy?: boolean; onChange: (v: boolean) => void; label: string }) {
   const knob = useRef<HTMLElement>(null);
   const put = (v: number) => { if (knob.current) knob.current.style.translate = `${v * 12}px 0`; };
-  const sp = useSpring(on ? 1 : 0, CFG.snap, put);
+  const sp = useSpring(on ? 1 : 0, CFG.settle, put);
   useLayoutEffect(() => put(sp.v));
   useEffect(() => { sp.to(on ? 1 : 0); }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -328,7 +328,7 @@ function makeDev() {
   const usage: Usage = how === "estimated" ? {
     total: 197800, window: 250000,
     parts: { messages: 128400, mcpTools: null, systemTools: null, systemPrompt: null, skills: null, memory: 4100, mcpInstructions: null, agents: null, buffer: null, free: 52200 },
-    deferred: { mcpTools: null, systemTools: null }, lists: { mcp: mcpList, memory: ["/Users/marcol04/.claude/CLAUDE.md", "/Users/marcol04/computer/CLAUDE.md", "/Users/marcol04/computer/personal/CLAUDE.md"], agents: ["coder", "researcher", "reviewer"] },
+    deferred: { mcpTools: null, systemTools: null }, lists: { mcp: mcpList, memory: ["/Users/someone/.claude/CLAUDE.md", "/Users/someone/computer/CLAUDE.md", "/Users/someone/computer/personal/CLAUDE.md"], agents: ["coder", "researcher", "reviewer"] },
     compactSoon: true, how, est: ["messages", "memory"], rest: 65300,
   } : {
     total: 197800, window: 250000,
@@ -336,7 +336,7 @@ function makeDev() {
     deferred: { mcpTools: 314000, systemTools: 20200 },
     lists: {
       mcp: mcpList,
-      memory: ["/Users/marcol04/.claude/CLAUDE.md", "/Users/marcol04/computer/CLAUDE.md", "/Users/marcol04/computer/personal/CLAUDE.md", "/Users/marcol04/computer/personal/projects/ecosystem/CLAUDE.md", "/Users/marcol04/.claude/projects/-Users-marcol04-computer-personal-projects-ecosystem/memory/MEMORY.md"],
+      memory: ["/Users/someone/.claude/CLAUDE.md", "/Users/someone/computer/CLAUDE.md", "/Users/someone/computer/personal/CLAUDE.md", "/Users/someone/computer/personal/projects/ecosystem/CLAUDE.md", "/Users/someone/.claude/projects/-Users-marcol04-computer-personal-projects-ecosystem/memory/MEMORY.md"],
       agents: ["Brand Guardian", "China Market Localization Strategist", "coder", "Content Creator", "Growth Hacker", "researcher", "reviewer", "SEO Specialist", "Social Media Strategist", "UI Designer", "UX Architect"],
     },
     compactSoon: true, threshold: 217000, how, est: how === "summary" ? ["messages", "mcpTools", "systemTools", "systemPrompt", "skills", "memory", "mcpInstructions", "agents"] : [],
@@ -344,16 +344,16 @@ function makeDev() {
   const st = ["needs-auth", "needs-auth", "needs-auth", "needs-auth", "failed", "failed", "needs-auth", "needs-auth", "connected", "needs-auth", "needs-auth", "needs-auth", "connected", "pending"];
   const names = ["claude.ai Asana", "claude.ai Atlassian", "claude.ai Clickup", "claude.ai Figma", "plugin:design:gmail", "plugin:productivity:google calendar", "claude.ai Higgsfield", "claude.ai Intercom", "linear", "claude.ai Monday", "claude.ai Notion", "claude.ai Slack", "claude.ai Pika", "claude.ai Claude Docs"];
   const run = {
-    sessionId: "dev", busy: false, waiting: 0, cwd: "/Users/marcol04/computer/personal/projects/ecosystem", model: "claude-opus-5-5", effort: "high", mode: "default" as const, fast: false,
+    sessionId: "dev", busy: false, waiting: 0, cwd: "/Users/someone/computer/personal/projects/ecosystem", model: "claude-opus-5-5", effort: "high", mode: "default" as const, fast: false,
     context: 197800, window: 1_000_000, mcp: names.map((name, i) => ({ name, status: st[i] })), skills: ["design", "frontend-design", "pdf", "xlsx", "docx"], usage,
   };
   const at = Date.now();
   const tool = (id: string, name: string, input: object, out = "") => ({ id, kind: "tool", name, input, out, done: true, ok: true, at });
   const items: Item[] = [
-    tool("t1", "Write", { file_path: "/Users/marcol04/computer/personal/projects/ecosystem/sol/test/26/1-life-take-this-to-work.jpg" }),
-    tool("t2", "Write", { file_path: "/Users/marcol04/computer/personal/projects/ecosystem/sol/test/26/2a-plug-scene-before.jpg" }),
-    tool("t3", "Write", { file_path: "/Users/marcol04/computer/personal/projects/ecosystem/sol/test/26/2b-plug-scene-after-engine-up.jpg" }),
-    tool("t4", "Write", { file_path: "/Users/marcol04/computer/personal/projects/ecosystem/sol/test/26/3-after-engine-restart-same-conversation.jpg" }),
+    tool("t1", "Write", { file_path: "/Users/someone/computer/personal/projects/ecosystem/sol/test/26/1-life-take-this-to-work.jpg" }),
+    tool("t2", "Write", { file_path: "/Users/someone/computer/personal/projects/ecosystem/sol/test/26/2a-plug-scene-before.jpg" }),
+    tool("t3", "Write", { file_path: "/Users/someone/computer/personal/projects/ecosystem/sol/test/26/2b-plug-scene-after-engine-up.jpg" }),
+    tool("t4", "Write", { file_path: "/Users/someone/computer/personal/projects/ecosystem/sol/test/26/3-after-engine-restart-same-conversation.jpg" }),
     tool("t5", "Artifact", { title: "Seven Slices" }, "published https://claude.ai/artifact/A9zJKtykYS2Ej9zuNgcHo2"),
   ];
   return {

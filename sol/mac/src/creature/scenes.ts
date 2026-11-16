@@ -68,7 +68,7 @@ function path(t: number, keys: Key[]): { p: Pt; s: number; moving: boolean } {
 
 // ---- the hands (design/studio/src/hands.tsx, without its springs: tempo drives them) --------------------------------
 export type Tool = "cursor" | "brush" | "pad" | "none";
-// the hands each wear a creature colour of their own, as in the studio (design/palette.json "creature"); the tick is green
+// the hands each wear a creature colour of their own, as in the studio (design/system/tokens.json palette "creature"); the tick is green
 const GREEN = rgba(FUNCTIONAL.green.strong);
 const COL = {
   cursor: rgba(CREATURE.lime), brush: rgba(CREATURE.pink), carry: rgba(CREATURE.green), lift: rgba(CREATURE.ember),

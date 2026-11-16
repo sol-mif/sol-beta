@@ -36,7 +36,7 @@ test("back --plan: names the good build and the face's newest change, changes no
   assert.match(r.out, /^face none$/m);
   mkdirSync(join(root, "sol", "engine", "dist.good")); writeFileSync(join(root, "sol", "engine", "dist.good", "index.js"), "good\n");
   writeFileSync(join(root, "sol", "mac", "src", "A.tsx"), "a2\n");
-  git(root, "add", "-A"); git(root, "commit", "-qm", "mutate: the notch blinks twice");
+  git(root, "add", "-A"); git(root, "add", "-u", "--renormalize"); git(root, "commit", "-qm", "mutate: the notch blinks twice");
   r = back(root, "--plan");
   assert.match(r.out, /^engine \d{4}-\d\d-\d\dT/m);
   assert.match(r.out, /^face mutate [0-9a-f]+ the notch blinks twice$/m);
@@ -65,7 +65,7 @@ test("back: an uncommitted face edit is set aside, the good build comes back, th
 test("back: with a clean face, the newest mutate is undone; --keep-face leaves it; no good build is said, not a failure", () => {
   const root = fixture();
   writeFileSync(join(root, "sol", "mac", "src", "A.tsx"), "a2\n");
-  git(root, "add", "-A"); git(root, "commit", "-qm", "mutate: the notch blinks twice");
+  git(root, "add", "-A"); git(root, "add", "-u", "--renormalize"); git(root, "commit", "-qm", "mutate: the notch blinks twice");
   let r = back(root, "--no-restart", "--keep-face");
   assert.equal(r.code, 0, r.out);
   assert.doesNotMatch(r.out, /taken back/);

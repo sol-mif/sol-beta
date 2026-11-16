@@ -1,33 +1,189 @@
 #!/usr/bin/env node
-// The harness (#83, docs/how-we-work/PRD.md section 13): what an agent is refused, enforced by the machine.
-// Claude Code runs this before every Bash, Edit, Write and MultiEdit call (.claude/settings.json, committed).
-// It reads the call on stdin and either says nothing (the call goes ahead) or refuses it with one plain line.
+// The harness (#83): what an agent is refused, enforced by the machine.
+// Claude Code runs this before every Bash, Edit, Write and MultiEdit call (.claude/settings.json, committed), and on a
+// few more calls for the team's locks (#484). It reads the call on stdin and either says nothing (the call goes ahead)
+// or refuses it with one plain line.
 // Refused: a commit on main; work on another person's branch; a branch made without Take; merging, or moving
 // stable or live; committing home data or a key; editing the fence from inside a running Sol; a PR without a
 // test note; a push or PR from a base branch while another person's base branch is open (#98); parking the face-hot flag,
-// installing, opening or quitting Sol.app, restarting the engine's jobs, moving where Sol lives (sol/mine/live, #116; #114, the window is the person's). Any person can let one through from their own window: .claude/harness.local.json (gitignored),
-// {"allow": ["merge"]}, names the rule; the guard then says so on stderr and steps aside. Rule names are below.
+// installing, opening or quitting Sol.app, restarting the engine's jobs, moving where Sol lives (#116; #114, the window is the person's). Pressing the review session's card (#416, rule tonight). Marking a PR ready or draft from a shell (#420, rule hand-in). Sending back by hand (#421, rule sent-back).
+// #484: a rule judges what a command does, not the words in it, and where it runs (a cd before it, git -C, env -C), not
+// where the session started: a commit message, a grep or a PR body that names a rule's words is never the thing itself,
+// and a command run inside another (bash -c, $( ), eval, xargs) is judged as itself. In the team's own repository the
+// dev cycle's locks are added from sol/locks/team.mjs (not shipped to beta): evals first, eval sealed, no weakening,
+// done = green, first-timer sealed and checkpoint, by the session's role (SOL_ROLE, or a sol-<role> agent file).
+// It fails closed: a call it cannot read, a line whose quotes do not close or whose program is a variable and that names
+// an action it judges (rule unparsed), a team lock file that is there but does not load, or a guard that throws, is
+// refused in the team's repository with the reason, never let through in silence.
+// Any person can let one through from their own window: .claude/harness.local.json (gitignored),
+// {"allow": [{"rule": "merge", "until": "2026-11-20", "why": "…"}]}, names the rule and the day it ends (at most 30
+// days after the file was saved; an old plain "merge" works until DEFAULT_UNTIL or 14 days after the file was saved,
+// and says so). The guard then says so on stderr and steps aside. Rule names are below. A session never writes that
+// file itself (rule let-through): a let-through is the person's.
+// In the team's repository every refusal and let-through is one line in locks.jsonl next to Sol's state (counts only: when, rule,
+// refused or let through, tool, role), for the team's analytics (#437, fix-at-source's "let through 5 times in a week").
 // It also says one thing that is not a refusal (#202, claims): an edit of a file another open PR or another side copy on
 // this machine changed gets one line of context for the agent, once per file per session, and the holder's agent is told.
+// And `guard --stage` (a UserPromptSubmit hook) gives a session on one of the team's features its stage line every turn.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { tmpdir } from "node:os";
+import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const TMP = (name, key) => join(tmpdir(), `sol-guard-${name}-${createHash("sha1").update(key).digest("hex").slice(0, 12)}.json`);
 const readJson = (file, maxAge = Infinity) => { try { if (Date.now() - statSync(file).mtimeMs < maxAge) return JSON.parse(readFileSync(file, "utf8")); } catch {} return undefined; };
 const writeJson = (file, v) => { try { writeFileSync(file, JSON.stringify(v)); } catch {} };
+const readText = (f) => { try { return readFileSync(f, "utf8"); } catch { return ""; } };
+function gitIn(dir, a, ms) { try { return execFileSync("git", a, { cwd: dir, encoding: "utf8", timeout: ms, stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch { return ""; } }
 
-// `guard --refresh-claims <root>`: the slow half of the live claims, run detached by the hook so an edit never waits on
-// gh or git. It writes two files: every open PR's files, and the files changed on each other side copy (worktree) of
-// this repo against main plus its working tree. A call that fails writes an empty answer, so no answer is no note.
+// ---- a checkout, read from its files (git itself is slow here, and a call may judge three folders); git when unsure
+const repos = new Map();
+/** a path made real (macOS's /tmp and /var are links; git's roots are real; the disk's own case on a case-insensitive
+ *  disk, so A/B/C.MD is a/b/c.md), its missing tail kept */
+function real(f) { let d = f, tail = ""; while (d !== dirname(d) && !existsSync(d)) { tail = join(basename(d), tail); d = dirname(d); } try { return join(realpathSync.native(d), tail); } catch { return f; } }
+const NONE = { root: "", gitDir: "", common: "" };
+/** the checkout a path is in: { root, gitDir, common }, root "" outside one */
+function repoAt(p, from = process.cwd()) {
+  let d = real(isAbsolute(p) ? p : resolve(from, p));
+  const seen = [];
+  for (;;) {
+    if (repos.has(d)) { const r = repos.get(d); for (const s of seen) repos.set(s, r); return r; }
+    seen.push(d);
+    const dot = join(d, ".git");
+    if (existsSync(dot)) {
+      let r = NONE;
+      try {
+        let gitDir = dot;
+        if (!statSync(dot).isDirectory()) { const m = /^gitdir:\s*(.+?)\s*$/m.exec(readText(dot)); gitDir = m ? resolve(d, m[1]) : ""; }
+        if (gitDir && existsSync(join(gitDir, "HEAD"))) { const c = readText(join(gitDir, "commondir")).trim(); r = { root: d, gitDir, common: c ? resolve(gitDir, c) : gitDir }; }
+      } catch {}
+      if (!r.root) {   // something git knows better: ask it once
+        const out = gitIn(d, ["rev-parse", "--show-toplevel", "--absolute-git-dir", "--path-format=absolute", "--git-common-dir"]).split("\n");
+        r = out[0] ? { root: real(out[0]), gitDir: out[1] ?? "", common: out[2] ?? out[1] ?? "" } : NONE;
+      }
+      for (const s of seen) repos.set(s, r);
+      return r;
+    }
+    const up = dirname(d);
+    if (up === d) { for (const s of seen) repos.set(s, NONE); return NONE; }
+    d = up;
+  }
+}
+/** a checkout's settings (its config and the worktree's own), as "section.sub.key" → value */
+function configOf(r) {
+  if (r.cfg) return r.cfg;
+  const cfg = {};
+  for (const f of [join(r.common, "config"), join(r.gitDir, "config.worktree")]) {
+    let sec = "";
+    for (const l of readText(f).split("\n")) {
+      const s = /^\s*\[([^\]\s"]+)(?:\s+"([^"]*)")?\s*\]/.exec(l);
+      if (s) { sec = s[1].toLowerCase() + (s[2] !== undefined ? "." + s[2] : ""); continue; }
+      const kv = /^\s*([A-Za-z][\w-]*)\s*=\s*(.*?)\s*$/.exec(l);
+      if (kv && sec) cfg[`${sec}.${kv[1].toLowerCase()}`] = kv[2].replace(/^"(.*)"$/, "$1");
+    }
+  }
+  if (r.root) r.cfg = cfg;
+  return cfg;
+}
+/** the branch a checkout is on, "" when detached or outside one */
+function branchOf(r) {
+  if (!r.root) return "";
+  if (r.branch === undefined) { const h = readText(join(r.gitDir, "HEAD")).trim(); r.branch = h ? (/^ref: refs\/heads\/(.+)$/.exec(h)?.[1] ?? "") : gitIn(r.root, ["symbolic-ref", "--short", "-q", "HEAD"]); }
+  return r.branch;
+}
+/** the commit a checkout stands on */
+function headOf(r) {
+  if (!r.root) return "";
+  const h = readText(join(r.gitDir, "HEAD")).trim();
+  if (/^[0-9a-f]{40}$/.test(h)) return h;
+  const ref = /^ref: (.+)$/.exec(h)?.[1];
+  if (ref) {
+    const loose = readText(join(r.common, ref)).trim() || readText(join(r.gitDir, ref)).trim();
+    if (/^[0-9a-f]{40}$/.test(loose)) return loose;
+    const packed = new RegExp(`^([0-9a-f]{40}) ${ref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m").exec(readText(join(r.common, "packed-refs")));
+    if (packed) return packed[1];
+  }
+  return gitIn(r.root, ["rev-parse", "HEAD"]);
+}
+const dirtyOf = (r) => !!r.root && !!gitIn(r.root, ["status", "--porcelain", "--untracked-files=normal"], 8000);
+const aheadOf = (r) => !!r.root && Number(gitIn(r.root, ["rev-list", "--count", "origin/main..HEAD"], 8000) || gitIn(r.root, ["rev-list", "--count", "main..HEAD"], 8000) || 0) > 0;
+/** the main checkout a side copy belongs to (the common .git, one level up) */
+const mainRootOf = (r) => (r.common ? real(resolve(r.common, "..")) : "");
+
+// The team's repository or not (#479): the team's rules (Take, the nights, branch names, merging, test notes, claims)
+// are for the team's own checkouts. Any other checkout (a Sol tester's, whose remotes are the beta repo, or anyone's)
+// keeps only SAFE_RULES, the ones that protect any Sol user: home data, keys, the fence, the window, and their words
+// name nothing of the team's. Decided by the checkout's tree and remotes (solDevIn, kept as #479 wrote it); every rule
+// not named safe is a team rule. The beta export runs this guard as a tester's before it ships it (leak.ts). #484 asks
+// it of every checkout the call acts in, not only the session's (a cd into the team's repository is in it), and
+// remembers it: a checkout once seen as the team's stays so for the guard (the seen file in its state folder, outside
+// the repo), so a session that changes its remotes or its files by a road the guard does not see keeps the team's
+// rules on (fail closed). The roads it does see are refused (rule remote).
+// solDevIn and SAFE_RULES come from #479's check beside this file, loaded below once the guard can refuse when it does not load
+let solDevIn, SAFE_RULES;
+const STATE_DIR = process.env.SOL_STATE ? dirname(process.env.SOL_STATE)
+  : platform() === "darwin" ? join(homedir(), "Library", "Application Support", "com.marcol04.sol") : join(homedir(), ".local", "share", "sol");
+const SEEN = join(STATE_DIR, "sol-dev-seen.json");
+// the press's record (#482, engine/src/team/checkpoint.ts PRESSED): what each Scoped and Approve press wrote, the engine's
+const PRESSED_PATH = join(STATE_DIR, "checkpoint", "pressed.jsonl");
+const PRESSED_NAMES = [...new Set([PRESSED_PATH, PRESSED_PATH.replace(homedir(), "~"), PRESSED_PATH.replace(homedir(), "$HOME"), PRESSED_PATH.slice(homedir().length + 1)])].filter((x) => x.length > 20);
+const pressedNow = () => readText(PRESSED_PATH).split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+/** what a press seals, as a hash: the file up to "## Releases" (the verifier's lines need no new press); #482's sealedHash */
+const sealedHash = (t) => createHash("sha256").update(String(t).split(/^## Releases[ \t]*$/m)[0].replace(/\s+$/, "")).digest("hex");
+let seen;
+const seenNow = () => (seen ??= readJson(SEEN) ?? {});
+function isSolDev(r) {
+  if (!r.root) return false;
+  if (r.dev !== undefined) return r.dev;
+  const now = solDevIn(r.root);
+  const key = real(r.common ? resolve(r.common, "..") : r.root);
+  const was = seenNow()[key] === true;
+  if (now && !was) { try { mkdirSync(STATE_DIR, { recursive: true }); const all = { ...seenNow(), [key]: true }; for (const k of Object.keys(all)) if (!existsSync(k)) delete all[k]; writeFileSync(SEEN, JSON.stringify(all)); seen = all; } catch {} }
+  return (r.dev = now || was);
+}
+let teamModule;
+/** sol/locks/team.mjs: null where it is not (Sol beta, which never gets it), `{ broken }` where it is and does not load */
+async function team() {
+  if (teamModule !== undefined) return teamModule;
+  const url = new URL("../locks/team.mjs", import.meta.url);
+  if (!existsSync(fileURLToPath(url))) return (teamModule = null);
+  try { teamModule = await import(url); } catch (e) { teamModule = { broken: String(e?.message ?? e).split("\n")[0].slice(0, 200) }; }
+  return teamModule;
+}
+
+// who I am in a checkout: the login gh is signed in as, remembered in .git so the guard never waits on the network twice
+function loginAt(r) {
+  if (!r.root) return "";
+  if (r.login !== undefined) return r.login;
+  let l = configOf(r)["sol.login"] || gitIn(r.root, ["config", "--get", "sol.login"]);
+  if (!l) { try { l = execFileSync("gh", ["api", "user", "-q", ".login"], { encoding: "utf8", timeout: 8000, stdio: ["ignore", "pipe", "ignore"] }).trim(); if (l) gitIn(r.root, ["config", "sol.login", l]); } catch {} }
+  return (r.login = l || "");
+}
+/** the team's people, the team's pages, <name>.md ("login: x") */
+function peopleOf(r) {
+  if (r.people) return r.people;
+  const out = [];
+  const dir = join(r.root, "docs/people");
+  try { for (const f of readdirSync(dir)) if (f.endsWith(".md")) out.push({ name: basename(f, ".md"), login: (/^login:\s*(\S+)/m.exec(readText(join(dir, f))) ?? [])[1] ?? "" }); } catch {}
+  return (r.people = out);
+}
+/** my names in a checkout: my login and every people page that says it */
+function namesAt(r) {
+  const l = loginAt(r); if (!l) return [];
+  return [l, ...peopleOf(r).filter((p) => p.login === l).map((p) => p.name)];
+}
+
+// ---- the --refresh-claims mode: the slow half of the live claims, run detached by the hook so an edit never waits on
+// gh or git. It writes two files: every open PR's files (and whether it is a draft), and the files changed on each other
+// side copy (worktree) of this repo against main plus its working tree. A call that fails writes an empty answer.
 if (process.argv[2] === "--refresh-claims") {
   const r = process.argv[3];
   const run = (cmd, a, dir, ms) => { try { return execFileSync(cmd, a, { cwd: dir, encoding: "utf8", timeout: ms, stdio: ["ignore", "pipe", "ignore"] }); } catch { return ""; } };
   let prs = [];
-  try { prs = JSON.parse(run("gh", ["pr", "list", "--state", "open", "--json", "number,headRefName,author,files", "--limit", "100"], r, 15000) || "[]"); } catch {}
-  writeJson(TMP("prfiles", r), prs.map((p) => ({ number: p.number, branch: p.headRefName, login: p.author?.login ?? "", files: (p.files ?? []).map((f) => f.path) })));
+  try { prs = JSON.parse(run("gh", ["pr", "list", "--state", "open", "--json", "number,headRefName,author,files,isDraft", "--limit", "100"], r, 15000) || "[]"); } catch {}
+  writeJson(TMP("prfiles", r), prs.map((p) => ({ number: p.number, branch: p.headRefName, login: p.author?.login ?? "", draft: p.isDraft === true, files: (p.files ?? []).map((f) => f.path) })));
   const trees = [];
   let cur = {};
   for (const l of (run("git", ["worktree", "list", "--porcelain"], r, 5000) + "\n").split("\n")) {
@@ -35,7 +191,7 @@ if (process.argv[2] === "--refresh-claims") {
     else if (l.startsWith("branch refs/heads/")) cur.branch = l.slice(18);
     else if (l === "") { if (cur.path && cur.branch) trees.push(cur); cur = {}; }
   }
-  // a side copy's holder is its branch's prefix, made a GitHub login by docs/people/<prefix>.md ("login: x"), else kept
+  // a side copy's holder is its branch's prefix, made a GitHub login by the team's page <prefix>.md ("login: x"), else kept
   const loginOf = (prefix) => { try { return (/^login:\s*(\S+)/m.exec(readFileSync(join(r, "docs/people", prefix + ".md"), "utf8")) ?? [])[1] || prefix; } catch { return prefix; } };
   const out = [];
   for (const t of trees) {
@@ -49,51 +205,337 @@ if (process.argv[2] === "--refresh-claims") {
   writeJson(TMP("worktrees", r), out);
   process.exit(0);
 }
+const refreshClaims = (root) => { try { spawn(process.execPath, [process.argv[1], "--refresh-claims", root], { detached: true, stdio: "ignore" }).unref(); } catch {} };
 
-const input = JSON.parse(readFileSync(0, "utf8") || "{}");
-const tool = input.tool_name || "";
-const args = input.tool_input || {};
-const cwd = input.cwd || process.cwd();
+// ---- let-throughs, read before anything can fail (failClosed asks them too)
+const DEFAULT_UNTIL = "2026-11-15";   // an old plain entry (no until) works until this day, or 14 days after the file was saved
+const DAY = 86_400_000;
+const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
+/** a person's let-through for `rule` in these checkouts' .claude/harness.local.json: { ok, note } or { ok: false,
+ *  expired } or null */
+function letThroughIn(dirs, rule) {
+  let expired = "";
+  for (const f of [...new Set(dirs.filter(Boolean))].map((d) => join(d, ".claude/harness.local.json"))) {
+    let local, saved;
+    try { local = JSON.parse(readFileSync(f, "utf8")); saved = statSync(f).mtimeMs; } catch { continue; }
+    for (const e of Array.isArray(local?.allow) ? local.allow : []) {
+      const name = typeof e === "string" ? e : e?.rule;
+      if (name !== rule) continue;
+      const until = typeof e === "object" && /^\d{4}-\d{2}-\d{2}$/.test(String(e.until ?? "")) ? String(e.until) : "";
+      const last = until ? [until, ymd(saved + 30 * DAY)].sort()[0] : [DEFAULT_UNTIL, ymd(saved + 14 * DAY)].sort()[1];
+      if (ymd(Date.now()) > last) { expired = last; continue; }
+      const note = until ? `until ${last}` : `with no "until": it works until ${last}; write {"rule": "${rule}", "until": "YYYY-MM-DD"} to say how long`;
+      return { ok: true, note };
+    }
+  }
+  return expired ? { ok: false, expired } : null;
+}
 
-function git(a, dir = cwd) { try { return execFileSync("git", a, { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch { return ""; } }
-const root = git(["rev-parse", "--show-toplevel"]);
-if (!root) process.exit(0); // not in a repository: nothing to guard
+// ---- the call. One the guard cannot read, a file of its own that will not load, or a guard that throws, is refused with
+// the reason (rule guard-error, which a person can let through), never let through in silence: in every checkout while
+// the guard does not yet know the call's, and once it knows, where the team's rules hold (a team lock file is theirs)
+const MODE = process.argv[2] === "--stage" ? "stage" : process.argv[2] === "--after" ? "after" : "pre";
+const rawIn = (() => { try { return readFileSync(0, "utf8"); } catch { return ""; } })();
+let input = {}, unreadable = "";
+try { input = JSON.parse(rawIn || "{}"); if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("not an object"); }
+catch (e) { input = {}; unreadable = String(e?.message ?? e).split("\n")[0].slice(0, 120); }
+const cwd = typeof input.cwd === "string" && input.cwd ? input.cwd : process.cwd();
+// `everywhere`: the guard does not yet know which checkout the call is for (it could not read the call, its shell
+// reader did not load, it broke before it knew): then it refuses in every checkout, a Sol tester's too, since the safe
+// rules (home data, keys, the fence) would be off with it. Once it knows, it refuses only where the team's rules hold
+let known = false;   // set once the checkouts the call acts in are known
+function failClosed(why, everywhere = !known) {
+  let r = NONE;
+  try { r = repoAt(cwd, cwd); } catch {}
+  let dev = false;
+  try { dev = isSolDev(r); } catch {}
+  if (MODE !== "pre" || (!dev && !everywhere)) process.exit(0);
+  const lt = (() => { try { return letThroughIn([r.root], "guard-error"); } catch { return null; } })();
+  if (lt?.ok) { process.stderr.write(`harness: guard-error let through by your local override (.claude/harness.local.json), ${lt.note}: ${why}\n`); process.exit(0); }
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny",
+    permissionDecisionReason: `harness (guard-error): ${why} The guard cannot judge this call, so it refuses it rather than let it through unread. Tell your human; a person can let guard-error through for a day in .claude/harness.local.json.` } }));
+  process.exit(0);
+}
+process.on("uncaughtException", (e) => failClosed(`the guard broke on this call (${String(e?.message ?? e).split("\n")[0].slice(0, 160)}).`));
+process.on("unhandledRejection", (e) => failClosed(`the guard broke on this call (${String(e?.message ?? e).split("\n")[0].slice(0, 160)}).`));
+if (unreadable && rawIn.trim()) failClosed(`the call it was handed is not one it can read (${unreadable}).`, true);
+// the team's-repository check (#479) and the shell reader, loaded here, after the handlers above: one that does not load
+// refuses in every checkout, where a static import would stop the guard before it could say anything
+try { ({ solDevIn, SAFE_RULES } = await import("./sol-dev.mjs")); }
+catch (e) { failClosed(`its check of which repository this is (sol/harness/sol-dev.mjs) does not load (${String(e?.message ?? e).split("\n")[0].slice(0, 160)}).`, true); }
+let shell;
+try { shell = await import("./shell.mjs"); } catch (e) { failClosed(`its shell reader (sol/harness/shell.mjs) does not load (${String(e?.message ?? e).split("\n")[0].slice(0, 160)}).`, true); }
+const { flag, ghOf, gitOf, pathFrom, plan, words, writesOf } = shell;
 
-const local = (() => { try { return JSON.parse(readFileSync(join(root, ".claude/harness.local.json"), "utf8")); } catch { return {}; } })();
-const allowed = new Set(Array.isArray(local.allow) ? local.allow : []);
-function refuse(rule, why) {
-  if (allowed.has(rule)) { process.stderr.write(`harness: ${rule} let through by your local override (.claude/harness.local.json)\n`); process.exit(0); }
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `harness (${rule}): ${why}` } }));
+// ---- the --stage mode (#484, a UserPromptSubmit hook): a session on one of the team's features hears, every turn, which of the
+// four checkpoints its feature has passed (Scoped → evals approved → gate green → handed in). Says nothing elsewhere.
+if (MODE === "stage") {
+  const r = repoAt(cwd, cwd);
+  const b = branchOf(r);
+  if (!r.root || !isSolDev(r) || !b || /^(main|stable|live|dev|beta)$/.test(b) || /\/(mine|plan|shots)$/.test(b)) process.exit(0);
+  const t = await team();
+  if (!t || t.broken) process.exit(0);
+  const base = gitIn(r.root, ["rev-parse", "-q", "--verify", "origin/main"]) ? "origin/main" : "main";
+  const status = gitIn(r.root, ["status", "--porcelain", "--untracked-files=all"], 8000);
+  const changed = [...new Set([...gitIn(r.root, ["diff", "--name-only", `${base}...HEAD`], 8000).split("\n"),
+    ...status.split("\n").map((l) => l.slice(3).replace(/^.* -> /, ""))].filter(Boolean))];
+  const prFile = TMP("prfiles", r.root);
+  if (readJson(prFile, 60_000) === undefined) refreshClaims(r.root);
+  const handedIn = (readJson(prFile) ?? []).some((p) => p.branch === b && p.draft === false);
+  let block = "";
+  try { block = t.stageOf(r.root, { branch: b, changed, head: headOf(r), dirty: !!status, handedIn }); } catch {}
+  if (block) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: block } }));
   process.exit(0);
 }
 
-// who I am: the login gh is signed in as, remembered in .git so the guard never waits on the network twice
-function login() {
-  const kept = git(["config", "--get", "sol.login"]);
-  if (kept) return kept;
-  try { const l = execFileSync("gh", ["api", "user", "-q", ".login"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); if (l) { git(["config", "sol.login", l]); return l; } } catch {}
+// ---- the sealed marks, by their effect (#484): before a shell line in the team's repository the guard keeps every feature folder's
+// prd.md and eval.md; after it (`guard --after`, a PostToolUse hook) a Scoped or Approved line that appeared and that git
+// does not account for (the commit HEAD moved to holds it) is taken out again and the session is told. This catches what
+// no reading of the words can: a script, base64, a variable. A commit that brings one is judged at the commit (#482's check)
+const SEALED_REL = /^specs\/features\/[^/]+\/(eval|prd)\.md$/i;
+function sealedIn(rootDir) {
+  const out = [];
+  const dir = join(rootDir, "specs", "features");
+  let names = [];
+  try { names = readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name); } catch { return out; }
+  for (const n of names) for (const f of ["eval.md", "prd.md"]) { const abs = join(dir, n, f); if (existsSync(abs)) out.push(abs); }
+  return out;
+}
+const snapKey = () => TMP("sealed", String(input.tool_use_id || `${input.session_id ?? ""}|${cwd}|${input.tool_input?.command ?? ""}`));
+if (MODE === "after") {
+  const t = await team();
+  if (!t || t.broken || typeof t.marksAdded !== "function") process.exit(0);
+  let snap = readJson(snapKey(), 6 * 3_600_000);
+  try { rmSync(snapKey(), { force: true }); } catch {}
+  if (!snap) {
+    // no snapshot (the line removed it, or it was never kept): fail closed. In the team's repository every feature folder file is
+    // judged against the commit it stands on, so a mark not in HEAD counts as added
+    const here = repoAt(cwd, cwd);
+    if (!isSolDev(here)) process.exit(0);
+    const r = real(here.common ? resolve(here.common, "..") : here.root), roots = [...new Set([here.root, r].filter((d) => d && existsSync(d)))];
+    snap = { roots: Object.fromEntries(roots.map((d) => [d, { head: "", files: Object.fromEntries(sealedIn(d).map((abs) => [abs, gitIn(d, ["show", `HEAD:${relative(d, abs).split("\\").join("/")}`])])) }])) };
+  }
+  const undone = [];
+  for (const [rootDir, s] of Object.entries(snap.roots ?? {})) {
+    const head = gitIn(rootDir, ["rev-parse", "HEAD"]);
+    for (const abs of new Set([...Object.keys(s.files ?? {}), ...sealedIn(rootDir)])) {
+      const before = s.files?.[abs] ?? "", now = readText(abs);
+      const rel = relative(rootDir, abs).split("\\").join("/");
+      const added = t.marksAdded(rel, before, now);
+      if (!added.length) continue;
+      // the press's own line (its record, #482): a press made in Sol's window while the line ran
+      const pressed = pressedNow();
+      const left = added.filter((l) => !pressed.some((p) => String(p?.file ?? "").toLowerCase() === rel.toLowerCase() && String(p?.line ?? "") === l.trim()));
+      if (!left.length) continue;
+      // git brought it from GitHub: the line is already in this file on a remote-tracking ref (a press pushed by its Sol
+      // developer, fetched by a pull, then merged, pulled into or rebased onto). A press on this Mac is on its record
+      // (above). A line on a local commit only (one a session made, then restored from the index or HEAD) is not
+      // accounted for, whoever made it
+      // the remote-tracking refs as they were before the line; and those the line's own fetch or pull of the team's
+      // remote moved (a configured remote whose URL is the team's, with no override: a teammate's press, fetched now).
+      // Never another ref the line left behind
+      const moved = (s.fetched ?? []).flatMap((name) => gitIn(rootDir, ["for-each-ref", "--format=%(refname) %(objectname)", `refs/remotes/${name}`]).split("\n").filter(Boolean)
+        .map((l) => l.split(" ")).filter(([ref, sha]) => s.named?.[ref] !== sha).map(([, sha]) => sha));
+      const refs = [...new Set([...(s.remotes ?? []), ...moved].filter(Boolean))].slice(0, 400);
+      const known = new Set();
+      for (const r of refs) {
+        if (left.every((l) => known.has(l.trim()))) break;
+        for (const x of gitIn(rootDir, ["show", `${r}:${rel}`]).split("\n")) known.add(x.trim());
+      }
+      const fresh = left.filter((l) => !known.has(l.trim()));
+      if (!fresh.length) continue;
+      // only the mark lines go: whatever else the line did to the file stays (a Releases line, an edit)
+      try { writeFileSync(abs, now.split("\n").filter((l) => !fresh.some((a) => a.trim() === l.trim())).join("\n")); undone.push(rel); } catch {}
+    }
+  }
+  if (!undone.length) process.exit(0);
+  logLock("eval-sealed", "refused", [], "Bash", t.roleOf(process.env.SOL_ROLE, input.agent_type) || null);
+  const why = `harness (eval-sealed): that command wrote a Scoped or Approved mark into ${undone.join(", ")}, and the mark is the Sol developer's own press. The guard took it out again. Say the PRD or the evals are ready and leave the press to them.`;
+  process.stdout.write(JSON.stringify({ decision: "block", reason: why, hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: why } }));
+  process.exit(0);
+}
+
+const tool = String(input.tool_name || "");
+const args = input.tool_input && typeof input.tool_input === "object" ? input.tool_input : {};
+const EDITS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+const READS = new Set(["Read", "Grep", "Glob", "LS"]);
+// a read and the Sol tools are only ever judged by a role's lock: no role, nothing to do, and quickly
+if ((READS.has(tool) || tool.startsWith("mcp__")) && !process.env.SOL_ROLE && !/^sol-/.test(String(input.agent_type ?? ""))) process.exit(0);
+if (!READS.has(tool) && !tool.startsWith("mcp__") && !EDITS.has(tool) && tool !== "Bash") process.exit(0);
+
+const session = repoAt(cwd, cwd);
+const root = session.root;
+const branch = branchOf(session);
+const mainRoot = mainRootOf(session);
+const t = await team();
+// the call as the commands it runs (each with where it runs), or the file it edits; and the checkouts it acts in
+const line = tool === "Bash" ? String(args.command ?? "") : "";
+const steps = tool === "Bash" ? plan(line, cwd) : [];
+const target = EDITS.has(tool) ? String(args.file_path || args.notebook_path || "") : "";
+const targetAbs = target ? (isAbsolute(target) ? target : resolve(cwd, target)) : "";
+const acts = tool === "Bash" ? steps.map((x) => repoAt(gitOf(x)?.dir ?? x.dir, cwd)) : targetAbs ? [repoAt(targetAbs, cwd)] : [];
+const solDev = [session, ...acts].some(isSolDev);
+known = true;
+const dev = (text) => (solDev ? text : "");   // a hint that names the team's tools (the stage, promote), for sol-dev only
+// a team lock file that is there and does not load: nothing of the team's can be judged, so nothing goes through but the
+// edit that mends it (sol/locks or sol/harness)
+if ((t?.broken || (!t && solDev)) && solDev && !(EDITS.has(tool) && /\/sol\/(locks|harness)\/[^/]+$/.test(real(targetAbs))))
+  failClosed(t?.broken ? `sol/locks/team.mjs is there but does not load (${t.broken}), so the team's locks cannot judge anything; mend that file first.`
+    : `this is the team's repository and sol/locks/team.mjs is missing, so the team's locks cannot judge anything; put it back first.`);
+const locks = t && !t.broken ? t : null;
+const role = locks ? locks.roleOf(process.env.SOL_ROLE, input.agent_type) : "";
+
+// ---- the lock log (#484): one line per refusal or let-through, counts only, in the team's repository
+function logLock(rule, outcome, at = [], how = tool, who = role || null) {
+  if (MODE === "pre" && !solDev && ![session, ...at].some(isSolDev)) return;
+  const file = process.env.SOL_LOCKS_LOG || join(STATE_DIR, "locks.jsonl");
+  try { appendFileSync(file, JSON.stringify({ at: new Date().toISOString(), rule, outcome, tool: how, role: who }) + "\n"); } catch {}
+}
+const letDone = new Set();
+/** refuse the call, unless the person let this rule through; `at` the checkouts the call acts in */
+function deny(rule, why, at = []) {
+  const lt = letThroughIn([root, ...at.map((r) => r.root)], rule);
+  // a let-through steps aside for its own rule only: the rest of the call is still judged
+  if (lt?.ok) {
+    if (!letDone.has(rule)) { letDone.add(rule); logLock(rule, "let-through", at); process.stderr.write(`harness: ${rule} let through by your local override (.claude/harness.local.json), ${lt.note}\n`); }
+    return;
+  }
+  logLock(rule, "refused", at);
+  const old = lt?.expired ? ` (Your let-through for ${rule} ended on ${lt.expired}; renew it in .claude/harness.local.json with a new "until" if you still mean it.)` : "";
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `harness (${rule}): ${why}${old}` } }));
+  process.exit(0);
+}
+function refuse(rule, why, at = []) {
+  if (!solDev && !SAFE_RULES.has(rule)) return;   // a team rule, outside sol-dev: not this checkout's
+  deny(rule, why, at);
+}
+
+// ---- Sol's own source and docs, where the cards' names may be written: never a feature folder (its marks are sealed)
+const SOL_SOURCE = /^sol\/(engine\/(src|test)|mac\/src|harness|locks)\/|\.md$/;
+/** a file that is Sol's own source or docs, judged in the checkout it is in */
+const ownSource = (abs) => { const r = repoAt(abs, cwd); if (!r.root) return false; const rel = relative(r.root, real(abs)).split("\\").join("/"); return !!rel && !rel.startsWith("..") && !/^specs\/features\//i.test(rel) && SOL_SOURCE.test(rel); };
+const prog = (x) => (x.prog[0]?.t ?? "").replace(/^.*\//, "");
+/** Sol's own source, for a script a line runs: never the guard's own folders (sol/harness, sol/locks) */
+const ranOwn = (abs) => { const r = repoAt(abs, cwd); if (!r.root) return false; const rel = relative(r.root, real(abs)).split("\\").join("/"); return ownSource(abs) && !/^sol\/(harness|locks)\//i.test(rel); };
+// a command whose words are never an action: a read, a search, a message. Its words may name anything; a command it
+// runs inside ($( ), `…`) is a command of its own
+const READING = new Set(["grep", "egrep", "fgrep", "rg", "ag", "ack", "cat", "bat", "less", "more", "head", "tail", "wc", "ls", "find", "fd",
+  "awk", "sort", "uniq", "cut", "tr", "diff", "jq", "echo", "printf", "file", "stat", "test", "[", "true", ":"]);
+// a program that can send or run what it is given
+const SENDERS = new Set(["curl", "wget", "websocat", "wscat", "nc", "ncat", "socat", "node", "nodejs", "deno", "bun", "tsx", "python", "python3", "ruby", "perl", "php",
+  "bash", "sh", "zsh", "dash", "ksh", "osascript", "http", "https", "xh", "eval", "source", ".", "base64", "xxd", "openssl"]);
+function wordsOnly(x) {
+  const g = gitOf(x), h = ghOf(x);
+  if (g) return ["grep", "log", "show", "diff", "blame", "status", "commit", "stash"].includes(g.sub);
+  if (h) return ((h.path[0] === "pr" || h.path[0] === "issue") && ["view", "list", "diff", "status", "checks"].includes(h.path[1])) || h.path[0] === "search";   // a comment is not: it posts (the sent-back marker is one)
+  if (prog(x) === "sed") return !x.prog.some((w) => /^-\w*i|^--in-place/.test(w.t));
+  if (prog(x) === "find") return !x.prog.some((w) => /^-(exec|execdir|ok|okdir|delete|fprint)/.test(w.t));
+  return READING.has(prog(x));
+}
+
+// ---- what a command runs from a file: a script handed to a shell or a program, or one run by its path. Its text counts
+// as the command's own words (a card's name, a mark), unless it is Sol's own source; one written earlier in the same
+// line by something the guard cannot read (a decode, a download, a variable) is unread (rule unparsed)
+const RUNNERS = /^(bash|sh|zsh|dash|ksh|source|\.|node|nodejs|tsx|ts-node|deno|bun|python|python3|ruby|perl|php|osascript|lua)$/;
+function scriptPath(x) {
+  const p = x.prog.map((w) => w.t), name = (p[0] ?? "").replace(/^.*\//, "");
+  if (RUNNERS.test(name)) {
+    const rest = p.slice(1);
+    if (rest.some((a) => /^-[a-zA-Z]*[ce]$|^--eval$|^-p$|^--print$/.test(a))) return "";   // inline code: its words are the line's
+    const f = rest.find((a) => !a.startsWith("-") && a !== "run") ?? "";
+    return f && !/[$`]/.test(f) ? pathFrom(x.dir, f) : "";
+  }
+  if (!x.opaque && /\//.test(p[0] ?? "") && !/[$`]/.test(p[0])) return pathFrom(x.dir, p[0]);
   return "";
 }
-function myNames() {
-  const l = login(); if (!l) return [];
-  const names = [l];
-  const people = join(root, "docs/people");
-  if (existsSync(people)) for (const f of readdirSync(people)) {
-    try { if (f.endsWith(".md") && readFileSync(join(people, f), "utf8").split("\n").includes(`login: ${l}`)) names.push(basename(f, ".md")); } catch {}
-  }
-  return names;
+const literalWriter = (y) => !/[$`]/.test([y.text, ...y.docs].join("\n")) && (/^(echo|printf)$/.test(prog(y)) || (prog(y) === "cat" && y.docs.length > 0));
+for (let k = 0; k < steps.length; k++) {
+  const x = steps[k], f = scriptPath(x);
+  if (!f) continue;
+  const writer = steps.slice(0, k).find((y) => { const w = writesOf(y); return [...w.writes, ...w.appends].includes(f); });
+  if (writer) { x.ran = [writer.text, ...writer.docs].join("\n"); if (!literalWriter(writer)) x.unread = f; continue; }
+  // a script under sol/harness or sol/locks that a line runs is read like any other: Sol's own source may name the cards'
+  // words, but running one is what it does
+  try { if (!ranOwn(f) && statSync(f).isFile() && statSync(f).size < 512 * 1024) x.ran = readFileSync(f, "utf8"); } catch {}
 }
-const branch = git(["symbolic-ref", "--short", "-q", "HEAD"]);
-// the main checkout this one is a side copy of (the worktree's common .git, one level up), or "" when this is it
-const mainRoot = (() => { const c = git(["rev-parse", "--path-format=absolute", "--git-common-dir"]); return c ? resolve(c, "..") : ""; })();
+/** does the line do what `hits` finds in its words? Only when a command that says it acts on it: one that is not a read
+ *  or a message, one that writes it to a file that is not Sol's own source, a script it runs, or any line with a
+ *  program that sends */
+function does(hits) {
+  const said = steps.filter((x) => hits(x.text) || x.docs.some(hits) || (x.ran !== undefined && hits(x.ran)));
+  if (!said.length) return false;
+  if (steps.some((x) => SENDERS.has(prog(x)))) return true;
+  for (const x of said) {
+    if (x.ran !== undefined && hits(x.ran)) return true;
+    if (!wordsOnly(x)) return true;
+    const w = writesOf(x);
+    if ([...w.writes, ...w.appends].some((f) => !ownSource(f))) return true;
+  }
+  return false;
+}
+const atAll = () => steps.map((x) => repoAt(gitOf(x)?.dir ?? x.dir, cwd));
+/** a message: its words are said, never done (git commit, tag, notes; any gh line). A command run inside it is a step of its own */
+const message = (x) => { const g = gitOf(x); return g ? ["commit", "tag", "notes", "stash"].includes(g.sub) : !!ghOf(x); };
+/** a step that acts: not a read, a search, a message, a cd or a plain assignment */
+const acting = (x) => !message(x) && !wordsOnly(x) && !!x.prog.length && !/^(cd|pushd|popd)$/.test(prog(x));
 
-// the repo's open PRs (number, branch, author), asked of gh at most once a minute per repo: kept in a temp file so the
+/** the positional words of a command's arguments, the values of the named option flags left out */
+const positional = (a, valued = []) => { const out = []; for (let k = 0; k < a.length; k++) { if (a[k] === "--") { out.push(...a.slice(k + 1)); break; } if (a[k].startsWith("-")) { if (valued.includes(a[k])) k++; continue; } out.push(a[k]); } return out; };
+// ---- the team's locks, first: they are the most particular. A lock that throws refuses (fail closed)
+function teamLocks() {
+  if (!locks) return;
+  const roots = [...new Set([root, mainRoot, ...[...acts, session].filter(isSolDev).map((r) => r.root)].filter(Boolean))];
+  /** a written path that is a hard link of a feature folder's eval.md or prd.md is that file */
+  const linked = (abs) => {
+    try {
+      const st = statSync(abs);
+      if (!st.isFile() || st.nlink < 2) return abs;
+      for (const r of roots) for (const f of sealedIn(r)) { const o = statSync(f); if (o.ino === st.ino && o.dev === st.dev) return f; }
+    } catch {}
+    return abs;
+  };
+  const at = (p) => {
+    const abs = linked(real(isAbsolute(p || cwd) ? (p || cwd) : resolve(cwd, p)));
+    const r = repoAt(abs, cwd);
+    if (!r.root) return { root: "" };
+    const rel = relative(r.root, abs).split("\\").join("/");
+    return { root: r.root, rel: rel.startsWith("..") ? "" : rel, branch: branchOf(r), team: isSolDev(r) };
+  };
+  const byRoot = (d) => repoAt(d, cwd);
+  let hit = null;
+  try {
+    hit = locks.judge({ tool, args, role, cwd, sessionId: input.session_id, plan: steps, writesOf, gitOf, at, does, ownSource, acting, message, real,
+      pressed: real(PRESSED_PATH), pressedNames: PRESSED_NAMES,
+      head: (d) => headOf(byRoot(d)), dirty: (d) => dirtyOf(byRoot(d)), ahead: (d) => aheadOf(byRoot(d)) });
+  } catch (e) { if (solDev) failClosed(`a team lock broke on this call (${String(e?.message ?? e).split("\n")[0].slice(0, 160)}).`); }
+  if (hit) deny(hit.rule, hit.why, [session]);   // the team's locks say where they hold (judge asks each checkout)
+  // the marks' effect: kept before a shell line, checked after it (MODE after)
+  if (tool === "Bash" && solDev && typeof locks.marksAdded === "function") {
+    const snap = {};
+    for (const r of roots) {
+      const files = sealedIn(r);
+      // every ref's commit before the line: a commit the line itself makes is not git accounting for a mark. Kept for
+      // every checkout of the team's, even one with no feature folder yet: a tree the line makes is checked after it
+      if (isSolDev(repoAt(r, cwd))) snap[r] = { head: gitIn(r, ["rev-parse", "HEAD"]), tips: [...new Set(gitIn(r, ["for-each-ref", "--format=%(objectname)"]).split("\n").filter(Boolean))],
+        remotes: [...new Set(gitIn(r, ["for-each-ref", "--format=%(objectname)", "refs/remotes"]).split("\n").filter(Boolean))],
+        named: Object.fromEntries(gitIn(r, ["for-each-ref", "--format=%(refname) %(objectname)", "refs/remotes"]).split("\n").filter(Boolean).map((l) => l.split(" "))),
+        fetched: teamFetches(r),
+        files: Object.fromEntries(files.map((f) => [f, readText(f)])) };
+    }
+    writeJson(snapKey(), { roots: snap, at: Date.now() });   // always, even empty: after the line, no snapshot is a missing one
+  }
+}
+
+teamLocks();
+if (READS.has(tool) || tool.startsWith("mcp__")) process.exit(0);
+
+// open PRs (number, branch, author), asked of gh at most once a minute per repo: kept in a temp file so the
 // guard stays fast. No answer (offline, no gh) is an empty list: the guard never stops work because GitHub is away.
-function openPrs() {
-  const file = join(tmpdir(), `sol-guard-prs-${createHash("sha1").update(root).digest("hex").slice(0, 12)}.json`);
+function openPrs(r) {
+  const file = join(tmpdir(), `sol-guard-prs-${createHash("sha1").update(r.root).digest("hex").slice(0, 12)}.json`);
   try { if (Date.now() - statSync(file).mtimeMs < 60_000) return JSON.parse(readFileSync(file, "utf8")); } catch {}
   try {
-    const out = execFileSync("gh", ["pr", "list", "--state", "open", "--json", "number,headRefName,author", "--limit", "100"], { cwd: root, encoding: "utf8", timeout: 8000, stdio: ["ignore", "pipe", "ignore"] });
+    const out = execFileSync("gh", ["pr", "list", "--state", "open", "--json", "number,headRefName,author", "--limit", "100"], { cwd: r.root, encoding: "utf8", timeout: 8000, stdio: ["ignore", "pipe", "ignore"] });
     const list = JSON.parse(out);
     try { writeFileSync(file, JSON.stringify(list)); } catch {}
     return list;
@@ -106,12 +548,13 @@ const insideSol = process.env.CLAUDE_CODE_ENTRYPOINT === "sdk-ts" && /\/sol\/eng
 function fence() {
   try {
     const src = readFileSync(join(root, "sol/engine/src/inventory.ts"), "utf8");
-    const m = src.match(/const FENCE = \[([\s\S]*?)\];/);
-    return (m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : []).map((f) => resolve(root, "sol/mac/src", f));
+    const m = src.match(/const FENCE\b[^=\n]*=\s*\[([\s\S]*?)\]/);   // with or without a type (the leak check reads it the same way)
+    return (m ? [...m[1].matchAll(/["'`]([^"'`]+)["'`]/g)].map((x) => x[1]) : []).map((f) => resolve(root, "sol/mac/src", f));
   } catch { return []; }
 }
-function isFenced(p) {
-  const abs = isAbsolute(p) ? p : resolve(cwd, p);
+function isFenced(p, from = cwd) {
+  if (!root) return false;
+  const abs = isAbsolute(p) ? p : resolve(from, p);
   return fence().includes(abs);
 }
 
@@ -121,7 +564,7 @@ function isFenced(p) {
 // as a claim ping. The lookup reads the two files `--refresh-claims` keeps, refreshed detached when older than a minute;
 // the matching and the words are a copy of fileOverlap and claimLine in sol/engine/src/team/claims.ts, the tested home.
 function claimNote(p) {
-  if (!branch || /^(main|stable|live|beta)$/.test(branch) || /\/(mine|plan|shots)$/.test(branch)) return "";
+  if (!root || !branch || /^(main|stable|live|beta)$/.test(branch) || /\/(mine|plan|shots)$/.test(branch)) return "";
   const rel = relative(root, isAbsolute(p) ? p : resolve(cwd, p)).split("\\").join("/");
   if (!rel || rel.startsWith("../") || rel === ".." || isAbsolute(rel)) return "";
   const said = TMP("said", String(input.session_id || cwd));
@@ -129,16 +572,15 @@ function claimNote(p) {
   if (done.includes(rel)) return "";
   const prFile = TMP("prfiles", root), wtFile = TMP("worktrees", root);
   const fresh = readJson(prFile, 60_000) !== undefined && readJson(wtFile, 60_000) !== undefined;
-  if (!fresh) { try { spawn(process.execPath, [process.argv[1], "--refresh-claims", root], { detached: true, stdio: "ignore" }).unref(); } catch {} }
+  if (!fresh) refreshClaims(root);
   const prs = (readJson(prFile) ?? []).filter((c) => c.branch !== branch && (c.files ?? []).includes(rel));
   const prBranches = new Set(prs.map((c) => c.branch));
   const trees = (readJson(wtFile) ?? []).filter((c) => c.branch !== branch && !prBranches.has(c.branch) && (c.files ?? []).includes(rel));
   const hits = [...prs.map((c) => ({ ...c, pr: c.number })), ...trees];
   if (!hits.length) return "";
   writeJson(said, [...done, rel]);
-  const me = login(), issue = Number((/-(\d{1,6})$/.exec(branch.split("/").pop() ?? "") ?? [])[1]) || undefined;
-  const remote = git(["remote", "get-url", "origin"]);
-  const repo = (/github\.com[:/]([^/]+\/[^/.]+?)(?:\.git)?$/.exec(remote) ?? [])[1];
+  const me = loginAt(session), issue = Number((/-(\d{1,6})$/.exec(branch.split("/").pop() ?? "") ?? [])[1]) || undefined;
+  const repo = (/github\.com[:/]([^/]+\/[^/.]+?)(?:\.git)?$/.exec(configOf(session)["remote.origin.url"] ?? "") ?? [])[1];
   for (const c of hits) {
     const hitIssue = Number((/-(\d{1,6})$/.exec(c.branch.split("/").pop() ?? "") ?? [])[1]) || undefined;
     const body = JSON.stringify({ path: rel, branch: c.branch, login: c.login, pr: c.pr, issue: hitIssue, repo, from: { login: me, branch, issue } });
@@ -154,98 +596,548 @@ const HOME_DATA = /^sol\/home\/(memory|life|school|desk|talk|output|tmp|browser-
 const SECRET_FILE = /(^|\/)\.env$|^sol\/engine\/(team|settings|doors|titles)\.json$/;
 const SECRET_TEXT = /sk-ant-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|AIza[0-9A-Za-z_-]{30,}|tskey-[a-z]+-[A-Za-z0-9]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY/;
 
-if (tool === "Edit" || tool === "Write" || tool === "MultiEdit" || tool === "NotebookEdit") {
-  const p = args.file_path || args.notebook_path || "";
-  if (insideSol && p && isFenced(p)) refuse("fence", `${basename(p)} is on the fence: the few face files that keep the window alive are never edited from inside a running Sol (sol/README.md, Mutable mode). Edit it from a terminal, outside Sol.`);
-  const note = p ? claimNote(p) : "";
+// the review session's buttons (#416, engine/src/team/tonight.ts) and the hand-in card's (#476, handin.ts) are the
+// person's own presses in Sol's window: a press there is a real merge or a real hand-in. A session never sends one over
+// the engine's socket (team.tonight.*, team.handin.*, also split across strings), nor opens a review through POST
+// /tonight, whether in a shell line, in a script it writes, or in a script a command runs. Sol's own source that names
+// them (the engine, the face, their tests, the harness, the docs) may still be edited, in any checkout of it (a side copy
+// in /tmp too), and a shell line may still read or search for them or say them in a commit message. Not a wall: a
+// program can still be written around it, as it could run gh pr merge; the key, the Origin check and the session's
+// words are the others
+const TONIGHT_TEXT = /team\.tonight|\btonight\.(press|key)\b|["'`]team\.?["'`][\s\S]{0,60}["'`]\.?tonight/;
+const TONIGHT_ROUTE = (s) => /(:\d{2,5}|localhost|127\.0\.0\.1|\[::1\])\/tonight(?![\w./-])/.test(s)
+  || (/\b(curl|wget|http|https|fetch|websocat|nc)\b/.test(s) && /\/tonight(?=$|[\s"'`?#)])/m.test(s));
+const TONIGHT_WHY = `the review session's buttons are the reviewer's own presses in Sol's window; a session never sends them (team.tonight.*) or opens a review by hand (/tonight), in a shell line or a script. Help the reviewer decide, and leave the press to them.`;
+// (#476's rule, id and words, the same: rule hand-in-card)
+const HANDIN_TEXT = /team\.handin|\bhandin\.(press|key)\b|["'`]team\.?["'`][\s\S]{0,60}["'`]\.?handin\b/;
+const HANDIN_WHY = `the hand-in card's buttons are your human's own presses in Sol's window; a session never asks for the card's key or sends a press (team.handin.*), in a shell line or a script. Tell your human the card is there, and leave the press to them.`;
+const HAND_IN_WHY = `handing in is marking a PR ready, your human's own press, and Sol has the button for it: once the PR's checks are green, a hand-in card ("… is ready. Bring it in?") shows in the session that opened it, yours included when your background agents opened it. Tell your human to press Bring it in there; to merge too, end your turn with wrap_up and a merge button naming the PR (pr). No Terminal line for them to type.`;
+// a slight send back (#421, engine/src/team/sentback.ts) is the one road where an agent's judgement leads to a merge, so
+// its start is the reviewer's press alone: a session never puts on or takes off a sent-back label, nor writes the
+// marker the re-check reads, in a shell line or in a script outside Sol's own source and docs
+const SENT_TEXT = /sent-back:(slight|severe)|sol:sent-back/;
+const SENT_WHY = `a send back is the reviewer's own press in the review session; a session never puts on or takes off a sent-back label or writes its marker (the re-check would act on it). Tell the reviewer, and leave the press to them.`;
+// a let-through is the person's, written in their own editor: a session never writes .claude/harness.local.json
+const LET_FILE = (abs) => /(^|\/)\.claude\/harness\.local\.json$/i.test(real(abs));
+const LET_WHY = `.claude/harness.local.json is where a person lets one rule through, from their own window; a session never writes it. Tell your human which rule refused what and why, and let them decide.`;
+// a checkout's remotes and git settings say whether it is the team's repository (isSolDev): a session never changes them, or the
+// team's rules would be switched off by the session they bind. Its git folder's config, the .git that makes it a
+// checkout, and the guard's own memory (what it has seen, its log, the marks it keeps across a shell line) likewise
+const GIT_CONFIG = (abs) => /(^|\/)\.git(\/(config|config\.worktree|refs(\/.*)?|packed-refs|HEAD|worktrees\/[^/]+\/(config\.worktree|gitdir|commondir|HEAD|refs(\/.*)?)))?$/i.test(real(abs));   // its settings, refs and HEAD
+const GUARD_STATE = (abs) => { const a = real(abs); return a === real(SEEN) || a === real(process.env.SOL_LOCKS_LOG || join(STATE_DIR, "locks.jsonl")) || /(^|\/)sol-guard-[\w-]+\.json$/.test(a); };
+const REMOTE_WHY = `which repository a checkout belongs to (its remotes, its git settings, its .git) decides which of the guard's rules hold there; a session never changes it. Tell your human what you need, and they change it.`;
+const STATE_WHY = `that is the guard's own memory (what it has seen, its log, the marks it keeps across a shell line); a session never writes or removes it.`;
+const REMOTE_KEY = /^(remote|url|include|includeif)\./i;
+
+// ---- Edit, Write, MultiEdit, NotebookEdit
+if (EDITS.has(tool)) {
+  const p = target;
+  const abs = targetAbs;
+  const here = abs ? repoAt(abs, cwd) : NONE;
+  const text = [args.content, args.new_string, args.new_source, ...(Array.isArray(args.edits) ? args.edits.map((e) => e?.new_string) : [])].filter((x) => typeof x === "string").join("\n");
+  const own = abs && ownSource(abs);
+  if (abs && LET_FILE(abs)) refuse("let-through", LET_WHY, [here]);
+  if (abs && GIT_CONFIG(abs)) refuse("remote", REMOTE_WHY, [here]);
+  if (abs && GUARD_STATE(abs)) refuse("guard-state", STATE_WHY, [here]);
+  if (!own && (TONIGHT_TEXT.test(text) || TONIGHT_ROUTE(text))) refuse("tonight", TONIGHT_WHY, [here]);
+  if (!own && HANDIN_TEXT.test(text)) refuse("hand-in-card", HANDIN_WHY, [here]);
+  if (!own && SENT_TEXT.test(text)) refuse("sent-back", SENT_WHY, [here]);
+  if (insideSol && p && isFenced(p)) refuse("fence", `${basename(p)} is on the fence: the few face files that keep the window alive are never edited from inside a running Sol${dev(" (sol/README.md, Mutable mode)")}. Edit it from a terminal, outside Sol.`, [here]);
+  const note = p && solDev ? claimNote(p) : "";   // claims are the team's (#202): another PR, another side copy
   if (note) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", additionalContext: note } }));
   process.exit(0);
 }
-if (tool !== "Bash") process.exit(0);
 
-const cmd = String(args.command || "");
-const segments = cmd.split(/\n|&&|\|\||;|\|/).map((s) => s.trim()).filter(Boolean);
-const mine = myNames();
+// ---- Bash: the line as the commands it runs, each with the folder it runs in
+const PROTECTED = /^(main|stable|live|dev|beta)$/;
 
-for (const seg of segments) {
-  const s = seg.replace(/^(sudo\s+)?(command\s+)?/, "");
+// what the guard could not read and that names an action it judges: refused, never let through in silence. A line that
+// does not close (an open quote or $( )), a program that is a variable ("$GIT" merge main), a script written and run in
+// one line by something it cannot read
+const JUDGED = /^(merge|pull|push|update-ref|reset|tag|branch|checkout|switch|commit|cherry-pick|revert|am|rebase|ready|api|config|alias|pr)$/;
+const UNPARSED_WHY = (what) => `the guard cannot tell what this line runs (${what}), and it names an action the guard judges. Write the command out plainly, one command a line, so it can be read.`;
+if (steps.broken && /\b(git|gh)\b[\s\S]*\b(merge|pull|push|update-ref|reset|tag|branch|checkout|switch|commit|cherry-pick|revert|am|rebase|ready|api|config|alias|remote|pr)\b/.test(line)) refuse("unparsed", UNPARSED_WHY("a quote or a $( ) that does not close"), atAll());
+for (const x of steps) {
+  if (x.opaque && x.prog.slice(1).some((w) => JUDGED.test(w.t))) refuse("unparsed", UNPARSED_WHY(`its program is ${x.prog[0].t}`), atAll());
+  if (x.unread) refuse("unparsed", UNPARSED_WHY(`${basename(x.unread)} is written and run in the same line, by something whose words it cannot read`), atAll());
+}
 
-  // a branch is made by Take, nowhere else (a */mine branch is MY SOL's own and may be made by hand)
-  const mk = s.match(/^git\s+(?:checkout\s+(?:-b|-B|--orphan)|switch\s+(?:-c|-C|--create))\s+(\S+)/) || s.match(/^git\s+branch\s+(?!-)(\S+)/);
-  if (mk && !/\/mine$/.test(mk[1])) refuse("branch-without-take", `a branch starts with Take, which also claims the issue: bash sol/take <issue-number>. (A */mine branch is the one exception.)`);
+// git's own aliases: a word git turns into a subcommand (-c alias.x=…, the checkout's or the person's config) is judged
+// as what it stands for; a shell alias (!…) is judged as the line it runs
+const GIT_BUILTIN = new Set(["add", "am", "apply", "archive", "bisect", "blame", "branch", "bundle", "checkout", "cherry", "cherry-pick", "clean", "clone", "commit", "config", "describe", "diff", "fetch", "format-patch", "gc", "grep", "init", "log", "ls-files", "ls-remote", "ls-tree", "merge", "merge-base", "mv", "notes", "pull", "push", "range-diff", "rebase", "reflog", "remote", "reset", "restore", "rev-list", "rev-parse", "revert", "rm", "shortlog", "show", "show-ref", "sparse-checkout", "stash", "status", "submodule", "switch", "symbolic-ref", "tag", "update-index", "update-ref", "worktree", "cat-file", "hash-object", "write-tree", "commit-tree", "read-tree", "for-each-ref", "help", "version", "var", "count-objects", "fsck", "prune", "repack", "verify-commit", "maintenance", "difftool", "mergetool", "replace", "filter-branch", "fast-import", "fast-export", "send-email", "request-pull", "whatchanged", "name-rev"]);
+function gitAt(x) {
+  const g = gitOf(x);
+  if (!g || GIT_BUILTIN.has(g.sub)) return g;
+  const al = g.aliases[g.sub] ?? configOf(repoAt(g.dir, cwd))[`alias.${g.sub.toLowerCase()}`] ?? (gitIn(g.dir, ["config", "--get", `alias.${g.sub}`]) || undefined);
+  if (al === undefined) return g;
+  if (al.startsWith("!")) { if (!x.aliased) { x.aliased = true; steps.push(...plan(`${al.slice(1)} ${g.args.join(" ")}`, g.dir, x.depth + 1)); } return null; }
+  const w = words(al).map((v) => v.t);
+  return { ...g, sub: w[0] ?? g.sub, args: [...w.slice(1), ...g.args], alias: g.sub };
+}
 
-  // merging is a lead's press on GitHub; stable and live move by a human's hand (the stamp, promote)
-  if (/^git\s+merge\b(?!.*--abort)/.test(s) || /^gh\s+pr\s+merge\b/.test(s)) refuse("merge", `merging is the lead's one approval on GitHub, pressed by a person; an agent opens a draft PR and stops.`);
-  if (/^git\s+(push|branch|update-ref|reset|tag)\b.*\b(stable|live)\b/.test(s) && !/^git\s+push\b.*\bbeta\b/.test(s)) refuse("stable-move", `stable and live move by a human's hand only (the stamp; sol/promote). Leave one line for them.`);
-  if (/^git\s+push\b.*(\s-f\b|--force)/.test(s) && (/\b(main|stable|live)\b/.test(s) || branch === "main")) refuse("stable-move", `a force push to main, stable or live rewrites what others stand on; never.`);
+if (does((s) => TONIGHT_TEXT.test(s) || TONIGHT_ROUTE(s))) refuse("tonight", TONIGHT_WHY, atAll());
+if (does((s) => HANDIN_TEXT.test(s))) refuse("hand-in-card", HANDIN_WHY, atAll());
+if (does((s) => SENT_TEXT.test(s))) refuse("sent-back", SENT_WHY, atAll());
+// …and by what the label will be, not how it is spelled: a label put on or taken off a PR or an issue (gh pr/issue
+// edit or create, gh api on its labels) whose value is sent-back:* once the shell has built it, or whose value the
+// shell builds at run time (a variable, a $( ), printf) so the guard cannot know it
+const SENT_LABEL = (v) => /sent-back/i.test(v) || /[$`]/.test(v);
+for (const x of steps) {
+  const h = ghOf(x);
+  if (!h) continue;
+  const labels = [];
+  if ((h.path[0] === "pr" || h.path[0] === "issue") && ["edit", "create"].includes(h.path[1]))
+    for (let k = 0; k < h.args.length; k++) {
+      const a = h.args[k], m = /^(--add-label|--remove-label|--label|-l)(=(.*))?$/.exec(a);
+      if (m) labels.push(m[2] ? m[3] : h.args[k + 1] ?? "");
+    }
+  if (h.path[0] === "api" && /\/labels\b/.test([h.path[1] ?? "", ...h.args].join(" "))) labels.push([h.path[1] ?? "", ...h.args].join(" "));
+  if (h.path[0] === "label") labels.push(h.args.join(" ") + " " + (h.path[1] ?? ""));
+  if (labels.some((v) => SENT_LABEL(v.split(",").join(" ")))) refuse("sent-back", SENT_WHY, atAll());
+}
+// handing in (#420, engine/src/team/handin.ts) is marking a PR ready: the person's own press, or the hand-in session's
+// tool hand_in where the project lets agents pick (it asks the project's setting). Never a shell's gh pr ready, nor the
+// GraphQL mutations behind it. Not a wall either: the tool's checks and the session's words are the others
+if (steps.some((x) => { const h = ghOf(x); return h && h.path[0] === "pr" && h.path[1] === "ready"; })
+  || does((s) => /markPullRequestReadyForReview|convertPullRequestToDraft/.test(s))) refuse("hand-in", HAND_IN_WHY, atAll());
+// a let-through is the person's: no shell writes it either, nor a program whose code names it
+if (steps.some((x) => { const w = writesOf(x); return [...w.writes, ...w.appends, ...w.deletes].some(LET_FILE); }) || does((s) => /harness\.local\.json/i.test(s) && /allow|rule|until/i.test(s)))
+  refuse("let-through", LET_WHY, atAll());
+for (const x of steps) {
+  const w = writesOf(x), all = [...w.writes, ...w.appends, ...w.deletes];
+  if (all.some(GIT_CONFIG)) refuse("remote", REMOTE_WHY, atAll());
+  if (all.some(GUARD_STATE)) refuse("guard-state", STATE_WHY, atAll());
+}
+// a program's inline code or a script that names a git folder's config, or the guard's own files, and writes a file:
+// it may rewrite them. One that only reads them goes through
+const CODE_WRITES = /\b(writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|copyFileSync|copyFile|cpSync|renameSync|rename|rmSync|unlinkSync|unlink|rm|write_text|write_bytes|truncate|remove)\b|\bopen\([^)]*,\s*['"][wax+]|\.write\(|\bshutil\.|\bos\.(replace|remove|unlink)\b|(^|[^-=<\d&])>>?\s*[^\s&>]|\bsed\s+-\w*i\b|\btee\b/m;
+const codeOf = (x) => [x.text, ...x.docs, x.ran ?? ""].join("\n");
+if (steps.some((x) => SENDERS.has(prog(x)) && /\.git\/(config|worktrees)\b/.test(codeOf(x)) && CODE_WRITES.test(codeOf(x).replace(/\d*>&\d+|>\s*\/dev\/null/g, "")))) refuse("remote", REMOTE_WHY, atAll());
+if (steps.some((x) => SENDERS.has(prog(x)) && /sol-dev-seen\.json|sol-guard-|locks\.jsonl/.test(codeOf(x)) && CODE_WRITES.test(codeOf(x).replace(/\d*>&\d+|>\s*\/dev\/null/g, ""))))
+  refuse("guard-state", STATE_WHY, atAll());
 
-  // main takes one commit outside a PR: the owner's press in Cowork (#117, sol/engine/src/team/press.ts), a setting such
-  // as who leads a label, made by the engine for the person who pressed and signed by them. That is the one exception,
-  // and it never passes here: it is a person's press, not an agent's shell. The same write by hand, GitHub's contents
-  // or refs API aimed at main (a contents write with no branch lands on main too), is a commit on main and refused.
-  if (/^gh\s+api\b/.test(s) && /(-X\s*|--method[\s=]+)(PUT|POST|PATCH|DELETE)\b|\s(-f|-F|--field|--raw-field|--input)\s/i.test(s)
-    && ((/\/contents\//.test(s) && (/\bbranch=main\b/.test(s) || !/\bbranch=/.test(s))) || /\/git\/refs\/heads\/main\b/.test(s)))
-    refuse("main-by-api", `writing to main through GitHub's API is a commit on main with no PR. A setting (who leads a label) is the owner's press in Cowork; anything else goes on your branch and a draft PR.`);
+/** a git fetch or pull whose config or environment could be anyone's: deny by default. Any -c or --config-env before
+ *  it, and any environment assignment on it or exported in the line, except a short list that cannot move where it
+ *  fetches from (GIT_TERMINAL_PROMPT, LANG, LC_*). That covers GIT_CONFIG_*, HOME, XDG_CONFIG_HOME, GIT_SSH*,
+ *  GIT_PROXY_COMMAND, GIT_EXEC_PATH, GIT_ALTERNATE_OBJECT_DIRECTORIES and the rest */
+function fetchOverridden(x) {
+  const ENV_OK = /^(GIT_TERMINAL_PROMPT|LANG|LC_[A-Z_]+)$/;
+  const p = x.prog.map((w) => w.t);
+  const env = Object.keys(x.prog.env ?? {});
+  for (const y of steps) if (/^(export|declare|typeset|set)$/.test(prog(y)) || (!y.prog.length && /^[A-Za-z_]\w*=/.test(y.text))) for (const w of words(y.text)) { const m = /^([A-Za-z_]\w*)=/.exec(w.t); if (m) env.push(m[1]); }
+  // git's own options before fetch or pull: -C <folder> and -q only
+  const i = p.findIndex((w) => /^(fetch|pull)$/.test(w));
+  const before = p.slice(1, i < 0 ? p.length : i);
+  for (let j = 0; j < before.length; j++) { if (before[j] === "-C") { j++; continue; } if (before[j] !== "-q") return true; }
+  return env.some((k) => !ENV_OK.test(k));
+}
+/** the remotes a line fetches from, cleanly: a configured remote whose URL is the team's, with no override (fetch, pull) */
+function teamFetches(root) {
+  const out = new Set();
+  for (const y of steps) {
+    const yg = gitOf(y);
+    if (!yg || !(yg.sub === "fetch" || yg.sub === "pull") || repoAt(yg.dir, cwd).root !== root || fetchOverridden(y)) continue;
+    const r = repoAt(root, cwd), fp = positional(yg.args, ["--depth", "-j", "--jobs", "--upload-pack", "-s", "--strategy", "-X", "--strategy-option"]);
+    // a configured remote by name, whose effective URL (insteadOf resolved) is exactly the team's on GitHub: no local
+    // path, file://, other host or ssh alias (the loose check is only for "is this a team checkout")
+    const name = fp[0] ?? configOf(r)[`branch.${branchOf(r)}.remote`] ?? "origin";
+    if (!configOf(r)[`remote.${name}.url`]) continue;
+    const url = gitIn(root, ["ls-remote", "--get-url", name]);
+    if (/^(?:https:\/\/github\.com\/|git@github\.com:)(?:sol-mif\/sol-dev|marcocyl04-ux\/ecosystem)(?:\.git)?$/i.test(url)) out.add(name);
+  }
+  return [...out];
+}
+/** a plain commit takes the index alone (#482's, 531dc038, the same): the whole line, its backslash-newline continuations
+ *  joined, is exactly one `git commit` on one line with only -m "<literal>" (or a bare word), -q, -s, -v and their long
+ *  names. No other command, no ; && || or |, no env assignment or wrapper, no GIT_* or .git/ named, no $, backticks,
+ *  heredoc or redirect, no pathspec. Anything else is judged with the working tree too: when in doubt, judge more */
+const PLAIN_MSG = String.raw`(?:"[^"$\x60\\\n]*"|'[^'\n]*'|[\w.,:@+=/-]+)`;
+const PLAIN_COMMIT = new RegExp(String.raw`^git\s+commit(?:\s+(?:-[qsv]+|--quiet|--signoff|--verbose|(?:-[qsv]*m|--message)(?:\s+|=)${PLAIN_MSG}|-[qsv]*m${PLAIN_MSG}))*$`);
+function plainCommit(l) {
+  if (/\\\r?\n/.test(String(l))) return false;   // a continuation: not plain
+  const one = String(l).trim();
+  if (/GIT_|\.git\b|\$|`|<<|\n/.test(one)) return false;
+  return PLAIN_COMMIT.test(one);
+}
+const MOVE_WHY = `stable and live move by a human's hand only (the release, sol/promote). Leave one line for them.`;
+const MERGE_WHY = `merging is a person's press, never an agent's; an agent opens a draft PR and stops. For a PR of your human's, end your turn with wrap_up and a merge button naming it (action merge, pr): their press there marks it ready and merges it once its checks are green. No Terminal line for them to type.`;
+/** a branch another person of the team writes on: its prefix names someone on the team's pages (a name or a login) who is not me */
+function othersBranch(here, b) {
+  const prefix = b.includes("/") ? b.split("/")[0] : "";
+  if (!prefix || /\/mine$/.test(b) || PROTECTED.test(b)) return "";
+  const mine = namesAt(here);
+  return mine.length > 0 && !mine.includes(prefix) && peopleOf(here).some((p) => p.name === prefix || p.login === prefix) ? prefix : "";
+}
 
-  // a commit: not on main, not on another person's branch, nothing of home's and no key in it
-  if (/^git\s+commit\b/.test(s)) {
-    if (branch === "main") refuse("main-commit", `nothing is committed on main; work on your branch (bash sol/take <issue-number>) and open a draft PR. (Sol's own face edits go through sol/mutate.)`);
-    const prefix = branch.includes("/") ? branch.split("/")[0] : "";
-    if (prefix && mine.length && !mine.includes(prefix) && !/\/mine$/.test(branch)) refuse("others-branch", `${branch} is ${prefix}'s branch; one writer per branch. Take your own issue, or comment on theirs.`);
-    const staged = git(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
-    const all = (/\s-a\b|--all\b/.test(s) || segments.some((x) => /^git\s+add\b/.test(x)))
-      ? git(["status", "--porcelain", "--untracked-files=all"]).split("\n").filter(Boolean).map((l) => l.slice(3).replace(/^.* -> /, "")) : [];
-    const files = [...new Set([...staged, ...all])];
-    const home = files.filter((f) => HOME_DATA.test(f));
-    if (home.length) refuse("home-data", `these are a person's own and never committed: ${home.slice(0, 5).join(", ")}${home.length > 5 ? " …" : ""}`);
-    const secretFiles = files.filter((f) => SECRET_FILE.test(f));
-    if (secretFiles.length) refuse("key", `these hold keys or a machine's own settings and never leave it: ${secretFiles.join(", ")}`);
-    const text = git(["diff", "--cached"]) + "\n" + all.map((f) => { try { return readFileSync(join(root, f), "utf8"); } catch { return ""; } }).join("\n");
-    const hit = text.match(SECRET_TEXT);
-    if (hit) refuse("key", `something that looks like a key is in the commit (${hit[0].slice(0, 12)}…). A key that is committed is a key that leaks; take it out first.`);
+/** a program given code on its command line or a heredoc (node -e, python -c, bash <<EOF) */
+const inlineRuns = (x) => /^(node|nodejs|deno|bun|tsx|python|python3|perl|ruby|php|osascript|bash|sh|zsh|dash|ksh|eval)$/.test(prog(x)) && (x.docs.length > 0 || x.prog.slice(1).some((w) => /^-[a-zA-Z]*[ce]$|^--eval$|^-p$/.test(w.t)) || prog(x) === "eval");
+/** a Scoped or Approved line that `tip` adds to a feature's prd.md or eval.md since it left the base, and that the press's
+ *  record does not hold for that file: the refusal's words, or "". The base is GitHub's: origin/<base> when the PR names
+ *  one that is there, else origin/main, never a local branch. In the team's repository only, with the team's locks loaded.
+ *  It fails closed: a tip that is not one commit is refused, and a tip with no base in common (an orphan, or no
+ *  origin/main here) has every mark it holds checked against the record */
+function unrecordedMarks(here, tip, base, k) {
+  if (!locks?.marksAdded || !isSolDev(here)) return "";
+  const raw = (a) => { try { return execFileSync("git", a, { cwd: here.root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] }); } catch { return ""; } };
+  const commit = (r) => r && !/[*?[\]$`]/.test(r) ? gitIn(here.root, ["rev-parse", "-q", "--verify", `${r}^{commit}`]) : "";
+  const tipSha = commit(tip);
+  if (!tipSha) {
+    // a branch with no commit yet carries nothing, when the push or PR is the line's only git step besides git add and
+    // git commit (whose commit the commit check judges, mark by mark, before it is made) and no script runs: anything
+    // else on the line (a pull, merge, reset, update-ref, cherry-pick, am, rebase, commit-tree, a script) could give it
+    // commits the guard did not judge, so then it fails closed
+    const others = steps.filter((y, j) => { if (j === k) return false; const yg = gitOf(y); if (yg && ["add", "commit"].includes(yg.sub)) return false; return !!(yg || ghOf(y) || y.ran !== undefined || scriptPath(y) || inlineRuns(y) || y.unread || y.opaque); }).length;
+    if (!commit("HEAD") && (tip === "HEAD" || tip === branchOf(here)) && others === 0) return "";
+    return `the guard cannot tell which commit "${tip || "(nothing)"}" is, so it cannot see whether it carries a Scoped or Approved mark no press wrote. Name one branch or commit to push, as it is now.`;
+  }
+  // GitHub's base by its full name (a local branch or tag called origin/main never stands in), the PR's only when it is a
+  // branch name git accepts and GitHub has it
+  const okBase = base && gitIn(here.root, ["check-ref-format", "--branch", base]) === base;
+  const b = [okBase ? `refs/remotes/origin/${base}` : "", "refs/remotes/origin/main"].find((r) => r && commit(r));
+  const mb = b ? gitIn(here.root, ["merge-base", b, tipSha]) : "";
+  const pressed = pressedNow();
+  const held = (f, l) => pressed.some((r) => String(r?.file ?? "").toLowerCase() === f.toLowerCase() && String(r?.line ?? "") === l.trim());
+  const files = mb ? raw(["diff", "--name-only", "-z", `${mb}..${tipSha}`, "--", "specs/features"]).split("\0") : raw(["ls-tree", "-r", "-z", "--name-only", tipSha, "--", "specs/features"]).split("\0");
+  for (const f of files.filter((f) => /^specs\/features\/[^/]+\/(eval|prd)\.md$/i.test(f))) {
+    const bad = locks.marksAdded(f, mb ? raw(["show", `${mb}:${f}`]) : "", raw(["show", `${tipSha}:${f}`])).find((l) => !held(f, l));
+    if (bad) return `${f} on ${tip} carries "${bad.trim()}", which no Scoped or Approve press on this Mac wrote, so it would leave this Mac in the push or the PR. Only the Sol developer's press writes it: take the line out in a new commit, and show them the card (the tool checkpoint).`;
+  }
+  return "";
+}
+
+// the branch each checkout is on as the line goes: a checkout or switch earlier in the line moves it, so a later merge,
+// commit or push is judged on the branch it will run on, not the one the session started on. A branch the guard cannot
+// know before the line runs (gh pr checkout, checkout -) is UNKNOWN: a commit, merge or push after it is refused
+const UNKNOWN = "\u0000unknown";
+const onBranch = new Map();
+/** the branch a git checkout or switch leaves its checkout on: a branch name, "" for a detached head, UNKNOWN, or null
+ *  when it does not move (a file restored, a list) */
+function switchedTo(g, here) {
+  if (g.sub !== "checkout" && g.sub !== "switch") return null;
+  const a = g.args;
+  if (a.includes("--") && g.sub === "checkout") return null;   // checkout -- path: files, not a branch
+  const made = a.findIndex((w) => /^(-b|-B|--orphan|-c|-C|--create|--force-create)$/.test(w));
+  if (made >= 0) return a[made + 1] ?? UNKNOWN;
+  if (a.includes("-")) return UNKNOWN;   // the branch before: known only once it runs
+  if (a.some((w) => w === "--detach" || w === "-d")) return "";
+  const pos = positional(a, ["--conflict", "--orphan"]);
+  // -t / --track <remote>/<b> makes and moves to a local <b> (they take no value of their own)
+  if (a.some((w) => /^(-t|--track)(=.*)?$/.test(w))) return pos[0] ? (pos[0].includes("/") ? pos[0].slice(pos[0].indexOf("/") + 1) : pos[0]) : UNKNOWN;
+  if (!pos.length) return null;
+  const ref = pos[0];
+  if (ref === "-" || /[$`]/.test(ref)) return UNKNOWN;
+  if (g.sub === "checkout" && pos.length > 1) return null;   // checkout <tree-ish> <paths>: files
+  const local = gitIn(here.root, ["show-ref", "--verify", "-q", `refs/heads/${ref}`]) !== "" || existsSync(join(here.common || "", "refs/heads", ref))
+    || !!gitIn(here.root, ["rev-parse", "-q", "--verify", `refs/heads/${ref}`]);
+  if (local) return ref;
+  // a name git makes a branch of from a remote one (checkout's DWIM), or a commit, tag or remote ref: detached
+  if (gitIn(here.root, ["rev-parse", "-q", "--verify", `refs/remotes/origin/${ref}`])) return ref;
+  if (g.sub === "checkout" && existsSync(join(here.root, ref))) return null;   // a path
+  return "";
+}
+
+// a line that fetches (fetch, pull) holds nothing else: only git fetch, pull, merge, rebase, checkout or switch, with no
+// environment assignment, no other program, nothing run inside them and no git option but -C and -q. Then what that
+// fetch moved is GitHub's (the after-check trusts it), and no part of the line could have pointed it elsewhere
+{
+  const FETCHING = (y) => { const yg = gitOf(y); return !!yg && (yg.sub === "fetch" || yg.sub === "pull"); };
+  if (solDev && steps.some(FETCHING)) {
+    const plainGit = (y) => {
+      const yg = gitOf(y);
+      if (!yg || !["fetch", "pull", "merge", "rebase", "checkout", "switch"].includes(yg.sub) || y.depth > 0 || y.docs.length || y.opaque) return false;
+      if (Object.keys(y.prog.env ?? {}).length || y.prog.length !== y.words.length) return false;   // an assignment or a wrapper before git
+      const p = y.prog.map((w) => w.t), i = p.indexOf(yg.sub);
+      for (let j = 1; j < i; j++) { if (p[j] === "-C") { j++; continue; } if (p[j] !== "-q") return false; }
+      return true;
+    };
+    if (steps.broken || !steps.every(plainGit)) refuse("remote", `a line that fetches (git fetch, git pull) holds nothing else here: run git pull, or git fetch then git merge or rebase, on its own line, with no variable, option or other command beside it.`, atAll());
+  }
+}
+
+// a shell script the line runs (a release script, ./x.sh) is read for the pushes it makes, and judged on those alone: its
+// other commands are its own (Take makes a branch, a release script moves stable), but where it pushes is what moves
+const SHELL_RUN = /^(bash|sh|zsh|dash|ksh|source|\.)$/;
+for (const x of [...steps]) {
+  if (x.ran === undefined || x.unread) continue;
+  if (!SHELL_RUN.test(prog(x)) && !/^#!\s*\S*\b(ba|z|da|k)?sh\b|^#!\s*\S*env\s+(ba|z)?sh\b/.test(x.ran)) continue;
+  for (const y of plan(x.ran, x.dir, x.depth + 1)) { y.fromScript = scriptPath(x); steps.push(y); }
+}
+
+for (let k = 0; k < steps.length; k++) {
+  const x = steps[k];
+  const g = gitAt(x), h = ghOf(x);
+  if (x.fromScript && !(g && g.sub === "push")) continue;
+  const here = repoAt(g?.dir ?? h?.dir ?? x.dir, cwd);   // the checkout this command acts in
+  const tb = onBranch.has(here.root) ? onBranch.get(here.root) : branchOf(here);
+  if (tb === UNKNOWN && ((g && ["merge", "pull", "commit", "push", "cherry-pick", "revert", "am", "rebase", "reset"].includes(g.sub)) || (h && h.path[0] === "pr" && h.path[1] === "create")))
+    refuse("others-branch", `an earlier command in this line moves to a branch the guard cannot know before it runs (gh pr checkout, checkout -), so what comes after it cannot be judged. Switch first, in its own line, then go on.`, [here]);
+  const s = x.text.replace(/^(?:(?:sudo|command|nohup|time|exec|env)\s+(?:-\S+\s+)*|[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)*/, "");
+
+  // a gh or git alias made now is judged as what it will run
+  if (h && h.path[0] === "alias" && h.path[1] === "set") { const pos = positional(h.args, ["--clobber"]); if (pos[1] && !x.aliased) { x.aliased = true; steps.push(...plan(pos[1].startsWith("!") ? pos[1].slice(1) : `gh ${pos[1]}`, h.dir, x.depth + 1)); } }
+  if (g && g.sub === "config") { const pos = positional(g.args, ["--file", "-f", "--blob", "--type"]); const m = /^alias\.(.+)$/i.exec(pos[0] ?? ""); if (m && pos[1] && !x.aliased) { x.aliased = true; steps.push(...plan(pos[1].startsWith("!") ? pos[1].slice(1) : `git ${pos[1]}`, g.dir, x.depth + 1)); } }
+
+  if (g) {
+    // a branch is made by Take, nowhere else (a */mine branch is the person's own Sol and may be made by hand)
+    let made = "";
+    if (g.sub === "checkout" || g.sub === "switch") {
+      const i = g.args.findIndex((a) => (g.sub === "checkout" ? /^(-b|-B|--orphan)$/ : /^(-c|-C|--create|--force-create|--orphan)$/).test(a));
+      if (i >= 0) made = g.args[i + 1] ?? "";
+      else if (g.args.some((a) => /^(-t|--track)(=.*)?$/.test(a))) made = switchedTo(g, here) ?? "";   // -t origin/x makes x
+    }
+    if (g.sub === "branch" && !g.args.some((a) => /^(-[dDmMcCfr]|--delete|--move|--copy|--force|-l|--list|-a|-r|--all|--remotes|--show-current|--contains|--merged|--no-merged|--points-at|-u|--set-upstream-to|--unset-upstream|--edit-description|-v|-vv)$/.test(a))) {
+      const pos = positional(g.args, ["--format", "--sort", "-t", "--track"]);
+      if (pos[0]) made = pos[0];
+    }
+    if (g.sub === "worktree" && g.args[0] === "add") { const i = g.args.findIndex((a) => /^(-b|-B)$/.test(a)); if (i >= 0) made = g.args[i + 1] ?? ""; }
+    if (g.sub === "remote" && /^(set-url|rename|remove|rm|add|set-head|set-branches|prune)$/.test(g.args.find((a) => !a.startsWith("-")) ?? "")) refuse("remote", REMOTE_WHY, [here]);
+    // what GitHub has, as this checkout sees it (refs/remotes), comes from a fetch of the team's own remote, never by hand
+    if ((g.sub === "update-ref" || g.sub === "symbolic-ref") && (g.args.includes("--stdin") || g.args.some((a) => /^refs\/remotes\//.test(a)))) refuse("remote", REMOTE_WHY, [here]);
+    // a fetch refspec with a destination writes where it says; only the remote's own default (its config) is a real fetch
+    if (g.sub === "fetch" || g.sub === "pull") {
+      const fp = positional(g.args, ["--depth", "--deepen", "--shallow-since", "--shallow-exclude", "-j", "--jobs", "--upload-pack", "--refmap", "-s", "--strategy", "-X", "--strategy-option"]);
+      const dflt = configOf(here)[`remote.${fp[0] ?? "origin"}.fetch`] ?? "";
+      if (fp.slice(1).some((sp) => sp.includes(":") && sp !== dflt) || g.args.some((a) => a.startsWith("--refmap"))) refuse("remote", REMOTE_WHY, [here]);
+      // where a fetch writes and from where is the config's: no override of it on this command
+      if (fetchOverridden(x)) refuse("remote", REMOTE_WHY, [here]);
+    }
+    if (g.sub === "config") {
+      const pos = positional(g.args, ["--file", "-f", "--blob", "--type", "--default", "--comment", "--value"]);
+      const op = /^(set|unset|rename-section|remove-section|get|list|edit)$/.test(pos[0] ?? "") ? pos.shift() : "";
+      const wr = ["set", "unset", "rename-section", "remove-section", "edit"].includes(op) || g.args.some((a) => /^(--unset|--unset-all|--remove-section|--rename-section|--add|--replace-all|-e|--edit)$/.test(a))
+        || (!op && pos.length >= 2 && !g.args.some((a) => /^(--get|--get-all|--get-regexp|--get-urlmatch|-l|--list)$/.test(a)));
+      if (wr && (pos.some((k) => REMOTE_KEY.test(k)) || g.args.some((a) => /^(-e|--edit)$/.test(a)) || op === "edit")) refuse("remote", REMOTE_WHY, [here]);
+    }
+    if (made && !/\/mine$/.test(made)) refuse("branch-without-take", `a branch starts with Take, which also claims the issue: bash sol/take <issue-number>. (A */mine branch is the one exception.)`, [here]);
+    const moved = switchedTo(g, here);
+    if (moved !== null && here.root) onBranch.set(here.root, moved);
+
+    // merging is a lead's press on GitHub. A merge into my own branch (catching up with main) is not that: refused is a
+    // merge into main, stable, live, dev or beta (or a detached head), unless it only catches that branch up with its
+    // own remote. A pull is a fetch and a merge, judged the same
+    if ((g.sub === "merge" || g.sub === "pull") && !g.args.some((a) => /^--(abort|continue|quit)$/.test(a))) {
+      let refs = positional(g.args, ["-m", "-F", "--file", "-s", "--strategy", "-X", "--strategy-option", "--into-name", "--cleanup", "--depth", "--deepen", "--shallow-since", "--upload-pack", "-j", "--jobs"]);
+      if (g.sub === "pull") refs = refs.slice(1).map((r) => (r.includes(":") ? r.slice(r.indexOf(":") + 1) || r : r));
+      const own = (r) => r === tb || r === `origin/${tb}` || r === `refs/remotes/origin/${tb}` || r === `refs/heads/${tb}` || /^@\{u(pstream)?\}$/.test(r) || r === "FETCH_HEAD";
+      const catchUp = !!tb && (g.sub === "pull" ? refs.every(own) : refs.length > 0 && refs.every(own));
+      if ((!tb || PROTECTED.test(tb)) && !catchUp) refuse("merge", `${MERGE_WHY} (Catching your own branch up with main, git merge origin/main on your branch, goes through.)`, [here]);
+    }
+
+    // stable and live move by a human's hand (the release, promote). Judged on what moves: a push's destination, a branch
+    // forced, deleted or renamed, a ref updated, a reset on them, a tag by their name; never a word in a log or a diff.
+    // To drop once GitHub's rules are on (#484, decision 14): the push half, when stable and live are protected on GitHub itself.
+    const MOVED = /^(stable|live)$/;
+    if (g.sub === "push") {
+      // the remote: the first word, unless --repo names it (then every word is a refspec); = forms of the options too
+      const repoFlag = flag(g.args, "--repo");
+      const pos = positional(g.args, ["-o", "--push-option", "--repo", "--receive-pack", "--exec"]);
+      const remote = repoFlag ?? pos[0] ?? "", specs = repoFlag !== undefined ? pos : pos.slice(1);
+      const remoteUrl = configOf(here)[`remote.${remote}.url`] ?? remote;
+      const toBeta = remote === "beta" || /[/:][^/:]+\/sol-beta(\.git)?\/?$/i.test(remoteUrl);
+      const dst = (spec) => { let d = spec.replace(/^\+/, ""); d = d.includes(":") ? d.slice(d.indexOf(":") + 1) : d; if (d === "HEAD" || d === "@") d = tb; return d.replace(/^refs\/heads\//, ""); };
+      const dsts = specs.length ? specs.map(dst) : [tb];
+      const every = g.args.some((a) => /^--(mirror|all|branches|tags|follow-tags|prune)$/.test(a));
+      // the beta repo is what Sol testers run: it moves by the export alone (the beta press, the engine's mirror),
+      // never by a push from a shell
+      if (toBeta) refuse("stable-move", `the beta repo is what Sol testers run, and it moves by the export alone (the beta press); a session never pushes there. Leave one line for the person.`, [here]);
+      if (dsts.some((d) => MOVED.test(d)) || every) refuse("stable-move", MOVE_WHY, [here]);
+      // main takes nothing but a PR the lead merges: a push whose destination is main is a commit on main. To drop once
+      // GitHub's rules are on (#484, decision 14), when main is protected on GitHub itself
+      if (dsts.some((d) => d === "main" || d === UNKNOWN)) refuse("main-push", `that push lands on main, which takes nothing but a PR the lead merges; push your own branch and open a draft PR.`, [here]);
+      // what the push carries: no Scoped or Approved line the press's record does not hold (#484; a mark committed by a
+      // road the guard did not read is caught here, before it leaves this Mac)
+      // every refspec's source, each one commit; a delete (:dst) carries nothing
+      for (const spec of specs.length ? specs : ["HEAD"]) {
+        const src = spec.replace(/^\+/, "").split(":")[0];
+        if (spec.replace(/^\+/, "").startsWith(":")) continue;
+        const marked = unrecordedMarks(here, !src || src === "HEAD" || src === "@" ? (tb && tb !== UNKNOWN ? tb : "HEAD") : src, "", k);
+        if (marked) refuse("eval-sealed", marked, [here]);
+      }
+      // a push into this checkout's own remote-tracking refs forges what GitHub has
+      if (dsts.some((d) => /^refs\/remotes\//.test(d)) || specs.some((sp) => /:refs\/remotes\//.test(sp))) refuse("remote", REMOTE_WHY, [here]);
+      const force = g.args.some((a) => /^--force/.test(a) || /^-[a-zA-Z]*f[a-zA-Z]*$/.test(a));
+      const forced = force ? dsts : specs.filter((sp) => sp.startsWith("+")).map(dst);
+      if (forced.some((d) => /^(main|stable|live)$/.test(d))) refuse("stable-move", `a force push to main, stable or live rewrites what others stand on; never.`, [here]);
+      // another person's branch, by where the push lands (one writer per branch)
+      const other = toBeta ? "" : dsts.map((d) => othersBranch(here, d)).find(Boolean);
+      if (other) refuse("others-branch", `that push lands on ${dsts.find((d) => othersBranch(here, d))}, ${other}'s branch; one writer per branch. Take your own issue, or comment on theirs.`, [here]);
+    }
+    if (g.sub === "branch" && g.args.some((a) => /^(-[fdDmMcC]|--force|--delete|--move|--copy)$/.test(a))
+        && positional(g.args, ["-u", "--set-upstream-to", "--contains", "--no-contains", "--merged", "--no-merged", "--points-at", "--format", "--sort"]).some((a) => MOVED.test(a)))
+      refuse("stable-move", MOVE_WHY, [here]);
+    if (g.sub === "update-ref" && g.args.some((a) => /^(refs\/heads\/)?(stable|live)$/.test(a))) refuse("stable-move", MOVE_WHY, [here]);
+    if (g.sub === "reset" && MOVED.test(tb) && g.args.some((a) => a !== "-q" && a !== "--quiet") && !g.args.includes("--")) refuse("stable-move", MOVE_WHY, [here]);
+    if (g.sub === "tag" && positional(g.args, ["-m", "-F", "--file", "-u", "--local-user", "--cleanup", "--contains", "--points-at", "--sort", "--format"]).some((a) => MOVED.test(a)))
+      refuse("stable-move", MOVE_WHY, [here]);
+
+    // a commit: not on main, not on another person's branch, nothing of home's and no key in it; all of it judged in
+    // the checkout the commit lands in. A cherry-pick, a revert or an am makes a commit too
+    const commits = g.sub === "commit" || (["cherry-pick", "revert", "am"].includes(g.sub) && !g.args.some((a) => /^(--abort|--quit|--skip|--continue|-n|--no-commit|--show-current-patch)$/.test(a)));
+    if (commits) {
+      // To drop once GitHub's rules are on (#484, decision 14): main-commit, when main is protected on GitHub (a local commit on main goes nowhere).
+      if (tb === "main") refuse("main-commit", `nothing is committed on main; work on your branch (bash sol/take <issue-number>) and open a draft PR. (Sol's own face edits go through sol/mutate.)`, [here]);
+      const other = othersBranch(here, tb);
+      if (other) refuse("others-branch", `${tb} is ${other}'s branch; one writer per branch. Take your own issue, or comment on theirs.`, [here]);
+    }
+    if (g.sub === "commit") {
+      const gat = (a) => gitIn(here.root, a);
+      const zList = (a) => { try { return execFileSync("git", a, { cwd: here.root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] }); } catch { return ""; } };
+      // what the commit takes: the index, and what this line adds to it first. Paths as git keeps them (-z: a quoted or
+      // non-ASCII name, sol/home/memory/筆記.md, is read as it is)
+      const staged = zList(["diff", "--cached", "--name-only", "-z"]).split("\0").filter(Boolean);
+      const status = (() => { const out = [], parts = zList(["status", "--porcelain", "-z", "--untracked-files=all"]).split("\0"); for (let i = 0; i < parts.length; i++) { const e = parts[i]; if (e.length < 4) continue; out.push(e.slice(3)); if (/^[RC]/.test(e)) i++; } return out; })();
+      const addSteps = steps.filter((y) => { const yg = gitOf(y); return yg && (yg.sub === "add" || yg.sub === "stage") && repoAt(yg.dir, cwd).root === here.root; });
+      let all = g.args.some((a) => /^-[a-zA-Z]*a[a-zA-Z]*$/.test(a) || a === "--all") ? status : [];
+      // what each git add of the line would stage, as git itself says (--dry-run, the same arguments and folder): globs,
+      // pathspec magic, combined flags and -f as git reads them. One git cannot answer for refuses (fail closed)
+      for (const y of addSteps) {
+        const yg = gitOf(y);
+        let out;
+        try { out = execFileSync("git", ["-c", "core.quotepath=false", "add", "--dry-run", ...yg.args.filter((w) => w !== "-n" && w !== "--dry-run")], { cwd: yg.dir, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "pipe"] }); }
+        catch (e) { if (/:/.test(yg.args.join(" ")) || String(e?.stderr ?? "").trim()) refuse("home-data", `the guard cannot tell what this git add stages (git itself would not say: ${String(e?.stderr ?? e?.message ?? "").split("\n")[0].slice(0, 80)}), so it cannot see whether a person's own data or a key goes in. Name the files plainly.`, [here]); out = ""; }
+        for (const l of out.split("\n")) { const m = /^add '(.*)'$/.exec(l); if (m) all.push(m[1]); }   // git names them from the repository's root
+      }
+      all = [...new Set(all)];
+      const files = [...new Set([...staged, ...all])];
+      const home = files.filter((f) => HOME_DATA.test(f));
+      if (home.length) refuse("home-data", `these are a person's own and never committed: ${home.slice(0, 5).join(", ")}${home.length > 5 ? " …" : ""}`, [here]);
+      const secretFiles = files.filter((f) => SECRET_FILE.test(f));
+      if (secretFiles.length) refuse("key", `these hold keys or a machine's own settings and never leave it: ${secretFiles.join(", ")}`, [here]);
+      const text = gat(["diff", "--cached"]) + "\n" + all.map((f) => readText(join(here.root, f))).join("\n");
+      const hit = text.match(SECRET_TEXT);
+      if (hit) refuse("key", `something that looks like a key is in the commit (${hit[0].slice(0, 12)}…). A key that is committed is a key that leaks; take it out first.`, [here]);
+      // Scoped and Approve (#482's check, carried here the same): judged on what would be committed, not on the
+      // command's flags. Every feature's prd.md and eval.md, in the index and in the working tree, against HEAD (and what
+      // a merge, cherry-pick or revert being finished brings): a new Scoped mark goes in only when the press's record
+      // holds that line for that file, and an eval.md with an Approved line whose sealed part (everything above
+      // "## Releases") changed only when the record holds that line with that content's hash. So a check weakened or a
+      // case added under an Approved line waits for a new Approve press. This holds whatever wrote the mark
+      if (locks?.marksAdded && isSolDev(here)) {
+        const pressed = pressedNow();
+        const held = (rel, line, hash) => pressed.some((r) => String(r?.file ?? "").toLowerCase() === rel.toLowerCase() && String(r?.line ?? "") === line.trim() && (hash === undefined || r?.hash === hash));
+        const APPROVED_LINES = /^[ \t>*-]*Status:[ \t]*Approved\b.*$/gim;
+        const raw = (a) => { try { return execFileSync("git", a, { cwd: here.root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] }); } catch { return ""; } };
+        const mine = raw(["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "specs/features"]).split("\0").filter((f) => /^specs\/features\/[^/]+\/(eval|prd)\.md$/i.test(f));
+        for (const f of [...new Set(mine)]) {
+          const prd = /prd\.md$/i.test(f);
+          const heads = ["HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"].map((r) => raw(["show", `${r}:${f}`])).filter((x, i) => i === 0 || x);
+          // the working tree too, unless the line is one plain commit, which takes the index alone (#482's plainCommit)
+          for (const v of [...new Set([raw(["show", `:${f}`]), plainCommit(line) ? "" : readText(join(here.root, f))])].filter(Boolean)) {
+            if (heads.includes(v)) continue;
+            if (prd) {
+              const bad = locks.marksAdded(f, heads.join("\n"), v).find((l) => !held(f, l));
+              if (bad) refuse("eval-sealed", `${f} brings in "${bad.trim()}", which no Scoped press on this Mac wrote. Only the Sol developer's press writes it: take the line out, and show them the card (the tool checkpoint).`, [here]);
+              continue;
+            }
+            const marks = v.match(APPROVED_LINES) ?? [];
+            if (!marks.length || heads.some((hd) => hd && sealedHash(hd) === sealedHash(v) && (hd.match(APPROVED_LINES) ?? []).join("\n") === marks.join("\n"))) continue;   // only the Releases lines changed
+            if (!marks.some((l) => held(f, l, sealedHash(v)))) refuse("eval-sealed", `${f} has "${marks[0].trim()}" over evals that are not the ones that were approved (a new or changed line, or a mark no Approve press on this Mac wrote). An approved eval.md that changes needs a new Approve press: show the Sol developer the card (the tool checkpoint), and commit after it.`, [here]);
+          }
+        }
+      }
+    }
+  }
+
+  if (h) {
+    if (h.path[0] === "pr" && h.path[1] === "checkout" && here.root) onBranch.set(here.root, UNKNOWN);
+    if (h.path[0] === "pr" && h.path[1] === "merge") refuse("merge", MERGE_WHY, [here]);
+    const ends = h.path[0] === "api" ? [h.path[1] ?? "", ...h.args].filter((a) => a && !a.startsWith("-")) : [];   // the endpoint, wherever it sits
+    const writesApi = h.path[0] === "api" && /(-X\s*|--method[\s=]+)(PUT|POST|PATCH|DELETE)\b|\s(-f|-F|--field|--raw-field|--input)(\s|=)/i.test(x.text);
+    if (ends.some((a) => /(^|\/)pulls\/\d+\/merge\/?$/.test(a)) && /(-X\s*|--method[\s=]+)PUT\b/i.test(x.text)) refuse("merge", MERGE_WHY, [here]);
+    if (writesApi && ends.some((a) => /^\/?repos\/[^/]+\/[^/]+\/merges\/?$/.test(a))) refuse("merge", MERGE_WHY, [here]);
+    // stable and live by GitHub's API: their ref updated or made, the branch renamed
+    if (writesApi && (/\/git\/refs\/heads\/(stable|live)\b|\/branches\/(stable|live)\/rename\b/.test(x.text) || /\bref=refs\/heads\/(stable|live)\b/.test(x.text))) refuse("stable-move", MOVE_WHY, [here]);
+    // main takes no commit outside a PR: a setting such as who leads a label is a proposal in the project's settings, and
+    // CODEOWNERS follows by a PR the release merges (#438, sol/engine/src/team/codeowners.ts). A write by hand, GitHub's
+    // contents or refs API aimed at main (a contents write with no branch lands on main too), is a commit on main and refused.
+    // To drop once GitHub's rules are on (#484, decision 14): main-by-api, when main is protected on GitHub itself.
+    if (h.path[0] === "api" && /(-X\s*|--method[\s=]+)(PUT|POST|PATCH|DELETE)\b|\s(-f|-F|--field|--raw-field|--input)\s/i.test(x.text)
+      && ((/\/contents\//.test(x.text) && (/\bbranch=main\b/.test(x.text) || !/\bbranch=/.test(x.text))) || /\/git\/refs\/heads\/main\b/.test(x.text)))
+      refuse("main-by-api", `writing to main through GitHub's API is a commit on main with no PR. A setting (who leads a label) is a proposal in Cowork's project settings, and CODEOWNERS follows by a PR; anything else goes on your branch and a draft PR.`, [here]);
   }
 
   // base allows one open branch at a time (#98, PRD section 7): a push or a PR from a base branch stops while another
   // person's base branch has an open PR. My own second base branch goes through: Take already asked, and I can override.
-  if (/^[^/]+\/base-/.test(branch) && (/^git\s+push\b/.test(s) || /^gh\s+pr\s+create\b/.test(s))) {
-    const other = openPrs().find((p) => /^[^/]+\/base-/.test(p.headRefName) && p.headRefName !== branch
-      && !mine.includes(p.headRefName.split("/")[0]) && !mine.includes(String(p.author?.login ?? "")));
-    if (other) refuse("base-second-branch", `base allows one open branch at a time; #${other.number} (${other.author?.login ?? other.headRefName.split("/")[0]}) is open: build on that branch or wait.`);
+  const pushes = g?.sub === "push", opens = !!h && h.path[0] === "pr" && h.path[1] === "create";
+  if (solDev && (pushes || opens) && here.root) {
+    const from = opens ? (flag(h.args, "--head", "-H") ?? tb) : tb;
+    if (/^[^/]+\/base-/.test(from)) {
+      const mine = namesAt(here);
+      const other = openPrs(here).find((p) => /^[^/]+\/base-/.test(p.headRefName) && p.headRefName !== from
+        && !mine.includes(p.headRefName.split("/")[0]) && !mine.includes(String(p.author?.login ?? "")));
+      if (other) refuse("base-second-branch", `base allows one open branch at a time; #${other.number} (${other.author?.login ?? other.headRefName.split("/")[0]}) is open: build on that branch or wait.`, [here]);
+    }
   }
 
   // the window is the person's, in both folders (#114): no session parks the face-hot flag, installs or opens or quits
   // Sol.app, or touches the engine's launchd or systemd jobs. The person switches the face from the menu bar; a merge on
-  // their word installs a build (sol/promote). MY SOL tries its changes on its own stage, sol/mine/stage.
-  const writes = /^(rm|mv|cp|touch|chflags|ditto|rsync|install|tee|truncate)\b|(^|[^<0-9=-])>(?!&)/;   // a write, not 2>/dev/null, >&2, => or ->
-  if (/face-hot/.test(s) && writes.test(s)) refuse("window", `the face-hot flag is the person's own switch (the menu bar); a session never parks or restores it. MY SOL tries its build on its own stage: bash sol/mine/stage.`);
-  if (/\bSol\.app\b|\/Applications\b/.test(s) && (writes.test(s) || /^(open|killall|pkill|osascript|xattr|codesign)\b/.test(s))) refuse("window", `the Sol window is the person's: a session never installs, opens or quits Sol.app. A merge on their word installs a build (sol/promote); MY SOL runs on its own stage (sol/mine/stage).`);
-  if (/^(open|killall|pkill)\s+(-\S+\s+)*['"]?Sol(\.app)?['"]?$/.test(s) || (/^osascript\b/.test(s) && /\bquit\b/.test(s) && /\bSol\b/.test(s))) refuse("window", `the Sol window is the person's: a session never opens or quits it. MY SOL runs on its own stage (sol/mine/stage).`);
+  // their word installs a build (the release). A person's own Sol tries its changes on its own stage. A write is one
+  // the command does (a redirect, cp, rm …), never a word in a commit message
+  const w = writesOf(x);
+  const writes = w.writes.length + w.deletes.length + w.appends.length > 0 || /^(rm|mv|cp|touch|chflags|ditto|rsync|install|tee|truncate)$/.test(prog(x));
+  if (!g && !h && /face-hot/.test(s) && writes) refuse("window", `the face-hot flag is the person's own switch (the menu bar); a session never parks or restores it.${dev(" MY SOL tries its build on its own stage: bash sol/mine/stage.")}`);
+  if (!g && !h && /\bSol\.app\b|\/Applications\b/.test(s) && (writes || /^(open|killall|pkill|osascript|xattr|codesign)$/.test(prog(x)))) refuse("window", `the Sol window is the person's: a session never installs, opens or quits Sol.app. ${solDev ? "A merge on their word installs a build (sol/promote); MY SOL runs on its own stage (sol/mine/stage)." : "A new version comes in with the Update button in Sol's own window, pressed by the person."}`);
+  if (/^(open|killall|pkill)\s+(-\S+\s+)*['"]?Sol(\.app)?['"]?$/.test(s) || (/^osascript\b/.test(s) && /\bquit\b/.test(s) && /\bSol\b/.test(s))) refuse("window", `the Sol window is the person's: a session never opens or quits it.${dev(" MY SOL runs on its own stage (sol/mine/stage).")}`);
   if (/^launchctl\s+(kickstart|stop|bootout|unload|kill|remove|disable)\b.*\bsol-engine|^systemctl\s+(--user\s+)?(restart|stop|kill|disable)\b.*\bsol-engine/.test(s)) refuse("window", `the engine renews itself after a saved build; a session never restarts or stops it (that ends the session mid-turn). When it is truly stuck, one line for the person: bash sol/back.`);
-  if (/^(?:(?:bash|sh|zsh|exec)\s+(?!-n\b))?\S*\bmine\/(?:un)?live\b/.test(s) && !/\s--plan\b/.test(s)) refuse("window", `sol/mine/live and unlive move the Sol the person lives in (its engine, its jobs, Sol.app) and stop this very engine on the way; only the person runs them, in Terminal.app. Leave them the one line.`);
+  if (/^(?:(?:bash|sh|zsh|exec)\s+(?!-n\b))?\S*\bmine\/(?:un)?live\b/.test(s) && !/\s--plan\b/.test(s)) refuse("window", solDev ? `sol/mine/live and unlive move the Sol the person lives in (its engine, its jobs, Sol.app) and stop this very engine on the way; only the person runs them, in Terminal.app. Leave them the one line.`
+    : `that moves the Sol the person lives in (its engine, its jobs, Sol.app) and stops this very engine on the way; only the person runs it, in Terminal.app. Leave them the one line.`);
 
   // from a side copy, the live checkout's build is not mine to run (#119 near miss: a scratch Vite started in the live
-  // sol/mac rewrote the hot face's cache under the window): a build or dev server named with the main checkout's path,
-  // or run after a cd into it, is refused; the side copy has its own sol/mac and sol/engine.
-  if (mainRoot && root !== mainRoot && /\b(vite|tsc|npm\s+(run|ci|install|start)|npx|node\s+\S*(vite|tsc))\b/.test(s)
-      && (s.includes(mainRoot + "/sol/") || segments.some((x) => (x.startsWith("cd " + mainRoot + "/") || x === "cd " + mainRoot)
-          && !x.startsWith("cd " + mainRoot + "/.claude/worktrees/") && !x.startsWith("cd " + root + "/") && x !== "cd " + root)))   // a cd into a side copy under the live checkout is the copy's own
-    refuse("window", `that is the live checkout's build (${mainRoot}/sol); a side copy runs its own sol/mac and sol/engine, and the stage (sol/mine/stage) for a whole second Sol.`);
+  // sol/mac rewrote the hot face's cache under the window): a build or dev server run in the main checkout (after a cd
+  // into it) or named by its path is refused; the side copy has its own sol/mac and sol/engine, and a copy that lives
+  // under the main checkout's folder is its own.
+  if (root && mainRoot && root !== mainRoot && /\b(vite|tsc|npm\s+(run|ci|install|start)|npx|node\s+\S*(vite|tsc))\b/.test(s)
+      && (repoAt(x.dir, cwd).root === mainRoot || s.includes(mainRoot + "/sol/")))
+    refuse("window", `that is the live checkout's build (${mainRoot}/sol); ${solDev ? "a side copy runs its own sol/mac and sol/engine, and the stage (sol/mine/stage) for a whole second Sol." : "a worktree runs its own sol/mac and sol/engine."}`);
 
   // the fence, from a shell
-  if (insideSol && /(\bsed\s+-i|\btee\b|>>?|\bcp\b|\bmv\b|\brm\b)/.test(s)) {
-    const named = (s.match(/[\w./-]+\.(tsx?|css)/g) || []).find((p) => isFenced(p));
+  if (insideSol && (writes || /\bsed\s+-i/.test(s))) {
+    const named = [...w.writes, ...w.deletes, ...w.appends].find((f) => isFenced(f)) ?? (s.match(/[\w./-]+\.(tsx?|css)/g) || []).find((f) => isFenced(f, x.dir));
     if (named) refuse("fence", `${basename(named)} is on the fence and is never changed from inside a running Sol.`);
   }
-}
 
-// a PR says what to try, for the person who will try it (read on the whole command: a title or body may hold ; or &&)
-const prAt = cmd.search(/(^|\s)gh\s+pr\s+create\b/);
-if (prAt >= 0) {
-  const pr = cmd.slice(prAt); // only what follows gh pr create: a commit's own -F before it is not the body
-  let body = pr; // an inline --body, a heredoc, a $(cat …): the words are in the command itself
-  const bf = pr.match(/(?:--body-file|-F)\s+(\S+)/);
-  if (bf) { try { body = readFileSync(resolve(cwd, bf[1].replace(/^["']|["']$/g, "")), "utf8"); } catch { body = ""; } }
-  else if (!/(\s--body|\s-b)\b/.test(pr)) refuse("pr-without-note", `a PR carries a test note: a body (the template) with "What to try" written for the person who will try it, and "Felt or silent".`);
-  if (!/what to try/i.test(body)) refuse("pr-without-note", `the PR body has no test note: a line "What to try" (what to do, what you should notice) for the person who will try it, and "Felt or silent".`);
+  // a PR says what to try, for the person who will try it: its body as gh will send it (a --body, a --body-file, written
+  // earlier in the same line or not, a heredoc), never the words around it
+  if (opens && here.root) {
+    const base = flag(h.args, "--base", "-B"), head = flag(h.args, "--head", "-H");
+    const marked = unrecordedMarks(here, head && !head.includes(":") ? head : (tb && tb !== UNKNOWN ? tb : "HEAD"), base, k);
+    if (marked) refuse("eval-sealed", marked, [here]);
+  }
+  if (opens) {
+    let body = null;
+    const bf = flag(h.args, "--body-file", "-F"), b = flag(h.args, "--body", "-b");
+    // what gh reads as its stdin: a heredoc, a file redirected in (< file), or the command piped into it
+    const stdinFile = (() => { const ws = x.words; for (let i = 0; i < ws.length; i++) if (ws[i].op && ws[i].t === "<" && ws[i + 1]) return pathFrom(h.dir, ws[i + 1].t); return ""; })();
+    if (bf !== undefined) {
+      const earlier = (f) => steps.slice(0, k).filter((y) => { const yw = writesOf(y); return [...yw.writes, ...yw.appends].includes(f); }).map((y) => [...y.docs, y.text].join("\n")).join("\n");
+      // piped in from a plain cat of one file: that file
+      const prev = k > 0 && steps[k - 1].pipe === x.pipe ? steps[k - 1] : null;
+      const catFile = prev && prog(prev) === "cat" && prev.prog.length === 2 && !/[$`*?]/.test(prev.prog[1].t) ? readText(pathFrom(prev.dir, prev.prog[1].t)) : "";
+      if (bf === "-") body = [...x.docs, ...(stdinFile ? [readText(stdinFile)] : []), catFile, ...(k > 0 ? [steps[k - 1].text, ...steps[k - 1].docs] : [])].join("\n");
+      else { const f = pathFrom(h.dir, bf); body = readText(f) + "\n" + earlier(f); }
+    } else if (b !== undefined) {
+      const cat = /^\$\(\s*cat\s+(['"]?)([^'"\s<)]+)\1\s*\)$/.exec(b.trim());
+      body = cat ? readText(pathFrom(h.dir, cat[2])) : [b, ...x.docs].join("\n");
+      if (!cat && b.includes("$") && !/what to try/i.test(body) && /what to try/i.test(line)) body = line;   // a body the shell builds from its own words: the line, as before
+    }
+    // --fill takes the body from the branch's commits; --template from the template it names (or the repo's one)
+    if (body === null && h.args.some((a) => /^(--fill|-f|--fill-verbose|--fill-first)$/.test(a)))
+      body = gitIn(here.root, ["log", "--format=%B", `${gitIn(here.root, ["rev-parse", "-q", "--verify", "origin/main"]) ? "origin/main" : "main"}..HEAD`], 8000);
+    const tpl = flag(h.args, "--template", "-T");
+    if (body === null && tpl !== undefined) {
+      const named = [join(here.root, ".github", "PULL_REQUEST_TEMPLATE", tpl), join(here.root, ".github", tpl), pathFrom(h.dir, tpl)];
+      body = named.map(readText).find(Boolean) ?? readText(join(here.root, ".github", "PULL_REQUEST_TEMPLATE.md"));
+    }
+    if (body === null) refuse("pr-without-note", `a PR carries a test note: a body (the template) with "What to try" written for the person who will try it, and "Felt or silent".`, [here]);
+    if (!/what to try/i.test(body)) refuse("pr-without-note", `the PR body has no test note: a line "What to try" (what to do, what you should notice) for the person who will try it, and "Felt or silent".`, [here]);
+  }
+}
+// GitHub's merge by GraphQL, in a gh api line or a program's code (after the loop, so the git merge refusal reads first)
+{
+  const MERGE_GQL = /\b(mergePullRequest|enablePullRequestAutoMerge|mergeBranch)\b/;
+  const NETS = /^(curl|wget|websocat|wscat|nc|ncat|socat|http|https|xh)$/;
+  const inline = (x) => /^(node|nodejs|deno|bun|python|python3|perl|ruby|php|osascript)$/.test(prog(x)) && (x.docs.length > 0 || x.prog.slice(1).some((w) => /^(-e|-c|-p|--eval|--print|eval|-)$/.test(w.t)));
+  if (steps.some((x) => { const h = ghOf(x); const t = [x.text, ...x.docs, x.ran ?? ""].join("\n"); return MERGE_GQL.test(t) && ((h && h.path[0] === "api") || NETS.test(prog(x)) || inline(x) || (x.ran !== undefined && !ranOwn(scriptPath(x) || "/"))); }))
+    refuse("merge", MERGE_WHY, atAll());
 }
 process.exit(0);

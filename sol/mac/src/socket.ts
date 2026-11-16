@@ -97,6 +97,9 @@ export function link(url: string): Link {
     const now = Date.now(), gap = now - lastTick;
     lastTick = now;
     if (gap > JUMP_MS) { wake(`clock jumped ${Math.round(gap / 1000)} s`); return; }
+    // the clock set back (#892): the last word and the last ping were stamped on the old clock, so they read as in the
+    // future and nothing would ever look silent; moved back with it, and checked now
+    if (gap < 0) { const jump = gap - TICK_MS; heard += jump; pinged += jump; wake(`clock went back ${Math.round(-gap / 1000)} s`); return; }
     if (ws?.readyState !== 1) return;
     // dead: a ping went out after the last word heard and has had its time (a hidden page's timers run late, so the
     // silence alone is not enough: the question must have been asked)

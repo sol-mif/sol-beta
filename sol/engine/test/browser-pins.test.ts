@@ -9,6 +9,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
+import { freePort, ownHealth } from "./test-engine.ts";
 import { describeChain, trimWords, type Link } from "../src/browser.ts";
 
 const L = (tag: string, o: Partial<Link> = {}): Link => ({ tag, id: "", classes: [], nth: 0, ...o });
@@ -32,7 +33,7 @@ test("pins: the words are one line, cut near 80 characters", () => {
 
 // ---- on a real engine ----
 const ENGINE = join(import.meta.dirname, "..");
-const PORT = 7930 + Math.floor(Math.random() * 9);
+let PORT = 0;   // the system's free port, taken at the start (test-engine.ts, #938)
 const dir = mkdtempSync(join(tmpdir(), "sol-pins-"));
 mkdirSync(join(dir, "home"));
 writeFileSync(join(dir, "codex"), "#!/bin/sh\nexec sleep 600\n"); chmodSync(join(dir, "codex"), 0o755);
@@ -53,6 +54,7 @@ after(async () => {
 });
 
 async function up() {
+  PORT ||= await freePort();
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: ENGINE, stdio: "ignore",
     env: {
@@ -61,11 +63,7 @@ async function up() {
       SOL_CODEX: join(dir, "codex"), SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1", SOL_TRACK: "off",
     },
   });
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return; } catch {}
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  throw new Error("the test engine did not come up");
+  await ownHealth(engine, PORT);   // the engine this test started, not another run's on the port (#938)
 }
 
 type Msg = { type: string; [k: string]: any };

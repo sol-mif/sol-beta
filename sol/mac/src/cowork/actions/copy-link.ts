@@ -2,7 +2,6 @@
 import type { ActionDef } from "./index";
 
 const copyLink: ActionDef = {
-  name: "copy the link",
   when: (card) => !!card.url,
   run: (card) => navigator.clipboard?.writeText(card.url),
 };

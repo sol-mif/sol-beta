@@ -10,31 +10,8 @@ import { toolAsk, toolLine } from "./WorkSteps";
 // a card arrives sliding up while its height opens, like a step card
 function useArrive(on = true) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (ref.current && on) { enter(ref.current, { y: 14, cfg: CFG.arrive }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (ref.current && on) { enter(ref.current, { y: 14, cfg: CFG.travel }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return ref;
-}
-
-// ---- the task list under the latest message ----
-export function PlanCard({ it, w, old }: { it: Item; w: Work; old?: boolean }) {
-  const ref = useArrive(!old);
-  const steps: { content: string; status: string; active?: string; session?: string }[] = it.steps ?? [];
-  const done = steps.filter((s) => s.status === "completed").length;
-  return (
-    <div ref={ref} className="wcard wplan">
-      <div className="whead"><span>the list</span><i className="pn">{done} of {steps.length}</i></div>
-      {steps.map((s, i) => {
-        const sess = s.session ? w.sessions.find((x) => x.id === s.session || x.title === s.session) : undefined;
-        return (
-          <div key={i} className={`pstep ${s.status}`}>
-            <span className="pmark">{s.status === "completed" ? <CellCheck /> : s.status === "in_progress" ? <Runner /> : <i />}</span>
-            <span className="pt">{s.status === "in_progress" && s.active ? s.active : s.content}</span>
-            {s.session && <button className="ptag" disabled={!sess} onClick={() => sess && w.open(sess.id)} title="the session this step went to">{sess && <StateMark st={stateOf(w, sess.id)} />}{sess?.title ?? s.session}</button>}
-          </div>
-        );
-      })}
-      <div className="pbar" role="progressbar" aria-valuenow={done} aria-valuemax={steps.length}><i style={{ width: `${steps.length ? (done / steps.length) * 100 : 0}%` }} /></div>
-    </div>
-  );
 }
 
 // ---- the next-step box: the recap, and at most one question with its buttons ----
@@ -47,13 +24,23 @@ const ACTION_SAYS: Record<string, string> = {
   fix_ci: "Fix the failing CI checks.", address_comments: "Address the review comments.",
   resolve_conflicts: "Resolve the merge conflicts with the base branch.", verify: "Verify that the change works.",
 };
-// new_session opens a fresh session with the button's message in its box (not sent): Marco reads it, then presses Enter
+// new_session opens a fresh session with the button's message in its box (not sent): Marco reads it, then presses Enter.
+// merge is Marco's own press (#579, engine team/handin.ts mergePress): the PR marked ready if it is a draft, then merged,
+// with the hand-in card's key; nothing is said to the agent, whose own gh pr ready or merge the guard refuses
 export function WrapBox({ it, w, last, onFresh, old }: { it: Item; w: Work; last: boolean; onFresh: (text?: string) => void; old?: boolean }) {
   const ref = useArrive(!old);
-  const acts: { label?: string; message?: string; action?: string }[] = it.actions ?? [];
-  const run = (a: (typeof acts)[number]) => {
+  const acts: { label?: string; message?: string; action?: string; pr?: number | string }[] = it.actions ?? [];
+  const [merge, setMerge] = useState<{ busy?: true; done?: string; error?: string }>({});
+  const run = async (a: (typeof acts)[number]) => {
     if (a.action === "archive") { if (w.live) w.mark(w.live, { archived: true }); return; }
     if (a.action === "new_session") { onFresh(a.message?.trim() || undefined); return; }
+    if (a.action === "merge") {
+      if (merge.busy || merge.done) return;
+      setMerge({ busy: true });
+      const r = await w.merge(a.pr).catch((e: unknown) => ({ error: String((e as Error)?.message ?? e) }) as { ok?: true; number?: number; error?: string });
+      setMerge(r.ok ? { done: `merged${r.number ? ` #${r.number}` : ""}` } : { error: r.error || "it did not merge" });
+      return;
+    }
     w.say(a.message || (a.action ? ACTION_SAYS[a.action] ?? a.action : a.label || ""));
   };
   return (
@@ -62,9 +49,15 @@ export function WrapBox({ it, w, last, onFresh, old }: { it: Item; w: Work; last
       {it.ask && <p className="wask">{String(it.ask)}</p>}
       {last && acts.length > 0 && (
         <div className="choices">
-          {acts.map((a, i) => <button key={i} className={i === 0 ? "first" : ""} onClick={() => run(a)}>{a.label || (a.action ? ACTION[a.action] ?? a.action : "")}</button>)}
+          {acts.map((a, i) => a.action === "merge" && merge.done
+            ? <span key={i} className="tn-was">{merge.done}</span>
+            : <button key={i} className={i === 0 ? "first" : ""} disabled={a.action === "merge" && merge.busy} onClick={() => void run(a)}
+                title={a.action === "merge" ? "your press: marks the PR ready if it is a draft, then merges it" : undefined}>
+                {a.action === "merge" && merge.busy ? "merging…" : a.label || (a.action ? ACTION[a.action] ?? a.action : "")}
+              </button>)}
         </div>
       )}
+      {merge.error && <em className="tn-err">{merge.error}</em>}
     </div>
   );
 }

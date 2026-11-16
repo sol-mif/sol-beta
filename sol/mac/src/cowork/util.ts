@@ -7,6 +7,11 @@ export const date = (iso: string) => { const d = new Date(iso); return Number.is
 /** "14:02" today, "10/25" before */
 export const hhmm = (iso: string) => { const d = new Date(iso); return Number.isNaN(+d) ? "" : Date.now() - +d > 86_400_000 ? date(iso) : d.toTimeString().slice(0, 5); };
 
+/** a change on a build updates line that went in, so it can be said to have broken something (#421): a landed line,
+ *  or a review's Into sol-dev or re-check, with its PR ("#N into sol-dev" since #477, "folded #N" before) */
+export const mayBreak = (l: { kind: string; text: string; ref?: { repo?: string; number?: number } }) =>
+  !!(l.ref?.repo && l.ref.number) && (l.kind === "landed" || (l.kind === "reviewed" && /^((folded|re-checked) #|#\d+ into )/.test(l.text)));
+
 /** a link in the person's own browser (a plain tab outside Sol.app) */
 export const openUrl = (url: string) => { import("@tauri-apps/plugin-opener").then((o) => o.openUrl(url)).catch(() => window.open(url, "_blank", "noopener")); };
 

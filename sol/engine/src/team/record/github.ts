@@ -98,6 +98,21 @@ export function makeGithubRecord(gh: Gh, more: More = {}): RoomRecord {
   const input = more.input ?? ((args: string[], body: object) => ghWithInput((a) => gh(a), args, body));
   const json = async (args: string[]) => JSON.parse(await gh(args));   // was board.ts ghJson
   const R = (repo?: string) => (repo !== undefined ? ["-R", repo] : []);   // "" still goes to gh, which refuses it, as before
+  // #543: a repository that was renamed or moved (marcocyl04-ux/ecosystem, now sol-mif/sol-dev) answers a read by its old
+  // name, but a write (PUT, DELETE) with a 307 that gh does not follow ("gh: HTTP 307"). A write turned away so asks the
+  // repository's name now, once, and writes there
+  const now = new Map<string, string>();
+  const moved = (e: unknown) => /\(?HTTP 30[178]\)?\s*$/.test(String((e as { full?: string })?.full ?? (e as Error)?.message ?? e).trim());
+  const write = async (repo: string, w: (r: string) => Promise<string>) => {
+    try { return await w(now.get(repo) ?? repo); }
+    catch (e) {
+      if (!moved(e) || now.has(repo)) throw e;
+      const to = (await gh(["api", `repos/${repo}`, "--jq", ".full_name"]).catch(() => "")).trim();
+      if (!to || to.toLowerCase() === repo.toLowerCase()) throw e;
+      now.set(repo, to);
+      return w(to);
+    }
+  };
   return {
     who: {
       login: () => gh(["api", "user", "--jq", ".login"]),                                   // night.ts
@@ -166,10 +181,10 @@ export function makeGithubRecord(gh: Gh, more: More = {}): RoomRecord {
       read: (repo, path, ref) => gh(raw(repo, path, ref)),                                                   // board.ts, share.ts
       bytes: (repo, path, ref) => bytes(raw(repo, path, ref)),                                               // share.ts
       readSha: (repo, path, ref) => gh(["api", `repos/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`, "--jq", "{sha: .sha, content: .content}"]),   // note.ts, press.ts
-      put: (repo, path, w, commit) => gh(["api", "-X", "PUT", `repos/${repo}/contents/${path}`, "-f", `message=${w.message}`, "-f", `branch=${w.branch}`,
-        "-f", `content=${w.content}`, ...(w.sha !== undefined ? ["-f", `sha=${w.sha}`] : []), ...(commit ? ["--jq", ".commit.sha"] : [])]),   // note.ts, press.ts
-      putBody: (repo, path, body) => input(["api", "-X", "PUT", `repos/${repo}/contents/${path}`], body),   // file.ts
-      remove: (repo, path, w) => gh(["api", "-X", "DELETE", `repos/${repo}/contents/${path}`, "-f", `message=${w.message}`, "-f", `branch=${w.branch}`, "-f", `sha=${w.sha}`]),   // talk.ts (#315)
+      put: (repo, path, w, commit) => write(repo, (r) => gh(["api", "-X", "PUT", `repos/${r}/contents/${path}`, "-f", `message=${w.message}`, "-f", `branch=${w.branch}`,
+        "-f", `content=${w.content}`, ...(w.sha !== undefined ? ["-f", `sha=${w.sha}`] : []), ...(commit ? ["--jq", ".commit.sha"] : [])])),   // note.ts, press.ts
+      putBody: (repo, path, body) => write(repo, (r) => input(["api", "-X", "PUT", `repos/${r}/contents/${path}`], body)),   // file.ts
+      remove: (repo, path, w) => write(repo, (r) => gh(["api", "-X", "DELETE", `repos/${r}/contents/${path}`, "-f", `message=${w.message}`, "-f", `branch=${w.branch}`, "-f", `sha=${w.sha}`])),   // talk.ts (#315)
       branch: (repo) => gh(["api", `repos/${repo}`, "--jq", ".default_branch"]).then((t) => t.trim()),       // things.ts (#194)
       tree: (repo) => gh(["api", `repos/${repo}/git/trees/HEAD?recursive=1`]),                                // share.ts
       list: (repo, dir, ref) => gh(["api", `repos/${repo}/contents/${dir}?ref=${encodeURIComponent(ref)}`]),  // share.ts

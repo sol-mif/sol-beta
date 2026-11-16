@@ -154,7 +154,7 @@ export function ControlDrawers({ open, toggle, onSet, flash }: {
         <span className="ctl-namefield"><Field value={t?.me.name ?? ""} placeholder={login || "your name"} onSave={(v) => void c.set({ me: { name: v } })} /></span>
       </div>
       <div className="field-r">
-        <div className="lab"><span>GitHub</span><small>{login ? "read from GitHub on this machine" : "sign in from here, for code rooms and rooms on GitHub; a cloud room needs none"}</small></div>
+        <div className="lab"><span>GitHub</span><small>{login ? "read from GitHub on this machine" : "sign in from here, for code projects and projects on GitHub; a cloud project needs none"}</small></div>
         {login ? <span className="ctl-val mono">{login}</span>
           : c.accounts?.github.missing || card ? null
           : <button className="wbtn" disabled={off && !DEV} onClick={() => void connectGithub()}>sign in</button>}
@@ -164,7 +164,7 @@ export function ControlDrawers({ open, toggle, onSet, flash }: {
       {ghNote && <p className="hint-line stale">{ghNote}</p>}
       {/* --- Sol account (S6b, #226): the cloud's own sign-in, by Google in the system browser */}
       <div className="field-r">
-        <div className="lab"><span>Sol</span><small>{c.accounts?.sol?.in ? "my name on the cloud, where rooms meet" : solNote || "rooms meet on the cloud; sign in with Google once"}</small></div>
+        <div className="lab"><span>Sol</span><small>{c.accounts?.sol?.in ? "my name on the cloud, where projects meet" : solNote || "projects meet on the cloud; sign in with Google once"}</small></div>
         {c.accounts?.sol?.in ? <span className="ctl-val mono">{c.accounts.sol.who}</span>
           : <button className="wbtn" disabled={(off && !DEV) || signingSol || !c.accounts?.sol?.hub} onClick={() => void signInSol()}>{signingSol ? "finish in the browser…" : "sign in"}</button>}
       </div>
@@ -254,7 +254,7 @@ export function ControlDrawers({ open, toggle, onSet, flash }: {
       {/* a session started under a room shows to that room while it runs, live, never kept off this Mac (#238, #189) */}
       {(t?.rooms ?? []).map((r) => (
         <div className="field-r" key={`show-${r.id}`}>
-          <div className="lab"><span>show my room sessions to {r.name}</span><small>{r.quiet ? `${r.name} sees that I turned it off, and nothing of my sessions there` : `a session I start in ${r.name} shows there while it runs, read-only, live; never kept off this Mac. Home's sessions never show`}</small></div>
+          <div className="lab"><span>show my project sessions to {r.name}</span><small>{r.quiet ? `${r.name} sees that I turned it off, and nothing of my sessions there` : `a session I start in ${r.name} shows there while it runs, read-only, live; never kept off this Mac. Home's sessions never show`}</small></div>
           <OnOff on={!r.quiet} disabled={off} set={(on) => void c.ask<{ error?: string }>("team.room.show", { id: r.id, on }).then((x) => { if (x.error) flash?.(x.error); else c.patchRoom(r.id, { quiet: on ? undefined : true }); })} />
         </div>
       ))}
@@ -273,7 +273,7 @@ function SiteLogins({ flash }: { flash?: (s: string) => void }) {
   const run = (p: Promise<unknown>, ok: string, bad: string) => { setBusy(true); setSaid(""); void p.then(() => say(ok), (e) => say(`${bad}: ${String(e)}`)).finally(() => setBusy(false)); };
   return (<>
     <div className="field-r">
-      <div className="lab"><span>sites I sign in to</span><small>logins stay in Sol's own browser on this Mac: a Doc, a Sheet or Figma opened in a room uses them, nobody else, and the engine never reads them</small></div>
+      <div className="lab"><span>sites I sign in to</span><small>logins stay in Sol's own browser on this Mac: a Doc, a Sheet or Figma opened in a project uses them, nobody else, and the engine never reads them</small></div>
       <span className="ctl-never" title="a fixed rule, not a switch">never</span>
     </div>
     <div className="field-r">
@@ -335,8 +335,8 @@ function Rooms({ team, onSwitch, onSave }: { team: Team | null; onSwitch: (id: s
   const list = team?.rooms ?? [];
   const [sure, setSure] = useState<string | null>(null);
   return (<>
-    <div className="ctl-sub">rooms</div>
-    <p className="hint-line top">each room is one group's work and the people in it; Cowork shows the one you are in</p>
+    <div className="ctl-sub">projects</div>
+    <p className="hint-line top">each project is one team's work and the people in it; Cowork shows the one you are in</p>
     <div className="ctl-machines">
       {list.map((r) => {
         const here = r.id === team?.room;
@@ -354,7 +354,7 @@ function Rooms({ team, onSwitch, onSave }: { team: Team | null; onSwitch: (id: s
         );
       })}
     </div>
-    <p className="hint-line">a new room is made from Cowork's side</p>
+    <p className="hint-line">a new project is made from Cowork's side</p>
   </>);
 }
 

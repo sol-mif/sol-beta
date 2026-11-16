@@ -1,10 +1,15 @@
+import { cleanHome } from "../home/flag";
 import { useRef } from "react";
 import { Message } from "../Message";
 import type { Item, Work } from "./useWork";
 import { WorkSteps, type TalkView } from "./WorkSteps";
-import { PermCard, PlanCard, Proposal, ReviewCard, SessionCard, WrapBox } from "./Cards";
+import { PermCard, Proposal, ReviewCard, SessionCard, WrapBox } from "./Cards";
 import { Elapsed } from "./Elapsed";
 import { MeRow } from "./MeRow";
+import { TonightCard } from "./Tonight";
+import { HandInCard } from "./HandIn";
+import { CheckpointCard } from "./Checkpoint";
+import { UsedMark } from "../cowork/Used";   // the used-Cowork mark (#431)
 
 export { toolLine } from "./WorkSteps";
 
@@ -16,13 +21,16 @@ const STARTED = /started ([0-9a-f-]{36})/;
 // a file link [name](path:12) reads as an unknown scheme to the shared sanitizer, so it becomes path#L12 first
 const fileLinks = (t: string) => t.replace(/\]\(([^)\s:]+):(\d+)\)/g, (_all, p: string, n: string) => `](${p}#L${n})`);
 
+// what the person pointed at on the stage as they said it (#698: the engine splits it off their words, items.ts splitAsk)
+const onOf = (it: Item): string[] => { const on = (it as Item & { on?: unknown }).on; return Array.isArray(on) ? on.map(String) : []; };
+
 export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
   items: Item[]; busy: boolean; w: Work; view: TalkView; onFresh: (text?: string) => void; onLink: (ev: React.MouseEvent) => void; onBox?: (text: string) => void;
 }) {
   // an allowed tool needs no line of its own: its step's check says it ran (a no, an answer, a plan stay as lines)
   const top = items.filter((i) => !i.parent && !i.quiet && i.kind !== "plan" && i.kind !== "suggest" &&
-    !(i.kind === "perm" && (i.state === "allow" || i.state === "always") && i.tool !== "ExitPlanMode"));
-  const plan = items.find((i) => i.kind === "plan" && (i.steps?.length ?? 0) > 0);
+    !(i.kind === "perm" && (i.state === "allow" || i.state === "always") && i.tool !== "ExitPlanMode") &&
+    !(i.kind === "perm" && i.state === "ask" && cleanHome()));   // the clean Home's bar holds the question (#647)
   // "old" is loaded, not arriving: what was already in the talk when this session's items first drew. Before (2026-10-25,
   // SMOOTH.md) it meant "not busy", so opening a busy session played the arrival of every historic row at once: a
   // spring and two forced layouts per row, ~300 layouts and a second before the talk stood still.
@@ -57,6 +65,7 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
       const text = String(it.text ?? "") + (it.images ? `\n[${it.images} image${it.images > 1 ? "s" : ""}]` : "");
       out.push(
         <div key={it.id} data-item={it.id} className={`wme ${it.queued ? "queued" : ""}`}>
+          {onOf(it).length > 0 && <p className="wsent-on">on {onOf(it).join(" · ")}</p>}
           <Message m={{ who: "me", text, files: it.files, old: was(it.id) }} live={false} />
           <MeRow it={it} w={w} busy={busy} />
         </div>,
@@ -64,6 +73,7 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
     } else if (it.kind === "you") out.push(
       <div key={it.id} data-item={it.id} className="wyou">
         <Message m={{ who: "you", text: fileLinks(String(it.text ?? "")), old: was(it.id) && !it.live }} live={busy && i === last && !!it.live} />
+        <UsedMark used={it.usedCowork} />
         {!busy && it.uuid && w.live && <button className="wforkhere" onClick={() => w.fork(w.live!, String(it.uuid))} title="a new session with the talk up to here">fork from here</button>}
       </div>,
     );
@@ -72,11 +82,13 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
       drawn.add(it.round);
       out.push(<ReviewCard key={`r${it.round}`} items={top.filter((x) => x.kind === "review" && x.round === it.round)} w={w} onBox={onBox} old={was(it.id)} />);
     }
+    else if (it.kind === "tonight") out.push(<div key={it.id} data-item={it.id}><TonightCard it={it} w={w} /></div>);   // the review session's card (#416)
+    else if (it.kind === "handin") out.push(<div key={it.id} data-item={it.id}><HandInCard it={it} w={w} /></div>);   // the hand-in card (#476)
+    else if (it.kind === "checkpoint") out.push(<div key={it.id} data-item={it.id}><CheckpointCard it={it} w={w} /></div>);   // Scoped and Approve (#482)
     else if (it.kind === "perm") out.push(<div key={it.id} data-item={it.id}><PermCard it={it} w={w} /></div>);   // the notch's Open lands here (land.ts)
     else if (it.kind === "wrap") out.push(<WrapBox key={it.id} it={it} w={w} last={i === lastWrap && !busy && !top.slice(lastWrap + 1).some((x) => x.kind === "me")} onFresh={onFresh} old={was(it.id)} />);
     else out.push(<p key={it.id} data-item={it.id} className={`wline ${it.kind}`}>{String(it.text ?? "")}</p>);
   }
   if (busy && top[last]?.kind === "me" && !top[last].queued) out.push(<div key="wait" className="msg you md live"><p className="wwait"><Elapsed at={top[last].at} /></p></div>);
-  if (plan) out.push(<PlanCard key="plan" it={plan} w={w} old={was(plan.id)} />);
   return <div className="wtalk" onClickCapture={onLink}>{out}</div>;
 }

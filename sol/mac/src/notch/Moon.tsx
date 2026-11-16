@@ -113,7 +113,7 @@ export function MoonDiscs(p: DiscsProps) {
   const offRef = useRef(p.off); offRef.current = p.off;
   const layout = useRef(p.onLayout); layout.current = p.onLayout;
   if (!nb.current) {
-    nb.current = new Spring(0, CFG.snap, () => {
+    nb.current = new Spring(0, CFG.settle, () => {
       const t = shown.current, v = nb.current!.v, w = word.current;
       if (!t || !w) return;
       const k = clamp01(v), a = rad(TOOLS.find((d) => d.id === t)!.a), u = { x: Math.cos(a), y: Math.sin(a) };
@@ -153,13 +153,13 @@ export function MoonDiscs(p: DiscsProps) {
   useEffect(() => () => window.clearTimeout(budT.current), []);
   const budAway = (t: Tool) => {
     if (shown.current !== t || hovNow.current !== t) return;
-    hovNow.current = null; inBud.current = false; setHov(null); nb.current!.to(0, { cfg: CFG.away }); p.onRowHover(null);
+    hovNow.current = null; inBud.current = false; setHov(null); nb.current!.to(0, { cfg: CFG.fade }); p.onRowHover(null);
   };
   const hover = (t: Tool, on: boolean, el: HTMLElement | null) => {
     window.clearTimeout(budT.current);
     if (on) {
       // back on the disc from its own bud: the bud stays as it is
-      if (!(hovNow.current === t && shown.current === t)) { if (hovNow.current) budAway(hovNow.current); shown.current = t; hovNow.current = t; setHov(t); nb.current!.set(0); nb.current!.to(1, { cfg: CFG.snap }); }
+      if (!(hovNow.current === t && shown.current === t)) { if (hovNow.current) budAway(hovNow.current); shown.current = t; hovNow.current = t; setHov(t); nb.current!.set(0); nb.current!.to(1, { cfg: CFG.settle }); }
     } else if (t === "sessions" && pressRef.current) budT.current = window.setTimeout(() => { if (!inBud.current) budAway(t); }, BUD_GRACE);
     else budAway(t);
     p.onHover(on ? t : null, on ? el : null);
@@ -247,15 +247,15 @@ function MoonDisc({ t, at, reg, on, icon, dim, held, lit, dot, count, clock, lab
       el.style.scale = String((0.9 + 0.1 * r).toFixed(4));
       el.style.visibility = r > 0.01 ? "visible" : "hidden";
     };
-    sp.current = { lift: new Spring(0, CFG.pop, putDisc), squash: new Spring(0, CFG.press, putDisc), rise: new Spring(0, CFG.slide, putRise) };
+    sp.current = { lift: new Spring(0, CFG.settle, putDisc), squash: new Spring(0, CFG.lift, putDisc), rise: new Spring(0, CFG.travel, putRise) };
   }
   useLayoutEffect(() => {
     const s = sp.current!;
     s.rise.set(0);
     reg({
-      rise: (up, delay) => { if (up) s.rise.to(1, { delay, cfg: CFG.slide }); else s.rise.to(0, { cfg: { k: 1600, z: 1 } }); },   // leaving: faster than the slab shrinks, so no ghost below it
+      rise: (up, delay) => { if (up) s.rise.to(1, { delay, cfg: CFG.travel }); else s.rise.to(0, { cfg: CFG.fade }); },   // leaving: faster than the slab shrinks, so no ghost below it
       // a card landing in the disc: squashed once, then it pops back (the IconButton press)
-      squash: () => { s.squash.set(0); s.squash.to(1, { cfg: CFG.press }); window.setTimeout(() => s.squash.to(0, { cfg: CFG.pop }), 90); },
+      squash: () => { s.squash.set(0); s.squash.to(1, { cfg: CFG.lift }); window.setTimeout(() => s.squash.to(0, { cfg: CFG.settle }), 90); },
     });
     return () => { reg(null); s.lift.stop(); s.squash.stop(); s.rise.stop(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -266,14 +266,14 @@ function MoonDisc({ t, at, reg, on, icon, dim, held, lit, dot, count, clock, lab
     <button ref={ref} type="button" data-nopress data-disc={t} data-region=""
       className={`mdisc${on || held ? " on" : ""}${dim ? " dim" : ""}${lit ? " lit" : ""}${dot ? " dot" : ""}`}
       style={{ left: `calc(50% + ${(at.x - DISC / 2).toFixed(1)}px)`, top: at.y - DISC / 2 }} aria-label={label}
-      onPointerEnter={() => { sp.current!.lift.to(1, { cfg: CFG.pop }); onHover(true, ref.current); }}
-      onPointerLeave={() => { sp.current!.lift.to(0, { cfg: CFG.pop }); sp.current!.squash.to(0, { cfg: CFG.pop }); onHover(false, null); window.clearTimeout(holdT.current); }}
+      onPointerEnter={() => { sp.current!.lift.to(1, { cfg: CFG.settle }); onHover(true, ref.current); }}
+      onPointerLeave={() => { sp.current!.lift.to(0, { cfg: CFG.settle }); sp.current!.squash.to(0, { cfg: CFG.settle }); onHover(false, null); window.clearTimeout(holdT.current); }}
       onPointerDown={(e) => {
-        stop(e); sp.current!.squash.to(1, { cfg: CFG.press }); downAt.current = performance.now(); wasHold.current = false;
+        stop(e); sp.current!.squash.to(1, { cfg: CFG.lift }); downAt.current = performance.now(); wasHold.current = false;
         window.clearTimeout(holdT.current);
         if (onHold) holdT.current = window.setTimeout(() => { wasHold.current = true; onHold(); }, HOLD_MS);
       }}
-      onPointerUp={(e) => { stop(e); sp.current!.squash.to(0, { cfg: CFG.pop }); window.clearTimeout(holdT.current); }}
+      onPointerUp={(e) => { stop(e); sp.current!.squash.to(0, { cfg: CFG.settle }); window.clearTimeout(holdT.current); }}
       onMouseDown={stop} onMouseUp={stop}
       onClick={(e) => {
         e.stopPropagation();
@@ -362,12 +362,12 @@ export function Float(p: FloatProps) {
       }
       P.onFrame();
     };
-    sp.current = { x: new Spring(p.x, CFG.snap, put), y: new Spring(p.y, CFG.snap, put),
-      t: new Spring(0, CFG.arrive, put, () => {
+    sp.current = { x: new Spring(p.x, CFG.settle, put), y: new Spring(p.y, CFG.settle, put),
+      t: new Spring(0, CFG.travel, put, () => {
         const P = live.current;
         if (P.phase === "absorb" && sp.current!.t.v <= 0.001) { P.onLanded?.(P.id); P.onGone(P.id); }
       }),
-      lift: new Spring(0, CFG.snap, put) };
+      lift: new Spring(0, CFG.settle, put) };
   }
   // measured: the body's size (the goo body grows to it, the clamp keeps it in)
   useLayoutEffect(() => {
@@ -386,15 +386,15 @@ export function Float(p: FloatProps) {
       if (landed.current) s.t.set(1);
       landed.current = false;
       if (!Number.isNaN(DEV_TA)) { s.t.set(DEV_TA); return; }
-      s.t.to(0, { cfg: CFG.away });
+      s.t.to(0, { cfg: CFG.fade });
       return;
     }
     absorbFrom.current = null;
     if (!Number.isNaN(DEV_T)) { s.t.set(DEV_T); return; }   // dev: a still mid-bud
-    if (!landed.current) s.t.to(1, { cfg: CFG.arrive });
+    if (!landed.current) s.t.to(1, { cfg: CFG.travel });
   }, [p.phase]);
   // a new resting place (a slot freed, the window grew): it slides there; a drag owns it meanwhile
-  useEffect(() => { if (!drag.current?.on) { sp.current!.x.to(p.x, { cfg: CFG.snap }); sp.current!.y.to(p.y, { cfg: CFG.snap }); } }, [p.x, p.y]);
+  useEffect(() => { if (!drag.current?.on) { sp.current!.x.to(p.x, { cfg: CFG.settle }); sp.current!.y.to(p.y, { cfg: CFG.settle }); } }, [p.x, p.y]);
   useEffect(() => {
     const s = sp.current!, re = () => redraw(s.t);   // page px: the window's middle moved (see MoonDiscs)
     window.addEventListener("resize", re);
@@ -414,7 +414,7 @@ export function Float(p: FloatProps) {
       if (Math.hypot(dx, dy) < 4) return;
       d.on = true; dragged.current = true;
       root.current?.setPointerCapture(e.pointerId);
-      sp.current!.lift.to(1, { cfg: CFG.snap });
+      sp.current!.lift.to(1, { cfg: CFG.settle });
       p.onDrag(true);
     }
     const s = sp.current!;
@@ -429,7 +429,7 @@ export function Float(p: FloatProps) {
     const s = sp.current!, { w, h } = size.current, W = window.innerWidth, H = window.innerHeight;
     const x = Math.max(-W / 2 + 8 + w / 2, Math.min(W / 2 - 8 - w / 2, s.x.v)), y = Math.max(8, Math.min(H - 8 - h, s.y.v));
     s.x.set(x); s.y.set(y);
-    s.lift.to(0, { cfg: CFG.snap });   // it settles the 3 px it was lifted
+    s.lift.to(0, { cfg: CFG.settle });   // it settles the 3 px it was lifted
     p.onPlace(p.id, x, y);
     p.onDrag(false);
   };

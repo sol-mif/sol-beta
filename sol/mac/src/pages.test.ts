@@ -1,8 +1,8 @@
 // node --test src/*.test.ts (npm test here): the pages of the face are one list, vite.config.ts build.rollupOptions.input.
 // A page left out of it is not built, and Tauri answers a missing page with index.html, so a window meant for a small
-// page (the vibe glow, vibe.rs) would wear the whole face instead (#191's screen glow did, 2026-10-26 to 10-29: a
-// compiled vite.config.js, which Vite reads before vite.config.ts, was committed without the vibe page). So: every
-// .html beside vite.config.ts is an input unless its title says "(dev)" (gallery.html, ship.html: the scratch Vite
+// page would wear the whole face instead (a screen glow did, 2026-10-26 to 10-29: a compiled vite.config.js, which
+// Vite reads before vite.config.ts, was committed without its page). So: every
+// .html beside vite.config.ts is an input unless its title says "(dev)" (gallery.html: the scratch Vite
 // only), and every input exists; every page a window is built with (WebviewUrl::App in src-tauri) is an input; and no
 // compiled copy of the config sits beside it.
 import { test } from "node:test";
@@ -30,7 +30,7 @@ test("every page the shell opens a window with (WebviewUrl::App) is a Vite input
   const files = readdirSync(rs).filter((f) => f.endsWith(".rs"));
   const asked = new Set<string>();
   for (const f of files) for (const m of readFileSync(join(rs, f), "utf8").matchAll(/WebviewUrl::App\("([^"]+\.html)"/g)) asked.add(m[1]);
-  assert.ok(asked.size >= 2, "the notch and the glow ask for their pages");
+  assert.ok(asked.size >= 1, "the notch asks for its page");
   for (const p of asked) assert.ok(inputs.includes(p), `${p} is in vite.config.ts build.rollupOptions.input`);
 });
 

@@ -8,9 +8,10 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
+import { freePort, ownHealth } from "./test-engine.ts";
 
 const ENGINE = join(import.meta.dirname, "..");
-const PORT = 7980 + Math.floor(Math.random() * 9);
+let PORT = 0;   // the system's free port, taken at the start (test-engine.ts, #938)
 const dir = realpathSync(mkdtempSync(join(tmpdir(), "sol-rename-wire-")));
 const HOME = join(dir, "person"), A = join(HOME, "projects", "a");
 mkdirSync(join(dir, "home")); mkdirSync(A, { recursive: true }); mkdirSync(join(HOME, ".claude", "projects"), { recursive: true });
@@ -20,6 +21,7 @@ let engine: ChildProcess | null = null;
 after(() => { engine?.kill(); rmSync(dir, { recursive: true, force: true }); });
 
 async function up() {
+  PORT ||= await freePort();
   const env: NodeJS.ProcessEnv = {
     ...process.env, HOME, SOL_PORT: String(PORT), SOL_HOME: join(dir, "home"), SOL_PROFILE: join(dir, "profile"),
     SOL_STATE: join(dir, "work.json"), SOL_TEAM: join(dir, "team.json"), SOL_LOG: join(dir, "engine.log"),
@@ -27,11 +29,7 @@ async function up() {
   };
   delete env.CLAUDE_CONFIG_DIR;
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], { cwd: ENGINE, stdio: "ignore", env });
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return; } catch {}
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  throw new Error("the test engine did not come up");
+  await ownHealth(engine, PORT);   // the engine this test started, not another run's on the port (#938)
 }
 
 test("work.folder rename: refused with a reason, else the folder moves and the answer says where", { timeout: 60_000 }, async () => {

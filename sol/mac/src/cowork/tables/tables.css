@@ -1,0 +1,102 @@
+/* Tables (#434): the list of tables, a table's views as tabs, and the four views. Black, white and pearl as in the
+   board they grew from: words in --ink and --dim on the window's own black, one pearl line where a thing sits, no tint
+   under words. The board and the timeline reuse the dashboard's own classes (.ccols, .ccard, .cgantt in cowork.css). */
+.gp .gp-body[data-tab="tables"] { overflow: hidden; }
+.tb-page { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: flex-start; padding: 18px 40px 40px; }
+.tb-page > * { flex: none; max-width: 1180px; width: 100%; box-sizing: border-box; }
+.tb-head { margin-bottom: 8px; }
+.tb-dim { font-size: 12px; color: var(--dim); }
+
+/* the list of tables */
+.tb-list { display: flex; flex-direction: column; margin-top: 20px; border-top: 1px solid var(--line); }
+.tb-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 16px; row-gap: 3px; align-items: center;
+  padding: 14px 6px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.tb-row:hover { background: var(--surface); }
+.tb-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.tb-row-t { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-row-s { grid-row: 2; font-size: 12.5px; color: var(--dim); }
+.tb-row-k { grid-column: 2; grid-row: 1 / span 2; font-size: 11px; letter-spacing: .06em; color: var(--dim); }
+.tb-row-k:not(:empty)::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--ink); vertical-align: 1px; }
+.tb-add { margin-top: 18px; }
+.tb-src { display: flex; flex-wrap: wrap; gap: 6px; }
+.tb-chip { padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--dim); font: inherit; font-size: 12.5px; cursor: pointer; }
+.tb-chip.on { border-color: var(--ink); color: var(--ink); background: var(--raised); }
+.tb-chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* a table's views as tabs, and "+ view" */
+.tb-views { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 18px 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.tb-vtab { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border: 1px solid transparent; border-radius: var(--r-s); background: none; color: var(--dim); font: inherit; font-size: 13px; cursor: pointer; }
+.tb-vtab:hover { color: var(--ink); }
+.tb-vtab.on { color: var(--ink); border-color: var(--edge); background: var(--surface); }
+.tb-vtab.add { color: var(--mute); }
+.tb-vtab.gone { margin-left: auto; color: var(--mute); font-size: 12px; }
+.tb-vtab:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.tb-vmark { width: 14px; text-align: center; color: var(--mute); }
+.tb-vtab.on .tb-vmark { color: var(--ink); }
+.tb-addv { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -4px 0 16px; padding: 12px 14px; border: 1.5px dashed var(--mute); border-radius: var(--r); }
+.tb-addv input, .tb-field select { padding: 5px 9px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--page); color: var(--ink); font: inherit; font-size: 13px; color-scheme: dark; }
+.tb-field { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); }
+.tb-addv .acts { display: flex; gap: 8px; margin-left: auto; }
+.tb-addv .err { font-size: 12.5px; color: var(--ember); }
+
+/* the list */
+.tb-list-v { width: 100%; }
+.tb-grid { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tb-grid th { padding: 0 10px 8px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400; font-size: 12px; color: var(--dim); white-space: nowrap; }
+.tb-grid td { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: top; }
+.tb-grid td.w { cursor: text; }
+.tb-grid td.w:hover { background: var(--surface); }
+.tb-grid td.t-date, .tb-grid td.t-number, .tb-grid th.t-date, .tb-grid th.t-number { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tb-grid td.t-date, .tb-grid td.t-person, .tb-grid td.t-number { color: var(--dim); }
+.tb-grid td.t-choice span:not(:empty) { font-size: 12px; padding: 1px 8px; border: 1px solid var(--edge); border-radius: 999px; }
+.tb-t { font-weight: 500; }
+.tb-grid td input, .tb-grid td select { box-sizing: border-box; width: 100%; min-width: 90px; margin: -4px 0; padding: 3px 6px; border: 1px solid var(--ink); border-radius: 5px; background: var(--page); color: var(--ink); font: inherit; color-scheme: dark; }
+.tb-x { width: 28px; padding-inline: 0 !important; }
+.tb-x button { visibility: hidden; border: 0; background: none; color: var(--mute); font: inherit; font-size: 16px; cursor: pointer; }
+.tb-grid tr:hover .tb-x button, .tb-x button:focus-visible { visibility: visible; }
+.tb-x button:hover { color: var(--ink); }
+.tb-addrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px dashed var(--line); color: var(--mute); }
+.tb-addrow input { flex: 1; border: 0; background: none; color: var(--ink); font: inherit; font-size: 13.5px; }
+.tb-addrow input:focus-visible { outline: none; }
+.tb-addrow input::placeholder { color: var(--mute); }
+.tb-none, .tb-more { margin: 10px 2px; font-size: 12.5px; color: var(--mute); }
+
+/* the board: the dashboard's columns; a column a card is dragged over has a pearl line */
+.tb-board { width: 100%; }
+.tb-board .ccol { min-height: 80px; border-radius: var(--r-s); }
+.tb-board .ccol.over { box-shadow: 0 0 0 1px var(--ink); }
+.tb-card[draggable="true"] { cursor: grab; }
+.tb-card .cl1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tb-card .cl2 { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+
+/* the calendar: a month, Monday first */
+.tb-cal { width: 100%; }
+.tb-cal-top { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.tb-cal-m { min-width: 140px; text-align: center; font-size: 15px; font-weight: 500; color: var(--ink); }
+.tb-cal-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.tb-cal-h { padding: 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); }
+.tb-day { min-height: 92px; display: flex; flex-direction: column; gap: 3px; padding: 5px 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
+.tb-day.out { background: var(--surface); }
+.tb-day.out .tb-day-n { color: var(--mute); }
+.tb-day-n { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.tb-day.today .tb-day-n { align-self: flex-start; padding: 0 6px; border-radius: 999px; background: var(--ink); color: var(--base-color, #000); font-weight: 600; }
+.tb-ev { display: block; padding: 2px 6px; border-left: 2px solid var(--ink); font-size: 11.5px; line-height: 1.35; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-ev.more { border-left-color: transparent; color: var(--mute); }
+
+/* the timeline: the dashboard's weeks; a choice's place gives the bar's shade, pearl for the last */
+.tb-tl { width: 100%; box-sizing: border-box; }
+.cgbar.tb-c0 { background: none; box-shadow: inset 0 0 0 1px var(--mute); }
+.cgbar.tb-c1 { background: var(--dim); }
+.cgbar.tb-c2, .cgbar.tb-c3 { background: var(--ink); }
+
+/* a table on a page */
+.tb-onpage { margin: 12px 0; padding: 12px 14px 6px; border: 1px solid var(--edge); border-radius: var(--r); max-width: none; }
+.tb-onpage-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.tb-onpage-t { font-size: 14px; font-weight: 500; color: var(--ink); }
+.tb-onpage .tb-views { margin: 0 0 0 auto; padding: 0; border: 0; }
+.tb-onpage .tb-vtab { padding: 3px 8px; font-size: 12px; }
+.tb-onpage .tb-day { min-height: 56px; }
+.pg-doc .tb-onpage { font-size: 13.5px; line-height: 1.4; }
+
+@media (max-width: 720px) { .tb-page { padding-inline: 20px; } }
+@media (prefers-reduced-motion: reduce) { .tb-row, .tb-vtab { transition: none; } }

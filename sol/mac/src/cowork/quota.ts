@@ -27,10 +27,10 @@ export const mbOf = (used: number, max: number) => `${mb(used)} of ${mb(max)} MB
 export function bannerOf(u: UsageNow | null | undefined): Banner | null {
   if (!u || !(u.max > 0)) return null;
   const share = Math.min(1, Math.max(0, u.used / u.max)), words = mbOf(u.used, u.max), full = share >= FULL;
-  if (u.frozen) return { share, words, line: "the group's files are moving to GitHub; changes wait a minute", button: false, moving: true };
+  if (u.frozen) return { share, words, line: "the project's files are moving to GitHub; changes wait a minute", button: false, moving: true };
   if (share < NEAR) return null;
-  if (u.mine) return { share, words, line: full ? "the group is full: its files move to a private repository of yours, no limit" : "the group's files move to a private repository of yours, no limit", button: true };
-  return full ? { share, words, line: `the group is full; ask ${u.maker || "its maker"} to connect GitHub`, button: false } : null;
+  if (u.mine) return { share, words, line: full ? "the project is full: its files move to a private repository of yours, no limit" : "the project's files move to a private repository of yours, no limit", button: true };
+  return full ? { share, words, line: `the project is full; ask ${u.maker || "its maker"} to connect GitHub`, button: false } : null;
 }
 
 // ---- "not now" on a moved group's card, by group, on this Mac ----

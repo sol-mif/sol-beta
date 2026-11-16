@@ -369,6 +369,136 @@ async fn empty_now(app: &AppHandle, cookies_only: bool) -> Result<(), String> {
     match left? { 0 => Ok(()), n => Err(format!("{n} sites still hold data")) }
 }
 
+// ---- a browser block on the stage (#699, the stage's sitting 5; the design page §6) ----
+// A browser block's page in the person's hand is one more child web view of the main window ("block-<id>"), laid over
+// the block's body as the face draws it, moving and resizing with it. It shares the things' store (STORE), so a page has
+// the person's logins. Its boundary is a browser's, not a thing's: any https site, and http only on this machine (the
+// person's own dev servers: localhost:1420 and the like); the same refusals as a thing for everything else (no IPC, no
+// script from Sol, no download, no window of its own: a link that asks for one opens in the same view when it may, and
+// is named to the face otherwise). Its own prefix, so the things' pane, hiding every other thing, never hides a block.
+const BLOCK: &str = "block-";
+
+/** a rect in the face's page, in CSS px */
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Rect { pub x: f64, pub y: f64, pub w: f64, pub h: f64 }
+
+/// The part of a block's body the view may cover: the body cut to the stage's box, so the page never draws over the
+/// face's side or strip. None when less than a pixel is left (the view hides). Pure.
+pub fn clip(r: Rect, to: Rect) -> Option<Rect> {
+    let (x0, y0) = (r.x.max(to.x), r.y.max(to.y));
+    let (x1, y1) = ((r.x + r.w).min(to.x + to.w), (r.y + r.h).min(to.y + to.h));
+    if !(x1 - x0 >= 1.0 && y1 - y0 >= 1.0) { return None; }
+    Some(Rect { x: x0, y: y0, w: x1 - x0, h: y1 - y0 })
+}
+
+fn loopback(host: &str) -> bool { matches!(host, "localhost" | "127.0.0.1" | "[::1]" | "::1") }
+/// May a browser block's frames go to `u`? https anywhere (no user or password in the link), http on this machine only,
+/// or an empty frame. Pure.
+pub fn block_allowed(u: &Url) -> bool {
+    if u.scheme() == "about" { return matches!(u.path(), "blank" | "srcdoc"); }
+    if !u.username().is_empty() || u.password().is_some() { return false; }
+    let host = host_of(u);
+    if host.is_empty() { return false; }
+    match u.scheme() { "https" => true, "http" => loopback(&host), _ => false }
+}
+
+fn block_views(app: &AppHandle) -> Vec<tauri::Webview> {
+    app.webviews().into_values().filter(|w| w.label().starts_with(BLOCK)).collect()
+}
+fn block_place(wv: &tauri::Webview, r: Option<Rect>, show: bool) -> Result<(), String> {
+    match r {
+        Some(r) if show => {
+            wv.set_position(LogicalPosition::new(r.x, r.y)).map_err(|e| e.to_string())?;
+            wv.set_size(LogicalSize::new(r.w, r.h)).map_err(|e| e.to_string())?;
+            wv.show().map_err(|e| e.to_string())
+        }
+        _ => wv.hide().map_err(|e| e.to_string()),
+    }
+}
+fn tell_block(app: &AppHandle, v: serde_json::Value) { let _ = app.emit_to(FACE, "block-view", v); }
+
+/// Open a browser block's page (or show it again as it was) over the block's body at x, y, w, h, cut to the stage's box
+/// (cx, cy, cw, ch), all in the face's CSS px. `show` false: something of the face covers it, the page waits hidden.
+#[tauri::command]
+pub fn block_view_open(app: AppHandle, id: String, url: String, x: f64, y: f64, w: f64, h: f64, cx: f64, cy: f64, cw: f64, ch: f64, inner_h: f64, show: Option<bool>) -> Result<(), String> {
+    if !tab_ok(&id) { return Err("not a block".into()); }
+    if !own_store() { return Err("a page opens inside Sol on macOS 14 or later; open it in your browser".into()); }
+    if CLEARING.load(std::sync::atomic::Ordering::SeqCst) { return Err("Sol's browser is being emptied; a moment".into()); }
+    let to = Url::parse(&url).map_err(|e| e.to_string())?;
+    if !block_allowed(&to) { return Err("a browser block opens https pages, and http only on this machine".into()); }
+    let dy = inset(&app, inner_h);
+    let r = clip(Rect { x, y: y + dy, w, h }, Rect { x: cx, y: cy + dy, w: cw, h: ch });
+    let label = format!("{BLOCK}{id}");
+    if let Some(wv) = app.get_webview(&label) { return block_place(&wv, r, show.unwrap_or(true)); }
+    let window = app.get_window(FACE).ok_or("no main window")?;
+    let (a1, a2, a3, a4) = (app.clone(), app.clone(), app.clone(), app.clone());
+    let (i1, i2, i3, i4) = (id.clone(), id.clone(), id.clone(), id.clone());
+    let b = WebviewBuilder::new(&label, WebviewUrl::External(to))
+        .user_agent(SAFARI_UA)
+        .data_store_identifier(STORE)
+        .disable_drag_drop_handler()
+        .on_navigation(move |u| {
+            let ok = block_allowed(u);
+            if !ok && gate(&format!("refused {BLOCK}{i1}"), Duration::from_secs(1)) { tell_block(&a1, serde_json::json!({ "id": i1, "refused": shown(u), "keep": keep(u) })); }
+            ok
+        })
+        .on_new_window(move |u, _features| {
+            // a link that asks for a window: the same view goes there when it may (one every 1.5 s), else the face names it
+            if !gate(&format!("new {BLOCK}{i2}"), Duration::from_millis(1500)) { return NewWindowResponse::Deny; }
+            let u = unwrap_redirect(&u);
+            if block_allowed(&u) && u.scheme() != "about" {
+                if let Some(wv) = a2.get_webview(&format!("{BLOCK}{i2}")) { let _ = wv.navigate(u); }
+            } else if matches!(u.scheme(), "https" | "http") { tell_block(&a2, serde_json::json!({ "id": i2, "outside": shown(&u), "keep": keep(&u) })); }
+            NewWindowResponse::Deny
+        })
+        .on_download(move |_wv, e| {
+            if let DownloadEvent::Requested { url, .. } = e { tell_block(&a3, serde_json::json!({ "id": i3, "download": shown(&url), "keep": keep(&url) })); }
+            false
+        })
+        .on_page_load(move |_wv, p| {
+            let at = if matches!(p.event(), PageLoadEvent::Started) { "started" } else { "finished" };
+            tell_block(&a4, serde_json::json!({ "id": i4, "url": shown(p.url()), "load": at }));
+        });
+    let first = r.unwrap_or(Rect { x, y: y + dy, w: w.max(1.0), h: h.max(1.0) });
+    let wv = window.add_child(b, LogicalPosition::new(first.x, first.y), LogicalSize::new(first.w, first.h)).map_err(|e| e.to_string())?;
+    if r.is_none() || show == Some(false) { let _ = wv.hide(); }
+    Ok(())
+}
+
+/// The block moved, changed size, or something of the face came over it: its page follows, or hides.
+#[tauri::command]
+pub fn block_view_bounds(app: AppHandle, id: String, x: f64, y: f64, w: f64, h: f64, cx: f64, cy: f64, cw: f64, ch: f64, inner_h: f64, show: bool) -> Result<(), String> {
+    let wv = app.get_webview(&format!("{BLOCK}{id}")).ok_or("no such block view")?;
+    let dy = inset(&app, inner_h);
+    block_place(&wv, clip(Rect { x, y: y + dy, w, h }, Rect { x: cx, y: cy + dy, w: cw, h: ch }), show)
+}
+
+/// Every block view hidden but the ones named (the stage left the screen: another session, the talk lifted).
+#[tauri::command]
+pub fn block_view_hide_all(app: AppHandle) -> Result<(), String> {
+    for wv in block_views(&app) { let _ = wv.hide(); }
+    Ok(())
+}
+
+/// The address bar's moves: another address (the same rule as a link), or reload.
+#[tauri::command]
+pub fn block_view_nav(app: AppHandle, id: String, url: Option<String>, reload: Option<bool>) -> Result<(), String> {
+    let wv = app.get_webview(&format!("{BLOCK}{id}")).ok_or("no such block view")?;
+    if reload == Some(true) { return wv.reload().map_err(|e| e.to_string()); }
+    let to = Url::parse(url.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
+    if !block_allowed(&to) { return Err("a browser block opens https pages, and http only on this machine".into()); }
+    wv.navigate(to).map_err(|e| e.to_string())
+}
+
+/// The block closed, or the wheel went to the agent: its page goes.
+#[tauri::command]
+pub fn block_view_close(app: AppHandle, id: String) -> Result<(), String> {
+    for wv in block_views(&app) {
+        if id.is_empty() || wv.label() == format!("{BLOCK}{id}") { wv.close().map_err(|e| e.to_string())?; }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -459,5 +589,34 @@ mod tests {
     fn tabs_are_names_not_paths() {
         assert!(tab_ok("a1b2c3d4") && tab_ok("a1b2c3d4.2"));
         assert!(!tab_ok("") && !tab_ok("../main") && !tab_ok("a b") && !tab_ok(&"x".repeat(41)));
+    }
+    #[test]
+    fn a_block_view_is_cut_to_the_stage() {
+        let stage = Rect { x: 300.0, y: 40.0, w: 900.0, h: 600.0 };
+        let inside = Rect { x: 320.0, y: 100.0, w: 480.0, h: 300.0 };
+        assert_eq!(clip(inside, stage), Some(inside), "a body inside the stage is itself");
+        assert_eq!(clip(Rect { x: 1100.0, y: 100.0, w: 480.0, h: 300.0 }, stage), Some(Rect { x: 1100.0, y: 100.0, w: 100.0, h: 300.0 }), "past the right edge: cut there");
+        assert_eq!(clip(Rect { x: 320.0, y: 500.0, w: 480.0, h: 300.0 }, stage), Some(Rect { x: 320.0, y: 500.0, w: 480.0, h: 140.0 }), "over the strip: cut at the stage's foot");
+        assert_eq!(clip(Rect { x: 100.0, y: 100.0, w: 250.0, h: 300.0 }, stage), Some(Rect { x: 300.0, y: 100.0, w: 50.0, h: 300.0 }), "over the side: cut at the stage's left");
+        assert_eq!(clip(Rect { x: 1300.0, y: 100.0, w: 480.0, h: 300.0 }, stage), None, "wholly off: hidden");
+        assert_eq!(clip(Rect { x: 320.0, y: 100.0, w: 0.5, h: 300.0 }, stage), None, "less than a pixel: hidden");
+    }
+    #[test]
+    fn a_block_view_goes_to_https_and_this_machine() {
+        for ok in ["https://example.com/", "https://docs.google.com/x", "http://localhost:1420/", "http://127.0.0.1:7777/health", "http://[::1]:3000/", "about:blank"] {
+            assert!(block_allowed(&u(ok)), "{ok}");
+        }
+        for bad in ["http://example.com/", "http://192.168.0.2:8080/", "http://localhost.evil.com/", "https://user:pw@example.com/", "file:///etc/passwd",
+            "tauri://localhost/", "javascript:alert(1)", "data:text/html,x", "about:config", "ftp://example.com/"] {
+            assert!(!block_allowed(&u(bad)), "{bad}");
+        }
+    }
+    #[test]
+    fn no_capability_names_a_block_view() {
+        for (name, text) in [("default", include_str!("../capabilities/default.json")), ("default-hot", include_str!("../capabilities/default-hot.json"))] {
+            let v: serde_json::Value = serde_json::from_str(text).unwrap();
+            assert!(v["webviews"].as_array().unwrap().iter().all(|w| { let w = w.as_str().unwrap(); !w.starts_with("block") && w != "*" }), "{name}");
+        }
+        assert!(!format!("{BLOCK}x").starts_with(PREFIX), "a block view is never one of the things (the things' pane hides those)");
     }
 }

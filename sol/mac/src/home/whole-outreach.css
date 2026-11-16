@@ -1,0 +1,58 @@
+/* Applications and follow-ups, living (#808, home/whole/Applications.tsx, FollowUps.tsx), behind sol.home.whole: Home's
+   layout only. The marks, the tokens' tints and the glass come from the kit and the jelly, set in code. */
+.hout-mini { border: 0; background: none; padding: 0; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; cursor: default; white-space: nowrap; }
+.hout-right { margin-left: auto; }
+.hout-top { display: flex; align-items: center; gap: var(--s4); }
+.hout-look { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+
+/* the flow as stations, each posting a token where it stands */
+.hout-stations { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s4); margin-top: var(--s6); }
+.hout-six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.hout-rail { position: absolute; left: var(--s2); right: var(--s8); top: var(--s2); height: 1px; }
+.hout-station { position: relative; display: flex; flex-direction: column; gap: var(--s1); min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hout-station b { font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 500; }
+.hout-tokens { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); margin-top: var(--s2); }
+.hout-token { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s3) 0 var(--s1); border-radius: var(--r-row); max-width: 100%; white-space: nowrap; }
+.hout-token small { font-size: var(--t-label); }
+.hout-co { display: grid; place-items: center; width: var(--s4); height: var(--s4); border-radius: var(--r-s); font-size: var(--t-label); line-height: 1; font-weight: 600; flex: none; }
+
+/* the card in front and Sol's hand beside it */
+.hout-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--s6); align-items: start; margin-top: var(--s8); }
+.hout-stack { display: flex; flex-direction: column; min-width: 0; }
+.hout-card { padding: var(--s6); display: flex; flex-direction: column; gap: var(--s3); }
+.hout-meta { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hout-title { font-weight: 600; }
+.hout-why { font-size: var(--t-body); line-height: var(--t-body-line); }
+.hout-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.hout-chip { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s3); font-size: var(--t-label); white-space: nowrap; }
+.hout-acts { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s2); }
+.hout-space { flex: 1; }
+.hout-edge { position: relative; isolation: isolate; padding: var(--s2) var(--s4); margin-top: calc(-1 * var(--s1)); font-size: var(--t-label); line-height: var(--t-label-line); z-index: -1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hout-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2) var(--s4); padding-top: var(--s2); border-top: 1px solid var(--c-on-line); }
+.hout-fields > small { grid-column: 1 / -1; }
+.hout-field { display: flex; flex-direction: column; min-width: 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.hout-field small { font-size: var(--t-label); line-height: var(--t-label-line); }
+.hout-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hout-none { padding: var(--s4) 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.hout-hand { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hout-hand-tabs, .hout-hand-foot { display: flex; align-items: center; gap: var(--s2); }
+.hout-dot { display: inline-block; width: var(--s2); height: var(--s2); border-radius: 50%; margin-right: var(--s2); vertical-align: middle; }
+.hout-hand-page { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s2) var(--s3); padding: var(--s4); }
+.hout-hand-page > b, .hout-hand-page > small, .hout-hand-stop { grid-column: 1 / -1; }
+.hout-hand-page > b { font-size: var(--t-body); line-height: var(--t-body-line); }
+.hout-hand-stop { display: flex; align-items: center; gap: var(--s3); }
+.hout-submit { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s3); }
+
+/* follow-ups: the message, the people around it, who you met */
+.hout-dm { position: relative; isolation: isolate; display: block; padding: var(--s3) var(--s4); }
+.hout-dm textarea { display: block; width: 100%; border: 0; background: none; resize: none; outline: 0; padding: 0; font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); }
+.hout-around { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hout-person { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); }
+.hout-person-t { display: flex; flex-direction: column; min-width: 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.hout-person-t small { font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hout-face { display: grid; place-items: center; width: var(--s8); height: var(--s8); border-radius: 50%; flex: none; font-size: var(--t-label); font-weight: 600; }
+.hout-say { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s3); height: var(--h-row); padding: 0 var(--s4); margin-top: var(--s6); }
+.hout-say input { flex: 1; min-width: 0; border: 0; background: none; outline: 0; padding: 0; font: inherit; font-size: var(--t-body); }
+.hout-say small { font-size: var(--t-label); white-space: nowrap; }
+.hout-receipt { position: relative; isolation: isolate; align-self: flex-start; display: inline-flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); margin-top: var(--s4); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hout .hout-receipt { position: sticky; bottom: 0; }

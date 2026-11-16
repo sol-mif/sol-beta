@@ -29,6 +29,7 @@ export function pingFaceIs(f: Face, role: Role) {
   faces.set(f, role);
   for (const p of unseen) if (p.dest === role) f.send(notify(p));   // only its own unseen ones
   if (role === "notch") f.send({ type: "notify.mark", count: unseen.filter((p) => p.dest === "phone").length });
+  if (role === "notch" && need !== null) f.send({ type: "cw3.needsme", count: need });   // fr-30: only once v3 has told one
 }
 export function removePingFace(f: Face) { faces.delete(f); }
 
@@ -82,9 +83,21 @@ export function backHere() {
   for (const x of unseen) if (x.dest !== "window") to("window", { type: "notify.dot", id: x.id, seat: x.seat, sessionId: x.sessionId, line: x.line, at: x.at });
 }
 
+// --- fr-30 slice 2 (#555): the one "needs me" count of Cowork v3, the same number as the front and the stage chip.
+// Only team/v3/planwire.ts calls it, and that file loads only with the switch on, so with it off the notch hears nothing new.
+let need: number | null = null;
+export function needsMeCount(n: number) {
+  const c = Math.max(0, Math.floor(n) || 0);
+  if (c === need) return;
+  need = c;
+  to("notch", { type: "cw3.needsme", count: c });
+}
+export const _need = () => need;
+// --- end fr-30 slice 2
+
 /** tests */
 export const _pings = () => unseen;
-export const _reset = () => { for (const t of acks.values()) clearTimeout(t); acks.clear(); unseen.length = 0; faces.clear(); };
+export const _reset = () => { for (const t of acks.values()) clearTimeout(t); acks.clear(); unseen.length = 0; faces.clear(); need = null; };
 
 const text = (t: string): ToolResult => ({ content: [{ type: "text", text: t }] });
 export const PING_TOOLS = [

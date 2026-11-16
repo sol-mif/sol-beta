@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Fold, Turn } from "./MotionKit";
-import { reducedMotion } from "./motion";
-import { PART_NAMES, PRESETS, setPart, setVibe, useVibe, type Part, type Prefs } from "./vibe";
+import { CFG } from "./motion";
 import { ONE, FELL } from "./engine";
 import { ENGINE, WHICH, LIVE, NEXT, FAR_NAME, pickEngine, sameEngine, keptMachines, type Effort, type EngineInfo, type Health, type Models, type Seat, type Settings as S, type GoBackPlan } from "./useEngine";
 import { VOICES, VOICE_OFF, ELEVEN_VOICES, ELEVEN_DEFAULT, MAKERS } from "./voices";
@@ -10,8 +9,16 @@ import { CellRange, Status } from "./creature/indicators";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useRenovation } from "./renovation";
-import { applyLook, BUBBLES, LOOK_DEFAULT, SWATCHES } from "./look";
-import { SettingsShell, ShellSection, Switch, useShell } from "./settingsShell";
+import { applyLook, BUBBLES, LOOK_DEFAULT, SKINS, SWATCHES } from "./look";
+import { PinRows } from "./cowork/Pin";   // pin, and go back to a release of the last thirty days (#426)
+import { AsidesRows } from "./cowork/Asides";   // what was set aside, and bring back (#425)
+import { SettingsShell, ShellSection, useShell } from "./settingsShell";
+import { TimelineMini, askEngine } from "./cowork/Timeline";   // the small timeline: only me (#424)
+import { SwitchRow } from "./cowork/v3/SwitchRow";   // fr-30 slice 8: the Cowork v3 switch, under me
+import { CleanRow, FrameRow } from "./home/CleanRow";
+import { stageWhole } from "./flag";   // #954: the lens, one setting
+import { LENSES, LENS_NAMES } from "./stage/lens";
+import { LENS_HINTS, setUserLens, useUserLens } from "./stage/userLens";   // #589: the clean Home's switch, under me
 
 // Mutable mode (lib.rs, hot.rs): the app's windows load Vite's dev pages, so edits to sol/mac/src appear in place.
 // Only inside Sol.app; in a plain browser there is no shell to ask.
@@ -32,62 +39,22 @@ function useFace(): [Face | null, (hot: boolean) => void] {
   return [face, set];
 }
 
-// one part of vibe mode (vibe.ts Prefs): on, follows the music, size, brightness, colours (a preset or its own swatches)
-function PartRows({ k, p }: { k: keyof Prefs; p: Part }) {
-  const pct = (v: number) => `${Math.round(v * 100)}%`;
-  const preset = Object.keys(PRESETS).find((n) => PRESETS[n].join() === p.colours.join()) ?? "own";
+// #954, stage.whole (whole.html scene 11): how work is drawn, one setting for you, read by Home, Build and Cowork; the
+// per-session lens pill is gone
+function LensDrawer({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const lens = useUserLens();
   return (
-    <div className="vpart">
-      <p className="vpart-h">{PART_NAMES[k]}</p>
-      <div className="field-r">
-        <div className="lab"><span>shown</span></div>
-        <Switch on={p.on} label={`${PART_NAMES[k]} shown`} set={(v) => setPart(k, { on: v })} />
-      </div>
-      <div className="field-r">
-        <div className="lab"><span>follows the music</span><small>{k === "ring" ? "turns faster and swells on the beat" : "widens and brightens with what is playing"}</small></div>
-        <Switch on={p.music} label={`${PART_NAMES[k]} follows the music`} set={(v) => setPart(k, { music: v })} />
-      </div>
-      <div className="field-r">
-        <div className="lab"><span>size</span></div>
-        <div className="range">
-          <CellRange min={50} max={200} step={10} value={Math.round(p.size * 100)} aria-label="size" onChange={(ev) => setPart(k, { size: Number(ev.target.value) / 100 })} />
-          <span className="val">{pct(p.size)}</span>
-        </div>
-      </div>
-      <div className="field-r">
-        <div className="lab"><span>brightness</span></div>
-        <div className="range">
-          <CellRange min={5} max={100} step={5} value={Math.round(p.bright * 100)} aria-label="brightness" onChange={(ev) => setPart(k, { bright: Number(ev.target.value) / 100 })} />
-          <span className="val">{pct(p.bright)}</span>
-        </div>
-      </div>
-      <div className="field-r">
-        <div className="lab"><span>colours</span></div>
-        <Pick value={preset} options={[...Object.keys(PRESETS).map((n): [string, string] => [n, n]), ["own", "my own"]]}
-          onChange={(v) => { if (PRESETS[v]) setPart(k, { colours: PRESETS[v] }); }} />
-      </div>
-      <div className="swatches" aria-label="colours">
-        {p.colours.map((c, i) => (
-          <span key={i} className="swatch" style={{ background: c }} title={c}>
-            <input type="color" value={c} aria-label={`colour ${i + 1}`} onChange={(ev) => { const n = [...p.colours]; n[i] = ev.target.value; setPart(k, { colours: n }); }} />
-            {p.colours.length > 2 && <button className="x" aria-label="remove this colour" onClick={() => setPart(k, { colours: p.colours.filter((_, j) => j !== i) })}>×</button>}
-          </span>
+    <Drawer name="how work is drawn" open={open} onToggle={onToggle}>
+      <p className="hint-line top">one setting for you, on every machine you open: the same blocks, drawn four ways</p>
+      <div className="lens-pick" role="radiogroup" aria-label="how work is drawn">
+        {LENSES.map((l) => (
+          <button key={l} role="radio" aria-checked={lens === l} className={lens === l ? "on" : ""} onClick={() => setUserLens(l)}>
+            <b>{LENS_NAMES[l]}</b><span>{LENS_HINTS[l]}</span>
+          </button>
         ))}
-        {p.colours.length < 8 && <button className="swatch add" aria-label="add a colour" onClick={() => setPart(k, { colours: [...p.colours, p.colours[0]] })}>+</button>}
       </div>
-    </div>
+    </Drawer>
   );
-}
-
-// the music drawer's line: what vibe mode is doing, or why it is not (vibe.ts)
-function vibeHint(v: ReturnType<typeof useVibe>): string {
-  if (!inApp) return "only inside Sol.app";
-  if (reducedMotion()) return "off while the Mac asks for reduced motion";
-  if (v.error) return v.error;
-  if (!v.want) return "macOS asks once to let Sol hear this Mac's sound; nothing is recorded";
-  if (!v.up) return "starting…";
-  if (v.playing) return "hearing it";
-  return "hearing nothing: play something. If macOS was told no, allow Sol under Privacy & Security › Screen & System Audio Recording";
 }
 
 // Takes the place of the talk and the box. One drawer open at a time; the height animates with a grid row.
@@ -97,7 +64,7 @@ export function Drawer({ name, open, onToggle, children }: { name: string; open:
     <section className={`drawer ${open ? "open" : ""}`}>
       <button className="drawer-h" onClick={onToggle} aria-expanded={open}>
         <span>{name}</span>
-        <Turn to={open ? 180 : 0} cfg={{ k: 360, z: 0.5 }}><svg className="chev" viewBox="0 0 8 8" width="8" height="8" aria-hidden="true"><path d="M1 2.5 4 5.5 7 2.5" fill="none" stroke="currentColor" strokeWidth="1" /></svg></Turn>
+        <Turn to={open ? 180 : 0} cfg={CFG.settle}><svg className="chev" viewBox="0 0 8 8" width="8" height="8" aria-hidden="true"><path d="M1 2.5 4 5.5 7 2.5" fill="none" stroke="currentColor" strokeWidth="1" /></svg></Turn>
       </button>
       <Fold open={open} from={{ y: 14 }} gap={40}>{children}</Fold>
     </section>
@@ -182,6 +149,14 @@ export function LookDrawer({ s, off, onSet, open, onToggle }: { s: S; off: boole
         </div>
       </div>
       <div className="field-r bubbles">
+        <div className="lab"><span>home's skin</span><small>{SKINS.find(([k]) => k === (look.skin ?? LOOK_DEFAULT.skin))?.[2]}</small></div>
+        <div className="pair">
+          {SKINS.map(([k, name]) => (
+            <button key={k} className={`bpill ${(look.skin ?? LOOK_DEFAULT.skin) === k ? "on" : ""}`} disabled={off} onClick={() => onSet({ look: { skin: k } })}>{name}</button>
+          ))}
+        </div>
+      </div>
+      <div className="field-r bubbles">
         <div className="lab"><span>your bubble</span><small>a cosmetic pick; the seat's colour stays the one hue</small></div>
         <div className="pair">
           {BUBBLES.map(([k, name]) => (
@@ -220,7 +195,6 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
   const [now, setNow] = useState(Date.now());
   const [patience, setPatience] = useState<number | null>(null); // while dragging, so the engine is told once
   const [face, setFace] = useFace();
-  const vb = useVibe();
 
   const look = () => navigator.mediaDevices?.enumerateDevices().then((d) => setMics(d.filter((x) => x.kind === "audioinput"))).catch(() => {});
   useEffect(() => {
@@ -237,14 +211,11 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
 
   // in the shell a section is picked, never closed: toggle is the drawers' old word for "open this one"
   const toggle = (n: string) => setOpen(n);
-  // Sol held while settings are up (SeatScene.tsx, the vibe switch): the music drawer opens here, nothing else is redrawn
+  // a drawer asked for by name (#342, sol:settings: the join card's "sign in" opens "me")
   useEffect(() => {
-    const f = () => setOpen("music");
-    // and a drawer asked for by name (#342, sol:settings: the join card's "sign in" opens "me")
     const named = (ev: Event) => { const d = (ev as CustomEvent).detail; if (typeof d === "string") setOpen(d); };
-    window.addEventListener("sol-vibe-edit", f);
     window.addEventListener("sol:settings", named);
-    return () => { window.removeEventListener("sol-vibe-edit", f); window.removeEventListener("sol:settings", named); };
+    return () => window.removeEventListener("sol:settings", named);
   }, []);
   // the Go back row asks the engine what one step back would do, each time the drawer opens with the engine up
   useEffect(() => { if (open === "engine" && up && send) send({ type: "goback.plan" }); }, [open, up, send]);
@@ -276,12 +247,15 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
         {face && <><dt>face</dt><dd><Pick value={face.hot ? "hot" : "bundled"} options={[["bundled", "bundled"], ["hot", "hot, edits appear live"]]} onChange={(v) => setFace(v === "hot")} /></dd>
           <dt /><dd className={`face-state ${face.state === "hot" ? "hot" : face.state === "dev server down" ? "down" : ""}`}>{face.state}</dd></>}
         <dt>address</dt><dd className="mono">{ENGINE}</dd>
+        {up && <><dt>release</dt><dd><TimelineMini ask={askEngine} /></dd></>}
+        <PinRows up={up} />
         {health && <><dt>kept</dt><dd>{health.kept ? "by its keeper" : "not by its keeper"}{health.build ? `; build watcher ${health.build.alive ? "alive" : "dead"}${health.build.errors ? `, ${health.build.errors} error${health.build.errors > 1 ? "s" : ""}` : ""}` : ""}</dd></>}
         {up && send && <><dt>go back</dt><dd className="goback">
           {!sure
             ? <button className="stop" disabled={!goBack || (!goBack.engine && !goBack.face)} onClick={() => setSure(true)}>go back</button>
             : <button className="stop sure" onClick={() => { setSure(false); send({ type: "goback" }); }}>yes, go back now</button>}
           <span className="goback-line">{goBack ? goBack.line : "…"}</span></dd></>}
+        <AsidesRows up={up} />
         {!up && <><dt>if it stays down</dt><dd><ol className="help-steps">
           <li>wait a minute: the keeper restarts it, and after three bad starts puts the last good build back by itself</li>
           <li>or pick the other engine above and keep working there</li>
@@ -334,7 +308,6 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
     microphone: micNow ? micNow.replace(/\s*\(.*\)$/, "").slice(0, 14) : "default",
     defaults: (s.defaults.model[seatNow] ?? "").replace(/^claude-/, "").replace(/^gpt-/, "gpt "),
     look: <i className="sdot swatch-peek" style={{ background: s.look?.color ?? LOOK_DEFAULT.color }} />,
-    music: vb.want ? "on" : "off",
     engine: <i className={`sdot ${up ? "up" : "down"}`} />,
   };
 
@@ -343,6 +316,9 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
       top={<><Shut onClose={onClose} />{off && <p className="hint-line top stale">the engine is older than this window; restart it to change these</p>}</>}>
       <div className={off ? "settings-off" : ""} style={{ display: "contents" }}>
         <ControlDrawers open={open} toggle={toggle} onSet={onSet} />
+        <SwitchRow s={real} off={off} onSet={onSet} />
+        <CleanRow />
+        <FrameRow />
         <Drawer name="voice" open={open === "voice"} onToggle={() => toggle("voice")}>
           <div className="field-r">
             <div className="lab"><span>maker</span><small>who hears and talks on a call</small></div>
@@ -392,15 +368,6 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
           <p className="hint-line">hold the mic to talk, tap to toggle</p>
         </Drawer>
 
-        <Drawer name="music" open={open === "music"} onToggle={() => toggle("music")}>
-          <div className="field-r">
-            <div className="lab"><span>vibe mode</span><small>Sol's colours round the screen and the chat box, moving with what this Mac plays</small></div>
-            <Switch on={vb.want} label="vibe mode" disabled={!inApp || reducedMotion()} set={setVibe} />
-          </div>
-          <p className="hint-line">{vibeHint(vb)}</p>
-          {(["screen", "frame", "ring"] as (keyof Prefs)[]).map((k) => <PartRows key={k} k={k} p={vb.prefs[k]} />)}
-        </Drawer>
-
         <Drawer name="defaults" open={open === "defaults"} onToggle={() => toggle("defaults")}>
           <p className="hint-line top">for new conversations only; an open one keeps its own. Who answers a new chat is in my accounts</p>
           {(["codex", "claude"] as Seat[]).map((k) => (
@@ -422,6 +389,7 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
           <p className="hint-line">what Claude does without asking in a session, and in every session a card starts</p>
         </Drawer>
 
+        {stageWhole() && <LensDrawer open={open === "drawn"} onToggle={() => toggle("drawn")} />}
         <LookDrawer s={s} off={off} onSet={onSet} open={open === "look"} onToggle={() => toggle("look")} />
         {engineDrawer}
         {more?.(open, toggle)}

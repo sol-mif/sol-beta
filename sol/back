@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Back (#18, 2026-10-17): Sol goes back to the last thing that worked, in one step, with no one around to help.
-# Marco runs it from Terminal when Sol is down and the steps in Settings → engine (or sol/HELP.md) say so:
+# The person runs it from Terminal when Sol is down and the steps in Settings → engine (or sol/HELP.md) say so:
 #   bash ~/computer/personal/projects/ecosystem/sol/back
 # The "go back" button in Settings runs the same script through the engine (back --no-restart; the engine then exits
 # and its keeper brings the good build up). One script for the Mac (launchd) and the NucBox (systemd).
@@ -31,7 +31,7 @@ for a in "$@"; do
   esac
 done
 
-# Sol may live in the other checkout of this repo (MY SOL, sol/mine/live, #116): the engine's job says which folder it
+# Sol may live in the other checkout of this repo (a */mine branch's own checkout, #116): the engine's job says which folder it
 # runs from, and back goes back there, so the same line works from either folder
 if [ "$(uname)" = Darwin ]; then
   job=$HOME/Library/LaunchAgents/com.marco.sol-engine.plist

@@ -9,6 +9,8 @@ import { link } from "../socket";
 import { ENGINE } from "../useEngine";
 import type { WorkSession } from "../work/useWork";
 import type { SolVersion } from "./version";
+import { fakePages } from "./pages/devPages";
+import { fakeTables } from "./tables/devTables";   // tables (#434): kept in this tab only
 
 export type Presence = "here" | "elsewhere" | "away" | "working" | "yourcall";
 export type Member = { who: string; agent: boolean; machine: string; state: Presence; session?: { title: string; repo?: string }; since: number;
@@ -56,7 +58,9 @@ export type TeamSettings = {
 };
 // members (#102): the team, derived: the GitHub org's members when an org is set, else who has been seen on the relay
 // hub (#157): the shared hub every beta room meets on, where a new room meets unless the person blanks it
-export type TeamState = { me: { login: string; name: string }; settings: TeamSettings; roster: Member[]; members: string[]; relay: { url: string; up: boolean }; hub?: string; cloud?: Cloud; version?: SolVersion | null };   // version (#417): my own Sol's
+/** a member's agent on the roster (#435, engine team/agents.ts): `<login>'s agent`, tied to its human, working when a session of theirs is */
+export type AgentMember = { name: string; of: string; working: boolean; session?: string; since?: number };
+export type TeamState = { me: { login: string; name: string }; settings: TeamSettings; roster: Member[]; members: string[]; agents?: AgentMember[]; relay: { url: string; up: boolean }; hub?: string; cloud?: Cloud; version?: SolVersion | null };   // version (#417): my own Sol's
 /** my Sol account on the shared hub (S6b): its name, "" when not signed in; need: the room in use meets there and I am not
  *  let in; gone: the cloud has no room with the room's code */
 export type Cloud = { hub: string; login: string; need: boolean; gone?: boolean };
@@ -163,11 +167,11 @@ export type HubNow = { light: string; old: boolean; queue?: { ahead: number; wai
 // ---- the dev fakes (?dev=team) ----
 /** ?dev=team: my sessions in the fake group (#314), so the side's rows under it show */
 export const DEV_SESSIONS: WorkSession[] = DEV_TEAM ? [
-  { id: "dev-room-1", title: "PRD 改版", cwd: "/Users/marco/Sol/rooms/team", project: "/Users/marco/Sol/rooms/team", updatedAt: Date.now() - 2 * 3_600_000, mode: "cowork", roomId: "team" },
-  { id: "dev-room-2", title: "give-up points sheet", cwd: "/Users/marco/Sol/rooms/team", project: "/Users/marco/Sol/rooms/team", updatedAt: Date.now() - 26 * 3_600_000, mode: "cowork", roomId: "team" },
+  { id: "dev-room-1", title: "PRD 改版", cwd: "/Users/someone/Sol/rooms/team", project: "/Users/someone/Sol/rooms/team", updatedAt: Date.now() - 2 * 3_600_000, mode: "cowork", roomId: "team" },
+  { id: "dev-room-2", title: "give-up points sheet", cwd: "/Users/someone/Sol/rooms/team", project: "/Users/someone/Sol/rooms/team", updatedAt: Date.now() - 26 * 3_600_000, mode: "cowork", roomId: "team" },
 ] : [];
 const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
-const R = "marcocyl04-ux/sol-dev";
+const R = "sol-mif/sol-dev";
 const card = (number: number, title: string, column: Column, o: Partial<Card> = {}): Card => ({
   repo: R, number, title, state: column === "main" || column === "stable" ? "closed" : "open", labels: [], assignees: [], author: "marco",
   created: day(20), url: `https://github.com/${R}/issues/${number}`, column, ...o,
@@ -181,12 +185,15 @@ const FAKE = {
       room: "team" },
     roster: [
       { who: "frank", agent: false, machine: "legion", state: "working", session: { title: "the goal page", repo: "ecosystem" }, since: Date.now() - 22 * 60_000,
-        thing: { id: "d1b2c3d4", name: "marcocyl04-ux/sol-dev", source: "agent", at: Date.now() - 60_000 }, sessions: [{ id: "dev-frank-room", title: "the goal page", thing: "d1b2c3d4" }],
+        thing: { id: "d1b2c3d4", name: "sol-mif/sol-dev", source: "agent", at: Date.now() - 60_000 }, sessions: [{ id: "dev-frank-room", title: "the goal page", thing: "d1b2c3d4" }],
         version: { release: "stable-20261030-0900", commit: "4f1a2b3c", mine: 3 } },
-      { who: "isaac", agent: false, machine: "thinkpad", state: "here", since: Date.now() - 95 * 60_000, quiet: true },
+      { who: "isaac", agent: false, machine: "thinkpad", state: "here", since: Date.now() - 95 * 60_000, quiet: true,
+        thing: { id: "page-launch-plan", name: "launch plan", source: "face", at: Date.now() - 2 * 60_000 } },
       { who: "marco", agent: false, machine: "macbook", state: "here", since: Date.now() - 4 * 60_000, version: { release: "stable-20261030-0900", commit: "4f1a2b3c", mine: 12 } },
     ],
     members: ["frank", "isaac", "marco"],
+    agents: [{ name: "marco's agent", of: "marco", working: false }, { name: "frank's agent", of: "frank", working: true, session: "the goal page", since: Date.now() - 22 * 60_000 },
+      { name: "isaac's agent", of: "isaac", working: false }],
     relay: { url: "", up: true },
     hub: "wss://nucbox.example.ts.net/relay",
     ...(DEV_TEAM && new URLSearchParams(location.search).get("groups") === "0" ? { cloud: { hub: "wss://cloud.matterfold.tech/relay", login: "marco", need: false } } : {}),
@@ -234,6 +241,8 @@ const FAKE = {
 };
 /** ?dev=team: the engine's answer to one question, faked (the join card asks here too) */
 export function fakeAnswer(type: string, body: any): any {
+  if (type.startsWith("team.page") || type.startsWith("team.template")) return fakePages(type, body);   // pages (#433) and templates (#435): kept in this tab only
+  if (type.startsWith("team.table")) return fakeTables(type, body, FAKE.board);   // tables (#434): kept in this tab only
   if (type === "team.member") return body.login === "frank" ? FAKE.frank : { log: [] };
   if (type === "team.board") return FAKE.board;
   if (type === "team.ping") return { ok: true };
@@ -245,7 +254,7 @@ export function fakeAnswer(type: string, body: any): any {
   if (type === "team.room.make") return { room: { id: "dev-made", name: body.name, provider: "github", org: "", repos: [`marco/${String(body.name).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`], hub: body.hub ?? "", code: "M4DEQ2", gate: "github" } };   // #160
   if (type === "team.room.join") return { error: "the dev view joins nothing" };
   // #342: a link's card; `&signedin=0` is a Sol with no account on the cloud
-  if (type === "team.room.peek") return { code: String(body.code ?? ""), name: "smoke group", hub: "wss://cloud.matterfold.tech/relay", signedIn: new URLSearchParams(location.search).get("signedin") !== "0" };
+  if (type === "team.room.peek") return { code: String(body.code ?? ""), name: "smoke project", hub: "wss://cloud.matterfold.tech/relay", signedIn: new URLSearchParams(location.search).get("signedin") !== "0" };
   if (type === "team.accounts") return { github: { in: new URLSearchParams(location.search).get("gh") !== "out" } };   // #252: ?gh=out, no GitHub here
   if (type === "team.github.connect") return { code: "ABCD-1234", url: "https://github.com/login/device" };   // the shape only
   if (type === "team.github.connect.cancel") return { ok: true };
@@ -253,10 +262,10 @@ export function fakeAnswer(type: string, body: any): any {
   if (type === "team.drive.connect") return { ok: false, error: "the dev view connects nothing" };
   if (type === "team.letin.answer") return { said: [body.yes ? "invited" : "no"] };   // the shape only: nobody is added
   if (type === "team.leads.who") return { people: ["frank", "isaac", "marco"] };
-  if (type === "team.leads.set") {   // the dev view lands nothing: the fake board moves, as if the press had landed
+  if (type === "team.leads.set") {   // the dev view keeps nothing: the change waits, as a proposal would
     const was = FAKE.board.leads![R][body.label] ?? [];
-    FAKE.board.leads![R][body.label] = body.leads;
-    return { ok: true, repo: R, label: body.label, leads: body.leads, was, commit: "c0ffee1", pinged: ["frank", "isaac"].filter((p) => p !== "marco") };
+    const needs = [...new Set([...was, ...body.leads])].filter((p) => p !== "marco");
+    return { ok: true, repo: R, label: body.label, leads: body.leads, was, proposal: { id: "c0ffee12", state: "open", needs }, pinged: needs };
   }
   if (type === "team.shown.get" && body.id === "dev-frank-room") return { lines: [
     { role: "person", text: "take #4 and make the goal page: the files beside it open in a pane, no code for the agent side yet", at: Date.now() - 6 * 60_000 },

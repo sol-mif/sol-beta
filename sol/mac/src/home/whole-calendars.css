@@ -1,0 +1,50 @@
+/* Three calendars as one (#807, home/whole/ThreeCalendars.tsx), behind sol.home.whole: Home's layout only. Where a mark
+   sits on the day line is computed and set on it; its colours come from the kit and the jelly, set in code. */
+.hcal-head { display: flex; align-items: flex-start; gap: var(--s6); }
+.hcal-layers { display: flex; gap: var(--s2); margin-left: auto; padding-top: var(--s1); }
+.hcal-layer { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border: 0; background: none; font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); cursor: default; }
+.hcal-layer i { width: var(--s4); height: var(--s2); border-radius: var(--r-pill); }
+
+/* the day line */
+.hcal-day { position: relative; height: calc(var(--s12) * 5); margin: 0 var(--s4) var(--s4); flex: none; }
+.hcal-band { position: absolute; left: 0; top: 0; overflow: visible; }
+.hcal-axis { position: absolute; left: 0; right: 0; height: 1px; }
+.hcal-tick { position: absolute; top: 0; transform: translateX(-50%); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hcal-cap { position: absolute; height: var(--s3); border-radius: var(--r-pill); transform: translateY(-50%); outline: 1px dashed transparent; outline-offset: 1px; }
+.hcal-pin { position: absolute; width: 2px; height: var(--s6); transform: translate(-50%, -50%); border-radius: var(--r-pill); }
+.hcal-label { position: absolute; white-space: nowrap; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hcal-now { position: absolute; top: var(--s6); width: 1px; height: calc(var(--s12) * 4); }
+.hcal-now i { position: absolute; left: var(--s1); top: calc(-1 * var(--s1)); font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hcal-win { position: absolute; border-radius: var(--r-pill); opacity: .7; }
+.hcal-win i { position: absolute; right: calc(100% + var(--s2)); top: calc(-1 * var(--s2)); font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.hcal-night { position: absolute; right: 0; bottom: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hcal [data-dim] { opacity: .2; transition: opacity var(--d-turn) var(--e-move); }
+
+/* under the line: the clash, the week */
+.hcal-under { display: flex; gap: var(--s8); align-items: flex-start; min-width: 0; }
+.hcal-cards { flex: none; }
+.hcal-card { padding: var(--s6) var(--s6) var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.hcal-meta { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hcal-when { margin-left: auto; font-weight: 500; }
+.hcal-why { font-size: var(--t-body); line-height: var(--t-body-line); }
+.hcal-fixes { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.hcal-fix { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.hcal-acts { display: flex; gap: var(--s2); margin-top: var(--s4); }
+.hcal-weekbox { flex: 1; min-width: 0; }
+.hcal-wl { font-size: var(--t-label); line-height: var(--t-label-line); margin-bottom: var(--s2); }
+.hcal-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.hcal-wd { display: flex; flex-direction: column; gap: var(--s1); padding: 0 var(--s2) var(--s3); border-left: 1px solid var(--c-on-line); min-height: var(--s12); }
+.hcal-wh { font-size: var(--t-label); line-height: var(--t-label-line); margin-bottom: var(--s1); }
+.hcal-wbar { height: var(--s2); border-radius: var(--r-pill); }
+.hcal-placed { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; border: 1px dashed var(--c-on-line); border-radius: var(--r-pill); padding: 0 var(--s1); overflow: hidden; text-overflow: ellipsis; }
+
+/* what was just done, and the box */
+.hcal-receipt { position: relative; isolation: isolate; align-self: flex-start; display: flex; align-items: center; gap: var(--s3); margin-top: var(--s4); padding: var(--s2) var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hcal-undo, .hcal-send { border: 0; background: none; padding: 0; font: inherit; font-weight: 500; cursor: default; }
+/* the foot: Say's floor (whole-say.css .hs, #891): sticky, solid down to the window's edge through Home's own foot pad,
+   a clear band above the box, so the cards scroll under it and no card's words or chips read through or under the box */
+.hcal-foot { position: sticky; margin-top: auto; padding-top: var(--s6); z-index: 5; background: var(--pop); bottom: calc(var(--s8) * -1); padding-bottom: var(--s8); margin-bottom: calc(var(--s8) * -1); flex: none; }
+.hcal-box { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s3); height: var(--s12); padding: 0 var(--s3) 0 var(--s4); flex: none; }
+.hcal-input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: inherit; }
+.hcal-hint { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.hcal-send { width: var(--h-row); height: var(--h-row); }

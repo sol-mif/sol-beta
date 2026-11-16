@@ -185,12 +185,12 @@ test("on a cloud I signed in to, my name there is who I am and the ticket is the
     writeFileSync(CLOUD_FILE, JSON.stringify({ [hub]: { login: "frank", refresh: R, at: 1 } }));
     C.resetCloud();
     patchTeam({ me: { login: "franktsai2008-eng", name: "Frank" } });
-    patchTeam({ rooms: [{ id: "c", name: "On the cloud", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"], hub: ws, key: "", code: "ABC234", gate: "github", folder: "", mine: true, joined: false }], room: "c" });
+    patchTeam({ rooms: [{ id: "c", name: "On the cloud", provider: "github", org: "", repos: ["sol-mif/sol-dev"], hub: ws, key: "", code: "ABC234", gate: "github", folder: "", mine: true, joined: false }], room: "c" });
     assert.equal(hubLogin(), "frank");
     assert.equal(onCloud(), true, "GitHub-login features are off here");
     assert.equal(await hubTicket(hub), "sol1.renewed.1", "the cloud's renewal, never a gist");
     assert.ok(!c.said.some((x) => x.path === "/relay/proof"));
-    patchTeam({ rooms: [{ id: "n", name: "NucBox", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"], hub: "wss://nucbox.example/relay", key: "", code: "ABC235", gate: "github", folder: "", mine: true, joined: false }], room: "n" });
+    patchTeam({ rooms: [{ id: "n", name: "NucBox", provider: "github", org: "", repos: ["sol-mif/sol-dev"], hub: "wss://nucbox.example/relay", key: "", code: "ABC235", gate: "github", folder: "", mine: true, joined: false }], room: "n" });
     assert.equal(getTeam().me.login, "franktsai2008-eng");
     assert.equal(hubLogin(), "franktsai2008-eng");
     assert.equal(onCloud(), false);

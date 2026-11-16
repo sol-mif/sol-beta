@@ -128,11 +128,11 @@ export function ThingPane({ team, thing, mode, me, others, onBack, onShrink, onW
   return (
     <section className={`rm-thing ${mode}`} aria-label={`${thing.name}, open`}>
       <div className="rm-th-head">
-        {mode === "s2" && <button className="rm-th-link" onClick={back} title="close the page and go back to the room's things">‹ back to the room</button>}
+        {mode === "s2" && <button className="rm-th-link" onClick={back} title="close the page and go back to the project's things">‹ back to the project</button>}
         <span className="rm-th-name"><Glyph kind={thing.kind} size={20} /><b>{thing.name}</b></span>
         {who && <span className="rm-th-in">{front ? <Who login={team.me} size={20} working={me.working} /> : <Who login={others[0].who} size={20} working={others[0].working} />}{who}</span>}
         <span className="rm-th-sp" />
-        {mode === "s2" && <button className="rm-th-link" onClick={onShrink} title="back to the room's things; the page stays as it is, a click on its tile brings it back">⤡ shrink</button>}
+        {mode === "s2" && <button className="rm-th-link" onClick={onShrink} title="back to the project's things; the page stays as it is, a click on its tile brings it back">⤡ shrink</button>}
         {mode === "s2" && <button className="wbtn" onClick={onWork} title="start a session with this thing beside it">work on this</button>}
         {mode === "s4" && <button className="rm-th-link" onClick={() => { closeAll(); onPutAway?.(); }} title="take the thing away from beside the session">put it away</button>}
         <button className="rm-th-link" onClick={() => (inShell() && opened ? void shell.outside({ tab: active }).catch(() => openUrl(thing.url)) : openUrl(thing.url))} title="open this page in your own browser">open in browser ↗</button>

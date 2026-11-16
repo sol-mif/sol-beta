@@ -1,0 +1,15 @@
+/* Calm (#795, home/whole/Calm.tsx), behind sol.home.whole: Home's layout only. The glow's colours, softness and breath
+   (4800 ms) are set from code, from the jelly's and the motion's tokens; the sizes here are the scale's or relative. */
+.hcalm { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.hcalm-glass { position: absolute; inset: 0; pointer-events: none; animation: hcalm-fade var(--d-pour) var(--e-arrive); }
+@keyframes hcalm-fade { from { opacity: 0; } to { opacity: 1; } }
+.hcalm-glow { position: absolute; left: 50%; top: 44%; width: 72%; height: 70%; border-radius: 50%; transform: translate(-50%, -50%); }
+.hcalm-glow-b { left: 56%; top: 50%; width: 50%; height: 50%; }
+@keyframes hcalm-breathe { 0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(.94); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } }
+.hcalm-words { position: relative; text-align: center; padding: 0 var(--s8); margin-bottom: var(--s12); animation: hcalm-in var(--d-pour) var(--e-arrive); }
+@keyframes hcalm-in { from { opacity: 0; transform: translateY(var(--s2)); } to { opacity: 1; transform: none; } }
+.hcalm-line { margin: 0; }
+.hcalm-sub { margin-top: var(--s3); }
+
+@media (prefers-reduced-motion: reduce) { .hcalm-glow { animation: none !important; opacity: .8 !important; } .hcalm-words, .hcalm-glass { animation: none; } }
+.hcalm ~ .hw-receipt { justify-content: center; margin-bottom: var(--s8); }

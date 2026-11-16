@@ -52,7 +52,7 @@ export function Desk({ cards, act, busy, frac, onFrac, maxFrac, onMark }: {
       </div>
       <div className="stage desk-stage">
         {card ? (
-          <Swap k={card.id} className="desk-swap" dist={16} cfg={CFG.panel}>
+          <Swap k={card.id} className="desk-swap" dist={16} cfg={CFG.travel}>
             <CardView key={card.id} card={card} act={act} onMark={onMark} />
           </Swap>
         ) : (
@@ -96,9 +96,9 @@ function Flashcards({ card, act }: { card: Card; act: Act }) {
   const done = all.length > 0 && pos >= all.length;
   const cur = all[pos];
   const pressed = useRef<HTMLDivElement>(null);
-  const press = useSpring(0, CFG.pop, (v) => { if (pressed.current) pressed.current.style.scale = v === 0 ? "" : `${1 - 0.02 * v}`; });
+  const press = useSpring(0, CFG.settle, (v) => { if (pressed.current) pressed.current.style.scale = v === 0 ? "" : `${1 - 0.02 * v}`; });
   const go = (to: number) => { setSide("front"); setPos(to); act(card.id, "turn", { at: to }); };
-  const flip = () => { press.set(1); press.to(0, { cfg: CFG.pop }); setSide((s) => (s === "front" ? "back" : "front")); };
+  const flip = () => { press.set(1); press.to(0, { cfg: CFG.settle }); setSide((s) => (s === "front" ? "back" : "front")); };
   const mark = (state: "got" | "again") => { act(card.id, "mark", { at: pos, state }); go(pos + 1); };
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!done) flip(); }
@@ -124,7 +124,7 @@ function Flashcards({ card, act }: { card: Card; act: Act }) {
       ) : cur ? (
         <>
           <div ref={pressed} className={`flash ${side}`} onClick={flip} role="button" title="flip">
-            <Swap k={side} dist={26} cfg={CFG.panel}>
+            <Swap k={side} dist={26} cfg={CFG.travel}>
               <div className="face-text"><Md text={side === "front" ? cur.front : cur.back} /></div>
             </Swap>
             <span className="corner">{side === "front" ? "front" : "back"}</span>
@@ -252,7 +252,7 @@ function Exam({ card, act }: { card: Card; act: Act }) {
         <>
           <div className="cells">{qs.map((_q, i) => <i key={i} className={`cell ${givens[i] ? "got" : ""} ${i === at ? "here" : ""}`} onClick={() => setAt(i)} />)}</div>
           <p className="dim">question {at + 1} of {qs.length}</p>
-          <Swap k={String(at)} dist={14} cfg={CFG.panel}>
+          <Swap k={String(at)} dist={14} cfg={CFG.travel}>
             <Ask key={at} q={q} given={givens[at]} onAnswer={(given) => { act(card.id, "answer", { given, at }); if (at < qs.length - 1) setAt(at + 1); }} showResult={false} />
           </Swap>
           <div className="drow under">
@@ -403,7 +403,7 @@ function Timer({ card, act }: { card: Card; act: Act }) {
   const left = timerLeft(card, now);
   const up = running && left <= 0;
   const face = useRef<HTMLParagraphElement>(null);
-  useEffect(() => { if (up && face.current) enter(face.current, { y: 6, cfg: CFG.pop }); }, [up]);
+  useEffect(() => { if (up && face.current) enter(face.current, { y: 6, cfg: CFG.settle }); }, [up]);
   return (
     <div className="dcard timer">
       <div className="drow">

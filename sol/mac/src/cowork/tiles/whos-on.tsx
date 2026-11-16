@@ -3,7 +3,6 @@ import type { TileDef } from "./index";
 import { STATE_WORD, Who, since } from "../bits";
 
 const whosOn: TileDef = {
-  name: "who's on",
   Tile: ({ team }) => {
     const roster = team.state?.roster ?? [];
     const up = !!team.state?.relay.up;

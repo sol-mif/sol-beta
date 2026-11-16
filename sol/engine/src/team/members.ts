@@ -7,6 +7,8 @@ import { makeGithubRecord, runners } from "./record.js";
 
 const LOGIN = /^[A-Za-z0-9-]{1,39}$/;
 const TTL = 10 * 60_000;
+/** the gate on data that names people (strict) trusts a list no older than this */
+export const STRICT_TTL = 60_000;
 
 export type MembersDeps = { gh: (args: string[]) => Promise<string>; org: () => string; seen: () => string[]; now: () => number };
 
@@ -37,7 +39,22 @@ export function membersOf(d: MembersDeps) {
     if (org) { if (!cache || cache.org !== org || d.now() - cache.at >= TTL) void refresh(); return cache?.org === org ? cache.list : []; }
     return loginsOf(d.seen().join(" "));
   };
-  return { now, refresh, onChange: (f: (list: string[]) => void) => { subs.add(f); return () => { subs.delete(f); }; } };
+  /** the org's members for a gate on data that names people (#437, a team tool reading track data): read again when the
+   *  last read is older than STRICT_TTL, and null when that read fails or there is no org. Never the old list on a
+   *  failure, so someone taken off the org is shut out within a minute, not kept in for ten. A good read here is the
+   *  cache everyone else reads too (it is the newest) */
+  const strict = async (): Promise<string[] | null> => {
+    const org = d.org();
+    if (!org) return null;
+    if (cache && cache.org === org && d.now() - cache.at < STRICT_TTL) return cache.list;
+    const out = await rec.members.ofOrg(org).catch(() => null);
+    if (out === null || d.org() !== org) return null;   // failed, or the org in use changed while it was read
+    const list = loginsOf(out), was = cache?.list.join(",");
+    cache = { org, list, at: d.now() };
+    if (was !== list.join(",")) for (const f of subs) f(list);
+    return list.length ? list : null;
+  };
+  return { now, refresh, strict, onChange: (f: (list: string[]) => void) => { subs.add(f); return () => { subs.delete(f); }; } };
 }
 
 // this engine's: the org from team.json, the seen logins handed in by relay.ts (setSeen), gh's own sign-in
@@ -47,6 +64,8 @@ const mine = membersOf({ gh: runners.members, org: () => getTeam().org, seen: ()
 /** the team's logins: the org's members when an org is set, else who has been seen on the relay */
 export const teamMembers = () => mine.now();
 export const refreshMembers = (force = false) => mine.refresh(force);
+/** the org's members as the strict gate wants them (#437): a minute old at most, null when GitHub did not answer */
+export const strictMembers = () => mine.strict();
 export const onMembers = (f: (list: string[]) => void) => mine.onChange(f);
 // the hub this engine hosts gates on its own room's org (#154 review): the members of that org, which is the active
 // room's most of the time (then the same read); a second read only while the person is in a room elsewhere

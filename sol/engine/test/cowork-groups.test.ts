@@ -14,7 +14,7 @@ const { mark, workState } = await import("../src/work/state.ts");
 const { roomMark, withRoomIds } = await import("../src/team/here.ts");
 
 const shuai = { id: "shuai", provider: "cloud", hub: "wss://cloud.matterfold.tech/relay", code: "ABCDEF", record: "cloud:ABCDEF" };
-const sol = { id: "sol", provider: "github", hub: "", code: "", record: "marcocyl04-ux/sol-dev", folder: "/Users/f/Sol/sol-dev" };
+const sol = { id: "sol", provider: "github", hub: "", code: "", record: "sol-mif/sol-dev", folder: "/Users/f/Sol/sol-dev" };
 const hash = (r: typeof shuai) => roomMark(r, r.record);
 
 test("a session started under a room keeps its id, and lists with it", async () => {

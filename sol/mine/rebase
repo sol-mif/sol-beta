@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# MY SOL rebase (#76): run in the MY SOL checkout after each stamp of stable:  bash sol/mine/rebase
-# Fetches, refuses a dirty tree, and rebases this `*/mine` branch onto stable (origin's when it is ahead of the local
+# Your own Sol's rebase (#76): run in your own Sol's checkout (a */mine branch) after each new release:  bash sol/mine/rebase
+# Fetches, refuses a dirty tree, and rebases this `*/mine` branch onto stable, or dev with SOL_CHANNEL=dev (origin's when it is ahead of the local
 # one; in a tester's clone of the beta repo, which has no stable, its main). A conflict is never left behind: it
 # names each file and the lines in conflict, aborts the rebase and exits 1, so the checkout is just as it was. On success it says how many of his own commits sit over stable.
 set -u
@@ -8,23 +8,26 @@ cd "$(git rev-parse --show-toplevel)" || exit 2
 branch=$(git symbolic-ref --short -q HEAD || true)
 case $branch in
   */mine) ;;
-  *) echo "mine/rebase: this checkout is on ${branch:-a detached head}, not a */mine branch; run it in MY SOL" >&2; exit 2 ;;
+  *) echo "mine/rebase: this checkout is on ${branch:-a detached head}, not a */mine branch; run it in your own Sol's checkout" >&2; exit 2 ;;
 esac
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo "mine/rebase: there are changes not committed here; commit or stash them first" >&2
   git status --short --untracked-files=no >&2; exit 1
 fi
 has() { git rev-parse --verify -q "$1" >/dev/null; }
-# the beta repo (#79) has no stable: its main is the stamp's export ("Sol stable-..."), so a tester's */mine goes onto that
-export_main() { has refs/remotes/origin/main && git log -1 --format=%s refs/remotes/origin/main | grep -q '^Sol stable-'; }
-git fetch -q origin '+refs/heads/stable:refs/remotes/origin/stable' 2>/dev/null \
-  || { ! has refs/heads/stable && git fetch -q origin '+refs/heads/main:refs/remotes/origin/main' 2>/dev/null && export_main; } \
+# the beta repo (#79) has no stable: its main is an export ("Sol stable-..." or, since #418, "Sol dev-..."), so a tester's */mine goes onto that
+export_main() { has refs/remotes/origin/main && git log -1 --format=%s refs/remotes/origin/main | grep -Eq '^Sol (stable|dev)-'; }
+# the branch to go onto: stable (the beta release), or dev when the Sol's channel is dev (#418: ship.ts update sets
+# SOL_CHANNEL; by hand: SOL_CHANNEL=dev bash sol/mine/rebase)
+b=stable; [ "${SOL_CHANNEL:-}" = dev ] && b=dev
+git fetch -q origin "+refs/heads/$b:refs/remotes/origin/$b" 2>/dev/null \
+  || { [ "$b" = stable ] && ! has refs/heads/stable && git fetch -q origin '+refs/heads/main:refs/remotes/origin/main' 2>/dev/null && export_main; } \
   || echo "mine/rebase: could not fetch (offline?); using what is here"
-if has refs/heads/stable && has refs/remotes/origin/stable && git merge-base --is-ancestor stable origin/stable; then base=origin/stable
-elif has refs/heads/stable; then base=stable
-elif has refs/remotes/origin/stable; then base=origin/stable
-elif export_main; then base=origin/main
-else echo "mine/rebase: there is no stable branch here or on origin" >&2; exit 1
+if has "refs/heads/$b" && has "refs/remotes/origin/$b" && git merge-base --is-ancestor "$b" "origin/$b"; then base=origin/$b
+elif has "refs/heads/$b"; then base=$b
+elif has "refs/remotes/origin/$b"; then base=origin/$b
+elif [ "$b" = stable ] && export_main; then base=origin/main
+else echo "mine/rebase: there is no $b branch here or on origin" >&2; exit 1
 fi
 if ! out=$(git rebase "$base" 2>&1); then
   if [ ! -d "$(git rev-parse --git-path rebase-merge)" ] && [ ! -d "$(git rev-parse --git-path rebase-apply)" ]; then
@@ -40,7 +43,7 @@ if ! out=$(git rebase "$base" 2>&1); then
   if ! git rebase --abort; then
     echo "mine/rebase: the rebase could not be undone; the checkout is mid-rebase. Run: git rebase --abort" >&2; exit 1
   fi
-  echo "mine/rebase: nothing changed, $branch is where it was. Fix it by hand (git rebase $base), or ask a session in MY SOL."
+  echo "mine/rebase: nothing changed, $branch is where it was. Fix it by hand (git rebase $base), or ask a session in your own Sol."
   exit 1
 fi
 n=$(git rev-list --count "$base..HEAD")

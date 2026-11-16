@@ -1,0 +1,11 @@
+/* The talk full (#788, #751 B25; StageColumn.tsx and Stage.tsx behind stage.whole): the talk takes the room, its column
+   at the kit's 720 (--st-fullw, from FOOT); the stage stays where it was, over it, letting presses through but on its
+   blocks, which travel to the foot row; the box rises over the row (--st-foot) */
+.st-room.whole[data-dock="full"] .st-main { display: flex; position: absolute; left: var(--st-talkw); right: 0; top: 0; bottom: 0; pointer-events: none; }
+.st-room.whole[data-dock="full"] .st-main .st-block { pointer-events: auto; cursor: pointer; }
+.st-room.whole[data-dock="full"] .talk-inner, .st-room.whole[data-dock="full"] .st-talkbox { max-width: var(--st-fullw); margin-left: auto; margin-right: auto; }
+.st-room.whole[data-dock="full"] .st-talkbox { margin-bottom: var(--st-foot); }
+.st-room.whole[data-dock="full"] .st-wtray, .st-room.whole[data-dock="full"] .st-tshelf { opacity: 0; pointer-events: none; }
+.st-block[data-foot] .st-head, .st-block[data-foot] .st-body { pointer-events: none; }
+/* the row is centred under the room, so it reaches past the stage's own box: nothing of the stage clips it */
+.st-room.whole[data-dock="full"] .st-main, .st-room.whole[data-dock="full"] .st-stagebox, .st-room.whole[data-dock="full"] .st-stage { overflow: visible; }

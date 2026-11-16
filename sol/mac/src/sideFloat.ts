@@ -39,7 +39,7 @@ export function useSideFloat(pinned: boolean, hold: boolean, panel = 240) {
 
   // one spring for the panel
   const ref = useRef<HTMLElement>(null);
-  const p = useSpring(open ? 1 : 0, CFG.glide, (v, sp) => {
+  const p = useSpring(open ? 1 : 0, CFG.travel, (v, sp) => {
     const el = ref.current;
     if (!el) return;
     el.style.translate = `${(Math.min(v, 1) - 1) * 100}% 0`;
@@ -55,11 +55,11 @@ export function useSideFloat(pinned: boolean, hold: boolean, panel = 240) {
     if (first.current) { first.current = false; if (el) { el.style.translate = open ? "0 0" : "-100% 0"; el.style.visibility = open ? "visible" : "hidden"; el.style.pointerEvents = open ? "auto" : "none"; } return; }
     if (open && p.v < 0.35 && el && !reducedMotion()) {
       // really closed: the rows arrive one after another behind the panel's edge, and the mark says hello
-      stagger(el.querySelectorAll("[data-s]"), { x: -26, gap: 26, delay: 50, max: 14, cfg: CFG.slide });
+      stagger(el.querySelectorAll("[data-s]"), { x: -26, gap: 26, delay: 50, max: 14, cfg: CFG.travel });
       window.dispatchEvent(new Event("sol-greet"));
     }
     // opening glides and settles; closing is brisker, so leaving never feels like the panel hangs on
-    p.to(open ? 1 : 0, { cfg: open ? CFG.glide : CFG.away });
+    p.to(open ? 1 : 0, { cfg: open ? CFG.travel : CFG.fade });
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return { ref, open, onMouseEnter: () => aim(true, 0), onMouseLeave: () => aim(false, 140) };
 }

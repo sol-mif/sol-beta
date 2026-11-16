@@ -91,8 +91,12 @@ export const LET_GO_MS = 15_000;
 const STARTS = new Set(["say", "call", "work.say", "work.handover", "work.start", "work.fork", "work.forkhere", "work.compact",
   "work.review", "work.term.open", "team.session.start", "team.try", "team.try.review", "anticipate.start", "anticipate.ask"]);
 let goneUntil = 0;
-/** true (and the engine lets go for LET_GO_MS) when nothing is live; false, nothing changed, when something is */
-export function letGo(now = Date.now()): boolean { if (!idle()) return false; goneUntil = now + LET_GO_MS; return true; }
+/** true (and the engine lets go for LET_GO_MS) when nothing is live; false, nothing changed, when something is. `except`:
+ *  the kinds of the caller's own jobs, which do not count (going back holds the count while it works, #426) */
+export function letGo(now = Date.now(), except: string[] = []): boolean {
+  if (busyList().some((j) => !except.includes(j.kind))) return false;
+  goneUntil = now + LET_GO_MS; return true;
+}
 /** a message that would start a job, while the engine is letting go */
 export const refusedWhileLettingGo = (type: unknown, now = Date.now()) => now < goneUntil && typeof type === "string" && STARTS.has(type);
 

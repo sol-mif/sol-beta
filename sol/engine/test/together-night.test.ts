@@ -20,13 +20,14 @@ type World = {
   refs?: string[];                                 // "origin/<branch> <date>"
   events?: Record<number, string[]>;
   digest?: number;
-  merged?: { number: number; title: string; author: { login: string }; mergedBy?: { login: string }; reviews?: { author: { login: string }; state: string; submittedAt?: string }[]; files?: { path: string }[] }[];
+  merged?: { number: number; title: string; author: { login: string }; mergedBy?: { login: string }; reviews?: { author: { login: string }; state: string; submittedAt?: string }[]; files?: { path: string }[]; body?: string }[];
   dryRun?: boolean;
   git?: string;
   codeowners?: string;                             // origin/main:.github/CODEOWNERS
   open?: { number: number; title: string; labels: { name: string }[]; assignees: { login: string }[] }[];
   unassigned?: Record<number, string[]>;           // issue -> logins once taken off it
   relay?: boolean;                                 // false: the relay is not in sight
+  states?: Record<number, string>;                 // issue -> OPEN / CLOSED (gh issue view)
 };
 function fake(w: World = {}) {
   const calls: string[][] = [];
@@ -61,6 +62,8 @@ function fake(w: World = {}) {
       if (a.startsWith("issue list --state open --limit")) return JSON.stringify(w.open ?? []);
       if (a.includes("/assignees")) return "{}";
       if (a.startsWith("issue list --state open --search")) return JSON.stringify(w.digest ? [{ number: w.digest, title: "Night digest" }] : []);
+      const v = /^issue view (\d+) --json state/.exec(a);
+      if (v) return `${w.states?.[Number(v[1])] ?? ""}\n`;
       if (a.startsWith("issue create")) return "https://github.com/acme/sol/issues/120\n";
       const c = /issues\/(\d+)\/comments\?/.exec(a);
       if (args[0] === "api" && !a.includes("POST") && c) return (w.comments?.[Number(c[1])] ?? []).map((x) => JSON.stringify({ login: "x", ...x })).join("\n");
@@ -74,11 +77,14 @@ function fake(w: World = {}) {
   return { d, calls, said, posts, pinged };
 }
 
-test("the settings: night has clean defaults, bad values fall back", () => {
-  assert.deepEqual(T.cleanTeam({}).night, { hour: 3, staleDays: 7 });
-  assert.deepEqual(T.cleanTeam({ night: { hour: 22, staleDays: 3 } }).night, { hour: 22, staleDays: 3 });
-  assert.deepEqual(T.cleanTeam({ night: { hour: 24, staleDays: 0 } }).night, { hour: 3, staleDays: 7 });
-  assert.deepEqual(T.cleanTeam({ night: { hour: "3", staleDays: 2.5 } }).night, { hour: 3, staleDays: 7 });
+test("the settings: the night job's numbers are night.json's (#428), clean defaults, bad values fall back", async () => {
+  const NF = await import("../src/team/nightfile.ts");
+  assert.equal("night" in T.cleanTeam({ night: { hour: 22, staleDays: 3 } }), false);
+  assert.deepEqual(NF.cleanNight({}), { hour: 3, staleDays: 7 });
+  assert.deepEqual(NF.cleanNight({ hour: 22, staleDays: 3 }), { hour: 22, staleDays: 3 });
+  assert.deepEqual(NF.cleanNight({ hour: 24, staleDays: 0 }), { hour: 3, staleDays: 7 });
+  assert.deepEqual(NF.cleanNight({ hour: "3", staleDays: 2.5 }), { hour: 3, staleDays: 7 });
+  assert.equal(NF.cleanNight("x"), null);
 });
 
 test("pairs: every pair once, lower number first", () => {
@@ -310,6 +316,38 @@ test("flags: a merge without its lead's word gets one signed line on the PR and 
   assert.match(w.posts().find((p) => p.issue === 120)!.body, /Merged into main: #50 engine tweak \(fktsai\); #51 face/);
 });
 
+test("the night press (#544): a small PR the dev review took in is the lead's read; high, outside it, or faked words are flagged", async () => {
+  const into = (night = "2026-10-21") => `**Into sol-dev** in the dev review of ${night}: one merge commit, so one revert undoes it; its branch is deleted.\n\n— marcocyl04-ux (review session)`;
+  const engine = [{ path: "sol/mac/src/app.ts" }];   // life, led by isaacw; marcocyl04-ux presses at night
+  const m = (number: number, body: string) => ({ number, title: `pr ${number}`, author: { login: "fktsai" }, mergedBy: { login: "marcocyl04-ux" }, reviews: [], files: engine, body });
+  const w = fake({
+    codeowners: OWNERS,
+    comments: {
+      60: [{ body: into(), at: ago(0), login: "marcocyl04-ux" }],
+      61: [{ body: into(), at: ago(0), login: "marcocyl04-ux" }],
+      62: [{ body: into(), at: ago(0), login: "marcocyl04-ux" }],
+      63: [{ body: "**Re-checked**, and into sol-dev as one merge commit (its branch is deleted), after the slight send back of the dev review of 2026-10-21: fixed\n\n— marcocyl04-ux's agent (review session)", at: ago(0), login: "marcocyl04-ux" }],
+      // merged by hand in the day: no press comment
+      // the press's words written by someone other than who merged: they count for nothing
+      65: [{ body: into(), at: ago(0), login: "fktsai" }],
+    },
+    merged: [
+      m(60, "**Risk:** low · blast 0 · light read"),
+      m(61, "no Risk line: every night-pressed PR is covered"),
+      m(62, "**Risk:** high · blast 3 · heavy read"),
+      m(63, "**Risk:** medium · blast 1 · light read"),
+      m(64, "**Risk:** low · blast 0 · light read"),
+      m(65, ""),
+    ],
+  });
+  await N.night(w.d, { staleDays: 7 });
+  assert.deepEqual(w.posts().filter((p) => p.issue !== 120).map((p) => p.issue), [62, 64, 65]);
+  for (const n of [60, 61, 63]) assert.ok(w.said.includes(`#${n} went in by the night press: the lead's read`));
+  assert.ok(w.said.includes("6 merged since the last run, 3 flagged for no lead's approval"));
+  assert.equal(N.riskLine("**Risk:** Critical · blast 9"), "critical");
+  assert.equal(N.riskLine("Risk: low"), "");
+});
+
 test("dry run: routing and flags print what they would do; nothing assigned, posted or pinged", async () => {
   const w = fake({
     dryRun: true, codeowners: OWNERS,
@@ -333,4 +371,39 @@ test("the relay out of sight: assigned and flagged all the same, the missing pin
   await N.night(w.d, { staleDays: 7 });
   assert.ok(w.calls.some((c) => c.join(" ").includes("issues/7/assignees")));
   assert.ok(w.said.includes("isaacw not pinged: the relay is not in sight"));
+});
+
+test("done issues: Fixes/Closes/Resolves name the issues, Part of never does", () => {
+  assert.deepEqual(N.fixedIssues("Fixes #12, closes #13 and Resolves #12. Part of #440. fixes#9 #14"), [12, 13]);
+  assert.deepEqual(N.fixedIssues("Part of #440"), []);
+  assert.deepEqual(N.fixedIssues(""), []);
+});
+
+test("done issues: a merged PR's still-open fixed issue is closed once, with a signed line; closed ones are left", async () => {
+  const merged = [{ number: 50, title: "pr 50", author: { login: "frank" }, body: "Fixes #40\nCloses #41\nPart of #42" }] as any;
+  const w = fake({ merged, states: { 40: "OPEN", 41: "CLOSED", 42: "OPEN" } });
+  assert.equal(await N.closeFixed(w.d, await N.mergedSince(w.d, new Date(ago(1)))), 1);
+  const closes = w.calls.filter((c) => c[1] === "issue" && c[2] === "close");
+  assert.equal(closes.length, 1);
+  assert.equal(closes[0][3], "40");
+  assert.match(closes[0][5], /#50 fixes it and was merged/);
+  assert.match(closes[0][5], /\(night job\)/);
+  assert.ok(w.said.includes("closed #40 (fixed by #50)"));
+});
+
+test("done issues: the whole night closes them from the same one read of merges", async () => {
+  const merged = [{ number: 50, title: "pr 50", author: { login: "frank" }, body: "Resolves #40" }] as any;
+  const w = fake({ merged, states: { 40: "OPEN" } });
+  await N.night(w.d, { staleDays: 7 });
+  assert.equal(w.calls.filter((c) => c.join(" ").startsWith("gh pr list --state merged")).length, 1);
+  assert.ok(w.calls.some((c) => c.join(" ").startsWith("gh issue close 40 --comment")));
+  assert.ok(w.said.includes("1 done issues closed"));
+});
+
+test("done issues: a dry run closes nothing and says what it would close", async () => {
+  const merged = [{ number: 50, title: "pr 50", author: { login: "frank" }, body: "fixes #40" }] as any;
+  const w = fake({ merged, states: { 40: "OPEN" }, dryRun: true });
+  assert.equal(await N.closeFixed(w.d, await N.mergedSince(w.d, new Date(ago(1)))), 1);
+  assert.equal(w.calls.filter((c) => c[1] === "issue" && c[2] === "close").length, 0);
+  assert.ok(w.said.includes("would close #40 (fixed by #50)"));
 });

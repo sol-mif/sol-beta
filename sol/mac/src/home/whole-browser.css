@@ -1,0 +1,61 @@
+/* One shared browser (#805, home/whole/SharedBrowser.tsx), behind sol.home.whole and browser.shared: Home's layout only.
+   The looks (glass, the ladder, the page's paper, the hands' marks) come from the kit and are set in code. */
+.hbr-back, .hbr-mini { border: 0; background: none; padding: 0; font: inherit; cursor: default; }
+.hbr-mini { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.hbr-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s8); align-items: start; }
+.hbr-left, .hbr-right { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.hbr-label { font-size: var(--t-label); line-height: var(--t-label-line); margin-top: var(--s2); }
+
+/* a site */
+.hbr-site { position: relative; isolation: isolate; display: grid; grid-template-columns: var(--s8) minmax(0, 1fr); gap: var(--s3); align-items: start; padding: var(--s3) var(--s4); }
+.hbr-logo { display: grid; place-items: center; width: var(--s8); height: var(--s8); border-radius: var(--r-row); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; }
+.hbr-site-main { min-width: 0; display: flex; flex-direction: column; }
+.hbr-site-name { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.hbr-site-name b { white-space: nowrap; flex: none; }
+.hbr-site-name span { font-size: var(--t-label); line-height: var(--t-label-line); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbr-scope { font-size: var(--t-label); line-height: var(--t-label-line); }
+.hbr-site-side { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s2); }
+.hbr-never { font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; }
+
+/* the tab */
+.hbr-tab { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); }
+.hbr-strip { display: flex; align-items: center; gap: var(--s1); min-width: 0; }
+.hbr-chip { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s2); border: 0; background: none; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; cursor: default; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hbr-chip i, .hbr-foot i { width: var(--s2); height: var(--s2); border-radius: 50%; flex: none; }
+.hbr-chip i.ring, .hbr-foot i.ring { border: 1px solid; box-sizing: border-box; }
+.hbr-live { margin-left: auto; font-size: var(--t-label); line-height: var(--t-label-line); }
+.hbr-bar { display: flex; align-items: baseline; gap: var(--s1); padding: 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); min-width: 0; }
+.hbr-who { margin-left: auto; white-space: nowrap; }
+.hbr-page { border-radius: var(--r-row); padding: var(--s4); display: flex; flex-direction: column; gap: var(--s2); min-height: calc(var(--s12) * 4); box-sizing: border-box; font-size: var(--t-body); line-height: var(--t-body-line); }
+.hbr-ph { font-weight: 600; }
+.hbr-pp { margin-top: var(--s2); }
+.hbr-pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.hbr-pl { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hbr-field { display: block; padding: var(--s1) var(--s2); border: 1px solid; border-radius: var(--r-chip); font-size: var(--t-body); line-height: var(--t-body-line); }
+.hbr-tall { min-height: var(--s12); }
+.hbr-pbtn { align-self: flex-start; border: 0; padding: var(--s1) var(--s4); border-radius: var(--r-chip); font: inherit; cursor: default; }
+.hbr-psub { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hbr-foot { display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hbr-foot .hbr-mini { margin-left: auto; }
+
+/* spawn */
+.hbr-thing { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); }
+.hbr-thing-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hbr-thing-t small, .hbr-note { font-size: var(--t-label); line-height: var(--t-label-line); }
+
+.hbr-receipt { position: sticky; bottom: 0; isolation: isolate; align-self: flex-start; display: flex; align-items: center; gap: var(--s3); margin-top: var(--s6); padding: var(--s2) var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* C43 (#806): a refused tab, the trust and the page ledger */
+.hbr-refused { border: 1px solid; }
+.htr-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); }
+.htr-col { position: relative; isolation: isolate; padding: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
+.htr-col h5 { margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; }
+.htr-col p { margin: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.htr-col small { font-size: var(--t-label); line-height: var(--t-label-line); }
+.htr-lh { display: flex; justify-content: space-between; gap: var(--s4); margin-top: var(--s6); font-size: var(--t-label); line-height: var(--t-label-line); }
+.htr-rows { display: flex; flex-direction: column; margin-top: var(--s2); }
+.htr-row { display: grid; grid-template-columns: var(--s12) var(--s3) minmax(0, 1fr) auto; gap: var(--s3); align-items: center; padding: var(--s2) 0; border-top: 1px solid var(--c-on-line); font-size: var(--t-body); line-height: var(--t-body-line); }
+.htr-tm, .htr-row small { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.htr-row i { width: var(--s2); height: var(--s2); border-radius: 50%; }
+.htr-row i.ring { border: 1px solid; box-sizing: border-box; }
+.htr-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -129,7 +129,7 @@ function FileDiff({ f, remarks, writing, text, setText, onLine, onKeep, onCancel
 }) {
   const ls = lines(f.patch);
   const field = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => { if (writing && field.current) { field.current.focus(); enter(field.current.parentElement!, { y: -6, cfg: CFG.snap }); } }, [writing?.line]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (writing && field.current) { field.current.focus(); enter(field.current.parentElement!, { y: -6, cfg: CFG.settle }); } }, [writing?.line]); // eslint-disable-line react-hooks/exhaustive-deps
   const at = (l: Line) => l.b ?? l.a ?? 0;
   return (
     <div className="wdfile">

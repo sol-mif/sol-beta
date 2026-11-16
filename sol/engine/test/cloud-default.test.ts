@@ -98,7 +98,7 @@ test("a cloud room, and a room on a self-hoster's hub, are left as they are", ()
 test("an engine that hosts a hub (the NucBox's team.json) keeps hosting its own rooms, which never move", () => {
   // the NucBox's file may never have said host: it reads as a hub (HOST_BEFORE); its rooms meet on it (hub "")
   const s = S.readTeam({ me: { login: "marcocyl04-ux" }, relay: { url: "", key: "k" },
-    rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "", code: "SQLDEV", gate: "key" }], room: "sol" });
+    rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "", code: "SQLDEV", gate: "key" }], room: "sol" });
   assert.equal(s.relay.host, true);
   assert.equal(S.hostedRoom(s).hub, "", "its hub stays its own");
   assert.equal(S.activeRoom(s).hub, "");
@@ -181,4 +181,14 @@ test("a key never meets the cloud: a room written with the cloud's address and a
   const s = S.cleanTeam({ rooms: [{ id: "x", name: "x", repos: ["o/r"], hub: S.CLOUD_HUB, code: CODE, key: "old-key", gate: "key" }], room: "x" });
   assert.deepEqual([s.rooms[0].key, s.rooms[0].gate], ["", "github"]);
   assert.equal(S.onDisk(s).rooms[0].key, "old-key");
+});
+
+test("withRecord (#510): the record GitHub named goes first, once; no record, the list as it is", () => {
+  assert.deepEqual(S.withRecord(["sol-mif/sol-dev"], "sol-mif/sol-record"), ["sol-mif/sol-record", "sol-mif/sol-dev"]);
+  assert.deepEqual(S.withRecord(["sol-mif/sol-dev", "SOL-MIF/sol-record"], "sol-mif/sol-record"), ["sol-mif/sol-record", "sol-mif/sol-dev"], "named already, in any case: moved first, once");
+  assert.deepEqual(S.withRecord(["sol-mif/sol-dev"]), ["sol-mif/sol-dev"], "no name in the code any more");
+  assert.deepEqual(S.withRecord([], "o/r"), ["o/r"]);
+  const s = S.readTeam({ me: { login: "franktsai2008-eng" }, repos: ["sol-mif/sol-dev"], relay: { url: "wss://h/relay", key: "k" } });
+  assert.equal(S.recordOf(S.activeRoom(s)), "sol-mif/sol-dev", "before the lookup answered: the repository itself, as before #507");
+  assert.equal(S.needsRecord(S.activeRoom(s)), true, "and it waits for the lookup");
 });

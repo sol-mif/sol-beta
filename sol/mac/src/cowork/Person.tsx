@@ -78,7 +78,7 @@ export function PersonMain({ team, room, login, entry, roomName, onBack, onThing
   return (
     <div className="rm-page rm-person">
       <div className="rm-pg-top">
-        <button className="rm-th-link" onClick={onBack}>‹ the room</button>
+        <button className="rm-th-link" onClick={onBack}>‹ the project</button>
         <span className="rm-th-sp" />
         {!convo && <button className="rm-th-link" onClick={onConvo}>{mine ? "your conversation ›" : "their conversation ›"}</button>}
       </div>
@@ -108,7 +108,7 @@ export function PersonMain({ team, room, login, entry, roomName, onBack, onThing
           </button>
         ))}
       </div>
-      <p className="rm-pg-foot">{mine ? "this is what the room sees of you" : "their page only shows; nothing here changes their work"}</p>
+      <p className="rm-pg-foot">{mine ? "this is what the project sees of you" : "their page only shows; nothing here changes their work"}</p>
       {!mine && (
         <div className="rm-ps-audit">
           {asked === "asked" ? <span>asked {login} for an audit</span>
@@ -138,12 +138,12 @@ export function PersonSide({ team, login, entry, roomName, onClose, onHand, flas
     const r = await team.ask<{ ok?: boolean }>("team.ping", { to: login, line: text, kind: "chat" });
     if (r.ok) { setLine(""); flash(`said to ${login}`); } else flash("could not reach them now");
   };
-  const tabs = [...rooms.map((s) => ({ id: s.id, title: s.title || "a room session" })), ...issues.map((x) => ({ id: x.session.id, title: `#${x.issue} ${x.session.title.replace(/^#\d+\s*/, "")}` }))];
+  const tabs = [...rooms.map((s) => ({ id: s.id, title: s.title || "a project session" })), ...issues.map((x) => ({ id: x.session.id, title: `#${x.issue} ${x.session.title.replace(/^#\d+\s*/, "")}` }))];
   return (
     <aside className="rm-convo" aria-label={`${login}'s conversation with their agent`}>
       <div className="rm-cv-head">
         <div><b>{mine ? "your conversation with your agent" : "their conversation with their agent"}</b>
-          <small>on {roomName} · {mine ? "as the room sees it" : entry?.quiet ? "not showing" : id ? "you are watching, read-only" : "read-only, live"}</small></div>
+          <small>on {roomName} · {mine ? "as the project sees it" : entry?.quiet ? "not showing" : id ? "you are watching, read-only" : "read-only, live"}</small></div>
         <button className="rm-th-link" onClick={onClose}>close ›</button>
       </div>
       {tabs.length > 1 && (
@@ -169,7 +169,7 @@ export function PersonSide({ team, login, entry, roomName, onClose, onHand, flas
           </form>
         )}
         <div className="rm-cv-links">
-          {!mine && <button className="rm-th-link u" onClick={onHand} title="hand them a card from the room's repository">hand them something ›</button>}
+          {!mine && <button className="rm-th-link u" onClick={onHand} title="hand them a card from the project's repository">hand them something ›</button>}
           <button className="rm-th-link u" disabled={!issues.length} onClick={() => issues[0] && setPick(issues[0].session.id)}
             title={issues.length ? "their agent on an issue, as they show it" : `${mine ? "you are" : "they are"} not showing an issue session now`}>watch {mine ? "your" : "their"} agent live ›</button>
         </div>
@@ -196,7 +196,7 @@ function Convo({ team, login, id, mine }: { team: Team; login: string; id: strin
   }, [lines]);
   return (
     <div className="rm-cv-body">
-      <p className="rm-cv-live">{ended ? <Droplet kind="done" size={12} seed={id} /> : waiting ? <span className="cnobody" aria-hidden="true" /> : <Droplet kind="running" size={12} seed={id} />}{ended ? "this session ended" : waiting ? "not live yet: it shows once it starts showing" : mine ? "live to the room" : "live · you are watching"}</p>
+      <p className="rm-cv-live">{ended ? <Droplet kind="done" size={12} seed={id} /> : waiting ? <span className="cnobody" aria-hidden="true" /> : <Droplet kind="running" size={12} seed={id} />}{ended ? "this session ended" : waiting ? "not live yet: it shows once it starts showing" : mine ? "live to the project" : "live · you are watching"}</p>
       {note && <p className="rm-cv-note" role="status">{note}</p>}
       <div className="rm-cv-lines" aria-live="polite">
         {lines === null ? <p className="none">reading…</p>

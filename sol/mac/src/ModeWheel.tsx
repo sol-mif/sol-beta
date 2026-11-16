@@ -3,6 +3,7 @@
 // ring around it on the springs; a release on a name picks it, a release elsewhere closes.
 // Opened by a right-click or the keys it stays: click a name, or arrows and Enter, Esc closes. Home and Cowork since
 // #132; Social returns with its first button. Reduced motion: the names as a plain list, nothing travels.
+// With the clean Home on (#589, Marco 2026-11-02) a click is the one way: no hold, no right-click, no ⌘⌃M.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CFG, enter, reducedMotion } from "./motion";
@@ -10,6 +11,7 @@ import { useBridgeThumb } from "./SeatSwitch";
 import type { AppMode } from "./ModeSwitch";
 import "./cowork/cowork.css";
 import { useCover } from "./cowork/thingView";
+import { useCleanHome } from "./home/flag";
 
 type Spot = { id: AppMode; name: string; title: string; sx: number; sy: number };
 // the ring: home above the pill, cowork below (sx, sy: which quarter)
@@ -25,6 +27,7 @@ let shown: AppMode | null = null;
 
 export function ModeWheel({ mode, onPick }: { mode: AppMode; onPick: (m: AppMode) => void }) {
   const pill = useRef<HTMLDivElement>(null);
+  const clicks = useCleanHome();
   const [open, setOpen] = useState<null | { kind: "hold" | "stick"; r: DOMRect }>(null);
   useCover(!!open);   // the wheel's scrim is over everything, a thing's native page too (#236)
   const held = useRef(false), timer = useRef<number | undefined>(undefined);
@@ -48,9 +51,9 @@ export function ModeWheel({ mode, onPick }: { mode: AppMode; onPick: (m: AppMode
   const stop = () => { window.clearTimeout(timer.current); timer.current = undefined; };
   return (
     <div className="modesw" data-s>
-      <div ref={pill} className={`seatsw mwpill ${open ? "lifted" : ""}`} role="group" title="home or cowork (ctrl+cmd+M flips them; hold it for the wheel)"
-        onPointerDown={(ev) => { if (ev.button !== 0) return; held.current = false; stop(); timer.current = window.setTimeout(() => { held.current = true; show("hold"); }, 350); }}
-        onPointerUp={stop} onPointerLeave={stop} onContextMenu={(ev) => { ev.preventDefault(); stop(); show("stick"); }}>
+      <div ref={pill} className={`seatsw mwpill ${open ? "lifted" : ""}`} role="group" title={clicks ? "home or cowork" : "home or cowork (ctrl+cmd+M flips them; hold it for the wheel)"}
+        onPointerDown={clicks ? undefined : (ev) => { if (ev.button !== 0) return; held.current = false; stop(); timer.current = window.setTimeout(() => { held.current = true; show("hold"); }, 350); }}
+        onPointerUp={stop} onPointerLeave={stop} onContextMenu={clicks ? undefined : (ev) => { ev.preventDefault(); stop(); show("stick"); }}>
         <i ref={thumb as React.RefObject<HTMLUnknownElement>} className="thumb" />
         {pair.map((m) => (
           <button key={m} type="button" data-seat={m === mode ? tint(m) : undefined} data-mode={m} className={m === mode ? "on" : ""}
@@ -78,7 +81,7 @@ function Wheel({ r, kind, mode, onChoose, onClose }: { r: DOMRect; kind: "hold" 
     if (plain) return;
     box.current?.querySelectorAll<HTMLElement>(".mwspot").forEach((b, i) => {
       const m = MODES[i];
-      enter(b, { x: -m.sx * rx * 0.62, y: -m.sy * ry * 0.72, cfg: CFG.pop, delay: i * 28, scale: 0.3 });
+      enter(b, { x: -m.sx * rx * 0.62, y: -m.sy * ry * 0.72, cfg: CFG.settle, delay: i * 28, scale: 0.3 });
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

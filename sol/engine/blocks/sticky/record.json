@@ -1,0 +1,10 @@
+{
+  "id": "sticky",
+  "title": "Sticky note",
+  "place": "engine",
+  "reads": [],
+  "writes": [],
+  "stores": ["note"],
+  "versions": [{ "v": 1, "engine": "engine.ts", "at": "2026-11-08" }],
+  "current": 1
+}

@@ -77,6 +77,7 @@ export function secondSol(copy: string, tmp: string, base: NodeJS.ProcessEnv = p
       SOL_HOME: join(tmp, "home"),
       SOL_TEAM: join(tmp, "team.json"),
       SOL_PROFILE: join(tmp, "profile"),
+      SOL_LOGDIR: join(tmp, "log"),   // its log with the rest of what it may write, never the live Sol's
       SOL_DIST: join(copy, "sol", "mac", "dist"),
       SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1",
       GIT_TERMINAL_PROMPT: "0",

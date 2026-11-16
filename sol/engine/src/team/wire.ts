@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 import { dirname, resolve, basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getTeam, patchTeam, forFace, onTeam, fillMe, roomKey, activeRoom, recordOf, sharedHub, hubKey, isCloud, connectedRepos, ROOMS_DIR, type TeamSettings, type Room } from "./settings.js";
+import { findRecords } from "./findrecord.js";   // the record GitHub names (#510)
 import { getThings, changeThings, forgetThings, onThings, onAgain, thingsMsg, recordBranch, folderId, THINGS_PATH, serialize as serializeThings, type ThingsDeps, type Op as ThingsOp } from "./things.js";   // the room's things (#194)
 import { readGoal, readGoalFile, setGoal, addGoalFile, goalMsg, goalHead, goalSnapshot, GOAL_PATH } from "./goal.js";
 import { movedOf, movedForFace, cloudMovedOf, followMove, type AwayDeps } from "./moved.js";   // where a room went (#246, #326)
@@ -19,24 +20,46 @@ import { eventLine, sameAs, pollKey, pollEvents, myPolls, connectEvents, gitWith
 import { readPings } from "./pings.js";
 import { accounts, signinCommand, githubAccount, githubIn, noteGithub, onGithub } from "./control.js";
 import { startConnect, cancelConnect, onConnect } from "./gh.js";   // GitHub from a card (#174)
-import { stamp, stables, update, offerNow, shipNow, answered } from "./ship.js";
+import { update, offerNow, shipNow, answered, BRANCH, pinChanged } from "./ship.js";
+import { startCarry, carryNow, msgOf as carryMsg, check as carryCheck, useIt as carryUse, setAside, stay as carryStay, asides, bringBack, carryOver } from "./carry.js";   // carrying own changes over (#425)
+import { startPin, view as pinView, pinHere, unpin, plan as pinPlan, goBack as pinBack, wentBack } from "./pin.js";   // pin and go back (#426)
+import { convertCtx } from "../convert/start.js";
+import { STEPS } from "../convert/steps.js";
+import { busyIn } from "../busy.js";
 import { getBoard, peekBoard, onBoard, member, forgetOwners, boardReason, boardWanted, type Board } from "./board.js";
 import { routeIssues } from "./leads.js";   // #118: routing on label
 import { pressLeads, candidates } from "./press.js";   // the owner's press (#117)
 import { relayPollers, sayPresence } from "./relay.js";   // build updates (#328): who polls what, my polls said again
-import { setTalkSince, onRelay, sendRelay, relayRoster, relayUp, relayHub, onRelayStatus, restartRelay, setPresence, setInside, setGithub, startRelayClient, hubTicket, hubLogin, onCloud, hubHttp, CLOUD_FILE, driveHub, driveDeps, DRIVE_FILE, cloudRoom, onCloudWrite, type RelayMsg } from "./relay.js";
+import { setTalkSince, onRelay, sendRelay, relayRoster, relayUp, relayHub, onRelayStatus, restartRelay, setPresence, setInside, setGithub, startRelayClient, hubTicket, hubLogin, onCloud, hubHttp, safeForToken, CLOUD_FILE, driveHub, driveDeps, DRIVE_FILE, cloudRoom, onCloudWrite, type RelayMsg } from "./relay.js";
 import { connectDrive, disconnectDrive, driveAccount, driveForFace, driveToken, staleDrive } from "./drive.js";   // a Drive room (#152)
 import { driveMembers, driveFolderWritable, folderOfRecord } from "./record/drive.js";
 import { here, onHereChanged, roomSessions, belongs, roomMark, FocusOrder } from "./here.js";   // who is in which thing (#230)
 import { accountOn, signIn as cloudSignIn } from "./cloud.js";
-import { teamMembers, refreshMembers, onMembers } from "./members.js";   // #102: who is on the team
+import { teamMembers, refreshMembers, strictMembers, onMembers } from "./members.js";   // #102: who is on the team
 import { onCreature } from "../creature.js";
 import { mark, workState } from "../work/state.js";
 import { allRuns } from "../work/runs.js";
 import { workSessions } from "../work/sessions.js";
-import { handleWork, nameWhenWritten } from "../work/wire.js";
+import { handleWork, nameWhenWritten, workBus, broadcastSessions } from "../work/wire.js";
+import { solWindowOn } from "../creature.js";
+import { tick as tonightTick, press as tonightPress, openNow as tonightOpen, keyOf as tonightKey, rhythmOf, forgetRhythms, backupsOf, type TonightDeps, type Verdict } from "./tonight.js";   // the review session (#416)
+import { pressCheckpoint, checkpointKey, localDay } from "./checkpoint.js";   // Scoped and Approve (#482)
+import { sentBackTick } from "./sentback.js";   // the slight send back's re-check (#421)
+import { thisBroke } from "./broke.js";   // "this broke" (#421)
+import { tick as handInTick, openHandInNow, pick as handInPick, type HandInDeps } from "./handin.js";   // the hand-in session (#420)
+import { scan as handInScan, bring as handInBring, cardKeyOf as handInCardKey, mergePress as handInMerge, openedInFiles, type CardDeps } from "./handin.js";   // the hand-in card (#476), the box's merge (#579)
+import { transcriptFiles } from "../work/sessions.js";
+import { execFile } from "node:child_process";
+import { timelineNow, releasesNow, onTimeline, keepTimelineIn, type TimelineDeps } from "./timeline.js";   // the timeline (#424)
 import { typed, history, threadsWithLines, onTalkLine, hearRelay, watchBridges, threadOf, hearHistory, saidOf, readTalkFile, olderLines, setAttachDeps, talkSince, sweepCache, type AttachDeps, type OlderDeps } from "./talk.js";   // Talk (#37); kept on the cloud, attachments (#315)
 import { talkFileOf, TALK_HISTORY } from "../hub/index.js";
+// --- Cowork v3 (fr-30): one switch (settings.ts coworkV3). Every v3 file is loaded only with it on, by the first
+// team.v3.* message it may answer (handleV3 below), never before; off, no v3 case answers and nothing of v3 loads (F7)
+import { coworkV3, onCoworkV3 } from "../settings.js";
+let v3mod: typeof import("./v3/index.js") | null = null;
+/** what /health says of the v3 trail, or null while v3 is not loaded (the switch off: nothing) */
+export const v3Health = (): { projects: number } | null => (v3mod ? v3mod.v3Health() : null);
+// --- end Cowork v3
 // --- Hand (#34)
 import { startHand, heard, handNow, answerNow, handsNow, boardRead, gitCli } from "./hand.js";
 import { myLogin } from "./settings.js";
@@ -88,12 +111,31 @@ import { askIn, cloneRoom, hearRoom, hearCloud, askCloud, askedNow, gitQuiet, re
 // --- end Let in
 // --- File it (#119)
 import { fileIt, takeShot, heldShot, drop as dropShot, healthLine } from "./file.js";
+import { kernelNow, runThingTool } from "../kernel.js";   // file it as Sol's own block (step 7), once it is loaded
 import { HIDDEN } from "../eye.js";
 import { healthNow } from "../health.js";
 // the room's own tools (ADDITIONS §1, #245): the calendar, the decision log, the polls, each a file in the room's record
 import { calendar, upcoming, remindersDue, icsOf, type Calendar } from "./calendar.js";
 import { decisions, type Log } from "./decisions.js";
 import { polls, type Polls } from "./polls.js";
+import { pages, pageTile, tilePage, type PageInfo } from "./pages.js";   // pages (#433, round 80): the `page` kind is defined there
+import { tables, rowsOf, columnsOf, type TableInfo, type TableFile, type TableOp, type TableSources } from "./tables.js";   // tables (#434, round 82): the `table` kind is defined there
+import { templates, saveAsTemplate, templateKinds, TEMPLATES_BLOCK } from "./templates.js";   // templates (#435, round 83): the `template` kind
+import { agentsOf, useMembersRead, memberRefusal, type MembersRead } from "./agents.js";   // agents as members (#435)
+import { shipped as shippedBlocks } from "./blocks.js";   // team blocks (#429): Sol's own, from the face's blocks.json
+import { readUses } from "./used.js";   // who used what (#431, round 76)
+import { landOwners } from "./codeowners.js";   // CODEOWNERS written from the project's owners (#438)
+import { owners as projectOwners, project, propose as projectPropose, settle as projectSettle, withdraw as projectWithdraw, useProject, startOf as projectStart, viewOf as projectView, keepNight, rhythmIn, agentsIn, ownersIn, type ProjectFile } from "./project.js";   // project settings (#428)
+import { onboarded, walkOf } from "./onboard.js";   // onboarding into a project, with skip (#430)
+import { openTool } from "./teamtool.js";   // team tools (#436): the kind "tool"'s own fields, the members gate
+import { useFolds } from "./folds.js";   // the first team tool, this week's folds (#436)
+import { useAnalytics } from "./analytics.js";   // the second, the beta's counts from Sol's cloud (#437)
+import { useFeaturesTool, useArea, areaParagraph, devsIn } from "./area.js";   // the Features page and "your area", Sol developers only (#480)
+import { setOpening } from "../work/opening.js";
+import { useLive } from "./live.js";   // the live block (#485): the newest dev release, its morning run, error counts per feature
+import { readFeatures } from "./featuremap.js";   // TO BE REPLACED by ./features.js (#480): the same name
+import { DIGEST_TITLE } from "./tonight.js";
+import { blockViewsIn } from "./project.js";
 // --- end File it
 // what a group is connected to, as one answer (#320): its repositories, things, tools, and Google and GitHub here
 import { connectors, connectRepo, repoFacts, connectorsMsg, toolLines, memberCount, forgetCounts, pruneMine, mineAfter, adminsAfter, liveOf, type ConnectDeps, type ConnectorsFile } from "./connectors.js";
@@ -111,7 +153,7 @@ const stateMsg = () => {
   const s = getTeam();
   // on a cloud I signed in to, "me" is my Sol name there, the name the roster and every line I send carry (#216): never my
   // GitHub login beside it, which showed one person twice
-  return { type: "team.state", me: onCloud(s) ? { ...s.me, login: hubLogin(s) } : s.me, settings: forFace(s), roster: relayRoster(), members: teamMembers(), relay: { url: s.relay.url, up: relayUp() }, hub: sharedHub(), cloud: cloudNow(s), version: versionNow() };   // version (#417): mine, for the strip when the relay is down
+  return { type: "team.state", me: onCloud(s) ? { ...s.me, login: hubLogin(s) } : s.me, settings: forFace(s), roster: relayRoster(), members: teamMembers(), agents: agentsOf(teamMembers(), relayRoster(), onCloud(s) ? hubLogin(s) : s.me.login), relay: { url: s.relay.url, up: relayUp() }, hub: sharedHub(), cloud: cloudNow(s), version: versionNow() };   // version (#417): mine, for the strip when the relay is down
 };
 /** my Sol account on the shared hub (S6b, #226): its name there, "" when this Sol is not signed in; `need` when the room
  *  in use meets on Sol's cloud, nobody is signed in and the hub is not letting me in, so the face asks me to sign in;
@@ -165,9 +207,23 @@ let started = false;
 export function startTeam() {
   if (started) return;
   started = true;
+  // fr-30: the trail's sync, and the notch's one "needs me" count, from the start with the switch on, and from the
+  // moment it is turned on while the engine runs; turned off, the sync stops
+  let v3Started = false;
+  const v3Start = () => {
+    v3Started = true;
+    void import("./v3/switchwire.js").then((x) => x.startV3Sync()).catch(() => {});
+    void import("./v3/planwire.js").then((x) => x.tellNotch()).catch(() => {});
+  };
+  if (coworkV3()) v3Start();
+  onCoworkV3((on) => { if (on) v3Start(); else if (v3Started) void import("./v3/switchwire.js").then((x) => x.stopV3Sync()).catch(() => {}); });
   startRelayClient();
   shareIfNew(null, getTeam());   // #157: a room in use on the shared hub that has no code yet
   void claimRooms();   // #162: a room coded before rooms[].mine, registered again once to see whether it is mine
+  // #510: the record of each GitHub room GitHub has not named yet, asked now (a team.json from before) and whenever a
+  // room is made or its repositories change (a face's edit, a join, a move); kept in team.json, so asked once
+  void askRecords();
+  onTeam(() => void askRecords());
   // #189's condition (#230): a turn's title goes to the room only when its session was started under that room
   onCreature((state, turn, cwd) => {
     if (turn?.kind === "work" && turn.title) titles.set(turn.sessionId, turn.title);
@@ -197,8 +253,8 @@ export function startTeam() {
     // #194: another Sol wrote the room's things (or anything else in the record repo): read the list anew for the faces
     const repo = recordOf(activeRoom(getTeam()));
     if (repo && (typeof m.repo !== "string" || m.repo.toLowerCase() === repo.toLowerCase())) {
-      forgetThings(); forgetTools();
-      if ([...faces.values()].some((f) => f.cowork)) { void pushThings(repo).catch(() => {}); void pushTools(repo).catch(() => {}); pushConnectors(); }
+      forgetThings(); forgetTools(); settleSoon(repo);
+      if ([...faces.values()].some((f) => f.cowork)) { void pushThings(repo).catch(() => {}); void pushTools(repo).catch(() => {}); void pages.list(thingsDeps(), repo, true).then((l) => everyoneTeam(pagesMsg(l, repo)), () => {}); void pushTemplates(repo).catch(() => {}); void tables.list(thingsDeps(), repo, true).then((l) => { everyoneTeam(tablesMsg(l, repo)); everyoneTeam({ type: "team.table.changed", repo, id: "" }); }, () => {}); pushConnectors(); }
       else if (activeRoom(getTeam()).provider === "cloud") void connectors.get(thingsDeps(), repo).then(pruneRepos, () => {});   // P2-5
     }
   });
@@ -277,6 +333,23 @@ function afterRoomChange(before: TeamSettings, after: TeamSettings) {
   if (after.repos.join(",") !== before.repos.join(",") || recordOf(activeRoom(after)) !== recordOf(activeRoom(before))) forgetTools();
   if (after.repos.join(",") !== before.repos.join(",")) { forgetShared(); forgetThings(); feed.forget(); void getShared(true).catch(() => {}); void getBoard(true).catch(() => {}); }
   if (activeRoom(after).repos.join(",") !== activeRoom(before).repos.join(",")) sayPresence();   // #328: the repositories I may poll
+}
+
+// The record's lookup (#510, findrecord.ts): one at a time; a change that came while one ran is asked after it
+let asking: Promise<void> | null = null, askAgain = false;
+function askRecords(): Promise<void> {
+  if (process.env.SOL_TEAM_OFFLINE) return Promise.resolve();
+  if (asking) { askAgain = true; return asking; }
+  asking = (async () => {
+    do {
+      askAgain = false;
+      const rooms = await findRecords(runGh, () => getTeam().rooms).catch(() => null);
+      if (!rooms) continue;
+      const before = getTeam(), after = patchTeam({ rooms });
+      afterRoomChange(before, after);
+    } while (askAgain);
+  })().finally(() => { asking = null; });
+  return asking;
 }
 
 // --- Share code (#157): this engine's own registry, when it is a hub (index.ts hands it in), and the deps of share and join
@@ -559,8 +632,32 @@ const decMsg = (l: Log, repo: string, rid?: unknown) => ({ type: "team.decisions
 const pollMsg = (f: Polls, repo: string, rid?: unknown) => ({ type: "team.polls" as const, ...(rid !== undefined ? { rid } : {}), repo, polls: [...f.polls].reverse(), ...(repo ? {} : { note: NO_RECORD_LINE }) });
 const NO_RECORD_LINE = "this room has no record yet";
 /** the room's own tools as tiles (#245): a person on one of their pages stands on its tile, as on a thing's */
-export const TOOL_TILES: Record<string, string> = { "tool-calendar": "the calendar", "tool-decisions": "decisions", "tool-polls": "polls" };
-const forgetTools = () => { calendar.forget(); decisions.forget(); polls.forget(); connectors.forget(); };
+/** a page as a thing one can be on (#433): its tile id and title, or none when the project has no such page */
+const pageAsThing = async (repo: string, id: string) => { const p = (await pages.list(thingsDeps(), repo).catch(() => [] as PageInfo[])).find((x) => x.id === id); return p ? { id: pageTile(p.id), name: p.title } : undefined; };
+export const TOOL_TILES: Record<string, string> = Object.fromEntries(shippedBlocks().filter((b) => b.kind === "tool").map((b) => [`tool-${b.id}`, b.name]));   // from the blocks (#429)
+const forgetTools = () => { calendar.forget(); decisions.forget(); polls.forget(); pages.forget(); tables.forget(); templates.forget(); connectors.forget(); project.forget(); forgetRhythms(); };
+// pages (#433, round 80): the list after a change goes to every Cowork face of mine; another Sol's comes as `changed`
+const pagesMsg = (list: PageInfo[], repo: string, rid?: unknown) => ({ type: "team.pages" as const, ...(rid !== undefined ? { rid } : {}), repo, pages: list, ...(repo ? {} : { note: NO_RECORD_LINE }) });
+pages.on((repo, list, page) => { everyoneTeam(pagesMsg(list, repo)); if (page) everyoneTeam({ type: "team.page.changed", repo, page }); });
+// tables (#434, round 82): the list after a change goes to every Cowork face of mine, with which table changed; another
+// Sol's change comes as the relay's `changed`. A table's rows come from its source: kept (own), or read from the board,
+// the feed or this Sol's sessions in the project, never kept
+const tablesMsg = (list: TableInfo[], repo: string, rid?: unknown) => ({ type: "team.tables" as const, ...(rid !== undefined ? { rid } : {}), repo, tables: list, ...(repo ? {} : { note: NO_RECORD_LINE }) });
+tables.on((repo, id) => { void tables.list(thingsDeps(), repo).then((l) => { everyoneTeam(tablesMsg(l, repo)); everyoneTeam({ type: "team.table.changed", repo, id }); }, () => {}); });
+export const tableSources = (): TableSources => ({
+  board: async () => { const b = await getBoard(); return { cards: b.cards, ...(b.reason ? { reason: b.reason } : {}) }; },
+  feed: async () => { const r = await feed.lines(roomKeyNow()); return { lines: r.lines, ...(r.error ? { error: r.error } : {}) }; },
+  sessions: async () => (await workSessions()).sessions,
+  roomId: () => activeRoom(getTeam()).id,
+});
+/** a table as the face draws it: the file, its columns, and its rows read from its source */
+const tableAnswer = async (repo: string, id: string, t: TableFile) => { const r = await rowsOf(t, tableSources()); return { repo, id, table: { ...t, columns: columnsOf(t), rows: undefined }, rows: r.rows, ...(r.note ? { note: r.note } : {}) }; };
+// templates (#435, round 83): the same, as `team.templates`
+const templatesMsg = (list: PageInfo[], repo: string, rid?: unknown) => ({ type: "team.templates" as const, ...(rid !== undefined ? { rid } : {}), repo, templates: list, ...(repo ? {} : { note: NO_RECORD_LINE }) });
+// pushed to the faces only while the project's templates block is live (#435): with it off, nothing of the folder is read out
+const templatesLive = async (repo: string) => { const f = await project.get(thingsDeps(), repo).catch(() => null); return !!f && !!blockViewsIn(f).find((b) => b.id === TEMPLATES_BLOCK)?.live; };
+async function pushTemplates(repo: string) { if (await templatesLive(repo)) everyoneTeam(templatesMsg(await templates.list(thingsDeps(), repo, true), repo)); }
+templates.on((repo, list) => { void templatesLive(repo).then((on) => { if (on) everyoneTeam(templatesMsg(list, repo)); }, () => {}); });
 calendar.on((repo, f) => { everyoneTeam(calMsg(f, repo)); pushConnectors(); });
 decisions.on((repo, l) => { everyoneTeam(decMsg(l, repo)); pushConnectors(); });
 polls.on((repo, f) => { everyoneTeam(pollMsg(f, repo)); pushConnectors(); });
@@ -585,6 +682,144 @@ export const remindNow = async (now = Date.now()) => {
 };
 setInterval(() => void remindNow().catch(() => {}), 60_000).unref();
 // --- end The room's own tools
+
+// --- Project settings (#428, PROTOCOL round 69): `.sol/project.json` in the project's record (project.ts). The page
+// reads `team.project`; a change is `team.project.propose`, agreed in the project's polls; any vote heard here settles
+// what is decided, and every Cowork face hears the page again. tonight.ts's rhythm loader reads the record first
+const projectWhere = (repo?: string): { record: string; code: string } => {
+  const s = getTeam(), want = repo?.toLowerCase();
+  const room = !want ? activeRoom(s) : s.rooms.find((r) => recordOf(r).toLowerCase() === want || connectedRepos(r).some((x) => x.toLowerCase() === want));
+  if (!room) return { record: "", code: "" };
+  const code = want && connectedRepos(room).some((x) => x.toLowerCase() === want) ? repo! : connectedRepos(room)[0] ?? "";
+  return { record: recordOf(room), code };
+};
+useProject({ things: () => thingsDeps(), where: projectWhere, gh: runGh });
+const projectMsg = async (repo: string, rid?: unknown, file?: ProjectFile) => {
+  const { code } = projectWhere();
+  const [f, p, start] = await Promise.all([file ? Promise.resolve(file) : project.get(thingsDeps(), repo), polls.get(thingsDeps(), repo).catch(() => null), projectStart(code)]);
+  if (repo === recordOf(activeRoom(getTeam()))) keepNight(f);   // the night job runs at the project's hour (nightfile.ts)
+  return { type: "team.project" as const, ...(rid !== undefined ? { rid } : {}), ...projectView(f, start, p?.polls ?? [], repo, code) };
+};
+const pushProject = (repo: string, file?: ProjectFile) => {
+  if (repo !== recordOf(activeRoom(getTeam())) || ![...faces.values()].some((f) => f.cowork)) return;
+  void projectMsg(repo, undefined, file).then(everyoneTeam, () => {});
+};
+project.on((repo, f) => pushProject(repo, f));
+// a vote (mine, or one the relay says another Sol wrote) may decide a proposal: settled here, once at a time a project
+const settling = new Set<string>();
+const settleSoon = (repo: string) => {
+  if (!repo || settling.has(repo)) return;
+  settling.add(repo);
+  void projectSettle(thingsDeps(), repo).catch(() => []).then((done) => { if (!done.length) pushProject(repo); }).finally(() => settling.delete(repo));
+};
+polls.on((repo) => settleSoon(repo));
+// #438: an owners change this Sol applied (a settle or a proposal written here) is written into each code repository's
+// CODEOWNERS by one PR (codeowners.ts); the release runner folds it. Once a proposal here, by id
+const ownersLanded = new Set<string>();
+project.on((repo, f) => {
+  const set = f.set.owners;
+  if (!set || !f.owners || ownersLanded.has(set.proposal)) return;
+  ownersLanded.add(set.proposal);
+  const room = getTeam().rooms.find((r) => recordOf(r) === repo);
+  for (const code of room ? connectedRepos(room).filter(okRepo) : [])
+    void landOwners({ gh: runGh }, code, f.owners, { proposal: set.proposal, by: set.by }).then((r) => {
+      if ("error" in r) console.error(`[sol] owners: CODEOWNERS of ${code} not written: ${r.error}`);
+    }, () => {});
+});
+// --- end Project settings
+
+// --- Team tools (#436): who the project's members are, for the members gate (teamtool.ts): a cloud group's as its cloud
+// says them, a GitHub project's as its org's (members.ts, read at most every ten minutes). A project with neither, or a
+// read that failed, has no members known, and every team tool in it stays shut
+// strict (#437, a tool reading data that names people): a GitHub org's members a minute old at most and never the old list
+// on a failed read (members.ts `strict`); a cloud group's are read fresh every time already, and none on a failure
+async function projectMembers(room: Room, force: boolean, strict = false): Promise<string[] | null> {
+  if (room.provider === "cloud") { const c = await cloudMembers(room.code); return c?.logins.length ? c.logins : null; }
+  // members.ts reads the org in use (getTeam().org, the active room's): only that room's, asked while it still is
+  if (room.provider === "github" && room.org && activeRoom(getTeam()).id === room.id && getTeam().org === room.org) {
+    if (strict) return strictMembers();
+    const l = await refreshMembers(force); return l.length ? l : null;
+  }
+  return null;
+}
+useFolds(async (key, refresh) => feed.lines(key, refresh));
+// analytics (#437): Sol's cloud's track summary, with my ticket there (the cloud's own gate, SOL_TRACK_READERS), the
+// versions placed on the timeline's releases. The cloud is the shared hub's, the one a tester's counts go to (track.ts)
+const trackHub = () => { const hub = hubHttp(sharedHub()); return safeForToken(`${hub}/`) ? hub : ""; };
+const trackTicket = async () => { const hub = trackHub(); return hub ? hubTicket(hub).catch(() => "") : ""; };
+const trackSummary = async (t: string) => {
+  const hub = trackHub();
+  if (!hub) return { status: 0, body: null };
+  const r = await fetch(`${hub.replace(/\/+$/, "")}/track/summary`, { headers: { authorization: `Bearer ${t}` }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  return r ? { status: r.status, body: await r.json().catch(() => null) } : { status: 0, body: null };
+};
+useAnalytics({ ticket: trackTicket, summary: trackSummary, releases: () => releasesNow(timelineDeps()) });
+// the live block (#485): the same cloud summary (its byError), the timeline's newest dev release, the newest morning run
+// on Sol's own repository's open Night digest (read only), and the feature map of Sol's own checkout
+const REPO_ROOT = resolve(HERE, "..", "..", "..", "..");   // engine/{src,dist}/team -> the repository's root
+useLive({
+  ticket: trackTicket, summary: trackSummary, releases: () => releasesNow(timelineDeps()),
+  digest: async () => {
+    const repo = await remoteOf(resolve(HERE, ".."));
+    if (!repo) return [];
+    const found = JSON.parse(await runGh(["issue", "list", "--repo", repo, "--state", "open", "--search", `"${DIGEST_TITLE}" in:title`, "--json", "number,title", "--limit", "5"]) || "[]") as { number: number; title?: string }[];
+    const n = found.find((x) => String(x.title ?? "").trim() === DIGEST_TITLE)?.number;
+    if (!n) return [];
+    const v = JSON.parse(await runGh(["issue", "view", String(n), "--repo", repo, "--json", "comments"]) || "{}") as { comments?: { body?: string; createdAt?: string; url?: string; author?: { login?: string } }[] };
+    return v.comments ?? [];
+  },
+  features: () => readFeatures(REPO_ROOT),
+});
+// the Features page (#480): the map of the checkout this engine runs from, the project's ownership table; and a lead's
+// Work sessions open with their area's line, the people read from the project in use
+useFeaturesTool({ owners: () => projectOwners() });
+useArea({ me: () => hubLogin() || getTeam().me.login });
+setOpening(areaParagraph);
+// agents as members (#435): the members check reads the project in use's members as the strict gate does (#437): a cloud
+// group's fresh, a GitHub org's a minute old at most, a failed read null (shut). A project with neither has no list: its
+// record decides who may write
+useMembersRead(async (strict): Promise<MembersRead> => {
+  const room = activeRoom(getTeam());
+  if (room.provider === "cloud") return { source: true, list: await projectMembers(room, false, strict) };
+  if (room.provider === "github" && room.org) return { source: true, list: await projectMembers(room, false, strict) };
+  return { source: false };
+});
+// --- end Team tools
+
+// --- Onboarding (#430, PROTOCOL round 75): the walk through a project when someone joins (onboard.ts). What it says is
+// the project's settings in force and its `onboarding` part (changed by proposal, as every setting); who walked it is
+// `.sol/onboarded.json` in the record, each person writing their own row. Every Cowork face hears the walk again when
+// either file changes, each for its own person
+const walkMsg = async (repo: string, rid?: unknown, refresh = false) => {
+  const d = thingsDeps(), me = hubLogin() || getTeam().me.login;
+  const [f, o, start] = await Promise.all([project.get(d, repo, refresh), onboarded.get(d, repo, refresh), projectStart(projectWhere().code)]);
+  return { type: "team.onboarding" as const, ...(rid !== undefined ? { rid } : {}), ...walkOf(f, { rhythm: rhythmIn(f, start), owners: ownersIn(f, start), agents: agentsIn(f) }, o, me, repo) };
+};
+const pushWalk = (repo: string) => {
+  if (repo !== recordOf(activeRoom(getTeam())) || ![...faces.values()].some((f) => f.cowork)) return;
+  void walkMsg(repo).then(everyoneTeam, () => {});
+};
+onboarded.on((repo) => pushWalk(repo));
+project.on((repo) => pushWalk(repo));
+// --- end Onboarding
+// --- Who used what (#431, PROTOCOL round 76): the project's `.sol/used/` marks (used.ts), each person's newest use of each
+// part over 30 days. Read when a page asks (a minute's cache: the strip and the project page ask together) and pushed
+// after a mark of mine; never on another Sol's `changed`, so one read in a project does not make every Sol read
+let usedSeen: { repo: string; at: number; msg: object } | null = null;
+const usedMsg = async (fresh = false) => {
+  const repo = recordOf(activeRoom(getTeam()));
+  if (!repo) return { type: "team.used" as const, repo: "", people: {}, note: NO_RECORD_LINE };
+  if (!fresh && usedSeen && usedSeen.repo === repo && Date.now() - usedSeen.at < 60_000) return usedSeen.msg;
+  const r = await readUses(thingsDeps(), repo);
+  const msg = { type: "team.used" as const, repo, people: r.people, ...(r.note ? { note: r.note } : {}) };
+  usedSeen = { repo, at: Date.now(), msg };
+  return msg;
+};
+export const pushUsed = () => {
+  if (![...faces.values()].some((f) => f.cowork)) { usedSeen = null; return; }
+  void usedMsg(true).then(everyoneTeam, () => {});
+};
+// --- end Who used what
 
 // --- Connectors (#320, PROTOCOL.md round 55): what a group is connected to, as one answer. A cloud group may connect a
 // GitHub repository (an admin of it, a private one); its board then reads it with each viewer's own gh. The answer is
@@ -689,6 +924,7 @@ export async function handleTeam(w: Wire, m: any) {
   const me = faces.get(w);
   if (!me) return;
   const rid = RID(m.rid);
+  if (typeof m.type === "string" && m.type.startsWith("team.v3.")) return handleV3(w, m, rid);   // Cowork v3 (fr-30)
   switch (m.type) {
     // --- See (round 17)
     case "team.hello":
@@ -825,7 +1061,9 @@ export async function handleTeam(w: Wire, m: any) {
       const n = focusOrder.begin(w);
       // a blur is taken for any id (a thing removed while open still leaves the tile); a focus only for the room's own
       if (!focused) { here.focus(w, id, "", false, Date.now()); sayInside(); return w.send({ type: m.type, rid, id, focused }); }
-      const t = repo ? (Object.hasOwn(TOOL_TILES, id) ? { id, name: TOOL_TILES[id] } : (await getThings(thingsDeps(), repo).catch(() => null))?.things.find((x) => x.id === id)) : undefined;
+      const t = repo ? (Object.hasOwn(TOOL_TILES, id) ? { id, name: TOOL_TILES[id] }
+        : tilePage(id) ? await pageAsThing(repo, tilePage(id))   // a page (#433): `page-<id>`, its title the name
+        : (await getThings(thingsDeps(), repo).catch(() => null))?.things.find((x) => x.id === id)) : undefined;
       if (!t) return w.send(thingsError(m.type, rid, "no such thing in this room"));
       if (!focusOrder.last(w, n)) return w.send({ type: m.type, rid, id: t.id, focused, late: true });   // a later word came first
       here.focus(w, t.id, t.name, focused, Date.now());
@@ -900,6 +1138,97 @@ export async function handleTeam(w: Wire, m: any) {
       try { const f = await calendar.get(thingsDeps(), repo); return w.send({ type: m.type, rid, name: `${activeRoom(getTeam()).name.replace(/[^\w .-]+/g, " ").trim() || "room"} calendar.ics`, text: icsOf(f, activeRoom(getTeam()).name) }); }
       catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the room's calendar: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
     }
+    // --- Pages (#433, round 80): the list, one page, a write. The asker gets its answer with its rid; every other Cowork
+    // face here hears the list (and the page) without one (pages.on), another Sol the relay's `changed`
+    case "team.pages": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return w.send(pagesMsg([], "", rid));
+      try { return w.send(pagesMsg(await pages.list(thingsDeps(), repo, !!m.refresh), repo, rid)); }
+      catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the project's pages: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    case "team.page": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return w.send(thingsError(m.type, rid, NO_RECORD_LINE));
+      try {
+        const page = await pages.read(thingsDeps(), repo, String(m.id ?? ""));
+        return w.send(page ? { type: m.type, rid, repo, page } : thingsError(m.type, rid, "no such page here"));
+      } catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the page: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    case "team.page.write": {
+      const repo = recordOf(activeRoom(getTeam()));
+      const id = typeof m.id === "string" ? m.id : "";
+      const op = !id ? { make: { title: m.title, body: m.body } }
+        : typeof m.append === "string" ? { append: { id, text: m.append } }
+        : { put: { id, ...(m.title !== undefined ? { title: m.title } : {}), body: m.body, ...(typeof m.base === "string" && m.base ? { base: m.base } : {}) } };
+      const r = await pages.change(thingsDeps(), repo, op, { by: hubLogin() || getTeam().me.login, at: new Date().toISOString() });
+      if ("error" in r) return w.send({ type: m.type, rid, error: r.error, ...(r.page ? { page: r.page } : {}) });
+      return w.send({ type: m.type, rid, repo, page: r.page, changed: r.changed });
+    }
+    // --- Tables (#434, round 82): the list (the board first), one table with its rows, a write. A write is a list of ops on
+    // one table; no id with a `make` makes one. Signed with my login; the asker gets the table as it is after
+    case "team.tables": {
+      const repo = recordOf(activeRoom(getTeam()));
+      try { return w.send(tablesMsg(await tables.list(thingsDeps(), repo, !!m.refresh), repo, rid)); }
+      catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the project's tables: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    case "team.table": {
+      const repo = recordOf(activeRoom(getTeam())), id = typeof m.id === "string" ? m.id : "";
+      try {
+        const t = await tables.read(thingsDeps(), repo, id, !!m.refresh);
+        return w.send(t ? { type: m.type, rid, ...(await tableAnswer(repo, id, t)) } : thingsError(m.type, rid, "no such table here"));
+      } catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the table: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    case "team.table.write": {
+      const repo = recordOf(activeRoom(getTeam())), id = typeof m.id === "string" ? m.id : "";
+      const ops = (Array.isArray(m.ops) ? m.ops : []).filter((o: unknown) => !!o && typeof o === "object").slice(0, 500) as TableOp[];
+      const r = await tables.change(thingsDeps(), repo, id, ops, { by: hubLogin() || getTeam().me.login, at: new Date().toISOString() });
+      if ("error" in r) return w.send(thingsError(m.type, rid, r.error));
+      return w.send({ type: m.type, rid, ...(await tableAnswer(repo, r.id, r.table)), changed: r.changed, made: r.rows });
+    }
+    // --- Templates (#435, round 83): pages the team starts from, a block of kind `template`. The engine is the gate: every
+    // one of these is refused while the project has not turned the block on
+    case "team.templates":
+    case "team.template":
+    case "team.template.write":
+    case "team.template.make":
+    case "team.template.save":
+    case "team.template.remove": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return m.type === "team.templates" ? w.send(templatesMsg([], "", rid)) : w.send(thingsError(m.type, rid, NO_RECORD_LINE));
+      const by = hubLogin() || getTeam().me.login, at = new Date().toISOString();
+      try {
+        const f = await project.get(thingsDeps(), repo);
+        const views = blockViewsIn(f), live = (id: string) => !!views.find((b) => b.id === id)?.live;
+        if (!live(TEMPLATES_BLOCK)) return w.send({ ...thingsError(m.type, rid, "templates are not on in this project: the team turns the block on in the project's settings"), gate: "off" });
+        if (m.type === "team.templates") return w.send(templatesMsg(await templates.list(thingsDeps(), repo, !!m.refresh), repo, rid));
+        if (m.type === "team.template") {
+          const t = await templates.read(thingsDeps(), repo, String(m.id ?? ""));
+          return w.send(t ? { type: m.type, rid, repo, template: t } : thingsError(m.type, rid, "no such template here"));
+        }
+        if (m.type === "team.template.remove") {
+          const r = await templates.remove(thingsDeps(), repo, String(m.id ?? ""), { by });
+          return w.send("error" in r ? thingsError(m.type, rid, r.error) : { type: m.type, rid, repo, removed: r.removed });
+        }
+        if (m.type === "team.template.write") {
+          const id = typeof m.id === "string" ? m.id : "";
+          const op = !id ? { make: { title: m.title, body: m.body } } : { put: { id, ...(m.title !== undefined ? { title: m.title } : {}), body: m.body, ...(typeof m.base === "string" && m.base ? { base: m.base } : {}) } };
+          const r = await templates.change(thingsDeps(), repo, op, { by, at });
+          return w.send("error" in r ? { type: m.type, rid, error: r.error, ...(r.page ? { template: r.page } : {}) } : { type: m.type, rid, repo, template: r.page, changed: r.changed });
+        }
+        if (m.type === "team.template.save") {
+          const r = await saveAsTemplate(thingsDeps(), repo, { page: String(m.page ?? ""), title: m.title, who: { by, at } });
+          return w.send("error" in r ? thingsError(m.type, rid, r.error) : { type: m.type, rid, repo, template: r.page });
+        }
+        // make from template: the kind the template is (a page; a table once #434 defines its kind), and its block live
+        const kind = typeof m.kind === "string" ? m.kind : "page";
+        const k = templateKinds().find((x) => x.kind === kind);
+        if (!k) return w.send(thingsError(m.type, rid, `this Sol cannot make a ${kind.slice(0, 20)} from a template`));
+        if (kind === "page" && !live("pages")) return w.send({ ...thingsError(m.type, rid, "pages are not on in this project, so a page cannot be made from a template"), gate: "off" });
+        const r = await k.make(thingsDeps(), repo, { id: String(m.id ?? ""), title: m.title, who: { by, at }, zone: f.rhythm?.zone ?? "" });
+        if ("error" in r) return w.send(thingsError(m.type, rid, r.error));
+        return w.send({ type: m.type, rid, repo, made: r });
+      } catch (e) { return w.send(thingsError(m.type, rid, `couldn't reach the project's templates: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
     case "team.decisions.add": {
       const repo = recordOf(activeRoom(getTeam()));
       const r = await decisions.change(thingsDeps(), repo, { add: { title: m.title, lines: m.lines, by: hubLogin() || getTeam().me.login, at: new Date().toISOString() } });
@@ -911,10 +1240,74 @@ export async function handleTeam(w: Wire, m: any) {
     case "team.polls.close": {
       const repo = recordOf(activeRoom(getTeam()));
       const by = hubLogin() || getTeam().me.login, at = new Date().toISOString();
+      // a vote that agrees to a settings change (#428) passes the members check first (#435): only a member, on a list a
+      // minute old at most, and none while it cannot be read
+      if (m.type === "team.polls.vote" && repo) {
+        const f = await project.get(thingsDeps(), repo).catch(() => null);
+        if (f?.proposals.some((p) => p.state === "open" && p.poll === m.id)) { const no = await memberRefusal({ login: by }, "agree to a settings change"); if (no) return w.send(thingsError(m.type, rid, no)); }
+      }
       const r = await polls.change(thingsDeps(), repo, m.type === "team.polls.add" ? { add: { question: m.question, options: m.options, by, at } }
         : m.type === "team.polls.vote" ? { vote: { id: m.id, option: m.option, by } } : { close: { id: m.id, by, at } });
       if ("error" in r) return w.send(thingsError(m.type, rid, r.error));
       return w.send({ ...pollMsg(r.file, repo, rid), type: m.type, changed: r.changed, ...(r.result ? { poll: r.result.poll, ...(r.result.again ? { again: true } : {}) } : {}) });
+    }
+    // --- Project settings (#428, round 69): anyone in the project reads the page; a change is a proposal
+    case "team.used":   // who used what (#431, round 76)
+      try { return w.send({ ...(await usedMsg(!!m.refresh)), rid }); }
+      catch (e) { return w.send(thingsError(m.type, rid, `couldn't read who used what: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    case "team.project": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return w.send({ type: m.type, rid, repo: "", error: NO_RECORD_LINE });
+      try {
+        if (m.refresh) { project.forget(); settleSoon(repo); }
+        return w.send(await projectMsg(repo, rid, await project.get(thingsDeps(), repo, !!m.refresh)));
+      } catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the project's settings: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    // --- Team tools (#436, round 81): a team block of kind "tool" opened in the project's centre. The engine is the gate:
+    // the tool live in the project in use, and this Sol's person one of its members (teamtool.ts), else refused
+    case "team.tool": {
+      // one project for the whole answer: its settings, its members and its feed, all of the room in use when asked;
+      // an answer for a project left meanwhile is never sent as this one's
+      const room = activeRoom(getTeam()), repo = recordOf(room), key = roomKeyNow(), id = typeof m.id === "string" ? m.id : "";
+      if (!repo) return w.send({ type: m.type, rid, id, error: NO_RECORD_LINE, gate: "none" });
+      try {
+        const f = await project.get(thingsDeps(), repo, !!m.refresh);
+        const start = await projectStart(projectWhere(repo).code), rhythm = rhythmIn(f, start), zone = rhythm.zone;
+        // the "devs" gate (#480): the project's Sol developers, as its settings name them
+        const r = await openTool({ id: m.id, views: blockViewsIn(f), me: hubLogin() || getTeam().me.login, members: (strict) => projectMembers(room, !!m.refresh, strict), devs: async () => devsIn(ownersIn(f, start), rhythm), ctx: { key, zone, refresh: !!m.refresh } });
+        if (roomKeyNow() !== key) return w.send({ type: m.type, rid, id, error: "you moved to another project while it was read: open it again", gate: "none" });
+        return w.send({ type: m.type, rid, ...r });
+      } catch (e) { return w.send(thingsError(m.type, rid, `couldn't open the tool: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    case "team.project.propose":
+    case "team.project.withdraw": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return w.send(thingsError(m.type, rid, NO_RECORD_LINE));
+      const by = hubLogin() || getTeam().me.login;
+      const r = m.type === "team.project.propose"
+        ? await projectPropose(thingsDeps(), repo, { patch: m.patch, why: m.why, by, start: await projectStart(projectWhere().code) })
+        : await projectWithdraw(thingsDeps(), repo, { id: m.id, by });
+      if ("error" in r) return w.send(thingsError(m.type, rid, r.error));
+      return w.send({ ...(await projectMsg(repo, rid)), type: m.type, proposal: r.proposal });
+    }
+    // --- Onboarding (#430, round 75): the walk, a step done or skipped, the whole walk finished or skipped, walked again
+    case "team.onboarding": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return w.send({ type: m.type, rid, repo: "", error: NO_RECORD_LINE });
+      try { return w.send(await walkMsg(repo, rid, !!m.refresh)); }
+      catch (e) { return w.send(thingsError(m.type, rid, `couldn't read the project's onboarding: ${String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200)}`)); }
+    }
+    case "team.onboarding.step":
+    case "team.onboarding.finish":
+    case "team.onboarding.redo": {
+      const repo = recordOf(activeRoom(getTeam()));
+      if (!repo) return w.send(thingsError(m.type, rid, NO_RECORD_LINE));
+      const by = hubLogin() || getTeam().me.login, at = new Date().toISOString();
+      const r = await onboarded.change(thingsDeps(), repo, m.type === "team.onboarding.step" ? { step: { by, id: m.id, how: m.how, at } }
+        : m.type === "team.onboarding.finish" ? { finish: { by, how: m.how, at } } : { redo: { by, at } });
+      if ("error" in r) return w.send(thingsError(m.type, rid, r.error));
+      try { return w.send({ ...(await walkMsg(repo, rid)), type: m.type }); }
+      catch (e) { return w.send(thingsError(m.type, rid, String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200))); }
     }
     // --- end The room's own tools
     // --- Connectors (#320, round 55): the one answer, and a repository connected to (or taken off) a cloud group
@@ -1043,27 +1436,60 @@ export async function handleTeam(w: Wire, m: any) {
       return w.send({ type: "team.github.connect.cancel", rid, ok: true });
     // --- end GitHub from a card
 
-    // --- ship (#33, PROTOCOL.md round 19): stamp stable, one stable back, the offer, update on yes
-    case "team.stamp": {
-      const d = shipNow();
-      if (!d) return w.send({ type: "team.stamp", rid, error: "stable is not set up here" });
-      const to = typeof m.to === "string" && m.to ? m.to : undefined;
-      return w.send({ type: "team.stamp", rid, ...(await stamp(d, to)) });
-    }
-    case "team.stables": {
-      const d = shipNow();
-      if (!d) return w.send({ type: "team.stables", rid, tags: [], stable: null, head: null });
-      return w.send({ type: "team.stables", rid, ...(await stables(d)) });
-    }
+    // --- the timeline (#424, PROTOCOL.md round 68): every release, who runs which, what never made it
+    case "team.timeline":
+      return w.send({ type: "team.timeline", rid, ...(await timelineAsk(m.refresh === true)) });
+    // --- ship (#33, #418, PROTOCOL.md rounds 19 and 67): the offer of a new release, update on yes
     case "team.update": {
       const d = shipNow();
-      if (!d) return w.send({ type: "team.update", rid, error: "stable is not set up here" });
-      const r = await update(d);
+      if (!d) return w.send({ type: "team.update", rid, error: "updates are not set up here" });
+      const r = await update(d);   // the Sol's own channel: dev or stable
       if (r.ok) { answered(r.sha); void refreshVersion(); }   // #417: the release I sit on moved; said on my presence and to the faces
       return w.send({ type: "team.update", rid, ...r });
     }
     case "team.stable.get":
       return w.send({ type: "team.stable", ...(rid !== undefined ? { rid } : {}), ...(offerNow() ?? { sha: null }) });
+    // --- carrying own changes over (#425, carry.ts, PROTOCOL.md round 70)
+    case "team.carry.get":
+      await carryCheck().catch(() => null);
+      return w.send({ ...carryMsg(), ...(rid !== undefined ? { rid } : {}) });
+    case "team.carry.use":
+      return w.send({ type: "team.carry.use", rid, ...(await carryUse().catch((e) => ({ error: String(e?.message ?? e) }))) });
+    case "team.carry.aside": {
+      const o = offerNow();
+      const r = await setAside(o?.behind ? { onto: o.sha, tag: o.tag, follow: BRANCH[o.channel] } : undefined).catch((e) => ({ error: String(e?.message ?? e) }));
+      return w.send({ type: "team.carry.aside", rid, ...r });
+    }
+    case "team.carry.stay": {
+      const o = offerNow(), back = carryNow()?.kind === "back";
+      const r = carryStay(o?.behind ? o.sha : undefined);
+      if (r.ok && o?.behind && !back) answered(o.mine);   // the offer stands answered: not shown again, the next release is
+      return w.send({ type: "team.carry.stay", rid, ...r });
+    }
+    case "team.asides":
+      return w.send({ type: "team.asides", rid, asides: await asides().catch(() => []) });
+    // --- pin and go back (#426, pin.ts, PROTOCOL.md round 79)
+    case "team.pin.get":
+      return w.send({ type: "team.pin", rid, ...(await pinView(true)) });
+    case "team.pin.set":
+      return w.send({ type: "team.pin.set", rid, ...(await pinHere().catch((e) => ({ error: String(e?.message ?? e) }))) });
+    case "team.pin.clear": {   // back to latest: the pin goes, then Update as usual
+      const r = await unpin().catch((e) => ({ error: String(e?.message ?? e) }));
+      if (!("ok" in r && r.ok)) return w.send({ type: "team.pin.clear", rid, ...r });
+      const d = shipNow();
+      if (m.update !== true || !d) return w.send({ type: "team.pin.clear", rid, ok: true });
+      const u = await update(d);
+      if (u.ok) { answered(u.sha); void refreshVersion(); }
+      return w.send({ type: "team.pin.clear", rid, ok: true, update: u });
+    }
+    case "team.pin.plan":
+      return w.send({ type: "team.pin.plan", rid, ...(typeof m.tag === "string" ? await pinPlan(m.tag).catch((e) => ({ error: String(e?.message ?? e) })) : { error: "which release?" }) });
+    case "team.pin.back":
+      return w.send({ type: "team.pin.back", rid, ...(typeof m.tag === "string" && typeof m.sure === "string" ? await pinBack(m.tag, m.sure).catch((e) => ({ error: String(e?.message ?? e) })) : { error: "which release, and what Sol said it loses?" }) });
+    case "team.aside.back": {
+      const r = typeof m.name === "string" ? await bringBack(m.name) : { error: "which one?" };
+      return w.send({ type: "team.aside.back", rid, ...("error" in r ? { error: r.error } : { ok: true, stage: r.stage, said: r.said }) });
+    }
     // --- end ship
 
     // --- Talk (#37, PROTOCOL.md round 24): a line typed in the chat (a `/discord ` one goes out first), a thread's lines
@@ -1144,7 +1570,7 @@ export async function handleTeam(w: Wire, m: any) {
       return reply({ ok: true, mark: mk, by });
     }
     // --- end Felt or silent
-    // --- the owner's press (#117): who may lead a label (the repo's people), and who leads it, landed on main at once
+    // --- who leads a label (#117, #438): who may (the repo's people), and the change asked of the project's settings
     case "team.leads.who": case "team.leads.set": {
       const repo = String(m.repo ?? "");
       const reply = (o: object) => w.send({ type: m.type, rid, repo, ...o });
@@ -1153,12 +1579,13 @@ export async function handleTeam(w: Wire, m: any) {
       const r = await pressLeads({
         gh: runGh, login: myLogin, team: teamMembers,
         ping: (to, line, at) => !onCloud() && sendRelay("ping", { to, line, pingKind: "decision", repo: at }),   // #214: GitHub logins
+        table: (code) => projectOwners(code),
+        propose: async (code, table, by) => {
+          const { record } = projectWhere(code);
+          if (!record) return { error: "this project has no record yet, so its settings cannot be asked" };
+          return projectPropose(thingsDeps(), record, { patch: { owners: table }, by, start: await projectStart(code), why: "who leads, from the board's leads" });
+        },
       }, { repo, label: String(m.label ?? ""), leads: m.leads });
-      if ("ok" in r && !r.unchanged) {
-        forgetOwners(repo);
-        sendRelay("changed", { repo, leads: true });   // every other Sol reads CODEOWNERS again
-        void getBoard(true).catch(() => {});
-      }
       return reply(r);
     }
     // --- end the owner's press
@@ -1179,16 +1606,71 @@ export async function handleTeam(w: Wire, m: any) {
 
     // --- File it (#119, PROTOCOL.md round 29): the press takes the shot; the words file the issue; the number comes back
     case "team.file.shot": {
-      try { return w.send({ type: "team.file.shot", rid, shot: await takeShot() }); }
+      try { return w.send({ type: "team.file.shot", rid, shot: fileItBlock() ? await viaBlock("shot", {}) : await takeShot() }); }
       catch (e) {
         const why = String((e as Error)?.message ?? e).slice(0, 200);
         return w.send({ type: "team.file.shot", rid, error: why === HIDDEN ? HIDDEN : `no screenshot: ${why}` });   // the eye's words as they are
       }
     }
+    // --- The review session (#416): a press on its card, the reviewer's own (tonight.ts checks it); answered by rid
+    // fromSol is set by index.ts from the socket's own page, never taken from the message
+    case "team.tonight.press": {
+      const v = String(m.verdict ?? "") as Verdict;
+      const r = await tonightPress(tonightDeps(), { sessionId: String(m.sessionId ?? ""), verdict: v, key: String(m.key ?? ""), window: m.fromSol === true, ...(Number(m.number) > 0 ? { number: Number(m.number) } : {}), ...(typeof m.fix === "string" ? { fix: m.fix } : {}) });
+      return w.send({ type: "team.tonight.press", rid, ...r });
+    }
+    // the card's key, for Sol's own window only: the session's agent never sees it (tonight.ts keyOf)
+    case "team.tonight.key": {
+      if (m.fromSol !== true) return w.send({ type: "team.tonight.key", rid, error: "only Sol's own window" });
+      return w.send({ type: "team.tonight.key", rid, key: tonightKey(String(m.sessionId ?? "")) });
+    }
+    // --- end The review session
+    // --- Scoped and Approve (#482, checkpoint.ts): the Sol developer's press on the card in their session; the key first,
+    // which only Sol's own window gets (fromSol is index.ts's word, never the message's)
+    case "team.checkpoint.press": {
+      const r = await pressCheckpoint({ me: async () => getTeam().me.login || (await myLogin().catch(() => "")), today: () => localDay(), bus: workBus },
+        { sessionId: String(m.sessionId ?? ""), id: String(m.id ?? ""), key: String(m.key ?? ""), window: m.fromSol === true });
+      return w.send({ type: "team.checkpoint.press", rid, ...r });
+    }
+    case "team.checkpoint.key": {
+      if (m.fromSol !== true) return w.send({ type: "team.checkpoint.key", rid, error: "only Sol's own window" });
+      return w.send({ type: "team.checkpoint.key", rid, key: checkpointKey(String(m.sessionId ?? "")) });
+    }
+    // --- end Scoped and Approve
+    // --- "This broke" (#421, broke.ts): the person's press on a change in Cowork; the label, the comment, the cards
+    case "team.broke": {
+      try { return w.send({ type: "team.broke", rid, ...(await brokeNow({ repo: String(m.repo ?? ""), number: Number(m.number), why: m.why, agent: false })) }); }
+      catch (e) { return w.send({ type: "team.broke", rid, error: String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200) }); }
+    }
+    // --- end This broke
+    // --- The hand-in card (#476, handin.ts): Bring it in / Not tonight, the change's author's own press; fromSol is set
+    // by index.ts from the socket's own page, never taken from the message
+    case "team.handin.press": {
+      const choice = m.choice === "in" ? "in" : m.choice === "not" ? "not" : null;
+      if (!choice) return w.send({ type: "team.handin.press", rid, error: "no such button" });
+      const r = await handInBring(handInDeps(), { sessionId: String(m.sessionId ?? ""), id: String(m.id ?? ""), choice, key: String(m.key ?? ""), window: m.fromSol === true });
+      return w.send({ type: "team.handin.press", rid, ...r });
+    }
+    // the card's key, for Sol's own window only: the session's agent never sees it. `box`: the wrap-up box's merge asks
+    // for it too, in a session with no card yet (#579)
+    case "team.handin.key": {
+      if (m.fromSol !== true) return w.send({ type: "team.handin.key", rid, error: "only Sol's own window" });
+      return w.send({ type: "team.handin.key", rid, key: handInCardKey(String(m.sessionId ?? ""), m.box === true) });
+    }
+    // the wrap-up box's merge (#579, handin.ts mergePress): ready if a draft, then merged; the person's own press, the
+    // same key as the card's
+    case "team.handin.merge": {
+      const r = await handInMerge(cardDeps(), { sessionId: String(m.sessionId ?? ""), key: String(m.key ?? ""), window: m.fromSol === true, pr: m.pr });
+      return w.send({ type: "team.handin.merge", rid, ...r });
+    }
+    // --- end The hand-in card
     case "team.file": {
       const s = getTeam();
       try {
-        const r = await fileIt({
+        const held = typeof m.shot === "string" ? heldShot(m.shot) : null;   // the engine's own shot slot: a grab, or a shot taken before the block was loaded
+        const r: { number: number; url: string; shot: boolean; note?: string } = fileItBlock()
+          ? JSON.parse(await viaBlock("file", { mode: m.mode, words: m.words, page: m.page, conversation: m.conversation, ...(held ? { image: held.toString("base64") } : typeof m.shot === "string" ? { shot: m.shot } : {}) }))
+          : await fileIt({
           gh: (args) => runGh(args),
           ghInput: (args, body) => ghWithInput((a) => runGh(a), args, body),
           login: () => myLogin(),
@@ -1208,6 +1690,20 @@ export async function handleTeam(w: Wire, m: any) {
     default:
       return;
   }
+}
+
+// --- File it as Sol's own block (step 7 of the design): with the frame on and Sol's own block loaded (its card pressed,
+// the key github pasted), the press and the words go to its tools in its big room; otherwise the path above, as before. A
+// grab the engine holds goes as the picture itself (the room cannot read the engine's slot). Sol's own only: a block of
+// that id in the home is the AI's, and the person's words and grab never go to one nobody pressed for this button
+const FILE_IT = "file-it";
+const fileItBlock = () => !!kernelNow()?.solOwnReady(FILE_IT, "file");
+async function viaBlock(tool: "shot" | "file", args: Record<string, unknown>): Promise<string> {
+  const plain = Object.fromEntries(Object.entries(args).filter(([, v]) => typeof v === "string"));   // its tools take words
+  const r = await runThingTool(`thing_${FILE_IT}_${tool}`, plain, "face");
+  const text = (r.content[0] as { text?: string })?.text ?? "";
+  if (r.isError) throw new Error(text || `file it's ${tool} failed`);
+  return text;
 }
 
 // --- Hand (#34): the record is the issue; the relay carries the word; every face hears a hand to me, the notch's too
@@ -1244,6 +1740,133 @@ startHand({
 onRelay("hand", (m) => { if (!onCloud()) heard(m); });   // #214: never from a Sol name taken for a GitHub login
 onBoard(() => boardRead());
 // --- end Hand
+// --- The timeline (#424, timeline.ts): Sol's own checkout, read on the first ask (never at start), kept beside Work's
+// state; everyone on it as the roster says now. A read behind a stale answer goes to every Cowork face when it is done
+const timelineDeps = (): TimelineDeps => ({
+  dir: resolve(HERE, ".."),
+  gh: (args) => runGh(args),
+  repo: () => remoteOf(resolve(HERE, "..")),
+  developer: async (repo) => { const r = await rhythmOf({ gh: (a) => runGh(a), now: () => new Date() }, repo).catch(() => null); const me = getTeam().me.login.toLowerCase(); return !r || r.dev.some((x) => x.toLowerCase() === me); },
+  night: async (repo) => { const r = await rhythmOf({ gh: (a) => runGh(a), now: () => new Date() }, repo).catch(() => null); return r ? { handIn: r.handIn, review: r.review, until: r.until, release: r.release, zone: r.zone, dev: r.dev, beta: r.beta, devBackup: backupsOf(r, "dev"), betaBackup: backupsOf(r, "beta"), handover: r.handover } : null; },   // only backups that count (#478)
+});
+keepTimelineIn(join(STATE_DIR, "timeline.json"));
+function timelineAsk(fresh = false) {
+  const s = getTeam(), me = onCloud(s) ? hubLogin(s) : s.me.login;
+  const roster = relayRoster().filter((e) => !e.agent);
+  const people = [{ login: me, version: roster.find((e) => e.who === me)?.version ?? versionNow() }, ...roster.map((e) => ({ login: e.who, version: e.version ?? null })), ...teamMembers().map((login) => ({ login, version: null }))];
+  return timelineNow(timelineDeps(), { me, people, fresh });
+}
+onTimeline(() => void timelineAsk().then((t) => everyoneTeam({ type: "team.timeline", ...t })).catch(() => {}));
+// --- end The timeline
+// --- The review session (#416, tonight.ts): once a minute, a review the project's rhythm names me for opens itself on
+// the engine my window is on, in my folder for the project, as a Work session with the summary and its card. Marked cowork under the room that has the
+// repo when there is one (Cowork lists it there); else a plain Work session, so it is never hidden
+const tonightDeps = (): TonightDeps => ({
+  me: () => getTeam().me.login,
+  // where the person is: a face on this engine (a NucBox with no window waits, the review stays due until the morning);
+  // SOL_TONIGHT=off in sol/engine/.env keeps an engine out of it
+  present: () => process.env.SOL_TONIGHT !== "off" && solWindowOn(),
+  folders: async () => {
+    const s = getTeam();
+    const own = await remoteOf(resolve(HERE, "..", "..", "..", "..")).catch(() => "");   // this Sol's own repository: SOL's rhythm lives there
+    const repos = [...new Set([...s.repos, ...s.rooms.flatMap((r) => connectedRepos(r)), ...(own ? [own] : [])])];
+    return workFolders(repos);
+  },
+  gh: (args) => runGh(args),
+  now: () => new Date(),
+  start: async ({ cwd, repo, title, text, id: given, role }: Parameters<TonightDeps["start"]>[0] & { role?: string }) => {
+    const id = given ?? randomUUID();   // a re-check's own id (#421): its one tool was given to that id first
+    if (role) mark(id, { role });   // its part (#484), before its first run: the guard holds it from the first call
+    const s = getTeam(), r = s.rooms.find((x) => connectedRepos(x).some((y) => y.toLowerCase() === repo.toLowerCase()));
+    if (r) mark(id, { mode: "cowork", room: roomMark(r, recordOf(r)), roomId: r.id, unread: true });
+    else mark(id, { unread: true });
+    await handleWork(quiet, { type: "work.say", sessionId: id, fresh: true, cwd, text });
+    void nameWhenWritten(id, title);
+    return id;
+  },
+  bus: workBus,
+  say: (l) => console.log(l),
+  ping: (p) => { if (!onCloud()) sendRelay("ping", { to: p.to, pingKind: "decision", line: p.line, issue: p.issue, repo: p.repo }, true); },
+});
+// the hand-in session (#420, handin.ts): the same engine, folders and start as the review's, plus git in the folder
+// for the clashes (its origin fetched, then merged in memory; nothing checked out)
+const handInDeps = (): HandInDeps => ({
+  ...tonightDeps(),
+  start: (a) => tonightDeps().start({ ...a, role: "hand-in" } as Parameters<TonightDeps["start"]>[0]),   // the hand-in session's part (#484)
+  git: (cwd, args) => new Promise((ok) =>
+    execFile("git", args, { cwd, timeout: 120_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
+      (err, out, errOut) => ok({ code: err ? (typeof (err as { code?: unknown }).code === "number" ? (err as { code: number }).code : 128) : 0, out: String(out) || String(errOut) }))),
+});
+// the hand-in card (#476, handin.ts scan): the hand-in's deps, plus this machine's Work sessions, where a session's talk
+// ends (the card sits after it), and its row marked unread
+const cardDeps = (): CardDeps => ({
+  ...handInDeps(),
+  sessions: async () => (await workSessions()).sessions,
+  lastItem: async (id) => {
+    const run = getRun(id);
+    const list = run ? run.items.list : (await sessionItems(id).catch(() => null))?.list ?? [];
+    return list.length ? list[list.length - 1].id : "";
+  },
+  unread: (id) => { mark(id, { unread: true }); broadcastSessions(); },
+  opened: (id, cwd) => openedInFiles(transcriptFiles(id, cwd)),   // the PRs it or its background agents opened (#579)
+});
+/** POST /tonight (index.ts): a review or the hand-in opened now, by the person on this Mac */
+export const tonightNow = (role: "dev" | "beta" | "hand-in", repo?: string) => role === "hand-in"
+  ? openHandInNow(handInDeps(), { ...(repo ? { repo } : {}) })
+  : tonightOpen(tonightDeps(), { role, ...(repo ? { repo } : {}) });
+/** the tool hand_in (work/tools.ts): the hand-in session's agent takes one of the person's PRs back to draft, when the
+ *  project lets agents pick; ready is refused, the person's press hands in (#476; handin.ts pick checks it all) */
+export const handInMark = (sessionId: string, number: number, ready: boolean) => handInPick(handInDeps(), { sessionId, number, ready });
+/** "this broke" (#421), from a press here or an agent's tool (work/wire.ts) */
+export const brokeNow = (a: { repo: string; number: number; why: unknown; agent: boolean }) => thisBroke(tonightDeps(), a);
+// the slight send backs before the review (#421, sentback.ts): one made severe at `until` shows "back from last night"
+// on the review that opens after it
+const nightTick = () => {
+  void (async () => { const d = tonightDeps(); await sentBackTick(d).catch(() => {}); await tonightTick(d).catch(() => {}); })();
+  void handInTick(handInDeps()).catch(() => {});
+  void handInScan(cardDeps()).catch(() => {});   // every two minutes inside (#476)
+};
+setTimeout(nightTick, 30_000).unref?.();
+setInterval(nightTick, 60_000).unref();
+// --- end The review session
+// --- Carrying own changes over (#425, carry.ts): the session sits in a side copy, filed under the repo like any Work
+// session; the live folder moves only when nothing is at work in it (a Work run, a talk), side copies aside
+const SOL_ROOT = resolve(HERE, "..", "..", "..");
+void startCarry({
+  root: SOL_ROOT,
+  open: async ({ cwd, title, text }) => {
+    const id = randomUUID();
+    mark(id, { unread: true });
+    await handleWork(quiet, { type: "work.say", sessionId: id, fresh: true, cwd, text });
+    void nameWhenWritten(id, title);
+    return id;
+  },
+  working: (id) => !!getRun(id)?.working,
+  // quiet: nothing at work in the live folder itself; a side copy under it (its own worktree, the carry's among them) is
+  // a folder of its own that the move does not touch. The live folder may itself be a side copy, so only below it counts
+  quiet: (top, copy) => busyIn(top).every((j) => !!j.cwd && (j.cwd.startsWith(`${top.replace(/\/+$/, "")}/.claude/worktrees/`) || (!!copy && (j.cwd === copy || j.cwd.startsWith(`${copy}/`))))),
+  tell: (m) => everyFace(m),
+  updated: (release) => { answered(release); void refreshVersion(); },
+  now: () => new Date(),
+  wentBack: (c) => wentBack(c),   // #426: a carry onto an older release, landed: the data and the pin
+}).catch(() => {});
+// --- end Carrying own changes over
+// --- Pin and go back (#426, pin.ts): the release's engine built with the TypeScript the build watcher runs; once
+// saved data was put back the engine ends itself and its keeper starts that build
+void startPin({
+  root: SOL_ROOT,
+  ctx: convertCtx,
+  now: () => new Date(),
+  build: () => new Promise((ok) => execFile(process.execPath, ["node_modules/typescript/bin/tsc"], { cwd: join(SOL_ROOT, "engine"), timeout: 300_000, maxBuffer: 16 * 1024 * 1024 },
+    (err, out, errOut) => ok(err ? (`${out}${errOut}`.trim() || String(err.message)) : null))),
+  exit: () => { console.log("pin: went back; the engine ends so its keeper starts the release's build"); process.exit(0); },   // at once: no timer of the newer code writes on the older data
+  tell: (m) => everyFace(m),
+  touched: (id) => { const s = STEPS.find((x) => x.id === id); try { return !!s && s.touches(convertCtx).length > 0; } catch { return true; } },
+  carry: (a) => carryOver({ kind: "update", onto: a.onto, source: "HEAD", tag: a.tag, base: a.base, back: a.back }),
+  pinned: (p) => pinChanged(!!p),
+  moved: () => void refreshVersion(),
+}).catch(() => {});
+// --- end Pin and go back
 // --- GitHub from a card (#174): every face, not only Cowork's. Control sits in Settings in every mode, on the page's
 // one link, and that link says team.hello only while Cowork is open, so everyoneTeam would miss a sign-in from Life
 onConnect((r) => everyFace("login" in r ? { type: "team.github.connected", login: r.login } : { type: "team.github.connect.failed", error: r.error }));
@@ -1334,3 +1957,68 @@ onRelay("hub", (m) => {
 });
 function hubNow() { const i = relayHub(); return { type: "team.hub", say: "state", light: i.info?.light ?? "green", old: i.old, join: i.info?.join === true, ...(i.queued ? { ahead: i.queued.ahead, wait: i.queued.wait } : {}) }; }
 // --- end The hub's word
+
+// --- Cowork v3 (fr-30): every team.v3.* message, one place. The switch off: no answer, nothing loaded (F7). The face
+// speaks room ids; the trail's project ids (a room's cloud code, else its id's slug) are made in team/v3/door.ts.
+const V3_SLICE: [RegExp, string][] = [
+  [/^team\.v3\.(append|since|record)$/, "trail"],                       // slice 0, the trail and the record
+  [/^team\.v3\.(migrate\.dry|migrate\.run|on)$/, "switch"],            // slice 8, the import and the switch per project
+  [/^team\.v3\.cross\./, "cross"],                                     // slice 1, the crossing
+  [/^team\.v3\.(front|plan|needsme)$/, "plan"],                         // slice 2, the front, Space and Plan, the one count
+  [/^team\.v3\.(people|window|running)$/, "people"],                    // slice 3, People, my window, Running
+  [/^team\.v3\.places\./, "places"],                                   // slice 4, places and routing
+  [/^team\.v3\.(talk|setup|join)\./, "five"],                           // slice 5, Talk per item, setup, joining
+  [/^team\.v3\.studio\./, "studio"],                                   // slice 6, the studio and the nights
+  [/^team\.v3\.(artifacts|search|floor)\./, "seven"],                   // slice 7, artifacts, search, the floor
+];
+async function handleV3(w: Wire, m: any, rid: ReturnType<typeof RID>) {
+  if (!coworkV3()) return;
+  const which = V3_SLICE.find(([re]) => re.test(m.type))?.[1];
+  if (!which) return;
+  const me = getTeam().me.login;
+  switch (which) {
+    case "trail": {
+      v3mod ??= await import("./v3/index.js");
+      const { projectFor } = await import("./v3/project-id.js");
+      return w.send(await v3mod.answerV3({ ...m, ...(typeof m.project === "string" ? { project: projectFor(m.project) } : {}) }, me));
+    }
+    case "switch":
+      v3mod ??= await import("./v3/index.js");
+      return w.send(await (await import("./v3/switchwire.js")).answerSwitch(m, me));
+    case "cross": return (await import("./v3/crossing-wire.js")).handleCrossing(w, m, rid);
+    case "plan": return w.send(await (await import("./v3/planwire.js")).handleV3Plan(m));
+    case "people": {
+      const { handleV3: people } = await import("./v3/peopleWire.js");
+      try { return w.send({ type: m.type, rid, ...(await people(v3Deps(), m)) }); }
+      catch (e) { return w.send({ type: m.type, rid, error: String((e as Error)?.message ?? e).split("\n")[0].slice(0, 200) }); }
+    }
+    case "places": return w.send(await (await import("./v3/places-wire.js")).handleV3Places(m, { usage: (id) => usageOf(usageDeps(), id) }));
+    case "five": return w.send(await (await import("./v3/wire5.js")).handleV3Five(m, { me, push: everyoneTeam, projects: () => getTeam().rooms.map((r) => ({ id: r.id, name: r.name || r.id })) }));
+    case "studio": return w.send(await (await import("./v3/studio-wire.js")).handleStudio(m));
+    case "seven": {
+      const login = me || (await myLogin().catch(() => ""));
+      return w.send(await (await import("./v3/floorwire.js")).answerSeven(m, { me: login, projects: getTeam().rooms.map((r) => r.id) }));
+    }
+  }
+}
+/** what slice 3's answers read, from what this file already reads */
+function v3Deps(): import("./v3/peopleWire.js").V3Deps {   // a type only: erased at build
+  const s = getTeam(), room = activeRoom(s);
+  const me = onCloud(s) ? hubLogin(s) : s.me.login;
+  const rhythm = (repo: string) => rhythmOf({ gh: (a) => runGh(a), now: () => new Date() }, repo)
+    .then((r) => (r ? { handIn: r.handIn, review: r.review, release: r.release, zone: r.zone, dev: r.dev, devBackup: backupsOf(r, "dev") } : null));
+  return {
+    me: () => me,
+    project: () => ({ id: room.id, repos: room.repos.length ? room.repos : s.repos, owners: [me], members: teamMembers().filter((x) => x.toLowerCase() !== me.toLowerCase()) }),
+    roster: () => relayRoster(),
+    prs: () => peekBoard()?.prs ?? [],
+    timeline: async () => { const t = await timelineAsk(); return { waiting: t.waiting, releases: t.releases, people: t.people }; },
+    rhythm,
+    reds: () => import("./v3/places-wire.js").then((x) => x.redsOf(room.id)),   // Running's red line: its places' own sign-ins
+    openReview: (repo) => tonightNow("dev", repo),
+    // the dev review open now, if one is: its card's verdicts are the presses (titled "dev review · <night>", tonight.ts)
+    reviewOpen: async () => (await workSessions()).sessions.filter((x) => !x.archived && /^dev review · /.test(x.title ?? "") && Date.now() - x.updatedAt < 16 * 3_600_000)
+      .sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null,
+  };
+}
+// --- end Cowork v3

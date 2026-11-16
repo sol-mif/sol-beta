@@ -1,4 +1,4 @@
-// The owner's press (#117): who leads each label, set from Cowork by the repo's owner and landed on main at once.
+// Who leads each label (#117, #438): asked from Cowork as a proposal in the project's settings; nothing lands on main.
 // GitHub is a function that writes down its arguments; nothing here reaches the network. The guard is run for real.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { devOnly } from "./dev-copy.ts";
 
-const { leadsOf, cleanLeads, setLeads, leadsMessage, leadsLine, pressLeads, CODEOWNERS } = await import("../src/team/press.ts");
+const { leadsOf, cleanLeads, setLeads, leadsLine, askLine, pressLeads, CODEOWNERS } = await import("../src/team/press.ts");
 const { owners } = await import("../src/team/claims.ts");
 type Deps = import("../src/team/press.ts").PressDeps;
 
@@ -69,72 +69,73 @@ test("setLeads moves people on one label's lines, never a path, and keeps the co
   }
 });
 
-test("the commit says what changed, who pressed and why there is no PR; the ping says it in one line", () => {
-  const m = leadsMessage("cowork", ["frank", "isaac"], ["marco"], "marco");
-  assert.match(m.split("\n")[0], /^settings: cowork leads → @frank @isaac$/);
-  assert.match(m, /Set by marco in Cowork, the owner's press \(#117\)/);
-  assert.match(m, /Was: @marco\./);
-  assert.match(m, /Sol-Setting: leads$/);
+test("the ping says it in one line: applied, or asked of the people it waits for", () => {
   assert.equal(leadsLine("cowork", ["frank"], ["marco"], "marco"), "cowork is now led by frank (was marco), set by marco");
+  assert.equal(askLine("cowork", ["frank", "isaac"], ["marco"], "marco"), "marco proposes cowork led by frank and isaac (now marco): agree or not yet in the project's settings");
 });
 
-function fake(o: { admin?: boolean; people?: string[]; file?: string; conflict?: boolean; team?: string[]; inSight?: string[] } = {}) {
+type Asked = { repo: string; owners: Record<string, string[]>; by: string };
+function fake(o: { people?: string[]; table?: Record<string, string[]>; state?: "open" | "applied"; needs?: string[]; refuse?: string; team?: string[]; inSight?: string[] } = {}) {
   const calls: string[][] = [];
   const pings: { to: string; line: string; repo: string }[] = [];
+  const asked: Asked[] = [];
   const d: Deps = {
     login: async () => "marco",
     team: () => o.team ?? ["frank", "isaac", "marco"],
     ping: (to, line, repo) => { pings.push({ to, line, repo }); return (o.inSight ?? [to]).includes(to); },
+    table: async () => o.table ?? { base: ["marco"], cowork: ["marco", "frank"], social: ["marco"] },
+    propose: async (repo, owners, by) => {
+      asked.push({ repo, owners, by });
+      if (o.refuse) return { error: o.refuse };
+      return { proposal: { id: "abcd1234", by, at: "2026-10-30T10:00:00Z", patch: { owners }, was: {}, needs: o.needs ?? ["frank", "marco", "wong-tap"], poll: "p0110000", state: o.state ?? "open" } };
+    },
     gh: async (args) => {
       calls.push(args);
       const a = args.join(" ");
-      if (a.includes(".permissions.admin")) return o.admin === false ? "false\n" : "true\n";
       if (a.includes("/collaborators")) return (o.people ?? ["frank", "isaac", "marco", "Wong-Tap"]).join("\n") + "\n";
-      if (a.startsWith(`api repos/acme/sol/contents/${CODEOWNERS}?ref=main`)) return JSON.stringify({ sha: "blob1", content: Buffer.from(o.file ?? SMALL).toString("base64") });
-      if (a.startsWith("api -X PUT")) { if (o.conflict) throw new Error("gh: .github/CODEOWNERS does not match blob1 (HTTP 409)"); return "c0ffee\n"; }
       return "";
     },
   };
-  return { d, calls, pings };
+  return { d, calls, pings, asked };
 }
 
-test("the press: owner checked, people checked, one commit on main over the file just read, the team pinged", async () => {
-  const { d, calls, pings } = fake();
+test("the press asks the project: the whole table with one label changed, never a write to main; who it waits for is pinged", async () => {
+  const { d, calls, pings, asked } = fake();
   const r = await pressLeads(d, { repo: "acme/sol", label: "cowork", leads: ["frank", "wong-tap"] });
   assert.ok("ok" in r, JSON.stringify(r));
   assert.deepEqual(r.leads, ["frank", "Wong-Tap"], "GitHub's own spelling of a login");
   assert.deepEqual(r.was, ["marco", "frank"]);
-  assert.equal(r.commit, "c0ffee");
-  const put = calls.find((c) => c[0] === "api" && c[1] === "-X")!;
-  assert.deepEqual(put.slice(0, 4), ["api", "-X", "PUT", `repos/acme/sol/contents/${CODEOWNERS}`]);
-  const f = (k: string) => put[put.findIndex((x) => x.startsWith(`${k}=`))].slice(k.length + 1);
-  assert.equal(f("branch"), "main");
-  assert.equal(f("sha"), "blob1", "written only over the version just read");
-  assert.match(f("message"), /^settings: cowork leads → @frank @Wong-Tap/);
-  assert.deepEqual(leadsOf(Buffer.from(f("content"), "base64").toString("utf8")).cowork, ["frank", "Wong-Tap"]);
-  assert.deepEqual(pings.map((p) => p.to).sort(), ["Wong-Tap", "frank", "isaac"], "everyone but the one who pressed, once each");
-  assert.ok(pings.every((p) => p.repo === "acme/sol" && /cowork is now led by frank and Wong-Tap \(was marco and frank\), set by marco/.test(p.line)));
-  assert.deepEqual(r.pinged.sort(), ["Wong-Tap", "frank", "isaac"]);
+  assert.deepEqual(asked, [{ repo: "acme/sol", by: "marco", owners: { base: ["marco"], cowork: ["frank", "Wong-Tap"], social: ["marco"] } }], "the other labels kept as they are");
+  assert.deepEqual(r.proposal, { id: "abcd1234", state: "open", needs: ["frank", "marco", "wong-tap"] });
+  assert.ok(!calls.some((c) => c.includes("PUT") || c.includes("-X")), "nothing written on GitHub");
+  assert.deepEqual(pings.map((p) => p.to).sort(), ["frank", "wong-tap"], "the people it waits for, but the one who pressed");
+  assert.ok(pings.every((p) => p.repo === "acme/sol" && /^marco proposes cowork led by frank and Wong-Tap \(now marco and frank\)/.test(p.line)));
 });
 
-test("the press refuses: not the owner, not a person on the repo, a bad label, too many; a moved file says so", async () => {
-  const no = fake({ admin: false });
-  const r1 = await pressLeads(no.d, { repo: "acme/sol", label: "cowork", leads: ["frank"] });
-  assert.match(String((r1 as { error: string }).error), /only the owner of acme\/sol sets who leads; GitHub says marco is not/);
-  assert.ok(!no.calls.some((c) => c.includes("PUT")), "nothing written");
+test("applied at once (it named only me): the team hears it as before", async () => {
+  const { d, pings } = fake({ state: "applied", needs: ["marco"], table: { base: ["marco"] } });
+  const r = await pressLeads(d, { repo: "acme/sol", label: "base", leads: ["marco", "frank"] });
+  assert.ok("ok" in r && r.proposal?.state === "applied");
+  assert.deepEqual(pings.map((p) => p.to).sort(), ["frank", "isaac"]);
+  assert.ok(pings.every((p) => /base is now led by marco and frank \(was marco\), set by marco/.test(p.line)));
+});
+
+test("the press refuses: not a person on the repo, a bad label, too many; the project's refusal is said", async () => {
   const r2 = await pressLeads(fake().d, { repo: "acme/sol", label: "cowork", leads: ["stranger"] });
   assert.match(String((r2 as { error: string }).error), /stranger has no access to acme\/sol; invite them on GitHub first/);
   assert.match(String((await pressLeads(fake().d, { repo: "acme/sol", label: "music", leads: ["frank"] }) as { error: string }).error), /the labels are/);
   assert.match(String((await pressLeads(fake().d, { repo: "acme/sol", label: "base", leads: ["a", "b", "c"] }) as { error: string }).error), /at most two/);
-  const moved = await pressLeads(fake({ conflict: true }).d, { repo: "acme/sol", label: "base", leads: ["frank"] });
-  assert.match(String((moved as { error: string }).error), /changed on main a moment ago; read the board again and press once more/);
+  const busy = fake({ refuse: "a change to the owners is waiting for agreement already" });
+  const r3 = await pressLeads(busy.d, { repo: "acme/sol", label: "base", leads: ["frank"] });
+  assert.match(String((r3 as { error: string }).error), /waiting for agreement already/);
+  assert.equal(busy.pings.length, 0);
 });
 
-test("the same leads again: nothing written, nobody pinged", async () => {
-  const { d, calls, pings } = fake();
+test("the same leads again: nothing asked, nobody pinged", async () => {
+  const { d, asked, pings } = fake();
   const r = await pressLeads(d, { repo: "acme/sol", label: "base", leads: ["marco"] });
   assert.ok("ok" in r && r.unchanged);
-  assert.ok(!calls.some((c) => c.includes("PUT")));
+  assert.equal(asked.length, 0);
   assert.equal(pings.length, 0);
 });
 
@@ -142,6 +143,7 @@ test("the guard refuses an agent the same write by hand (main-by-api), and lets 
   const guard = resolve(import.meta.dirname, "../../harness/guard");
   const dir = mkdtempSync(join(tmpdir(), "press-guard-"));
   execFileSync("git", ["init", "-q", "-b", "marco/cowork-leads-117"], { cwd: dir });
+  execFileSync("git", ["remote", "add", "origin", "https://github.com/sol-mif/sol-dev.git"], { cwd: dir });   // a sol-dev checkout (#479)
   execFileSync("git", ["config", "sol.login", "marcocyl04-ux"], { cwd: dir });
   const run = (command: string) => execFileSync("node", [guard], { cwd: dir, encoding: "utf8", input: JSON.stringify({ tool_name: "Bash", tool_input: { command }, cwd: dir }) });
   const put = "gh api -X PUT repos/acme/sol/contents/.github/CODEOWNERS -f message=x -f content=eA== -f sha=1";

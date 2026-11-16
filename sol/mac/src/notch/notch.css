@@ -378,3 +378,8 @@ html, body, #root { background: transparent !important; }
   .notch .float { animation: float-fade 0.2s ease-out both; }
 }
 @keyframes float-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Cowork v3 (fr-30, #555): the one "needs me" count, a small ember disc on the mark's shoulder */
+.notch .mark .cw3-need { position: absolute; top: -3px; right: -9px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 999px; background: #fd302d;
+  color: #fff; font: 600 9.5px/14px -apple-system, system-ui, sans-serif; text-align: center; font-variant-numeric: tabular-nums; pointer-events: none;
+  box-shadow: 0 0 0 1.5px #000, 0 0 10px rgb(253 48 45 / .55); }

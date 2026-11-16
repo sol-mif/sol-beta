@@ -3,7 +3,6 @@ import type { TileDef } from "./index";
 import { Sig, since } from "../bits";
 
 const eyes: TileDef = {
-  name: "eyes wanted",
   Tile: ({ board }) => {
     const want = board.prs.filter((p) => p.state === "open" && !p.draft && p.review !== "APPROVED");
     if (!want.length) return <p className="ctile-none">no pull request waits for a review</p>;

@@ -1,0 +1,575 @@
+/* The stage (#696): play.html's styles for the stage, a block's frame and its kinds, on the face's tokens (palette.css,
+   tokens.css: every space, size, colour, duration and curve from sol/design/system/tokens.json). The frame's shape is
+   the continuous curve, drawn as a path (Stage.tsx: the Glass, the clip, the rim's mask), never border-radius. */
+
+.st-stage { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); user-select: none; -webkit-user-select: none; }
+.st-stage.dragging iframe { pointer-events: none; }
+.st-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); font-size: var(--t-read); line-height: var(--t-read-line); text-align: center; }
+.st-empty b { display: block; color: var(--dim); font-weight: 500; }
+
+/* the guides, the slot's ghost, the marquee */
+.st-guide { position: absolute; background: var(--sun); opacity: 0.7; pointer-events: none; z-index: 900; }
+.st-guide.v { width: var(--hair); top: 0; bottom: 0; }
+.st-guide.h { height: var(--hair); left: 0; right: 0; }
+.st-ghost { position: absolute; pointer-events: none; z-index: 900; }
+.st-ghost svg { position: absolute; inset: 0; overflow: visible; }
+.st-ghost path { fill: none; stroke: color-mix(in srgb, var(--sun) 70%, transparent); stroke-width: 1; stroke-dasharray: 4 3; }
+.st-marq { position: absolute; pointer-events: none; z-index: 900; border: var(--hair) solid var(--sun); background: color-mix(in srgb, var(--sun) 6%, transparent); }
+
+/* a block (v4 §4, #738, kinds/Frame.tsx): one frame for every kind. Its glass at the card step on the curve (18,
+   --curve-block), its inside clipped to the same curve, a 34px head with the kind's mark and the title. The state is the
+   frame, never a dot: working, the bands sweep the top edge; waits, a yellow hairline and the yellow words; frozen, a
+   dashed edge, a pearl stamp and the body desaturated; live, nothing added */
+.st-block { position: absolute; transform-origin: center; will-change: transform; }
+.st-glass { position: absolute; inset: 0; z-index: 0; }
+/* the glow a waiting block gives, and the step a focused one lifts: a soft light under the curve, never its corner */
+.st-block::before { content: ""; position: absolute; inset: 0; border-radius: var(--curve-block); pointer-events: none; transition: box-shadow var(--d-turn) var(--e-arrive); }
+.st-block.waits::before { box-shadow: var(--shadow-waits); }
+.st-block:focus-within::before { box-shadow: var(--shadow-focus); }
+.st-in { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; }
+.st-warm { position: absolute; inset: 0; background: var(--jelly); opacity: 0; pointer-events: none; z-index: 3; mix-blend-mode: screen; }
+.st-rim { position: absolute; inset: 0; pointer-events: none; z-index: 3; background: var(--edge); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.st-block.waits .st-rim { background: var(--c-waits-line); }
+.st-sweep { position: absolute; left: var(--curve-block); right: var(--curve-block); top: 0; height: calc(var(--hair) * 2); z-index: 4; pointer-events: none; opacity: 0; background: var(--jelly); background-size: 300% 100%; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-block.working .st-sweep { opacity: 1; animation: st-sweep calc(var(--d-pour) * 2) linear infinite; }
+@keyframes st-sweep { to { background-position: -300% 0; } }
+.st-block.frozen .st-body { filter: var(--filter-frozen); }
+.st-stamp { position: absolute; right: var(--s3); bottom: var(--s2); z-index: 4; pointer-events: none; font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-pearl); background: var(--c-stamp-fill); border: var(--hair) solid var(--c-pearl-line); border-radius: var(--r-chip); padding: 0 var(--s2); white-space: nowrap; }
+.st-pick { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 4; }
+.st-pick path { fill: none; stroke: var(--sun); stroke-width: 1; }
+.st-block.moving { transition: left var(--d-pour) var(--e-pour), top var(--d-pour) var(--e-pour), width var(--d-pour) var(--e-pour), height var(--d-pour) var(--e-pour); }
+.st-block.born { animation: st-born var(--d-pour) var(--e-pour) both; }
+@keyframes st-born { from { transform: scale(0.72); } to { transform: scale(1); } }
+.st-block.born .st-warm { animation: st-cool var(--d-pour) var(--e-leave) both; }
+@keyframes st-cool { 0% { opacity: 0.34; } 100% { opacity: 0; } }
+.st-block.dying { animation: st-dying var(--d-pour) var(--e-leave) both; pointer-events: none; }
+@keyframes st-dying { to { transform: scale(0.6); opacity: 0; } }
+.st-block.dying .st-warm { opacity: 0.45; }
+@media (prefers-reduced-motion: reduce) {
+  .st-block.moving { transition: none; }
+  .st-block.born, .st-block.born .st-warm, .st-block.dying, .st-block.working .st-sweep, .st-step.half i { animation: none; }
+}
+
+/* the head: the mark and the title at rest; the kind, when it was made and its source on hover and on focus, with fold
+   and pop (a popped window's head is the same row, Popped.tsx) */
+.st-head { position: relative; z-index: 2; flex: none; height: var(--h-head); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s2) 0 var(--s3); cursor: grab; color: var(--ink); font-size: var(--t-head); line-height: var(--t-head-line); white-space: nowrap; overflow: hidden; }
+.st-head:active { cursor: grabbing; }
+.st-t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; flex: none; max-width: 60%; }   /* the title keeps its room; the hover words give theirs first */
+.st-meta, .st-st { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.st-meta { opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-block:hover .st-meta, .st-block:focus-within .st-meta, .st-block.waits .st-meta { opacity: 1; }
+.st-block.waits .st-meta { color: var(--sun); }
+.st-acts { margin-left: auto; display: flex; gap: var(--hair); flex: none; opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-block:hover .st-acts, .st-block:focus-within .st-acts { opacity: 1; }
+.st-acts button { appearance: none; border: 0; background: transparent; color: var(--mute); font: inherit; width: var(--h-chip); height: var(--h-chip); padding: 0; border-radius: var(--r-chip); display: grid; place-items: center; cursor: default; }
+.st-acts button:hover { background: var(--line); color: var(--ink); }
+/* #953: the reference icon; attached, it stays shown and inked (no new colour) */
+.st-acts.attached { opacity: 1; }
+.st-acts.attached button:not(.st-ref) { visibility: hidden; }
+.st-block:hover .st-acts.attached button, .st-block:focus-within .st-acts.attached button { visibility: visible; }
+.st-acts .st-ref[aria-pressed=true] { color: var(--ink); }
+
+/* a kind's mark (kinds/Mark.tsx): colour or pearl is one class on the stage's root; pearl wears the colour on hover */
+.st-mark { appearance: none; border: 0; padding: 0; flex: none; width: var(--s4); height: var(--s4); border-radius: var(--curve-mark); display: grid; place-items: center; cursor: default; color: var(--c-mark-ink); background: var(--sheen-mark), var(--mark); box-shadow: var(--shadow-mark); transition: color var(--d-turn) var(--e-move), box-shadow var(--d-turn) var(--e-move); }
+.st-mark svg { width: 100%; height: 100%; display: block; }
+.st-mark text { fill: currentColor; font-family: inherit; font-weight: 700; }
+.st-mark.k-page { --mark: var(--c-mark-page); }
+.st-mark.k-list { --mark: var(--c-mark-list); }
+.st-mark.k-card { --mark: var(--c-mark-card); }
+.st-mark.k-diff { --mark: var(--c-mark-diff); }
+.st-mark.k-shots { --mark: var(--c-mark-shots); }
+.st-mark.k-browser { --mark: var(--c-mark-browser); }
+.st-mark.k-terminal { --mark: var(--c-mark-terminal); }
+.st-mark.k-table { --mark: var(--c-mark-table); }
+.marks-pearl .st-mark { background: var(--c-mark-pearl); color: var(--c-pearl); box-shadow: none; }
+.marks-pearl .st-block:hover .st-mark, .marks-pearl .st-block:focus-within .st-mark, .marks-pearl .st-chip:hover .st-mark { background: var(--sheen-mark), var(--mark); color: var(--c-mark-ink); box-shadow: var(--shadow-mark); }
+
+/* a state, as a dot: the side's rows, the notch's chips and a popped window's head; the stage's frame has none */
+.st-dot { appearance: none; border: 0; padding: 0; width: var(--s2); height: var(--s2); flex: none; border-radius: 50%; background: var(--mute); cursor: default; }
+.st-dot.live { background: var(--live); }
+.st-dot.working { background: var(--jelly); animation: st-spin calc(var(--d-pour) * 2) linear infinite; }
+.st-dot.waits { background: var(--sun); }
+.st-dot.frozen { background: var(--c-pearl); }
+.st-dot.half { background: linear-gradient(90deg, var(--live) 50%, transparent 50%); box-shadow: inset 0 0 0 1px var(--live); }
+@keyframes st-spin { to { filter: hue-rotate(360deg); } }
+
+.st-body { position: relative; z-index: 2; flex: 1; min-height: 0; padding: 0 var(--s3) var(--s3); overflow: auto; color: var(--dim); font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-body::-webkit-scrollbar { width: 0; }
+.st-grip { position: absolute; right: 0; bottom: 0; width: calc(var(--s4) + var(--hair) * 2); height: calc(var(--s4) + var(--hair) * 2); cursor: nwse-resize; z-index: 4; }
+.st-grip::after { content: ""; position: absolute; right: var(--s2); bottom: var(--s2); width: var(--s1); height: var(--s1); border-right: var(--hair) solid var(--mute); border-bottom: var(--hair) solid var(--mute); opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-block:hover .st-grip::after { opacity: 1; }
+/* the mark opens the block's card: the verbs not on its head, its versions, its ledger, the sessions it is in */
+.st-ledger { position: absolute; left: var(--s3); top: var(--h-head); z-index: 5; background: var(--pop); box-shadow: var(--pop-shadow); border-radius: var(--r-row); padding: var(--s2) var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); min-width: calc(var(--s12) * 5); }
+.st-ledger div { white-space: nowrap; }
+.st-ledger-acts { display: flex; align-items: center; gap: var(--s1); margin-bottom: var(--s2); }
+.st-ledger-acts button { appearance: none; border: 0; height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--line); color: var(--ink); font: inherit; cursor: default; }
+.st-ledger-acts button:hover { background: var(--edge); }
+.st-vers { display: flex; flex: none; margin-left: auto; }
+
+/* the folded chips at the stage's foot; the toast that names a verb once (the key hints are not burned into a frame) */
+.st-folds { position: absolute; left: var(--s3); bottom: var(--s2); display: flex; gap: var(--s1); z-index: 950; }
+/* the tray (#739, Tray.tsx): a hairline with a count at the stage's foot, folded by default; open, the miniatures over it,
+   the stage's own in front solid-small, the project's others as outlines in groups by the session that made them. A
+   miniature is the frame at 1/6 (its size inline, trayRules.ts miniSize), its kind's mark and its title in the head */
+.st-tray { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); max-width: calc(100% - var(--s12) * 2); display: flex; flex-direction: column-reverse; align-items: center; z-index: 960; }
+.st-trayline { appearance: none; border: 0; background: none; padding: 0 var(--s2); height: var(--h-chip); display: flex; align-items: center; gap: var(--s2); color: var(--mute); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); font-variant-numeric: tabular-nums; cursor: default; }
+.st-trayhair { width: var(--s12); height: var(--hair); background: var(--edge); transition: width var(--d-turn) var(--e-move), background var(--d-turn) var(--e-move); }
+.st-trayline:hover { color: var(--dim); }
+.st-trayline:hover .st-trayhair, .st-tray.open .st-trayhair { width: calc(var(--s12) * 2); background: var(--mute); }
+.st-tray.over .st-trayhair { background: var(--c-pearl); }
+.st-trayshelf { display: flex; align-items: flex-end; gap: var(--s4); max-width: 100%; overflow-x: auto; padding: var(--s2) var(--s3) var(--s1); background: var(--pop); border-radius: var(--r-card); box-shadow: var(--shadow-float); scrollbar-width: none; }
+.st-trayshelf::-webkit-scrollbar { height: 0; }
+.st-tray.over .st-trayshelf { box-shadow: var(--shadow-float), inset 0 0 0 var(--hair) var(--c-pearl); }
+.st-traygroup { flex: none; display: flex; align-items: flex-end; gap: var(--s2); }
+.st-traygroup + .st-traygroup { padding-left: var(--s4); border-left: var(--hair) solid var(--line); }
+.st-mini { position: relative; flex: none; overflow: hidden; color: var(--mute); cursor: grab; }
+.st-mini:active { cursor: grabbing; }
+.st-miniframe { position: absolute; inset: 0; overflow: visible; }
+.st-miniframe path { fill: none; stroke: var(--edge); stroke-width: 1px; }
+.st-mini.own .st-miniframe path { fill: var(--line); stroke: var(--line); }
+.st-mini:hover { color: var(--dim); }
+.st-mini:hover .st-miniframe path { stroke: var(--mute); }
+.st-mini.popped .st-miniframe path { stroke-dasharray: var(--s1) var(--s1); }
+.st-minihead { position: absolute; left: var(--s1); right: var(--s1); top: 0; height: var(--t-label-line); display: flex; align-items: center; gap: var(--s1); min-width: 0; }
+.st-mini .st-mark { width: var(--s3); height: var(--s3); box-shadow: none; }
+.st-minit { flex: 1; min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+.st-mini.own .st-minit { color: var(--ink); }
+.st-chip { appearance: none; border: 0; height: var(--h-chip); padding: 0 var(--s2) 0 var(--s1); border-radius: var(--r-chip); background: var(--line); color: var(--dim); font: inherit; font-size: var(--t-label); display: inline-flex; align-items: center; gap: var(--s2); cursor: default; white-space: nowrap; }
+.st-chip:hover { color: var(--ink); }
+.st-toast { pointer-events: none; position: absolute; left: 50%; bottom: var(--s3); transform: translate(-50%, var(--s2)); background: var(--pop); border: var(--hair) solid var(--edge); border-radius: var(--r-row); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); padding: var(--s1) var(--s3); z-index: 990; white-space: nowrap; opacity: 0; transition: opacity var(--d-turn) var(--e-arrive), transform var(--d-turn) var(--e-arrive); }
+.st-toast.on { opacity: 1; transform: translate(-50%, 0); }
+.st-toast b { font-weight: 600; margin-right: var(--s2); background: var(--jelly); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.st-note { color: var(--mute); margin: 0; }
+
+/* the kinds, each its own drawing at the type scale: 13 body, 15 titles, 11 mono, even figures (v4 §4) */
+/* a page: the agent's html in its own frame, read at the reading type (Page.tsx lays the type under its own styles) */
+.st-page { display: block; width: 100%; height: 100%; border: 0; background: transparent; color-scheme: normal; }   /* the page's own scheme: a dark face around a light page paints the frame opaque */
+/* a list: step dots (the bands turn while a step runs, green done, yellow waits) and a thin meter */
+.st-list { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s1); }
+.st-steps { display: flex; flex-direction: column; gap: var(--hair); }
+.st-step { display: grid; grid-template-columns: var(--s3) minmax(0, 1fr) auto; align-items: center; gap: var(--s2); min-height: var(--h-chip); padding: 0 var(--s1); color: var(--ink); }
+.st-step i { width: calc(var(--s2) + var(--hair) * 2); height: calc(var(--s2) + var(--hair) * 2); border-radius: 50%; box-shadow: inset 0 0 0 var(--hair) var(--mute); }
+.st-step.done i { background: var(--green); box-shadow: none; }
+.st-step.done .st-steptext { color: var(--dim); }
+.st-step.half i { background: var(--jelly); box-shadow: none; animation: st-turn calc(var(--d-pour) * 2) linear infinite; }
+.st-step.wait i { background: color-mix(in srgb, var(--sun) 28%, transparent); box-shadow: inset 0 0 0 var(--hair) var(--sun); }
+@keyframes st-turn { to { transform: rotate(1turn); } }
+/* #891: one thing at a time: while a block asks, the running step rests (attention.ts) */
+.st-stage[data-mover="asks"] .st-step.half i { animation: none; }
+.st-steptext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-step small { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.st-step.half small { color: var(--amber); }
+.st-step.wait small { color: var(--sun); }
+.st-yes { appearance: none; border: var(--hair) solid var(--c-waits-line); border-radius: var(--r-chip); background: transparent; color: var(--sun); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s2); cursor: default; }
+.st-yes:hover { background: var(--sun); color: var(--c-deep); }
+.st-listfoot { display: flex; flex-direction: column; gap: var(--s1); margin: 0 var(--s1); color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); font-variant-numeric: tabular-nums; }
+/* shots: at their real ratio on black, the picked one in the pearl, the question under them */
+.st-shots { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s1); }
+.st-stills { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s2); align-items: start; }
+.st-still { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); min-width: 0; }
+.st-still > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-frame { position: relative; aspect-ratio: 4 / 3; background: var(--c-deepest); border-radius: var(--r-row); overflow: hidden; box-shadow: inset 0 0 0 var(--hair) var(--edge); }
+.st-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.st-stillmark { position: absolute; inset: var(--s3) var(--s6) var(--s6) var(--s3); border: var(--hair) solid var(--line); border-radius: var(--r-chip); }
+.st-still.keep .st-frame { box-shadow: var(--shadow-picked); }
+.st-still.keep > span { color: var(--ink); }
+.st-still.cut { opacity: 0.4; }
+.st-picks { position: absolute; right: var(--s1); top: var(--s1); display: flex; gap: var(--hair); opacity: 0; background: var(--pop); border-radius: var(--r-chip); }
+.st-still:hover .st-picks { opacity: 1; }
+.st-picks button { appearance: none; border: 0; background: transparent; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s1); border-radius: var(--r-chip); color: var(--dim); cursor: default; }
+.st-picks button.on { background: var(--c-pearl); color: var(--c-deep); }
+.st-ask { display: flex; align-items: center; gap: var(--s2); color: var(--ink); }
+.st-ask::before { content: ""; flex: none; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--mute); }
+.st-block.waits .st-ask::before { background: var(--sun); box-shadow: 0 0 0 var(--s1) color-mix(in srgb, var(--sun) 18%, transparent); }
+.st-ask small { margin-left: auto; color: var(--mute); font-size: var(--t-label); font-variant-numeric: tabular-nums; }
+/* a card: one sentence big, one small; the meaning colour is its only colour */
+.st-card { display: flex; flex-direction: column; gap: var(--s1); padding-top: var(--s1); }
+.st-big { font-size: var(--t-big); line-height: var(--t-big-line); color: var(--ink); font-weight: 600; display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.st-big > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-say { flex: none; width: var(--s2); height: var(--s2); border-radius: 50%; background: currentColor; box-shadow: var(--shadow-meaning); color: var(--live); }
+.st-say.waits { color: var(--write); }
+.st-say.wrong { color: var(--error); }
+.st-sub { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* one line small: a 2 × 1 card holds no second */
+/* a table: a quiet head, numbers right-aligned in even figures, a row's state as its meaning dot */
+.st-table { width: 100%; border-collapse: collapse; font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-table td, .st-table th { padding: var(--s1) var(--s2); border-bottom: var(--hair) solid var(--line); text-align: left; color: var(--dim); font-weight: 400; white-space: nowrap; }
+.st-table th { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; }
+.st-table td:first-child { color: var(--ink); }
+.st-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.st-table .st-is::before { content: ""; display: inline-block; vertical-align: middle; width: var(--s2); height: var(--s2); border-radius: 50%; margin-right: var(--s2); background: var(--mute); }
+.st-table .st-is.live::before { background: var(--jelly); }
+.st-table .st-is.done::before { background: var(--live); }
+.st-table .st-is.waits::before { background: var(--write); }
+.st-table .st-is.wrong::before { background: var(--error); }
+/* a diff: a file row (pills), then mono at 11 with gutter numbers; added and removed as soft green and red bands */
+.st-diffk { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s1); min-height: 0; }
+.st-filerow { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.st-file { appearance: none; background: transparent; border: var(--hair) solid var(--edge); border-radius: var(--r-chip); padding: 0 var(--s2); font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); white-space: nowrap; cursor: default; }
+.st-file.on { color: var(--ink); border-color: var(--c-pearl-line); }
+.st-file .p { color: var(--green); }
+.st-file .m { color: var(--red-soft); }
+.st-diff { font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); font-variant-ligatures: none; background: color-mix(in srgb, var(--c-deepest) 35%, transparent); border-radius: var(--r-row); padding: var(--s1) 0; overflow-x: auto; }
+.st-diff::-webkit-scrollbar { height: 0; }
+.st-dl { display: grid; grid-template-columns: var(--s8) var(--s3) max-content; white-space: pre; min-width: 100%; }
+.st-dl .n { color: var(--mute); text-align: right; padding-right: var(--s2); font-variant-numeric: tabular-nums; user-select: none; }
+.st-dl .s { color: var(--mute); }
+.st-dl.a { background: var(--c-added); color: var(--ink); }
+.st-dl.a .s { color: var(--green); }
+.st-dl.d { background: var(--c-removed); }
+.st-dl.d .s { color: var(--red-soft); }
+.st-dl.h .s, .st-dl.h > span:last-child { color: var(--mute); }
+
+/* the side's "blocks here" (BlocksHere.tsx) */
+.st-here { display: flex; flex-direction: column; gap: var(--hair); }
+.st-here h4 { margin: 0; padding: 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--mute); }
+.st-hererow { height: var(--h-row); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3); color: var(--dim); white-space: nowrap; overflow: hidden; cursor: default; }
+.st-hererow:hover { background: var(--line); }
+.st-heret { overflow: hidden; text-overflow: ellipsis; }
+.st-heren { margin-left: auto; font-size: var(--t-label); opacity: 0.7; }
+:root[data-whole] .st-heren { opacity: 1; }   /* #891: dim words are not dimmed again */
+
+/* the join (#709): a block whose six are still in the air is not drawn yet; it is born warm as they land (useJelly) */
+.st-block.coming { visibility: hidden; }
+.st-text { margin: 0; white-space: pre-wrap; font: inherit; color: var(--dim); overflow: auto; height: 100%; }
+
+/* the meaning channel's live (tokens.css --live), which the face loads only with the frame on: scoped to the stage's own
+   boxes so the face around them is untouched (#709) */
+.st-stage, .st-here, .st-room, .st-folds { --live: var(--green-strong); }
+
+/* the stage's bar (#698, play.html's #ctx and #things, BarChips.tsx): over the box, what you point at in the sun's
+   yellow after a quiet "on", and the ask's things as chips you drag onto the stage; "· placed" once one has a slot */
+.st-bar { display: flex; flex-direction: column; justify-content: flex-end; gap: var(--s1); padding: 0 var(--s1) var(--s2); min-height: calc(var(--h-chip) + var(--s2)); }
+.st-ctx, .st-things { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.st-cchip { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); color: var(--sun); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.st-on-w { color: var(--mute); }
+.st-cchip button { appearance: none; border: 0; background: none; padding: 0 var(--s1); color: var(--mute); font: inherit; cursor: default; }
+.st-cchip button:hover { color: var(--ink); }
+.st-thing { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s2); background: var(--line); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; cursor: grab; }
+.st-thing i { font-style: normal; color: var(--mute); }
+.st-thing:hover, .st-thing.slotted { color: var(--ink); }
+.st-thing.slotted::after { content: "· placed"; color: var(--mute); }
+
+/* point and say: the part the pointer rests on, lit in the sun's yellow (a page's own parts light themselves, parts.ts) */
+.st-body [data-part].st-on { outline: var(--hair) solid var(--sun); outline-offset: calc(var(--hair) * -1); }
+
+/* carry and start (#700): the sessions a block is in, under its ledger; the project's last lines a new session opens
+   with, folded at the top of the talk */
+.st-ledger .st-in-sessions { margin-top: var(--s1); padding-top: var(--s1); border-top: var(--hair) solid var(--line); color: var(--mute); }
+.st-start { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); }
+.st-start button { appearance: none; border: 0; padding: 0; background: none; color: inherit; font: inherit; cursor: default; }
+.st-start button:hover { color: var(--dim); }
+/* opened, they unfold under it, in the talk's flow */
+.st-start { flex-wrap: wrap; margin-bottom: var(--s3); }
+.st-startlines { flex-basis: 100%; padding: var(--s2) var(--s3); background: var(--pop); color: var(--dim); min-width: 0; }
+.st-startlines div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-startlines div { font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-startlines i { font-style: normal; color: var(--ink); }
+
+/* the kinds that are programs (#699; play.html's .browser and .term). The browser: its address and the wheel over the
+   page, the page under them on the raised shade; in the app the page is a child web view laid over .st-child */
+.st-browser { display: flex; flex-direction: column; gap: var(--s2); height: 100%; min-height: 0; padding-top: var(--s1); }
+/* the address in a pill; the shot on hover; the wheel always (whose hand is on the page) */
+.st-url { flex: none; height: var(--h-chip); display: flex; align-items: center; gap: var(--s2); padding-left: var(--s3); border-radius: var(--r-pill); background: var(--line); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); min-width: 0; }
+.st-url .st-addr { color: var(--ink); }
+.st-shot { opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-block:hover .st-shot, .st-popped .st-shot { opacity: 1; }
+.st-addr { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; appearance: none; border: 0; background: transparent; padding: 0; font: inherit; color: inherit; outline: none; }
+input.st-addr:focus { color: var(--ink); }
+.st-said { flex: none; color: var(--mute); white-space: nowrap; }
+.st-shot { flex: none; appearance: none; border: 0; background: transparent; font: inherit; color: var(--dim); padding: 0 var(--s1); cursor: default; }
+.st-shot:hover:not(:disabled) { color: var(--ink); }
+.st-shot:disabled { color: var(--mute); }
+.st-wheel { flex: none; display: flex; }
+.st-view { flex: 1; min-height: 0; position: relative; background: var(--raised); border-radius: var(--r-row); overflow: hidden; }
+.st-view > .st-note { padding: var(--s3); }
+.st-child { position: absolute; inset: 0; }
+.st-child .st-note { padding: var(--s3); }
+.st-view .st-page { background: transparent; }
+
+/* the terminal: mono at 11 on the deepest black, a live cursor while it runs (xterm's, put out when the shell ends) */
+.st-term { position: relative; height: 100%; min-height: 0; background: var(--c-deepest); border-radius: var(--r-row); overflow: hidden; }
+.st-termhost { position: absolute; inset: var(--s2) var(--s3); }
+.st-termhost .xterm, .st-termhost .xterm-viewport { background: transparent !important; }
+.st-termgone { position: absolute; left: var(--s3); bottom: var(--s1); margin: 0; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* ── the lenses, pop out, the notch (#701; lens.ts, pop.ts, LensPill.tsx) ─────────────────────────────────────── */
+/* TUI: the terminal's lines (the other blocks, one each) over its shell */
+.st-body.st-tui { display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; }
+/* a grid, so the states stand in one column beside the titles, as a terminal pads them */
+.st-tuilines { flex: none; display: grid; grid-template-columns: max-content max-content minmax(0, max-content) max-content 1fr; column-gap: var(--s2); align-items: center; font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); white-space: pre; overflow: hidden; }
+.st-tuiedge { grid-column: 1 / -1; }
+.st-tuiline { display: contents; cursor: default; }
+.st-tuiline:hover > * { color: var(--ink); }
+.st-tuiline .st-mark { justify-self: start; }
+.st-tuit { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding-right: var(--s4); }
+.st-tuis { color: var(--mute); }
+.st-tuiline b { font-weight: 500; color: var(--mute); }
+.st-tuiterm { position: relative; flex: 1; min-height: 0; }
+/* a chip's word: on the notch, popped out */
+.st-chipk { color: var(--mute); }
+/* CLI: the talk full until a block asks (StageColumn.tsx); IDE: the file column at the stage's left (FilePane, search
+   first), the talk docked beside */
+.st-room { --st-files: calc(var(--s12) * 5); }
+.st-files { flex: none; width: var(--st-files); min-width: 0; min-height: 0; overflow: hidden; border-right: var(--hair) solid var(--line); display: flex; flex-direction: column; }
+/* the lens pill at the top of the side */
+.st-lens { padding: 0 var(--s2) var(--s2); }
+/* a popped block's own window: the block alone, its head the window's grip */
+.st-popped { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--base); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-popped > .st-head { cursor: default; border-bottom: var(--hair) solid var(--line); }
+.st-popped > .st-head .st-acts { opacity: 1; }
+.st-popped > .st-head .st-acts button { width: auto; padding: 0 var(--s2); font-size: var(--t-label); }
+.st-popped > .st-body { flex: 1; height: auto; }
+/* the notch's chips: a block pinned there, with its state dot */
+.st-notchpins { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.st-notchpins .st-chip { --live: var(--green-strong); }
+
+/* ── what runs in the background (#703; the design: runs.html): a list whose steps are runs (kinds/RunRows.tsx) ── */
+.st-runs { display: flex; flex-direction: column; }
+.st-runs-head { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-runs-count { margin-right: auto; }
+.st-run { position: relative; isolation: isolate; display: grid; grid-template-columns: var(--s8) minmax(0, 13fr) minmax(0, 30fr) minmax(0, 8fr) minmax(0, 6fr); align-items: center; gap: var(--s3); height: calc(var(--s12) + var(--s4)); padding: 0 var(--s2); cursor: default; outline: none; }
+.st-run + .st-run::before { content: ""; position: absolute; left: var(--s2); right: var(--s2); top: 0; height: var(--hair); background: var(--line); }
+.st-run.waits + .st-run::before, .st-run.working + .st-run::before, .st-run + .st-run.waits::before, .st-run + .st-run.working::before { display: none; }
+.st-run:hover .st-run-nm, .st-run:focus-visible .st-run-nm { text-decoration: underline; text-decoration-color: var(--mute); text-underline-offset: var(--s1); }
+.st-run-who { min-width: 0; }
+.st-run-nm { color: var(--ink); font-weight: 600; font-size: var(--t-body); line-height: var(--t-body-line); white-space: nowrap; }
+.st-run-is { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-run-ln { color: var(--c-pearl); font-size: var(--t-body); line-height: var(--t-body-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.st-run.done .st-run-ln, .st-run.ended .st-run-ln, .st-run.queued .st-run-ln { color: var(--dim); }
+.st-run.waits .st-run-ln { color: var(--sun); }
+.st-run-far { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
+.st-run-track { height: var(--s1); margin-top: var(--s1); background: var(--line); overflow: hidden; clip-path: inset(0 round var(--hair)); }
+.st-run-track i { display: block; height: 100%; background: var(--c-pearl-line); }
+.st-run.working .st-run-track i { background: var(--jelly); background-size: 200% 100%; animation: st-drift calc(var(--d-pour) * 3) linear infinite; }
+.st-run.waits .st-run-track i { background: var(--sun); }
+.st-run-pr { display: flex; justify-content: flex-end; min-width: 0; }
+.st-run-tag { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--c-pearl); white-space: nowrap; }
+.st-run-tag.pearl { color: var(--c-deep); }
+.st-run-tag.sun { color: var(--sun); }
+.st-run-tagw { position: relative; }
+a:has(> .st-run-tag) { text-decoration: none; }
+
+/* the jelly per row: Body.tsx's, its halo by what it does; done rests, paler, with the live dot; waits wears the sun */
+.st-run-jelly { position: relative; display: inline-block; flex: none; justify-self: center; }
+.st-run-jelly.done > span { filter: saturate(0.35) brightness(0.8); }
+.st-run-jelly.done::after { content: ""; position: absolute; right: calc(var(--hair) * -1); bottom: var(--hair); width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--live); box-shadow: 0 0 0 calc(var(--hair) * 2) var(--c-deep); z-index: 2; }
+.st-run-jelly.waits::before { content: ""; position: absolute; inset: calc(var(--s2) * -1); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--sun) 45%, transparent), transparent 70%); animation: st-runwait calc(var(--d-pour) * 2) var(--e-move) infinite; }
+@keyframes st-runwait { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.08); } }
+
+/* one session opened (runs.html scene 3) */
+.st-runone { display: flex; flex-direction: column; gap: var(--s3); height: 100%; min-height: 0; }
+.st-runone-head { display: flex; align-items: center; gap: var(--s2); min-width: 0; white-space: nowrap; }
+.st-runone-head .st-run-is { color: var(--dim); font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-runone-back { appearance: none; border: 0; background: none; padding: 0; font: inherit; color: var(--mute); cursor: default; }
+.st-runone-back:hover { color: var(--ink); }
+.st-runone-tags { margin-left: auto; display: flex; gap: var(--s2); }
+.st-runone-body { display: grid; grid-template-columns: minmax(0, 13fr) minmax(0, 10fr); gap: var(--s6); min-height: 0; overflow: auto; }
+.st-move { display: flex; gap: var(--s3); align-items: baseline; padding: var(--s1) 0; }
+.st-move .k { width: calc(var(--s8) + var(--s2)); flex: none; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-move .w { color: var(--dim); font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.st-move.st-move-said .w { color: var(--ink); font-family: inherit; font-size: var(--t-body); line-height: var(--t-body-line); white-space: normal; }
+.st-move.st-move-waits .w { color: var(--sun); }
+.st-runone-side h4 { margin: 0 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--mute); }
+.st-runone-files { display: flex; flex-wrap: wrap; gap: var(--s1); margin-bottom: var(--s4); }
+.st-runone-file { font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); background: var(--line); padding: var(--s1) var(--s2); }
+.st-runone-stat { display: flex; gap: var(--s4); color: var(--dim); font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-runone-stat b { display: block; color: var(--ink); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* the run folded: one chip in the talk's head (runs.html scene 1), yellow while one needs you (scene 4) */
+.st-runchips { display: flex; gap: var(--s2); flex: none; align-self: center; }
+.st-runchips:empty { display: none; }
+.st-runchip { position: relative; isolation: isolate; appearance: none; border: 0; background: none; display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3) 0 var(--s2); font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); white-space: nowrap; cursor: default; }
+.st-runchip-words { color: var(--dim); }
+.st-runchip.waits .st-runchip-words { color: var(--sun); }
+
+/* ── the room (#734, v4 §2; StageColumn.tsx): the talk, a block docked beside the stage ─────────────────────────────
+   left and right a column at --st-talkw (reading width, the seam's share, never under 44ch: model.ts talkWidth); bottom
+   a row at --st-talkh (talkRow: 200 px, risen while you write); full the talk alone, the stage kept but not shown. The
+   talk's box sits outside its scroller, so it never scrolls out of view; a block arriving packs the stage, not the talk */
+.st-room { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
+.st-room[data-dock="right"] { flex-direction: row-reverse; }
+.st-room[data-dock="bottom"] { flex-direction: column-reverse; }
+.st-talk { position: relative; flex: none; display: flex; flex-direction: column; min-width: 0; min-height: 0; transition: width var(--d-pour) var(--e-pour), height var(--d-pour) var(--e-pour); }
+.st-room.seaming .st-talk { transition: none; }
+.st-room[data-dock="left"] .st-talk { width: var(--st-talkw); max-width: 100%; border-right: var(--hair) solid var(--line); }
+.st-room[data-dock="right"] .st-talk { width: var(--st-talkw); max-width: 100%; border-left: var(--hair) solid var(--line); }
+.st-room[data-dock="bottom"] .st-talk { height: var(--st-talkh); border-top: var(--hair) solid var(--line); }
+.st-room[data-dock="full"] .st-talk { flex: 1; }
+.st-main { position: relative; flex: 1; display: flex; min-width: 0; min-height: 0; container-type: inline-size; }
+.st-room[data-dock="full"] .st-main { display: none; }
+.st-stagebox { position: relative; flex: 1; min-width: 0; min-height: 0; }
+/* the stage under its floor beside the talk (a resize still settling; StageColumn shows the talk full once it has):
+   nothing of it is drawn rather than drawn cut. The floor is a block's least and its padding (model.ts STAGE_FLOOR) */
+@container (width < 224px) { .st-stagebox { display: none; } }
+/* the jelly's home at the stage's foot, by its right edge (useJelly.ts home) */
+.st-home { position: absolute; right: var(--s6); bottom: var(--s6); width: var(--s12); height: var(--s12); pointer-events: none; }
+.st-keys { right: calc(var(--s12) + var(--s8)); }
+
+/* the talk's head: its mark and name; the dock it is in and the four glyphs on hover; the runs' chips by it */
+.st-talkhead { flex: none; display: flex; align-items: center; gap: var(--s2); height: calc(var(--s8) + var(--hair) * 2); padding: 0 var(--s2) 0 var(--s3); border-bottom: var(--hair) solid var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); white-space: nowrap; cursor: grab; user-select: none; -webkit-user-select: none; min-width: 0; }
+.st-talkhead:active { cursor: grabbing; }
+.st-talkhead b { font-weight: 500; flex: none; }
+.st-talkmk { flex: none; width: var(--s4); height: var(--s4); border-radius: var(--r-pill); box-shadow: inset 0 0 0 var(--hair) var(--c-pearl); }
+.st-talkmeta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0; transition: opacity var(--d-turn) var(--e-move); }
+.st-talk:hover .st-talkmeta, .st-talk:focus-within .st-talkmeta { opacity: 1; }
+.st-docks { margin-left: auto; display: flex; gap: var(--hair); flex: none; opacity: 0; transition: opacity var(--d-turn) var(--e-move); }
+.st-talk:hover .st-docks, .st-talk:focus-within .st-docks, .st-room.lifting .st-docks { opacity: 1; }
+.st-docks button { appearance: none; border: 0; padding: 0; background: transparent; width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-chip); display: grid; place-items: center; color: var(--mute); cursor: default; }
+.st-docks button:hover { background: var(--line); color: var(--ink); }
+.st-docks button.on { color: var(--ink); }
+.st-docks svg { width: var(--s3); height: var(--s3); display: block; overflow: visible; }
+.st-docks svg rect { fill: none; stroke: currentColor; stroke-width: 1.2; }
+.st-docks svg rect.f { fill: currentColor; stroke: none; }
+.st-talkhead .st-runchips { margin-left: var(--s2); }
+
+/* the talk's lines: the session's whole chat, at reading width; the box under them; the folded blocks when it is full */
+/* the talk's box in the room: its own class (face.css's .talk-wrap is LifeTalk's; a class is worn by one file) */
+.st-talkwrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.st-talkwrap > .talk { min-height: 0; }
+.st-talk .talk { padding: var(--s3) 0 var(--s4); scrollbar-gutter: auto; }
+.st-talk .talk-inner { padding: 0 var(--s6); }
+.st-room[data-dock="bottom"] .talk { padding-top: var(--s2); }
+.st-talkbox { flex: none; min-width: 0; }
+.st-room[data-dock="full"] .st-talkbox, .st-room[data-dock="full"] .st-talkchips { width: 100%; max-width: var(--col-max); margin-left: auto; margin-right: auto; }
+.st-talkchips { flex: none; display: flex; flex-wrap: wrap; gap: var(--s1); padding: 0 var(--s4) var(--s2); }
+.st-talkchips .st-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* the seam: the talk's edge beside the stage, dragged */
+.st-seam { position: absolute; top: 0; bottom: 0; width: var(--s2); z-index: 20; cursor: ew-resize; }
+.st-room[data-dock="left"] .st-seam { right: calc(var(--s1) * -1); }
+.st-room[data-dock="right"] .st-seam { left: calc(var(--s1) * -1); }
+.st-seam::after { content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - var(--hair)); width: calc(var(--hair) * 2); background: transparent; transition: background var(--d-turn) var(--e-move); }
+.st-seam:hover::after, .st-room.seaming .st-seam::after { background: var(--c-pearl-line); }
+
+/* the head lifted: the four docks as ghosts over the room, the nearest lit */
+.st-ghosts { position: absolute; inset: 0; z-index: 996; pointer-events: none; background: color-mix(in srgb, var(--base) 72%, transparent); }
+.st-dockghost { position: absolute; display: grid; place-items: center; border: var(--hair) dashed var(--c-pearl-line); border-radius: var(--r-card); color: var(--mute); background: color-mix(in srgb, var(--c-pearl) 3%, transparent); font-size: var(--t-label); line-height: var(--t-label-line); white-space: pre; transition: background var(--d-turn) var(--e-move), border-color var(--d-turn) var(--e-move), color var(--d-turn) var(--e-move); }
+.st-dockghost.near { border-color: var(--c-pearl); color: var(--ink); background: color-mix(in srgb, var(--c-pearl) 8%, transparent); }
+
+/* the width probe (ten zeros at the talk's type: 64ch and 44ch in px) and the room's toast */
+.st-chprobe { position: absolute; display: inline-block; visibility: hidden; pointer-events: none; font-size: var(--t-body); white-space: nowrap; }
+.st-roomtoast { top: calc(var(--s8) + var(--s4)); }
+
+/* what you pointed at as you said it (#698), over your words in the talk (WorkTalk): a pearl bar, the quiet words */
+.wsent-on { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wsent-on::before { content: ""; flex: none; width: calc(var(--hair) * 2); height: var(--s3); background: var(--c-pearl); }
+
+/* the box in the talk at its floor (44ch): fit or drop, never cut (the layout skill, rule 4). The mic goes first (F9
+   still dictates), then the row wraps; no pill is squeezed under its words */
+.st-talk .picker.inrow { flex-wrap: wrap; row-gap: var(--s1); }
+.st-talk .picker.inrow > * { flex-shrink: 0; }
+@container (width < 360px) { .st-talk .picker.inrow > .wmic { display: none; } }
+
+/* moving between blocks and ghosts (#737). The block that holds the keys comes forward by a hairline and wears the pearl's
+   hairline; its content scrolls and zooms (.st-zoom). A ghost is the frame alone at a hairline, dashed, its title in the
+   head, no body; it fades out to the foot when nobody takes it. No state is a colour */
+.st-block.held { transform: translateY(calc(var(--hair) * -1)); }
+.st-held { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 4; }
+.st-held path { fill: none; stroke: var(--c-pearl-line); stroke-width: 1; }
+.st-body:focus { outline: none; }
+.st-zoom { transform-origin: 0 0; }
+.st-ghosted .st-ghostline { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.st-ghosted .st-ghostline path { fill: none; stroke: var(--c-pearl-line); stroke-width: 1; stroke-dasharray: 4 3; }
+.st-ghosted .st-head { color: var(--dim); }
+.st-ghosted .st-body { cursor: default; }
+.st-ghosted.held .st-ghostline path { stroke: var(--c-pearl); }
+.st-ghosted.fading { opacity: 0; transition: opacity var(--d-pour) var(--e-leave); }
+@media (prefers-reduced-motion: reduce) { .st-ghosted.fading { transition: none; } }
+
+/* the line under the stage (#903, stage.said): what was just done and the way back. Its own strip, one chip high, cut
+   from the stage's foot, so a block (laid inside the stage) and the talk (beside the stage) are never under it; nothing
+   reads through it. Quiet words at the label size, the way back after a dot; the agent's steps carry the jelly's dot.
+   It comes and leaves by opacity alone, and not at all with reduced motion */
+.st-stage.st-saidon { height: calc(100% - var(--h-chip)); }
+.st-said { height: var(--h-chip); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3); min-width: 0; overflow: hidden; pointer-events: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); opacity: 0; transition: opacity var(--d-turn) var(--e-leave); }
+.st-said.on { opacity: 1; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-saiddot { display: inline-block; vertical-align: middle; width: var(--s2); height: var(--s2); margin-right: var(--s2); border-radius: var(--r-pill); background: var(--jelly); }
+.st-saidw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-saidk { flex: none; white-space: nowrap; }
+.st-saidk::before { content: "·"; margin-right: var(--s2); }
+/* a narrow stage (the window small, the talk wide): two rows, what happened and then the way back, so the words are not
+   cut; the strip is two label lines high and the stage gives it that */
+@container (width < 480px) {
+  .st-stage.st-saidon { height: calc(100% - var(--s12)); }
+  .st-said { height: var(--s12); flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+  .st-saidw { max-width: 100%; }
+  .st-saidk::before { content: none; }
+}
+@media (prefers-reduced-motion: reduce) { .st-said, .st-said.on { transition: none; } }
+
+/* #954, stage.whole (whole.html scene 1): where you left off, at the empty talk's foot, plain lines in the talk's words */
+.st-room.whole .st-leftoff { position: absolute; left: var(--s6); right: var(--s6); bottom: var(--s4); display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-room.whole .st-leftoff p { margin: 0 0 var(--s1); color: var(--dim); }
+.st-room.whole .st-leftoff button { all: unset; cursor: default; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-room.whole .st-leftoff button:hover { color: var(--ink); }
+
+/* #954, stage.whole: states are behaviour, never colours or words (build/whole.md "The behaviour of each state").
+   waits comes toward you: forward 1.02, the raised glass and a warm pool under it; the rest steps back to .42 and works on */
+.st-room.whole .st-block { transition: opacity var(--d-turn) var(--e-arrive), transform var(--d-turn) var(--e-arrive); }
+.st-room.whole .st-block.waits { transform: scale(1.02); }
+.st-room.whole .st-block.waits::before { box-shadow: var(--shadow-forward); }
+.st-room.whole .st-block.waits .st-rim { background: var(--c-pearl-line); }
+.st-room.whole .st-block.waits .st-meta { color: var(--mute); }
+.st-room.whole .st-stage:has(.st-block.waits) .st-block:not(.waits):not(.held) { opacity: 0.42; }
+.st-room.whole .st-block.waits .st-ask::before { background: var(--jelly); box-shadow: none; }
+/* frozen goes flat like a print: no glass, the pearl at .035, the pearl hairline, the stamp; earlier versions stacked behind */
+.st-room.whole .st-block.frozen .st-glass { display: none; }
+.st-room.whole .st-block.frozen::before { background: var(--c-pearl-tint); border-radius: var(--curve-block); }
+.st-room.whole .st-block.frozen[data-prints]::before { box-shadow: var(--shadow-print-stack); }
+.st-room.whole .st-block.frozen .st-rim { background: var(--c-pearl-line); }
+.st-room.whole .st-block.frozen .st-body { filter: none; }
+.st-room.whole .st-stamp.st-print { display: flex; flex-direction: column; align-items: flex-end; gap: 0; padding: var(--s1) var(--s2); right: var(--s4); bottom: var(--s3); border-radius: var(--r-row); font-family: inherit; color: var(--ink); transform: rotate(-2deg); }
+.st-room.whole .st-stamp.st-print b { font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; }
+.st-room.whole .st-stamp.st-print small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+/* working: the write head, a 2px jelly band moving down the block while the body arrives (not a sweep along its top) */
+.st-room.whole .st-block.working .st-sweep { left: 0; right: 0; animation: st-write calc(var(--d-pour) * 6) var(--e-move) infinite; background-size: 100% 100%; }
+@keyframes st-write { from { top: var(--h-head); } to { top: calc(100% - var(--s4)); } }
+@media (prefers-reduced-motion: reduce) { .st-room.whole .st-block.working .st-sweep { animation: none; top: var(--h-head); } }
+/* a list's rows: no state colours. Done is a quiet check and struck words; the one at work turns; the one that waits on you
+   is lifted as a row with its answer in the jelly */
+.st-room.whole .st-step.done i { background: var(--dim); box-shadow: none; }
+.st-room.whole .st-step.done .st-steptext { color: var(--mute); text-decoration: line-through; }
+.st-room.whole .st-step.half i { background: none; box-shadow: inset 0 0 0 calc(var(--hair) * 2) var(--amber); }
+.st-room.whole .st-step.half small { color: var(--mute); }
+.st-room.whole .st-step.wait { background: var(--c-picked); border-radius: var(--r-pill); }
+.st-room.whole .st-step.wait i { background: none; box-shadow: inset 0 0 0 var(--hair) var(--dim); }
+.st-room.whole .st-step.wait .st-yes { background: var(--jelly); color: var(--c-deep); border: 0; border-radius: var(--r-pill); }
+.st-room.whole .st-block.waits .st-meta { opacity: 0; }
+.st-room.whole .st-block.waits:hover .st-meta, .st-room.whole .st-block.waits:focus-within .st-meta { opacity: 1; }
+
+/* #954, stage.whole: Settings' "how work is drawn" (whole.html scene 11), four cards in two columns, the picked one lit */
+.lens-pick { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-top: var(--s2); }
+.lens-pick button { all: unset; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border-radius: var(--r-card); border: var(--hair) solid var(--line); cursor: default; }
+.lens-pick button b { font-weight: 500; color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.lens-pick button span { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.lens-pick button.on { border-color: var(--c-pearl-line); background: var(--c-picked); }
+
+/* #954, stage.whole (whole.html scenes 11, 12): a lens is a drawing of the same blocks. TUI: each block a pane at its
+   place, no glass, the deep black at .35, square-ish (CURVE chip), mono, its head a 22 line "▍title [n]" in pearl and
+   its source at the right, the keys at the foot. IDE: each block an editor group (CURVE row), its head the group's
+   tabs (the open one lifted), the blocks one tab each (lens.ts ideGroups) */
+.st-block.st-tuipane, .st-block.st-idepane { background: color-mix(in srgb, var(--c-deep) 35%, transparent); box-shadow: inset 0 0 0 var(--hair) var(--edge); }
+.st-block.st-tuipane { border-radius: var(--r-chip); font-family: var(--mono); }
+.st-block.st-tuipane .st-head { height: calc(var(--s6) - var(--s1) / 2); min-height: 0; padding: 0 var(--s3); border-bottom: var(--hair) solid var(--edge); }
+.st-block.st-tuipane .st-panet { font-family: var(--mono); font-size: var(--t-label); color: var(--c-pearl); white-space: pre; }
+.st-block.st-tuipane .st-meta { opacity: 1; font-family: var(--mono); }
+.st-block.st-tuipane .st-body { padding: var(--s2) var(--s3); font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-body-line); }
+.st-block.st-tuipane .st-body :is(p, div, span, b, small, li, td) { font-family: var(--mono); }
+.st-tuikeys { position: absolute; right: var(--s4); bottom: calc(var(--s6) + var(--s4)); z-index: 1; font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); white-space: pre; pointer-events: none; }
+.st-block.st-idepane { border-radius: var(--r-row); }
+.st-block.st-idepane .st-head { padding: var(--s2) var(--s2) 0; border-bottom: var(--hair) solid var(--line); }
+.st-tabs { flex: 1; display: flex; gap: calc(var(--s1) / 2); min-width: 0; overflow: hidden; }
+.st-block.st-idepane .st-meta { display: none; }
+.st-tabs button { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s2); height: calc(var(--s6) + var(--s1) / 2); padding: 0 var(--s3); border: 0; border-radius: var(--r-chip) var(--r-chip) 0 0; background: none; color: var(--mute); font: inherit; font-size: var(--t-label); white-space: nowrap; cursor: pointer; }
+.st-tabs button span { overflow: hidden; text-overflow: ellipsis; }
+.st-tabs button.on { background: var(--line); color: var(--ink); }
+/* the IDE's file column behind stage.whole: the project's tree, 196 wide (whole.html .ide-tree; work/FileTree.tsx) */
+.st-room.whole { --st-files: calc(var(--s12) * 4 + var(--s1)); }
+.wtree { display: flex; flex-direction: column; padding: var(--s2); overflow: auto; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); scrollbar-width: none; }
+.wtree-top { padding: 0 var(--s2); height: var(--h-chip); display: flex; align-items: center; color: var(--ink); }
+.wtree-row { display: flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding-right: var(--s2); border: 0; border-radius: var(--r-chip); background: none; color: inherit; font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; flex: none; }
+.wtree-row:hover { background: var(--line); color: var(--ink); }
+.wtree-tw { width: var(--s3); flex: none; color: var(--mute); }
+.wtree-file { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.wtree-back { align-self: flex-start; margin: var(--s2); padding: 0 var(--s2); height: var(--h-chip); border: 0; border-radius: var(--r-chip); background: none; color: var(--dim); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.wtree-back:hover { color: var(--ink); background: var(--line); }

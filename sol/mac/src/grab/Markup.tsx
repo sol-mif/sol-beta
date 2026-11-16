@@ -1,5 +1,5 @@
 // Markup: the picture Sol just took, held still in the middle of the screen, to draw on. It lifts off the desk from
-// where the window was to its place (one progress spring, CFG.glide), the bead lands on its top-left corner and its
+// where the window was to its place (one progress spring, CFG.travel), the bead lands on its top-left corner and its
 // eyes follow the pen. Tools in a black pill at the bottom: pen · box · arrow · text · undo · Done; marks are red
 // #fd302d, 2.5 px, round caps; an arrow is a line and a head; text is typed in place and becomes a drawn string.
 //
@@ -19,7 +19,7 @@ export type Stroke =
   | { t: "box" | "arrow"; a: [number, number]; b: [number, number] }
   | { t: "text"; at: [number, number]; s: string };
 type Tool = "pen" | "box" | "arrow" | "text";
-// the one red, --red-strong from palette.css (design/palette.json), read once
+// the one red, --red-strong from palette.css (design/system/tokens.json palette), read once
 const RED = getComputedStyle(document.documentElement).getPropertyValue("--red-strong").trim() || "#fd302d", WIDTH = 2.5, FONT = 13;
 
 /** draw marks given in on-screen picture points, `k` times larger */
@@ -102,14 +102,14 @@ export function Markup({ img, from, bead, say, start, tall, onDone }: {
   useLayoutEffect(() => {
     say(scrolls ? "Mark it; scroll for the rest. Return when done." : "Mark it. Return when done.");
     const el = pic.current!, f = from ?? { x: at.x, y: at.y + 24, w: at.w, h: at.h };
-    const s = new Spring(0, CFG.glide, (p) => {
+    const s = new Spring(0, CFG.travel, (p) => {
       const k = f.w / at.w + (1 - f.w / at.w) * p;
       el.style.transform = `translate(${(f.x - at.x) * (1 - p)}px, ${(f.y - at.y) * (1 - p)}px) scale(${k})`;
     });
     s.to(1);
-    void bead?.hop(at.x - BEAD / 2 - 2, at.y - BEAD / 2 - 2, { lift: 30, ms: 700 }).then(() => bead?.look(3, 3));
-    [...(bar.current?.children ?? [])].forEach((b, i) => enter(b as HTMLElement, { y: 12, delay: 200 + i * 50, cfg: CFG.snap }));
-    enter(bar.current!, { y: 30, cfg: CFG.slide });
+    void bead?.hop(at.x - BEAD / 2 - 2, at.y - BEAD / 2 - 2, { lift: 30 }).then(() => bead?.look(3, 3));
+    [...(bar.current?.children ?? [])].forEach((b, i) => enter(b as HTMLElement, { y: 12, delay: 200 + i * 50, cfg: CFG.settle }));
+    enter(bar.current!, { y: 30, cfg: CFG.travel });
     return () => s.stop();
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 

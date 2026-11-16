@@ -5,18 +5,20 @@
 import { randomUUID } from "node:crypto";
 import { getSettings } from "../settings.js";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { query, createSdkMcpServer, tool, type Options, type PermissionMode, type PermissionResult, type Query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { SOL_TOOLS, runSolTool } from "../tools.js";
+import { seatTools, runSolTool } from "../tools.js";
 import { HOME_ONLY } from "../suggest.js";
 import { saveFiles, attachedLines, type FileIn } from "../files.js";
 import { Items, type Item } from "./items.js";
 import { relocated, sessionInfo, sessionItems, workFolderIn } from "./sessions.js";
-import { STATE_DIR, mark, prefs } from "./state.js";
+import { STATE_DIR, mark, prefs, workState, stricter } from "./state.js";
 import { TOOLS as BROWSER_TOOLS } from "../browser.js";
-import { WORK_TOOLS, runWorkTool } from "./tools.js";
+import { pagesWritten, pageWritten, askLine, asked, splitAsk, point, start as startStage, whoFor, type AskStage } from "./blocks.js";   // the stage's page watcher (#695); the ask's stage (#698); a new session's stage (#700)
+import { WORK_TOOLS, runWorkTool, toolsOnlyFor, runOnlyTool, forCheckout } from "./tools.js";
+import { featuresRoot } from "../team/checkpoint.js";   // the tool checkpoint, for feature folders only (#482)
 import { mentioned } from "./files.js";
 import { makeCopy } from "./copies.js";
 import { heldElsewhere, HOLDER_NAME, moving } from "./holders.js";
@@ -29,6 +31,8 @@ import { Held, sinceAfter, startsTurn, tasksAfter, type BgTask } from "./turns.j
 import { issueAt } from "../team/show.js";
 import { relayUp } from "../team/relay.js";
 import { runGit } from "../team/note.js";
+import { opening } from "./opening.js";   // a Sol developer's "your area" line (#480, team/area.ts)
+import { turnStarted, turnEnded, stepTaken, sent, fileOf, sizeOf, claudeTokens, base64Bytes } from "../seatlog.js";   // this seat's own steps on the log
 
 // Sol changing its own face from a Work session (src/changing.ts): set once by the engine at start
 let changing: Changing | null = null;
@@ -38,6 +42,10 @@ export type WorkSay = {
   sessionId: string; fresh?: boolean; cwd?: string; text: string; files?: FileIn[];
   model?: string; effort?: string; mode?: PermissionMode; fast?: boolean; parent?: string;
   worktree?: boolean;   // a fresh session in a side copy of its folder's repo (copies.ts)
+  opening?: boolean;    // a person started it from the face (#480): only then may it open with their area's line; the
+                        // engine's own sessions (the night's review, re-checks, carry-overs, an agent's) never do
+  role?: string;        // a fresh session's part in the dev cycle (#484): kept on it (state.ts), the guard's SOL_ROLE
+  stage?: AskStage;     // the stage's bar (#698): the chips (things) and what the person pointed at (on), sol.stage only
 };
 export type Answer = { allow: boolean; always?: boolean; note?: string; answers?: Record<string, string>; mode?: PermissionMode };
 type Bus = (msg: object) => void;
@@ -80,6 +88,7 @@ export class Run {
   items: Items;
   q: Query | null = null;
   inbox = new Inbox();
+  private pages = new Map<string, string>();   // a page's Write or Edit until its result (#695, blocks.ts pagesWritten)
   private held = new Held<SDKUserMessage>();   // said while the main thread works, until the turn ends (#51)
   busy = false;                                // the main thread is in a turn (streaming)
   tasks: BgTask[] = [];                        // background agents at work after the turn ended (turns.ts)
@@ -98,6 +107,8 @@ export class Run {
   private leave: (() => void) | null = null;   // this run's turn on the busy counter (busy.ts)
   private holdTasks: (() => void) | null = null;   // its agents' place on the same counter, while any works
   private unlock = () => {};                   // its hold on the session, one writer (busy.ts)
+  private uses = new Map<string, { name: string; file?: string; agent: boolean }>();   // every tool_use, for the log's step when its result comes
+  private turnOpen = false;                    // a turn is on the log (seatlog.ts) and not yet ended there
   /** something is going on: a turn, or background agents that will wake the main thread when they hand back */
   get working() { return this.busy || this.tasks.length > 0; }
   constructor(public id: string, public cwd: string, public model: string, public effort: string, public mode: PermissionMode, public fast: boolean, private bus: Bus, history?: Items) {
@@ -152,52 +163,67 @@ export class Run {
     this.bus({ type: "work.run", ...this.info(), ...(ended ? { ended: true } : {}) });
   }
 
-  start(fresh: boolean) {
+  start(fresh: boolean, open = false) {
     const p = prefs();
-    // the browser tools only when the browser drawer allows them; the desk's always; Home's group offer never (#321)
+    // the browser tools only when the browser drawer allows them; Home's group offer never (#321); the desk's never: a
+    // session's things are blocks on its stage, made with the six tools (the swap, #718)
     const browser = new Set(BROWSER_TOOLS.map((t) => t.name));
-    const solTools = SOL_TOOLS.filter((t) => (p.browser || !browser.has(t.name)) && !HOME_ONLY.has(t.name));
+    const solTools = seatTools().filter((t) => (p.browser || !browser.has(t.name)) && !HOME_ONLY.has(t.name) && !t.name.startsWith("desk_"));
+    // a session given a tool of its own (#421, the re-check) is narrow: that tool and nothing else. No built-in tool
+    // (no shell, no edits, no web), none of Sol's other tools and no MCP server from settings, so words planted in the
+    // diff it reads can do nothing but answer
+    const narrow = toolsOnlyFor(this.id).length > 0;
     const sol = createSdkMcpServer({
       name: "sol",
       version: "1.0.0",
       tools: [
-        ...solTools.map((t) => tool(t.name, t.description, t.shape, async (args) => (await runSolTool(t.name, args, { sessionId: this.id, seat: "work" })) as any)),
-        ...WORK_TOOLS.map((t) => tool(t.name, t.description, t.shape, async (args) => (await runWorkTool(t.name, args, this.id)) as any)),
+        ...(narrow ? [] : solTools).map((t) => tool(t.name, t.description, t.shape, async (args) => (await runSolTool(t.name, args, { sessionId: this.id, seat: "work" })) as any)),
+        // checkpoint (#482) only in a checkout of sol-dev with feature folders (featuresRoot): never in a Sol tester's copy or another project
+        ...(narrow ? [] : WORK_TOOLS.filter((t) => t.name !== "checkpoint" || !!featuresRoot(this.cwd))).map((t) => forCheckout(t, teamCheckout(this.cwd))).map((t) => tool(t.name, t.description, t.shape as any, async (args) => (await runWorkTool(t.name, args, this.id)) as any)),
+        // a tool given to this session alone (#421, the re-check's answer): asked for by its id at every call
+        ...toolsOnlyFor(this.id).map((t) => tool(t.name, t.description, t.shape, async (args) => (await runOnlyTool(this.id, t.name, args)) as any)),
       ],
     });
+    // its part in the dev cycle (#484): the guard reads SOL_ROLE, the stricter of the session's own and one this engine
+    // was started with (a first-timer's stage), so the guard holds every call of this run to its locks
+    const role = stricter(workState().marks[this.id]?.role, process.env.SOL_ROLE);
     const options: Options = {
       model: this.model,
+      env: roleEnv(role),
       effort: this.effort as Options["effort"],
       cwd: this.cwd,
       ...(fresh ? { sessionId: this.id } : { resume: this.id }),
       settingSources: ["user", "project", "local"],
       systemPrompt: {
         type: "preset", preset: "claude_code",
-        append: "You are running inside Sol's Work mode (Marco's own Claude Code window). Keep the task list with " +
-          "mcp__sol__update_plan for any request with more than one step, and end a turn that changed files or ran " +
+        append: "You are running inside Sol's Work mode (Marco's own Claude Code window). What you make for Marco to see is a block " +
+          "on this session's stage (the sol tools compose, update, bind, freeze, place, read). Keep the task list as one list " +
+          "block for any request with more than one step (compose it once, then update its steps), and end a turn that changed files or ran " +
           "commands with mcp__sol__wrap_up (two or three sentences of recap; one question and one or two buttons only " +
           "when Marco has a decision to make). Session tools (list, read, message, start, hand off, rename, archive) are on the sol server: " +
           "when Marco's new message is about something else mid-task, hand_off the task; a follow-up you only propose " +
           "is start_session with initiation \"proposal\". " +
           "On a team issue, look at mcp__sol__pings at each pause: what reached Marco while you worked (#100). " +
           "Link a session as [its title](#session/<session id>) and a file as [name](<path>:<line>), so Marco can open them with a click. " +
-          "A mockup, review page, board or anything else made for Marco to look at is shown in the page pane, never the browser tab: " +
-          "write the HTML file with the Write or Edit tool (an Edit, even one word, shows it again), so the pane opens it and he annotates it there. " +
+          "A mockup, review page, board or anything else made for Marco to look at is a page block on the stage, never the browser tab: " +
+          "write the HTML file with the Write or Edit tool (an Edit, even one word, shows it again), and it opens on the stage bound to its file. " +
           "The engine you run inside renews itself: a saved edit to sol/engine/src is built and goes live at the next quiet moment, " +
           "so never restart it from here (launchctl kickstart, stop, bootout, kill): that ends this very session mid-turn. " +
-          speakParagraph(getTeam()),   // where my agent may speak, how it signs (Control, team.json)
+          speakParagraph(getTeam()) +   // where my agent may speak, how it signs (Control, team.json)
+          (fresh && open ? opening(this.cwd) : ""),   // a Sol developer's area, for a new session they started whose checkout has the feature map (#480)
       },
       permissionMode: this.mode,
       // always launched able to take bypass, so the picker can move to it mid-session (#111); the mode itself is Marco's pick
       allowDangerouslySkipPermissions: true,
       // Sol's own bookkeeping and look-only session tools never ask; everything else is Marco's call
-      allowedTools: ["TodoWrite", ...["update_plan", "wrap_up", "list_sessions", "read_session", "rename_session", "mark_done", "archive_session", "hand_off", "pings"].map((t) => `mcp__sol__${t}`)],
+      allowedTools: ["TodoWrite", ...["wrap_up", "list_sessions", "read_session", "rename_session", "mark_done", "archive_session", "hand_off", "pings", "read", ...toolsOnlyFor(this.id).map((t) => t.name)].map((t) => `mcp__sol__${t}`)],
       canUseTool: guardSpeak((name, input, o) => this.ask(name, input, o)),
       includePartialMessages: true,
       thinking: { type: "adaptive", display: "summarized" },
       promptSuggestions: p.suggest,
       agentProgressSummaries: true,
       mcpServers: { sol },
+      ...(narrow ? { tools: [], strictMcpConfig: true } : {}),
       ...(this.fast || p.style ? { settings: { ...(this.fast ? { fastMode: true } : {}), ...(p.style ? { outputStyle: p.style } : {}) } as any } : {}),
     };
     this.q = query({ prompt: this.inbox, options });
@@ -216,6 +242,9 @@ export class Run {
       for await (const m of q as AsyncIterable<SDKMessage>) {
         const a = m as any;
         this.watch(a);
+        this.note(a);
+        // a page this session wrote is a page block on its stage, bound to the file (#695)
+        for (const p of pagesWritten(a, this.pages)) void pageWritten(this.id, p).catch(() => {});
         // a turn can begin without say(): a message queued behind the last one (priority "next") runs after that
         // one's result, and a background task's end wakes the main thread by itself. It is a turn all the same: it
         // joins the busy counter, so the renew (renew.ts) never ends the engine in the middle of it (#17). A background
@@ -225,6 +254,7 @@ export class Run {
         if (!this.busy && startsTurn(a)) {
           this.busy = true;
           this.leave ??= joinBusy("work", this.id, this.mode, this.cwd);
+          this.began();
           this.tell();
         }
         if (a.type === "system" && a.subtype === "init") { this.init = a; lastInit = a; this.mode = a.permissionMode ?? this.mode; this.tell(); void this.measure("summary"); }
@@ -236,6 +266,8 @@ export class Run {
           const real = (a.modelUsage?.[this.model] ?? Object.values(a.modelUsage ?? {})[0] as any)?.contextWindow;
           if (real) this.window = real;
           this.failed = a.subtype !== "success" && !a.stopped;
+          if (this.turnOpen) turnEnded("work", this.id, { ok: a.subtype === "success", turns: a.num_turns, tokens: claudeTokens(a.usage), costTotal: a.total_cost_usd });   // on the log: the turn's tokens, the session's cost so far
+          this.turnOpen = false;
           mark(this.id, { failed: this.failed || null });   // the ember dot outlives the run
           if (a.subtype !== "success") {
             const why = (a.errors ?? []).join("; ") || a.subtype.replace(/_/g, " ");
@@ -255,6 +287,7 @@ export class Run {
       this.failed = true;
       mark(this.id, { failed: true });
     } finally {
+      if (this.turnOpen) { this.turnOpen = false; turnEnded("work", this.id, { ok: false }); }   // the run ended mid-turn: stopped, or broke
       changing?.turn("work", this.id);
       this.items.settle(false);
       this.busy = false;
@@ -271,6 +304,30 @@ export class Run {
       runs.delete(this.id);
       this.tell();
       this.bus({ type: "work.closed", sessionId: this.id });
+    }
+  }
+
+  // on the log (seatlog.ts): a turn begun, once, however it began (say, a queued message, an agent waking the main thread)
+  private began() {
+    if (this.turnOpen) return;
+    this.turnOpen = true;
+    turnStarted("work", this.id, this.model, this.mode);
+  }
+  // on the log: each tool this seat used, when its result is back: the tool, the file it named, the bytes it got; a
+  // background agent's own marked so. Never the words
+  private note(a: any) {
+    const content = a.message?.content;
+    if (!Array.isArray(content)) return;
+    if (a.type === "assistant") {
+      for (const b of content) if (b?.type === "tool_use") this.uses.set(String(b.id), { name: String(b.name), file: fileOf(b.input), agent: !!a.parent_tool_use_id });
+    } else if (a.type === "user") {
+      for (const b of content) {
+        if (b?.type !== "tool_result") continue;
+        const u = this.uses.get(String(b.tool_use_id));
+        if (!u) continue;
+        this.uses.delete(String(b.tool_use_id));
+        stepTaken("work", this.id, u.name, { file: u.file, bytes: sizeOf(b.content), ok: !b.is_error, agent: u.agent });
+      }
     }
   }
 
@@ -313,11 +370,19 @@ export class Run {
     // an @ mention names a file Claude should look at: the real ones are spelled out under the message
     const at = mentioned(s.text, this.cwd);
     const atLine = at.length ? `Marco mentioned ${at.length > 1 ? "these" : "this"} with @: ${at.join(", ")}` : "";
-    const text = [s.text, attachedLines(saved), atLine].filter(Boolean).join("\n\n");
+    // the stage's bar (#698): what the person pointed at becomes read's target too, and the agent reads the chips and
+    // the target under the words (blocks.ts askLine); the person's line keeps only the words, the target as its chip
+    let stageLine = "", on: string[] | undefined;
+    asked(this.id, s.text, s.stage?.things);   // the kinds named in it land solid (#737: the ask is the press)
+    if (s.stage && (s.stage.on?.length || (s.stage.things?.length ?? 0) > 1)) {
+      const w = await whoFor(this.id).catch(() => null);
+      if (w) { if (s.stage.on?.length) point(this.id, s.stage.on); stageLine = askLine(w.project, s.stage); on = splitAsk(`\n\n${stageLine}`).on; }
+    }
+    const text = [s.text, attachedLines(saved), atLine, stageLine].filter(Boolean).join("\n\n");
     const images = saved.filter((f) => f.isImage);
     const uuid = randomUUID();
     const queued = this.busy;
-    this.items.put({ id: uuid, kind: "me", text: s.text, at: Date.now(), ...(saved.length ? { files: saved.map((f) => ({ name: f.name, path: f.path })) } : {}), ...(queued ? { queued: true } : {}) });
+    this.items.put({ id: uuid, kind: "me", text: s.text, ...(on ? { on } : {}), at: Date.now(), ...(saved.length ? { files: saved.map((f) => ({ name: f.name, path: f.path })) } : {}), ...(queued ? { queued: true } : {}) });
     await this.adjust(s);
     const msg = {
       type: "user", uuid, parent_tool_use_id: null,
@@ -332,6 +397,12 @@ export class Run {
     if (queued) this.held.keep(msg); else this.inbox.push(msg);
     this.busy = true;
     this.leave ??= joinBusy("work", this.id, this.mode, this.cwd);
+    this.began();
+    // on the log: what Sol handed the seat with this message (the files it saved, the files named with @, the stage's
+    // paragraph), not the message
+    for (const f of saved) sent("work", this.id, "attachment", { name: f.path, bytes: base64Bytes(f.dataBase64) });
+    for (const p of at) sent("work", this.id, "mention", { name: p });
+    if (stageLine) sent("work", this.id, "stage", { bytes: Buffer.byteLength(stageLine) });
     this.failed = false;
     this.tell();
   }
@@ -344,6 +415,7 @@ export class Run {
     for (const m of all) { this.inbox.push(m); this.unqueue(String(m.uuid)); }
     this.busy = true;
     this.leave ??= joinBusy("work", this.id, this.mode, this.cwd);
+    this.began();
     this.failed = false;
     this.tell();
   }
@@ -392,6 +464,7 @@ export class Run {
     try { await this.q.interrupt(); } catch { /* already done */ }
     this.busy = false;
     this.leave?.(); this.leave = null;
+    if (this.turnOpen) { this.turnOpen = false; turnEnded("work", this.id, { ok: false }); }   // on the log: the turn ended here, stopped (a late result adds no second line)
     this.setTasks([]);
     for (const [, r] of this.perms) r({ allow: false, note: "stopped" });
     const held = this.held.release();   // what waited behind the turn goes with it (#51): a stop means nothing more runs
@@ -491,6 +564,22 @@ export async function workSay(s: WorkSay, bus: Bus): Promise<Run> {
   return run;
 }
 
+/** a folder in a checkout that holds the team's locks (sol/locks/team.mjs, never in a Sol tester's copy) */
+export function teamCheckout(dir: string): boolean {
+  let d = dir;
+  for (let i = 0; i < 40 && d; i++) {
+    if (existsSync(join(d, ".git"))) return existsSync(join(d, "sol", "locks", "team.mjs"));
+    const up = dirname(d); if (up === d) break; d = up;
+  }
+  return false;
+}
+/** the environment a run starts with: the engine's own, SOL_ROLE set to the session's part, or none */
+export function roleEnv(role: string | undefined, base: NodeJS.ProcessEnv = process.env): Record<string, string | undefined> {
+  const env: Record<string, string | undefined> = { ...base };
+  if (role) env.SOL_ROLE = role; else delete env.SOL_ROLE;
+  return env;
+}
+
 async function openRun(s: WorkSay, bus: Bus): Promise<Run> {
   const fresh = !!s.fresh;
   const info = fresh ? undefined : await sessionInfo(s.sessionId);
@@ -505,6 +594,9 @@ async function openRun(s: WorkSay, bus: Bus): Promise<Run> {
   const run = new Run(s.sessionId, cwd, s.model ?? workDefaults().model, s.effort ?? workDefaults().effort, s.mode ?? workDefaults().mode, !!s.fast, bus, history);
   runs.set(s.sessionId, run);
   if (fresh && s.parent) mark(s.sessionId, { parent: s.parent });
-  run.start(fresh);
+  if (fresh && s.role) mark(s.sessionId, { role: s.role });   // before its first run: the guard holds it from the first call
+  run.start(fresh, fresh && s.opening === true);
+  // a new session opens its stage on the project's open blocks and its last ledger lines (#700, blocks.ts start)
+  if (fresh) void whoFor(s.sessionId).then((w) => startStage(w, s.parent ? { from: s.parent } : {})).catch(() => {});
   return run;
 }

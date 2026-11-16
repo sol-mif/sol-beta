@@ -7,6 +7,7 @@
 // it is open (ADDITIONS §5). Pure but for the store at the end.
 import { createHash } from "node:crypto";
 import { Store, agentRefusal, type Applied } from "./kit.js";
+import { humanOnly } from "./agents.js";
 import type { ThingsDeps } from "./things.js";
 
 export const POLLS_PATH = ".sol/polls.json";
@@ -67,7 +68,7 @@ export function serializePolls(f: Polls): string {
 
 export type PollOp =
   | { add: { question: unknown; options: unknown; by: string; at: string; agent?: boolean } }
-  | { vote: { id: unknown; option: unknown; by: string } }
+  | { vote: { id: unknown; option: unknown; by: string; agent?: boolean } }   // agent (#435): refused, an agent never votes
   | { close: { id: unknown; by: string; at: string } };
 
 /** one change (pure). An open poll asking the same question again is that poll (`again`); past POLLS_MAX the oldest
@@ -91,6 +92,9 @@ export function applyPolls(f: Polls, op: PollOp): Applied<Polls, { poll: Poll; a
   if (p.closed) return { file: f, changed: false, error: "this poll is closed" };
   let next: Poll, message: string;
   if ("vote" in op) {
+    // an agent never votes (#435): its person's vote is theirs to give, and a settings change waits for the people it names
+    const no = humanOnly({ login: op.vote.by, agent: op.vote.agent }, "vote");
+    if (no) return { file: f, changed: false, error: no };
     if (!LOGIN.test(op.vote.by)) return { file: f, changed: false, error: "who votes? sign in first" };
     const n = Number(op.vote.option);
     if (!Number.isInteger(n) || n < 0 || n >= p.options.length) return { file: f, changed: false, error: "that answer is not on this poll" };

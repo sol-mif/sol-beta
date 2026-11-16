@@ -178,7 +178,7 @@ const log = (d: MemoryDeps, line: string) => (d.log ?? ((l: string) => console.l
 /** a memory file as one read gives it: its text, its sha, and who wrote it last (the cloud's `by` on that very read; a
  *  GitHub room's last commit, asked after the read, so a write between changes the sha and the put conflicts). A missing
  *  file is empty with no sha. A sha with no content (GitHub's answer over 1 MB) throws: never read as empty */
-async function readForWrite(d: MemoryDeps, repo: string, path: string, branch: string): Promise<{ text: string; sha?: string; writer: string }> {
+export async function readForWrite(d: MemoryDeps, repo: string, path: string, branch: string): Promise<{ text: string; sha?: string; writer: string }> {
   let raw = "";
   try { raw = await d.record().files.readSha(repo, path, branch); }
   catch (e) { if (notFound(e)) return { text: "", writer: "" }; throw e; }
@@ -320,14 +320,14 @@ const once = (d: MemoryDeps, key: string, line: string) => { if (told.has(key)) 
 /** for tests: say everything again */
 export const forgetTold = () => told.clear();
 
-/** one month of the group's memory: each file whose writer the record confirms is the login in its name (the cloud's
+/** one month of the group's memory (or of another per-writer folder, `dir`: used.ts): each file whose writer the record confirms is the login in its name (the cloud's
  *  `by`, a GitHub room's last commit with that author and committer); `login` reads that one person's only. A Drive
  *  room reads nothing. A file whose sha comes with no content is left out and said, never read as empty */
-export async function readMemory(d: MemoryDeps, repo: string, q: { month: string; login?: string }): Promise<{ files: MemFile[]; note?: string }> {
+export async function readMemory(d: MemoryDeps, repo: string, q: { month: string; login?: string; dir?: string }): Promise<{ files: MemFile[]; note?: string }> {
   if (!repo) return { files: [], note: "this room has no record yet" };
   if (repo.startsWith("drive:")) { once(d, "drive", DRIVE_LINE); return { files: [], note: DRIVE_LINE }; }
   if (!/^\d{4}-\d{2}$/.test(q.month)) return { files: [] };
-  const branch = await recordBranch(d, repo), dir = `${MEMORY_DIR}/${q.month}`;
+  const branch = await recordBranch(d, repo), dir = `${q.dir ?? MEMORY_DIR}/${q.month}`;   // `dir`: the used marks' folder (used.ts, #431) reads the same way
   let out = "";
   try { out = await d.record().files.list(repo, dir, branch); }
   catch (e) { if (notFound(e)) return { files: [] }; throw e; }

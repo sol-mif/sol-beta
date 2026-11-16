@@ -3,6 +3,8 @@
 // them), the decision log (what the room decided, only ever added to; agents read it with the goal), polls (one
 // question, two to five answers, a vote a person). Their files live in the room's record beside the things
 // (engine team/calendar.ts, decisions.ts, polls.ts). While a page is open my worker stands on its tile, as on a thing's.
+// A fourth, the project's settings (#428), is its own file, Project.tsx: changed only by agreement, through the polls.
+// Each is a team block of kind "tool" (#429, blocks/): declared in blocks.json, shown while live in the project.
 import { useEffect, useState } from "react";
 import type { Team } from "./useTeam";
 import type { Room as RoomData, ToolId, CalEvent, Decision, Poll } from "./useRoom";
@@ -11,13 +13,19 @@ import { Glyph } from "./Room";
 import { Who } from "./bits";
 import { since } from "./bits";
 import { focusMsg, FOCUS_AGAIN_MS } from "./thingView";
+import { ProjectPage } from "./Project";   // the project's settings (#428)
+import { blocksOf } from "./blocks";   // team blocks (#429): each tool declared once, in blocks/blocks.json
+import { TeamToolBody, PAGES as TEAM_PAGES } from "./teamtools/TeamTool";   // team tools (#436)
+import { teamToolOf, teamToolLine } from "./teamtools/tool.ts";
 import "./tools.css";
 
-export const TOOLS: { id: ToolId; tile: string; name: string; glyph: string; line: string }[] = [
-  { id: "calendar", tile: "tool-calendar", name: "the calendar", glyph: "calendar", line: "what is due when, and for whom. Each person's Sol reminds them ten minutes before, or at nine on the day" },
-  { id: "decisions", tile: "tool-decisions", name: "decisions", glyph: "decisions", line: "what this room decided, only ever added to. Every agent reads it with the goal before it works" },
-  { id: "polls", tile: "tool-polls", name: "polls", glyph: "poll", line: "one question, two to five answers, one vote a person, changed until it closes" },
-];
+/** the project's own tools: the team blocks of kind "tool" this face draws a page for, in blocks.json's order; a team
+ *  tool (#436) is one whose page is in teamtools/ */
+const PAGES: ToolId[] = ["calendar", "decisions", "polls", "settings"];
+const teamTool = (b: { kind: string; with?: Record<string, unknown> }) => { const t = teamToolOf(b); return t && TEAM_PAGES[t.page] ? t : null; };
+export const TOOLS: { id: ToolId; tile: string; name: string; glyph: string; line: string; team?: true }[] = blocksOf("tool")
+  .filter((b) => (PAGES as string[]).includes(b.id) || teamTool(b))
+  .map((b) => ({ id: b.id as ToolId, tile: `tool-${b.id}`, name: b.name, glyph: b.glyph ?? b.id, line: b.shows, ...(teamTool(b) ? { team: true as const } : {}) }));
 
 const DAY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const localDay = (e: Pick<CalEvent, "start" | "allDay">) => (e.allDay ? new Date(`${e.start}T00:00:00`) : new Date(e.start));
@@ -34,14 +42,17 @@ export const coming = (list: CalEvent[], now = Date.now()) => list.filter((e) =>
 
 /** a tool tile's one dim line (pure): the next event, the decisions and the newest, the open polls */
 export function toolLine(id: ToolId, room: Pick<RoomData, "tools">): string {
+  const team = blocksOf("tool").find((b) => b.id === id), tt = team ? teamToolOf(team) : null;
+  if (tt) return teamToolLine(tt);
   const t = room.tools;
   if (id === "calendar") {
-    if (!t.calendar) return "the room's calendar";
+    if (!t.calendar) return "the project's calendar";
     const next = coming(t.calendar)[0];
     return next ? `next · ${dayWord(localDay(next))}${next.allDay ? "" : ` ${hm(next.start)}`} · ${next.title}` : "nothing coming up";
   }
-  if (id === "decisions") return t.decisions ? decided(t.decisions.length, t.decisions[0] ?? null) : "what the room decided";
-  if (!t.polls) return "ask the room";
+  if (id === "decisions") return t.decisions ? decided(t.decisions.length, t.decisions[0] ?? null) : "what the project decided";
+  if (id === "settings") return "the rhythm, reviewers, agent rules and owners · changed by agreement";
+  if (!t.polls) return "ask the project";
   const open = t.polls.filter((p) => !p.closed);
   return open.length ? `${open.length} open · ${open[0].question}` : "no open poll";
 }
@@ -50,7 +61,7 @@ const decided = (n: number, d: Decision | null) => (d ? `${n} decided · last by
 /** a tile of the connectors tab's one answer (team.connectors, #332), said as toolLine says it, in local time: the
  *  engine sends the parts raw (the next event, how many decided and the newest, the open polls newest first) */
 export function tileLine(t: ToolTile): string {
-  if (t.id === "decisions") return t.read ? decided(t.count, t.newest) : "what the room decided";
+  if (t.id === "decisions") return t.read ? decided(t.count, t.newest) : "what the project decided";
   return toolLine(t.id, { tools: t.id === "calendar"
     ? { calendar: t.read ? (t.next ? [t.next] : []) : null, decisions: null, polls: null }
     : { calendar: null, decisions: null, polls: t.read ? t.open : null } });
@@ -67,7 +78,7 @@ function useOnTile(team: Team, tile: string) {
 }
 
 function Top({ onBack, children }: { onBack: () => void; children?: React.ReactNode }) {
-  return <div className="rm-pg-top"><button className="rm-th-link" onClick={onBack}>‹ the room</button><span className="rm-th-sp" />{children}</div>;
+  return <div className="rm-pg-top"><button className="rm-th-link" onClick={onBack}>‹ the project</button><span className="rm-th-sp" />{children}</div>;
 }
 function Head({ id, others }: { id: ToolId; others: { who: string }[] }) {
   const t = TOOLS.find((x) => x.id === id)!;
@@ -92,6 +103,8 @@ export function ToolPage({ team, room, id, people, onBack, flash }: { team: Team
     <div className="rm-page tl-page">
       {id === "calendar" ? <CalendarPage team={team} room={room} people={people} onBack={onBack} flash={flash} others={others} note={note} />
         : id === "decisions" ? <DecisionsPage room={room} onBack={onBack} flash={flash} others={others} note={note} />
+        : id === "settings" ? (<><Top onBack={onBack} /><Head id="settings" others={others} /><ProjectPage team={team} flash={flash} /></>)
+        : TOOLS.find((t) => t.id === id)?.team ? (<><Top onBack={onBack} /><Head id={id} others={others} /><TeamToolBody team={team} block={blocksOf("tool").find((b) => b.id === id)!} /></>)
         : <PollsPage team={team} room={room} people={people} onBack={onBack} flash={flash} others={others} note={note} />}
     </div>
   );
@@ -110,7 +123,7 @@ function CalendarPage({ team, room, people, onBack, flash, others, note }: PageP
     if (!r.text) return flash(r.error ?? "couldn't make the .ics");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([r.text], { type: "text/calendar" }));
-    a.download = r.name ?? "room calendar.ics";
+    a.download = r.name ?? "project calendar.ics";
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     flash("the calendar is in your Downloads: open it in your calendar app");
@@ -134,9 +147,9 @@ function CalendarPage({ team, room, people, onBack, flash, others, note }: PageP
   const days: { key: string; d: Date; events: CalEvent[] }[] = [];
   for (const e of shown) { const d = localDay(e), k = dayKey(d); const g = days.find((x) => x.key === k); if (g) g.events.push(e); else days.push({ key: k, d, events: [e] }); }
   return (<>
-    <Top onBack={onBack}><button className="rm-th-link u" onClick={() => void ics()} title="download the room's calendar as an .ics file, for your own calendar app">export .ics</button></Top>
+    <Top onBack={onBack}><button className="rm-th-link u" onClick={() => void ics()} title="download the project's calendar as an .ics file, for your own calendar app">export .ics</button></Top>
     <Head id="calendar" others={others} />
-    {!list ? <p className="rm-pg-foot">reading the room's calendar…</p> : (<>
+    {!list ? <p className="rm-pg-foot">reading the project's calendar…</p> : (<>
       {past.length > 0 && <button className="rm-th-link tl-early" onClick={() => setEarly((x) => !x)}>{early ? "hide the earlier ones" : `${past.length} earlier, in the last month`}</button>}
       {days.length === 0 && <p className="tl-none">nothing coming up: add the next deadline, a review, a call</p>}
       {days.map((g) => (
@@ -182,7 +195,7 @@ function CalendarPage({ team, room, people, onBack, flash, others, note }: PageP
         ) : <button className="tl-plus" onClick={() => { const d = new Date(); setForm({ title: "", date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, time: "10:00", allDay: true, who: [] }); }}><span aria-hidden="true">+</span> add an event or a deadline</button>}
       </div>
     </>)}
-    <p className="rm-pg-foot rm-gp-foot">kept in the room's record · a Sol that is not running reminds nobody · two-way Google Calendar is not here</p>
+    <p className="rm-pg-foot rm-gp-foot">kept in the project's record · a Sol that is not running reminds nobody · two-way Google Calendar is not here</p>
   </>);
 }
 
@@ -195,17 +208,17 @@ function DecisionsPage({ room, onBack, flash, others, note }: PageProps) {
     if (!form.title.trim()) return setForm({ ...form, error: "say what was decided, in one line" });
     setForm({ ...form, busy: true, error: undefined });
     const r = await room.tool("team.decisions.add", { title: form.title, lines: form.lines });
-    if (r.error) setForm({ ...form, busy: false, error: r.error }); else { setForm(null); flash("written in the room's decision log"); }
+    if (r.error) setForm({ ...form, busy: false, error: r.error }); else { setForm(null); flash("written in the project's decision log"); }
   };
   if (note && !list) return (<><Top onBack={onBack} /><Head id="decisions" others={others} /><p className="rm-pg-foot">{note}: the log shows once it has one</p></>);
   return (<>
     <Top onBack={onBack} />
     <Head id="decisions" others={others} />
-    {!list ? <p className="rm-pg-foot">reading the room's decisions…</p> : (<>
+    {!list ? <p className="rm-pg-foot">reading the project's decisions…</p> : (<>
       <div className="tl-add top">
         {form ? (
           <form onSubmit={(ev) => { ev.preventDefault(); void add(); }} onKeyDown={(ev) => { if (ev.key === "Escape") { ev.stopPropagation(); setForm(null); } }}>
-            <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value, error: undefined })} placeholder="what the room decided, in one line" aria-label="the decision" maxLength={120} />
+            <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value, error: undefined })} placeholder="what the project decided, in one line" aria-label="the decision" maxLength={120} />
             <textarea value={form.lines} onChange={(e) => setForm({ ...form, lines: e.target.value })} placeholder="why, and what it rules out (optional)" rows={3} aria-label="why" />
             {form.error && <span className="err" role="alert">{form.error}</span>}
             <span className="acts"><button className="wbtn" type="submit" disabled={form.busy}>{form.busy ? "writing…" : "write it in the log"}</button><button className="wbtn ghost" type="button" onClick={() => setForm(null)}>cancel</button></span>
@@ -224,7 +237,7 @@ function DecisionsPage({ room, onBack, flash, others, note }: PageProps) {
         ))}
       </ol>
     </>)}
-    <p className="rm-pg-foot rm-gp-foot">kept in the room's record, newest last in the file · agents read it with the goal, as the room's words</p>
+    <p className="rm-pg-foot rm-gp-foot">kept in the project's record, newest last in the file · agents read it with the goal, as the project's words</p>
   </>);
 }
 
@@ -242,7 +255,7 @@ function PollsPage({ team, room, people, onBack, flash, others, note }: PageProp
     setForm({ ...form, busy: true, error: undefined });
     const r = await room.tool("team.polls.add", { question: form.question, options });
     if (r.error) setForm({ ...form, busy: false, error: r.error });
-    else { setForm(null); flash(r.again ? "that question is open already: vote on it below" : "asked the room"); }
+    else { setForm(null); flash(r.again ? "that question is open already: vote on it below" : "asked the project"); }
   };
   const vote = (p: Poll, i: number) => void room.tool("team.polls.vote", { id: p.id, option: i }).then((r) => r.error && flash(r.error));
   const close = (p: Poll) => void room.tool("team.polls.close", { id: p.id }).then((r) => r.error && flash(r.error));
@@ -251,7 +264,7 @@ function PollsPage({ team, room, people, onBack, flash, others, note }: PageProp
   return (<>
     <Top onBack={onBack} />
     <Head id="polls" others={others} />
-    {!list ? <p className="rm-pg-foot">reading the room's polls…</p> : (<>
+    {!list ? <p className="rm-pg-foot">reading the project's polls…</p> : (<>
       <div className="tl-add top">
         {form ? (
           <form onSubmit={(ev) => { ev.preventDefault(); void add(); }} onKeyDown={(ev) => { if (ev.key === "Escape") { ev.stopPropagation(); setForm(null); } }}>
@@ -261,16 +274,16 @@ function PollsPage({ team, room, people, onBack, flash, others, note }: PageProp
             ))}
             {form.options.length < 5 && <button type="button" className="rm-th-link u" onClick={() => setForm({ ...form, options: [...form.options, ""] })}>+ another answer</button>}
             {form.error && <span className="err" role="alert">{form.error}</span>}
-            <span className="acts"><button className="wbtn" type="submit" disabled={form.busy}>{form.busy ? "asking…" : "ask the room"}</button><button className="wbtn ghost" type="button" onClick={() => setForm(null)}>cancel</button></span>
+            <span className="acts"><button className="wbtn" type="submit" disabled={form.busy}>{form.busy ? "asking…" : "ask the project"}</button><button className="wbtn ghost" type="button" onClick={() => setForm(null)}>cancel</button></span>
           </form>
-        ) : <button className="tl-plus" onClick={() => setForm({ question: "", options: ["", ""] })}><span aria-hidden="true">+</span> ask the room a question</button>}
+        ) : <button className="tl-plus" onClick={() => setForm({ question: "", options: ["", ""] })}><span aria-hidden="true">+</span> ask the project a question</button>}
       </div>
       {open.length === 0 && <p className="tl-none">no open poll</p>}
       <ul className="tl-polls">{open.map((p) => <PollCard key={p.id} p={p} me={me} people={people} vote={vote} close={close} />)}</ul>
       {closed.length > 0 && <button className="rm-th-link tl-early" onClick={() => setOld((x) => !x)}>{old ? "hide the closed ones" : `${closed.length} closed`}</button>}
       {old && <ul className="tl-polls">{closed.map((p) => <PollCard key={p.id} p={p} me={me} people={people} vote={vote} close={close} />)}</ul>}
     </>)}
-    <p className="rm-pg-foot rm-gp-foot">kept in the room's record · who voted what is the room's to see · an agent may ask, never vote</p>
+    <p className="rm-pg-foot rm-gp-foot">kept in the project's record · who voted what is the project's to see · an agent may ask, never vote</p>
   </>);
 }
 

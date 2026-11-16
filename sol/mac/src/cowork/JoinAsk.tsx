@@ -42,7 +42,7 @@ export function JoinAsk({ onJoined, onSignIn }: { onJoined: () => void; onSignIn
     if (r.peek) { const code = r.peek; void ask("team.room.peek", { code }, 15_000).then((a) => step({ e: "peeked", code, ...a, at: Date.now() })); }
     if (r.join) {
       void ask("team.room.join", r.join, 60_000).then((a) => {
-        step({ e: "joined", ...(a.room ? {} : { error: a.error ?? "Sol did not find that group; try again" }) });
+        step({ e: "joined", ...(a.room ? {} : { error: a.error ?? "Sol did not find that project; try again" }) });
         if (a.room) joined.current();
       });
     }
@@ -94,7 +94,7 @@ export function JoinAsk({ onJoined, onSignIn }: { onJoined: () => void; onSignIn
   if (card.k === "none") return null;
   const c = card;
   return (
-    <div className="joinask" role="status" aria-label="a group's link">
+    <div className="joinask" role="status" aria-label="a project's link">
       <div className="gcard"><div className="gface"><div className="gline">
         <span className="from">a link</span>
         {(c.k === "holding" || c.k === "asking") && <span className="t"><b>looking up {c.code}…</b></span>}

@@ -2,16 +2,19 @@
 // builder reads a transcript (getSessionMessages) and a live run (query's stream), so history and live look alike.
 //
 //   me       Marco's message                 { text, files? }
-//   you      Claude's text                   { text, parent? }
+//   you      Claude's text                   { text, parent?, usedCowork? }  usedCowork: the project's parts read since the last reply (#431)
 //   think    a thinking block                { text, done }
 //   tool     a tool call                     { name, input, out?, ok?, done, parent?, bg?, at, end? }
 //   plan     the task list                   { steps: [{ content, status, session? }] }
-//   wrap     the next-step box               { recap, ask?, actions?: [{ label, message?, action? }] }
+//   wrap     the next-step box               { recap, ask?, actions?: [{ label, message?, action?, pr? }] }
 //   perm     a question for Marco            { tool, input, title?, reason?, state, answer? }  state ask|allow|always|deny|answered
 //   compact  the context was summarised      { text }
 //   error    a turn failed                   { text }
 //   note     a quiet line (stopped, cleared) { text }
 //   suggest  a suggested next prompt         { text }
+
+import { usedPart } from "../team/used.js";
+import { splitAsk } from "./blocks.js";   // the ask's stage paragraph, split off the person's line (#698)
 
 export type Item = { id: string; kind: string; [k: string]: unknown };
 
@@ -62,6 +65,7 @@ export class Items {
   private streamBlock = new Map<number, string>(); // stream block index -> item id
   plan: Item | null = null;
   usage = { context: 0 };
+  private used: string[] = [];               // the project's parts read since the last reply (#431, team/used.ts)
   constructor(private emit: (it: Item) => void = () => {}, private delta: (id: string, text: string) => void = () => {}) {}
 
   get(id: string) { return this.at.get(id); }
@@ -125,7 +129,9 @@ export class Items {
         if (b.type === "text") {
           // the stream already made this block's item: settle it; a transcript has no stream, so count afresh
           const id = this.finalId(mid, "t");
-          this.put({ id, kind: "you", text: b.text, live: false, ...(m.uuid && !parent ? { uuid: String(m.uuid) } : {}), ...p });
+          // the reply after a read of the project wears the mark (#431): the parts read since the last reply, once
+          const used = !parent && this.used.length ? { usedCowork: this.used.splice(0) } : {};
+          this.put({ id, kind: "you", text: b.text, live: false, ...(m.uuid && !parent ? { uuid: String(m.uuid) } : {}), ...p, ...used });
         } else if (b.type === "thinking" || b.type === "redacted_thinking") {
           const id = this.finalId(mid, "k");
           this.put({ id, kind: "think", text: String(b.thinking ?? ""), done: true, ...p });
@@ -140,7 +146,8 @@ export class Items {
       if (m.isCompactSummary) { this.put({ id: String(m.uuid), kind: "compact", text: "the talk so far was summarised" }); return; }
       const u = userText(content);
       const at = Date.parse(m.timestamp ?? "") || undefined;   // when it was said, for the row under it (#51)
-      if (u) this.put({ id: String(m.uuid ?? Math.random()), kind: "me", text: u.text, ...(at ? { at } : {}), ...(u.images ? { images: u.images } : {}) });
+      if (u) this.used = [];   // a new turn: a read that no reply followed wears no mark
+      if (u) { const a = splitAsk(u.text); this.put({ id: String(m.uuid ?? Math.random()), kind: "me", text: a.text, ...(a.on ? { on: a.on } : {}), ...(at ? { at } : {}), ...(u.images ? { images: u.images } : {}) }); }
     } else if (m.type === "system") {
       if (m.subtype === "compact_boundary") {
         const c = m.compact_metadata ?? {};
@@ -197,10 +204,12 @@ export class Items {
   private toolResult(b: any) {
     const t = this.at.get(String(b.tool_use_id));
     if (!t) return;
-    const out = cap(resultText(b.content));
+    const out = cap(resultText(b.content)), again = t.done === true;
     // a helper the SDK sent off on its own answers at once ("Async agent launched"): it works on in the background
     const async = (t.name === "Agent" || t.name === "Task") && !b.is_error && /^Async agent launched/.test(out);
     this.put({ ...t, done: true, ok: !b.is_error, out, end: Date.now(), ...(async ? { bg: true } : {}) });
+    const part = usedPart(String(t.name), !b.is_error, out);
+    if (part && !again && !this.used.includes(part)) this.used.push(part);   // a result told twice is one read
   }
 
   // every tool still open is closed (a stopped or failed turn)

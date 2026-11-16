@@ -13,7 +13,7 @@
 // creature's card (Permit.tsx, Screen Recording, "node" in the list) waits for the permission, then the same window is
 // taken again by itself.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Spring } from "../motion";
+import { CFG, Spring } from "../motion";
 import { BEAD, type Bead } from "./Bead";
 import { Permit } from "./Permit";
 import { blank, rowsOf } from "./stitch";
@@ -61,7 +61,7 @@ export function Room({ bead, say, onTaken, onLeave }: {
   // the veil comes in (the one fade the room has), the outlines draw themselves, the tags slide up
   useLayoutEffect(() => {
     const v = veil.current!;
-    const s = new Spring(0, { k: 120, z: 1 }, (x) => { v.style.opacity = String(x); });
+    const s = new Spring(0, CFG.fade, (x) => { v.style.opacity = String(x); });
     s.to(1);
     return () => s.stop();
   }, []);
@@ -69,16 +69,16 @@ export function Room({ bead, say, onTaken, onLeave }: {
     if (!wins?.length || !svg.current) return;
     const springs: Spring[] = [];
     svg.current.querySelectorAll<SVGPathElement>("path.outline").forEach((r, i) => {
-      const s = new Spring(100, { k: 90, z: 1, eps: 0.05 }, (x) => { r.style.strokeDashoffset = String(x); });
+      const s = new Spring(100, { ...CFG.travel, eps: 0.05 }, (x) => { r.style.strokeDashoffset = String(x); });
       s.to(0, { delay: 150 + i * 140 }); springs.push(s);
     });
     document.querySelectorAll<HTMLElement>(".room .tag").forEach((t, i) => {
-      const s = new Spring(0, { k: 260, z: 0.8 }, (x) => { t.style.opacity = String(x); t.style.translate = `0 ${(1 - x) * 6}px`; });
+      const s = new Spring(0, CFG.travel, (x) => { t.style.opacity = String(x); t.style.translate = `0 ${(1 - x) * 6}px`; });
       s.to(1, { delay: 560 + i * 60 }); springs.push(s);
     });
     // the bead dives in from the notch to the middle of the first window
     const w = wins[0];
-    void bead?.hop(w.x + w.w / 2 - BEAD / 2, Math.max(8, w.y + Math.min(w.h / 2, 120)), { lift: 40, ms: 640 });
+    void bead?.hop(w.x + w.w / 2 - BEAD / 2, Math.max(8, w.y + Math.min(w.h / 2, 120)), { lift: 40 });
     return () => springs.forEach((s) => s.stop());
   }, [wins]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -138,7 +138,7 @@ function Shutter({ w }: { w: SolWindow }) {
   const el = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const e = el.current!;
-    const s = new Spring(0, { k: 900, z: 1 }, (x) => { e.style.opacity = String(0.85 * x); }, () => { if (s.target === 1) s.to(0, { cfg: { k: 90, z: 1 } }); });
+    const s = new Spring(0, CFG.lift, (x) => { e.style.opacity = String(0.85 * x); }, () => { if (s.target === 1) s.to(0, { cfg: CFG.fade }); });
     s.to(1);
     return () => s.stop();
   }, []);

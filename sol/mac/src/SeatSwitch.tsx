@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
-import { useSpring } from "./motion";
+import { CFG, useSpring } from "./motion";
 import type { Seat } from "./useEngine";
 
 /**
@@ -19,9 +19,9 @@ export function useBridgeThumb(at: number, start = at) {
     t.style.width = `calc(${w.toFixed(4)} * (50% - 2px))`;
     t.style.transform = `scaleY(${Math.min(1.14, Math.max(0.72, 1 / Math.sqrt(w))).toFixed(3)})`;
   };
-  const L = useSpring(start, { k: 300, z: 0.62, eps: 0.002 }, (v) => { ed.current.l = v; draw(); });
-  const R = useSpring(start + 1, { k: 300, z: 0.62, eps: 0.002 }, (v) => { ed.current.r = v; draw(); });
-  const lead = { k: 620, z: 0.7, eps: 0.002 }, tail = { k: 210, z: 0.5, eps: 0.002 };
+  const L = useSpring(start, { ...CFG.travel, eps: 0.002 }, (v) => { ed.current.l = v; draw(); });
+  const R = useSpring(start + 1, { ...CFG.travel, eps: 0.002 }, (v) => { ed.current.r = v; draw(); });
+  const lead = { ...CFG.settle, eps: 0.002 }, tail = { ...CFG.travel, eps: 0.002 };
   useLayoutEffect(() => {
     draw();
     const right = at > ed.current.l;

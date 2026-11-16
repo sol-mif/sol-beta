@@ -10,7 +10,7 @@ export function Orb({ f }: { f: Follow | null }) {
   const el = useRef<HTMLButtonElement>(null);
   const [on, setOn] = useState(false);
   const [dot, setDot] = useState(false);
-  const sp = useSpring(0, { ...CFG.arrive, eps: 0.004 }, (v) => {
+  const sp = useSpring(0, { ...CFG.travel, eps: 0.004 }, (v) => {
     const b = el.current;
     if (!b) return;
     b.style.opacity = String(Math.max(0, Math.min(1, v)));

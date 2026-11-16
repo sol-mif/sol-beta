@@ -21,7 +21,7 @@ function fake(o: { commits?: string; github?: boolean } = {}) {
     mayGitHub: () => o.github ?? true,
     now: () => now,
     every: (_ms, fn) => { tick = fn; return () => { stopped++; tick = null; }; },
-    home: "/Users/frank",
+    home: "/Users/someone",
   };
   return { d, sent, told, calls, tick: () => tick?.(), stopped: () => stopped, later: (ms: number) => { now += ms; } };
 }
@@ -42,11 +42,11 @@ test("a branch names an issue the way sol/take makes it", () => {
 });
 
 test("what never leaves: thinking, tool inputs and outputs, helpers, questions, plans, a reply still streaming", () => {
-  const h = "/Users/frank";
+  const h = "/Users/someone";
   assert.deepEqual(lineOf({ id: "1", kind: "me", text: "make the timer ring" }, h), { role: "person", text: "make the timer ring" });
   assert.deepEqual(lineOf({ id: "2", kind: "you", text: "Done.", live: false }, h), { role: "agent", text: "Done." });
   assert.equal(lineOf({ id: "3", kind: "you", text: "Do", live: true }, h), null, "a reply goes once, whole");
-  const tool = lineOf({ id: "4", kind: "tool", name: "Read", input: { file_path: "/Users/frank/.ssh/id_ed25519" }, out: "SECRET KEY" }, h);
+  const tool = lineOf({ id: "4", kind: "tool", name: "Read", input: { file_path: "/Users/someone/.ssh/id_ed25519" }, out: "SECRET KEY" }, h);
   assert.deepEqual(tool, { role: "tool", text: "Read" }, "the name only");
   assert.ok(!JSON.stringify(tool).includes("SECRET") && !JSON.stringify(tool).includes(".ssh"));
   assert.deepEqual(lineOf({ id: "5", kind: "tool", name: "mcp__sol__team_note", input: { lines: "x" } }, h), { role: "tool", text: "team_note" });
@@ -55,7 +55,7 @@ test("what never leaves: thinking, tool inputs and outputs, helpers, questions, 
   assert.equal(lineOf({ id: "8", kind: "you", text: "helper says", live: false, parent: "a1" }, h), null);
   assert.equal(lineOf({ id: "9", kind: "tool", name: "TodoWrite", quiet: true }, h), null);
   for (const kind of ["perm", "plan", "wrap", "note", "error", "compact", "suggest"]) assert.equal(lineOf({ id: kind, kind, text: "x" }, h), null, kind);
-  assert.equal(scrub("open /Users/frank/computer/sol/home/memory.md", h), "open ~/computer/sol/home/memory.md", "the home folder is ~");
+  assert.equal(scrub("open /Users/someone/computer/sol/home/memory.md", h), "open ~/computer/sol/home/memory.md", "the home folder is ~");
   assert.equal(scrub("x".repeat(1000), h).length, TEXT_MAX);
 });
 

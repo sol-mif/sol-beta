@@ -73,7 +73,7 @@ export function joinFlow(s: JoinCard, ev: JoinEvent): JoinStep {
       if (s.k !== "asking" || s.code !== ev.code) return { card: s };
       // the socket closed between the look and the send: held again, within the same 30 s
       if (ev.error === NOT_CONNECTED) return { card: ev.at - s.since >= HOLD_MS ? { k: "said", code: s.code, why: NOT_YET } : { k: "holding", code: s.code, since: s.since } };
-      if (!ev.name) return { card: { k: "said", code: ev.code, why: ev.error || "Sol did not find that group; try again" } };
+      if (!ev.name) return { card: { k: "said", code: ev.code, why: ev.error || "Sol did not find that project; try again" } };
       // only a plain false is signed out: an older engine says nothing, and a group I am in opens with no sign-in
       return { card: { k: "ask", code: ev.code, name: ev.name, ...(ev.hub ? { hub: ev.hub } : {}), ...(ev.already ? { already: true } : ev.signedIn === false ? { out: true } : {}), at: ev.at } };
     case "join":

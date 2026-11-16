@@ -1,0 +1,56 @@
+/* Cowork v3, one way around (fr-30, #573): the side's rooms and the project's frame. The face's tokens (face.css); Sol's
+   own accents: the gradient line under the room in use, the seat's candy glow on the side's lit room, ember only for
+   the count of what needs me. Nothing scrolls under the bar or a composer: the frame fits the stage and its body
+   scrolls to its end, with room left for the agent's mark. */
+.v3n, .v3f { --v3n-grad: linear-gradient(95deg, #fb5ad0 0 14%, #f8478e 26% 40%, #ef3a2a 52% 64%, #fb7111 76% 100%); }
+.v3n-room .v3n-dot { flex: none; width: 5px; height: 5px; margin: 0 5px 0 3px; border-radius: 50%; background: var(--mute); opacity: .55; transition: background .2s, opacity .2s, box-shadow .2s; }
+.v3n-room.on .v3n-dot { background: var(--glow, var(--candy)); opacity: 1; box-shadow: 0 0 8px var(--glow, var(--candy)); }
+.v3n-room.on .t { color: var(--ink); }
+.v3n-quiet .t { color: var(--mute); font-size: 12px; padding-left: 16px; }
+.v3n-quiet.on .t { color: var(--ink); }
+.v3n-count { margin-left: auto; color: var(--ember, #fd302d); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+
+/* the frame: the head, then the room, scrolling to its end */
+.cstage[data-view="v3room"] { overflow: hidden; position: relative; }
+.v3f { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.v3f-head { flex: none; padding: 24px 40px 14px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
+.v3f-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.v3f-mark { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--base-color, #000); font-weight: 600; font-size: 15px; }
+.v3f-title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v3f-room { position: relative; font-size: 13px; color: var(--dim); padding: 0 0 6px; align-self: flex-end; margin-left: 4px; white-space: nowrap; }
+.v3f-room i { position: absolute; left: 0; bottom: 0; width: 28px; height: 2px; border-radius: 2px; background: var(--v3n-grad); }
+.v3f-sp { flex: 1; }
+.v3f-what { align-self: flex-start; max-width: 760px; background: none; border: 0; padding: 0 0 0 42px; font: inherit; font-size: 13px; color: var(--dim); text-align: left; cursor: pointer; }
+.v3f-what:hover { color: var(--ink); }
+
+.v3f-body { flex: 1; min-height: 0; position: relative; }
+.v3f-body.scroll { overflow-y: auto; overscroll-behavior: contain; }
+.v3f-body.fit { overflow: hidden; display: flex; flex-direction: column; }
+.v3f-body.fit > * { flex: 1; min-height: 0; }
+.v3f-end { height: 96px; }   /* the room ends above the agent's mark */
+/* the rooms' own heads named the project; the frame does it once now */
+.v3f-body .v3-sp-head, .v3f-body .s7-head, .v3f-body .v3-pl-head, .v3f-body .v3s-head, .v3f-body .v5-head { display: none; }
+.v3f-body .v3-sp { padding-top: 16px; }
+.v3f-body .v3-pl { height: auto; overflow: visible; padding-top: 22px; }
+.v3f-body .v3-rooms { overflow: visible; }
+.v3f-body .v5-setup, .v3f-body .v5-join { overflow: visible; }
+.v3f-fill { height: max(460px, calc(100vh - 150px)); min-height: 0; display: flex; flex-direction: column; }
+.v3f-fill > * { flex: 1; min-height: 0; }
+.v3f-talk { height: 100%; padding-top: 14px; }
+.v3f-setup { height: auto; padding-top: 18px; }
+.v3f-sec { padding: 18px 40px 6px; }
+.v3f-sec.v3-rooms { padding: 18px 40px 6px; }
+.v3f-sec-h { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 0 0 12px; }
+.v3f-sec-h h2 { position: relative; margin: 0; font-size: 16px; font-weight: 600; color: var(--ink); padding-bottom: 6px; }
+.v3f-sec-h h2::after { content: ""; position: absolute; left: 0; bottom: 0; width: 22px; height: 2px; border-radius: 2px; background: var(--v3n-grad); }
+.v3f-sec-h p { margin: 0; font-size: 12.5px; color: var(--dim); flex: 1; min-width: 200px; }
+.v3f-sec[data-v3-sec="github"], .v3f-sec[data-v3-sec="shared"], .v3f-sec[data-v3-sec="window"], .v3f-sec[data-v3-sec="floor"], .v3f-sec[data-v3-sec="join"] { border-top: 1px solid var(--line); margin-top: 18px; }
+.v3f-sec[data-v3-sec="floor"] .s7-room { padding-left: 0; padding-right: 0; }
+
+/* the agent at hand: its mark at the bottom right, a line beside it when pressed */
+.v3f-agent { position: absolute; right: 22px; bottom: 20px; z-index: 30; display: flex; align-items: center; gap: 10px; }
+.v3f-agent-mark { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: rgb(12 12 12 / .92);
+  border: 0; box-shadow: 0 0 0 1px var(--line), 0 6px 22px rgb(0 0 0 / .45); color: var(--ink); transition: box-shadow .25s; }
+.v3f-agent-mark:hover, .v3f-agent.open .v3f-agent-mark { box-shadow: 0 0 0 1.5px var(--glow, var(--candy)), 0 0 18px rgb(from var(--glow, #fb5ad0) r g b / .35); }
+.v3f-agent-in { width: min(420px, 40vw); height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: rgb(12 12 12 / .94); color: var(--ink); font: inherit; font-size: 13.5px; outline: none; }
+.v3f-agent-in:focus { border-color: var(--mute); }

@@ -10,8 +10,8 @@ import type { Work } from "../work/useWork";
 import type { Talk } from "../buttons";
 import { Columns } from "./Dashboard";
 import { ACTIONS } from "./actions";
+import { useLiveBlocks } from "./blocks";   // team blocks (#429): the actions live in the project in use
 import { readAgo } from "./bits";
-import { Stamp } from "./Stamp";
 import { Leads } from "./Leads";   // the owner's press (#117)
 // --- Hand (#34)
 import { handItems, HandsRecord } from "./Hands";
@@ -35,6 +35,8 @@ export function openInHome(c: Card, w: Pick<Work, "sessions" | "mark">, folders:
 // session's, its card marked
 export function ActionBoard({ team, issue, onOpenWork, onNewAction }: { team: Team; issue?: number; onOpenWork: (c: Card) => void; onNewAction: () => void }) {
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  const live = useLiveBlocks(team);
+  const actions = ACTIONS.filter((a) => live.has(a.id));
   const b = team.board;
   const others = [...new Set((team.state?.roster ?? []).map((m) => m.who))].filter((who) => who !== team.me);
   const itemsFor = (c: Card): MenuItem[] => [
@@ -48,8 +50,8 @@ export function ActionBoard({ team, issue, onOpenWork, onNewAction }: { team: Te
     // --- Hand (#34): "hand to <member>", one per teammate (with a line, as it is, its PR), and "ask <member> to review"
     ...handItems(c, others, b?.prs ?? []),
     // --- end Hand
-    ...(ACTIONS.some((a) => a.when(c)) ? [{ sep: true } as MenuItem] : []),
-    ...ACTIONS.filter((a) => a.when(c)).map((a) => ({ label: a.name, run: () => void a.run(c, team) })),
+    ...(actions.some((a) => a.when(c)) ? [{ sep: true } as MenuItem] : []),
+    ...actions.filter((a) => a.when(c)).map((a) => ({ label: a.name, run: () => void a.run(c, team) })),
     { sep: true },
     { label: "+ an action: one file on a branch", run: onNewAction, note: "how to add one" },
   ];
@@ -66,7 +68,6 @@ export function ActionBoard({ team, issue, onOpenWork, onNewAction }: { team: Te
         <span className="cdim cat">{readAgo(b.at)}</span>
         <span className="cgrow1" />
         <Leads team={team} />   {/* the owner's press (#117): who leads each label, set at once */}
-        <Stamp others={others} />   {/* ship (#33): stamp stable, one stable back, the offer */}
       </header>
       <Columns board={b} team={team} sign="always" here={issue} onMenu={open}
         cardExtra={(c) => <button className="cmore" title="what to do with it" onClick={(ev) => open(ev, c)} aria-label={`actions for #${c.number}`}>⋯</button>} />

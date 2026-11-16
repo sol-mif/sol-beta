@@ -59,7 +59,7 @@ function heard(h: Handed) {
 }
 
 // ---- dev: a made-up record and two hands to me, so every state can be looked at (and shot) without an engine ----
-const R = "marcocyl04-ux/sol-dev";
+const R = "sol-mif/sol-dev";
 const ago = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const DEV_ROWS: HandRow[] = [
   { repo: R, number: 34, at: ago(4), how: "hand", from: "frank", to: "marco", brief: "the record under the columns is in; the notch card is yours", branch: "frank/34-hand", sign: { login: "frank", agent: false } },

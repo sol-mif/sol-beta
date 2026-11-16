@@ -1,0 +1,18 @@
+/* the frame (kit/geometry.ts): the numbers come as vars on :root, set by useFrameVars; nothing here types a px of them */
+.f-lights { position: fixed; left: 0; top: 0; width: var(--f-clear); height: var(--f-row); z-index: 61; }
+.f-head { height: var(--f-row); flex: none; display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s2) 0 var(--f-head-pad); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); user-select: none; -webkit-user-select: none; position: relative; z-index: 1; }
+.f-title { color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.f-where { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); white-space: nowrap; }
+.f-space { flex: 1; align-self: stretch; }
+.f-sidekey { display: flex; align-items: center; gap: calc(var(--s1) / 2); height: var(--h-chip); padding: 0 var(--s1); border: 0; background: none; border-radius: var(--r-chip); cursor: pointer; color: inherit; }
+.f-sidekey i { width: 5px; height: var(--s3); border: 1.2px solid var(--dim); border-radius: calc(var(--s1) / 2); }
+.f-sidekey.on i:first-child { background: var(--dim); }
+.f-sidekey:hover i { border-color: var(--ink); }
+/* a whole mode on the grid: the head over all, then side · core · pane. A folded side keeps no width. */
+.frame { height: 100%; display: grid; grid-template-rows: var(--f-row) minmax(0, 1fr); grid-template-columns: var(--f-side) minmax(0, 1fr) auto; grid-template-areas: "head head head" "side core pane"; }
+.frame[data-side="folded"], .frame[data-side="none"] { grid-template-columns: 0 minmax(0, 1fr) auto; }
+.frame > .f-head { grid-area: head; }
+.f-side { grid-area: side; min-height: 0; overflow: hidden; display: flex; flex-direction: column; border-right: 1px solid var(--edge); box-sizing: border-box; transition: none; }
+.frame[data-side="folded"] .f-side { visibility: hidden; border-right: 0; }
+.f-core { grid-area: core; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.f-pane { grid-area: pane; min-height: 0; display: flex; }

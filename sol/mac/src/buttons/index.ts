@@ -19,7 +19,6 @@ import thread from "./thread";
 import fileIt from "./file-it";
 import talkView from "./talk-view";
 import showToTeam from "./show-to-team";
-import desk from "./desk";
 import call from "./call";
 import review from "./review";
 import dashboard from "./dashboard";
@@ -29,7 +28,7 @@ import shared from "./shared";
 
 export type { ButtonDef, ButtonCtx, WorkShell, Mark, Talk } from "./types";
 
-const SOL: ButtonDef[] = [overview, changes, terminal, files, page, tasks, plan, helpers, pr, browser, show, thread, fileIt, talkView, showToTeam, desk,
+const SOL: ButtonDef[] = [overview, changes, terminal, files, page, tasks, plan, helpers, pr, browser, show, thread, fileIt, talkView, showToTeam,
   call, review, dashboard, actionBoard, groupChat, shared];
 // a missing or empty folder is no files; each file loads on its own, so one that does not is a line on the shelf (own.tsx)
 const OWN = await loadOwn(import.meta.glob("../../../home/buttons/*.tsx"),
@@ -52,7 +51,7 @@ export const RAILS: Record<string, RailDef[]> = shipped.rails;
 // The shelf's groups (#171): how the + panel and the menu sort every button. A person's own are always "Yours"; a button
 // of Sol's not named here falls into Session, where most of them are.
 export const GROUPS: { name: string; ids: string[] }[] = [
-  { name: "Everyday", ids: ["call", "browser", "desk"] },
+  { name: "Everyday", ids: ["call", "browser"] },
   { name: "Session", ids: ["overview", "changes", "terminal", "files", "page", "tasks", "plan", "helpers", "thread", "talk-view"] },
   { name: "Ship", ids: ["pr", "review", "show-to-team", "file-it", "show"] },
   { name: "Team", ids: ["dashboard", "action-board", "group-chat", "shared"] },

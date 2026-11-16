@@ -1,6 +1,7 @@
 import { ran, setRunner } from "../run";
 import { useLanding } from "../land";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { askedDrawer, type Leave } from "../spine/settings";
 import type { useEngine, Seat, Thread } from "../useEngine";
 import type { AppMode } from "../ModeSwitch";
 import { Space } from "../creature/Space";
@@ -26,9 +27,9 @@ import { useThreadMap } from "./ThreadPane";
 import { PaneFrame, PaneBody, heldFrac, PANE_FLOOR, type PR } from "./Panes";
 import type { FileAt } from "./FilePane";
 import { pagesOf } from "./pages";
+import { planOf } from "../stage/StageHere";
 import { Beside, popOut } from "./Split";
 import { WorkDrawers } from "./WorkSettings";
-import { StickyKey } from "./Sticky";
 import { Site } from "../Site";
 import { seenSession } from "../renovation";
 import { BUTTONS, MORE, button, keyIs, type ButtonCtx, type ButtonDef, type Mark as Marked, type Talk } from "../buttons";
@@ -74,18 +75,27 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   const [pinned, setPinned] = useState(() => !solo && localStorage.getItem("sol.work.pin") !== "0");
   // the page in the stage: the talk, Settings (⌘,) or Conversations (⌘;, #253); ?page=conversations opens on it (dev stills)
   const [view, setView] = useState<"chat" | "settings" | "conversations">(() => (new URLSearchParams(location.search).get("page") === "conversations" ? "conversations" : kept("sol.work.view", "chat")));
-  // Sol held in the seat (SeatScene.tsx, the vibe switch): settings, open on the music drawer. A new key only when settings are closed;
-  // when they are up, Settings opens the drawer in place, so an open drawer or a slider mid-drag is kept
+  // the drawer Settings opens on: a new key only when settings are closed; when they are up, Settings opens the drawer
+  // in place, so an open drawer or a slider mid-drag is kept
   const [settingsFirst, setSettingsFirst] = useState<{ first: string; n: number }>({ first: "work", n: 0 });
   useEffect(() => {
-    const f = () => { if (view === "settings") return; setSettingsFirst((s) => ({ first: "music", n: s.n + 1 })); setView("settings"); };
-    // a drawer asked for by name (#342, the join card's "sign in": "me"); Settings opens it in place when it is up
-    const named = (ev: Event) => { const d = (ev as CustomEvent).detail; if (view === "settings" || typeof d !== "string") return; setSettingsFirst((s) => ({ first: d, n: s.n + 1 })); setView("settings"); };
-    window.addEventListener("sol-vibe-edit", f);
+    // a drawer asked for by name (#342, the join card's "sign in": "me"); Settings opens it in place when it is up.
+    // A plain ask (the spine's mark, #911) opens on the first drawer (spine/settings.ts)
+    const named = (ev: Event) => { const d = askedDrawer((ev as CustomEvent).detail); if (view === "settings" || d === null) return; setSettingsFirst((s) => ({ first: d, n: s.n + 1 })); setView("settings"); };
     window.addEventListener("sol:settings", named);
-    return () => { window.removeEventListener("sol-vibe-edit", f); window.removeEventListener("sol:settings", named); };
+    return () => window.removeEventListener("sol:settings", named);
   }, [view]);
   useEffect(() => keepS("sol.work.view", view), [view]);
+  // leaving Settings, told to the window (#911, App.tsx): a real close (the x, Esc, ⌘, again, the side's button off) may go
+  // back to the view Settings was asked from; any other way out (a session, a new session, conversations) stays there
+  const wasView = useRef(view);
+  const closing = useRef(false);
+  const shutSettings = () => { closing.current = true; setView("chat"); };
+  const flipSettings = (now: string) => { if (now === "settings") shutSettings(); else setView("settings"); };
+  useEffect(() => {
+    if (wasView.current === "settings" && view !== "settings") window.dispatchEvent(new CustomEvent<Leave>("sol:settings-left", { detail: closing.current ? "closed" : "moved" }));
+    closing.current = false; wasView.current = view;
+  }, [view]);
   const [talkView, setTalkView] = useState<TalkView>(() => (VIEWS.find((v) => v === localStorage.getItem("sol.work.talkview")) ?? "normal"));
   const cycleView = () => setTalkView((v) => { const n = VIEWS[(VIEWS.indexOf(v) + 1) % 3]; localStorage.setItem("sol.work.talkview", n); return n; });
   const [asideOn, setAsideOn] = useState(false);
@@ -136,6 +146,9 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
     if (s.id === w.current && n > s.n && busy && view === "chat" && !chat) showPane("page");
     pageSeen.current = { id: w.current, n };
   }, [pages, w.current]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a task list is a block on the stage (#696): the list written while it works opens the stage too
+  const hasPlan = !!planOf(items);
+  useEffect(() => { if (hasPlan && busy && view === "chat" && !chat) showPane("page"); }, [hasPlan]); // eslint-disable-line react-hooks/exhaustive-deps
   const working = busy || !!w.run?.tasks?.length;   // or its background agents still work: esc and the stop button end them too (#45)
   const fresh = (cwd?: string) => { setView("chat"); w.fresh(cwd); requestAnimationFrame(() => box.current?.focus()); };
   // a chat: one from the side, or a new one (its seat picked under the box)
@@ -234,9 +247,9 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
       if (ev.metaKey && ev.key === ";") { ev.preventDefault(); if (h.current.view === "chat" && document.activeElement === box.current && h.current.w.live && !H.chat) { setAsideOn((a) => !a); box.current?.focus(); } else setView((v) => (v === "conversations" ? "chat" : "conversations")); }
       else if (ev.key === "Escape" && (h.current.asideOn || h.current.w.sideAnswer)) { ev.preventDefault(); setAsideOn(false); h.current.w.dropAside(); }
       else if (ev.metaKey && !ev.shiftKey && ev.key === "\\") { ev.preventDefault(); h.current.toggleSide(); }
-      else if (ev.metaKey && ev.key === ",") { ev.preventDefault(); setView((v) => (v === "settings" ? "chat" : "settings")); }
+      else if (ev.metaKey && ev.key === ",") { ev.preventDefault(); flipSettings(h.current.view); }
       else if (ev.metaKey && !ev.shiftKey && k === "n") { ev.preventDefault(); if (H.chat) H.freshChat(); else H.fresh(); }
-      else if (ev.key === "Escape" && h.current.view !== "chat") { ev.preventDefault(); setView("chat"); }
+      else if (ev.key === "Escape" && h.current.view !== "chat") { ev.preventDefault(); if (h.current.view === "settings") shutSettings(); else setView("chat"); }
       else if (ev.key === "Escape" && h.current.working && !H.chat) { ev.preventDefault(); h.current.stop(); }
     };
     window.addEventListener("keydown", key);
@@ -273,7 +286,7 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   // the page arrives sliding up when a session opens
   const page = useRef<HTMLDivElement>(null);
   const first = useRef(true);
-  useLayoutEffect(() => { if (!first.current && page.current) enter(page.current, { y: 14, cfg: CFG.panel }); first.current = false; }, [chat ? e.sessionId : w.current, view, chat]);
+  useLayoutEffect(() => { if (!first.current && page.current) enter(page.current, { y: 14, cfg: CFG.travel }); first.current = false; }, [chat ? e.sessionId : w.current, view, chat]);
 
   const lastIt = items[items.length - 1];
   const streaming = busy && lastIt?.kind === "you" && !!lastIt.live;
@@ -427,19 +440,18 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
         </div>
         <div className="spacer" data-tauri-drag-region />
         {view === "chat" && <Rail c={ctx} fallback={chat ? "everyday" : "build"} on={paneOpen ? active : null} onPane={togglePane} foot={foot} />}
-        {!solo && <StickyKey e={e} />}
       </div>
       <div className="shell">
         {!solo && <Site name="sidebar"><WorkSidebar w={chat ? { ...w, live: null } : w} pinned={lay.docked} view={view} onMode={onMode}
           chats={{ threads: e.threads, active: chat ? e.sessionId ?? null : undefined, onOpen: openChat, onNew: freshChat, onRename: e.rename }}
-          lay={{ layout: e.arrangement?.layout.home, share: e.arrangement?.split.share, arrange: e.arrange }} onSettings={() => setView((v) => (v === "settings" ? "chat" : "settings"))} onConversations={() => setView((v) => (v === "conversations" ? "chat" : "conversations"))} onFresh={fresh}
+          lay={{ layout: e.arrangement?.layout.home, share: e.arrangement?.split.share, arrange: e.arrange }} onSettings={() => flipSettings(view)} onConversations={() => setView((v) => (v === "conversations" ? "chat" : "conversations"))} onFresh={fresh}
           onBeside={(id) => { if (id === w.live) return; setBeside(id); setView("chat"); }} onPop={(id, t) => { void popOut(id, t).then((ok) => { if (!ok) e.flash("pop-out needs the next Sol.app build"); }); }} /></Site>}
         <div ref={main} className="main">
           <div className="wcols">
           <div ref={page} className="page-in" data-view={view}>
           {view === "settings" ? (
             <Site name="settings"><Settings key={settingsFirst.n} s={e.settings} stale={false} info={e.engineInfo} up={e.up} health={e.health} goBack={e.goBackPlan} send={e.send} models={e.models} efforts={e.efforts} sampling={e.sampling} onSet={e.setSettings} onHear={e.hearVoice}
-              first={settingsFirst.first} more={(o, t) => <WorkDrawers w={w} open={o} toggle={t} flash={e.flash} />} onClose={() => setView("chat")} /></Site>
+              first={settingsFirst.first} more={(o, t) => <WorkDrawers w={w} open={o} toggle={t} flash={e.flash} />} onClose={shutSettings} /></Site>
           ) : view === "conversations" ? (
             <Site name="conversations"><Conversations onOpenChat={(sessionId, t) => openChat({ seat: "claude", sessionId, title: t, updatedAt: Date.now() })} /></Site>
           ) : chat ? <LifeTalk key="chat" e={e} mark={chatMark} onSwitch={chatSwitch} onMode={solo ? undefined : onMode} /> : (<>
@@ -490,7 +502,7 @@ const KEYS: [string, [string, string][]][] = [
 ];
 function Keys({ onClose }: { onClose: () => void }) {
   const el = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (el.current) enter(el.current, { y: 18, cfg: CFG.panel }); }, []);
+  useLayoutEffect(() => { if (el.current) enter(el.current, { y: 18, cfg: CFG.travel }); }, []);
   return (
     <div className="wkeysheet" onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}>
       <div ref={el} className="wkeycard" role="dialog" aria-label="shortcuts">

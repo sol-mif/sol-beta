@@ -555,6 +555,60 @@ export const TOOLS: Tool[] = [
   },
 ];
 
+// ---- a browser block's tab (#699, work/live.ts): with the stage on, the tools drive a block ----
+// The person's hand is a child web view in the app; the agent's is a tab here, one per browser block. live.ts routes a
+// call: to the block it names (`block`), refused while the person holds that block's wheel; browser_open with no block
+// goes to the session's own browser block, made the first time (the test browser's alias). Off, no route: today's tab.
+export type Route = { block: string; url?: string } | { refuse: string } | null;
+type Router = {
+  route: (sessionId: string | undefined, tool: string, a: any) => Promise<Route>;
+  after: (block: string, url: string, tool: string, a: any, r: ToolResult, sessionId?: string) => Promise<ToolResult>;
+};
+let router: Router | null = null;
+export const setBlockRouter = (r: Router | null) => { router = r; };
+const blockTabs = new Map<string, string>();   // block id -> its tab's id
+/** the tab a browser block's agent hand drives, if it has one open */
+export const tabOfBlock = (block: string) => { const t = tabs.get(blockTabs.get(block) ?? ""); return t && !t.page.isClosed() ? t.id : undefined; };
+async function blockTab(block: string, sessionId: string | undefined, url?: string): Promise<Tab> {
+  const have = tabs.get(blockTabs.get(block) ?? "");
+  if (have && !have.page.isClosed()) { activeOf.set(key(sessionId), have.id); broadcast(); return have; }
+  const tab = await newTab(sessionId);
+  blockTabs.set(block, tab.id);
+  tab.page.on("close", () => { if (blockTabs.get(block) === tab.id) blockTabs.delete(block); });
+  if (url) await tab.page.goto(normUrl(url), { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
+  return tab;
+}
+/** a browser block's tab closed with the block */
+export async function closeBlockTab(block: string) {
+  const id = blockTabs.get(block);
+  blockTabs.delete(block);
+  if (id) await closeTab(id);
+}
+/** a still of a browser block's page, as a PNG: its tab's, or a tab opened on its address for the shot (the person's
+ *  hand is a child web view the engine cannot reach; outside the app, and when the app cannot snapshot, this stands in) */
+export function shotOfBlock(block: string, url: string | undefined, sessionId?: string): Promise<Buffer> {
+  const job = queue.then(async () => {
+    const own = tabs.get(blockTabs.get(block) ?? "");
+    if (own && !own.page.isClosed()) return own.page.screenshot({ type: "png" });
+    if (!url) throw new Error("the block has no page yet");
+    const tab = await newTab(sessionId);
+    try {
+      // an app draws after its load (a React page, Sol itself): the shot waits for the network to go quiet, then a beat
+      await tab.page.goto(normUrl(url), { waitUntil: "load", timeout: 30000 }).catch(() => {});
+      await tab.page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
+      await tab.page.waitForTimeout(800);
+      return await tab.page.screenshot({ type: "png" });
+    } finally { await tab.page.close().catch(() => {}); }
+  });
+  queue = job.catch(() => {});
+  return job;
+}
+
+// every tool may name a block; only with the stage on is there one to name
+for (const t of TOOLS) t.shape = { ...t.shape, block: z.string().optional().describe("A browser block's id on the stage (from read): drive that block. Without one, browser_open uses this session's browser block") };
+const shot = TOOLS.find((t) => t.name === "browser_screenshot");
+if (shot) shot.shape = { ...shot.shape, keep: z.boolean().optional().describe("Also lay the still in the block's stills on the stage, for the person to keep or cut") };
+
 // Run one tool by name, for one conversation. Serialized, tells the face what is happening, never throws.
 // browser_open uses the conversation's active tab, or opens one if it has none; the others need a tab.
 export function runBrowserTool(name: string, args: unknown, turn: TurnCtx = {}): Promise<ToolResult> {
@@ -567,9 +621,17 @@ export function runBrowserTool(name: string, args: unknown, turn: TurnCtx = {}):
     turn.sink?.({ id, kind: "browse", text: line, done: false });
     let r: ToolResult;
     try {
-      let tab = activeTab(turn.sessionId);
-      if (!tab && name !== "browser_open") r = { ...text("No page is open in this conversation. Use browser_open first."), isError: true };
-      else r = await tool.run((tab ?? (await newTab(turn.sessionId))).page, a);
+      const to = router ? await router.route(turn.sessionId, name, a) : null;
+      if (to && "refuse" in to) r = { ...text(to.refuse), isError: true };
+      else if (to) {
+        const tab = await blockTab(to.block, turn.sessionId, name === "browser_open" ? undefined : to.url);
+        r = await tool.run(tab.page, a);
+        if (router && !r.isError) r = await router.after(to.block, tab.page.url(), name, a, r, turn.sessionId);
+      } else {
+        let tab = activeTab(turn.sessionId);
+        if (!tab && name !== "browser_open") r = { ...text("No page is open in this conversation. Use browser_open first."), isError: true };
+        else r = await tool.run((tab ?? (await newTab(turn.sessionId))).page, a);
+      }
     } catch (err) {
       r = { ...text(`Browser error: ${err instanceof Error ? err.message.split("\n")[0] : String(err)}`), isError: true };
     }

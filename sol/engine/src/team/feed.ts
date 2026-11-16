@@ -27,7 +27,9 @@ import { sameAs } from "./updates.js";
 export const KINDS = ["pushed", "opened", "took", "handed", "passed", "said", "pr-opened", "pr-ready", "landed", "closed", "stamped", "digest", "clash", "claim",
   "thing-added", "folder-made", "thing-changed", "thing-again", "goal-set", "session-started", "showing",
   // the room's own tools (#245): an event added, a decision written, a poll asked and closed
-  "event-added", "decided", "poll-opened", "poll-closed"] as const;
+  "event-added", "decided", "poll-opened", "poll-closed",
+  // the review session (#416, tonight.ts): a change into the project or sent back, a dev release into beta or held
+  "reviewed"] as const;
 export type FeedKind = (typeof KINDS)[number];
 export type FeedLine = { id: string; at: string; who: string; agent: boolean; kind: FeedKind; text: string; ref?: { repo?: string; number?: number; url?: string; thing?: string }; ephemeral?: true };
 export type Note = { repo: string; number: number; at: string; author: string; body: string; url?: string };
@@ -48,12 +50,35 @@ const human = (login: string) => login.replace(/\[bot\]$/i, "");
  *  a clash, a claim); a plain comment is the issue's, not the room's (pure) */
 export function noteLine(n: Note): FeedLine | null {
   const b = n.body.trim(), head = b.split("\n")[0];
+  const rv = reviewedText(b, n.number, n.repo);
+  if (rv) return { id: `note:${n.url || `${n.repo}#${n.number}@${n.at}`}`, at: n.at, who: human(n.author), agent: agentWrote(n.author, b), kind: "reviewed", text: rv, ref: { repo: n.repo, number: n.number, ...(n.url ? { url: n.url } : {}) } };
   const kind: FeedKind | null = /^\*\*hand\*\*/i.test(b) ? "handed" : /^\*\*taken\*\*/i.test(b) ? "took" : /^\*\*passed\*\*/i.test(b) ? "passed"
     : /^\*\*Night digest\*\*/.test(b) ? "digest" : /^\*\*Clash predicted\*\*/.test(b) ? "clash" : /^\*\*(Claim dropped|absorbed\*\* by .*claim ping)/i.test(b) ? "claim" : null;
   if (!kind) return null;
   const text = kind === "digest" ? "the night digest: what landed, what is open, what may clash"
     : `${kind === "handed" ? "handed" : kind === "took" ? "took" : kind === "passed" ? "passed" : kind === "clash" ? "a clash predicted on" : "a claim on"} #${n.number}${kind === "clash" || kind === "claim" ? `: ${one(head.replace(/\*\*/g, ""), 100)}` : ""}`;
   return { id: `note:${n.url || `${n.repo}#${n.number}@${n.at}`}`, at: n.at, who: human(n.author), agent: agentWrote(n.author, b), kind, text, ref: { repo: n.repo, number: n.number, ...(n.url ? { url: n.url } : {}) } };
+}
+
+/** a review session's word as a feed line's text, or "" (pure): tonight.ts writes them on a person's press. Into
+ *  sol-dev (#477) says the project's name; the older "**Folded**" comments read the same way, so a week's history counts */
+export function reviewedText(body: string, number: number, repo = ""): string {
+  const into = /^\*\*Into ([A-Za-z0-9_.-]{1,100})\*\* in the dev review/.exec(body);
+  const name = into?.[1] ?? (repo.split("/").pop() || "the dev release");
+  if (into || /^\*\*Folded\*\*/.test(body)) return `#${number} into ${name}`;
+  // #421: the slight send back's re-check, and "this broke"
+  const re = /^\*\*Re-checked\*\*, and into ([A-Za-z0-9_.-]{1,100}) /.exec(body);
+  if (re || /^\*\*Re-checked\*\* and folded/.test(body)) return `re-checked #${number}, into ${re?.[1] ?? name}`;
+  const broke = /^\*\*This broke\*\*:\s*([^\n]*)/.exec(body);
+  if (broke) return `said #${number} broke: ${one(broke[1], 100)}`;
+  const back = /^\*\*Sent back\*\* \((slight|severe)\)/.exec(body);
+  if (back) return `sent back #${number} (${back[1]})`;
+  const beta = /^\*\*Beta (passed|held)\*\*: the dev release of (\d{4}-\d{2}-\d{2})/.exec(body);
+  if (beta) return beta[1] === "passed" ? `the dev release of ${beta[2]} into beta` : `held the dev release of ${beta[2]} from beta`;   // Into beta / Hold (#477)
+  // #423: the nightly catch-up test's report (catchup.ts reportOf), on its standing issue
+  const caught = /^\*\*Catch-up (passed|failed)\*\* on ([A-Za-z0-9._-]{1,40}): ([^\n]*)/.exec(body);
+  if (caught) return `the nightly catch-up ${caught[1]} on ${caught[2]}: ${one(caught[3], 110)}`;
+  return "";
 }
 
 /** every durable line of a room, newest first, each once (pure): cards and PRs from the board, the room's notes, its

@@ -4,16 +4,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { groupsOf, madeUp, linkFor, joinLink } from "./cowork/rooms.ts";
 
-const fresh = { id: "team", name: "sol-dev", provider: "github", repos: ["marcocyl04-ux/sol-dev"], hub: "", code: "", mine: false, joined: false };
+const fresh = { id: "team", name: "", provider: "github", repos: [] as string[], hub: "", code: "", mine: false, joined: false };
+// the made-up room as team.json files written before #441 keep it: the one repo the default named then
+const older = { ...fresh, name: "sol-dev", repos: ["marcocyl04-ux/sol-dev"] };
 
-test("the made-up room of a new install is no group", () => {
+test("the made-up room of a new install is no group, nor the one an older file kept", () => {
   assert.equal(madeUp(fresh), true);
-  assert.deepEqual(groupsOf([fresh]), []);
+  assert.equal(madeUp(older), true);
+  assert.deepEqual(groupsOf([fresh, older]), []);
 });
 
 test("a room someone made, joined, shared, or that meets somewhere is a group", () => {
   for (const r of [{ ...fresh, mine: true }, { ...fresh, joined: true }, { ...fresh, code: "K7QX2M" }, { ...fresh, hub: "wss://nucbox.example.ts.net/relay" },
-    { ...fresh, id: "shuai" }, { ...fresh, repos: ["frank/room"] }, { ...fresh, repos: ["marcocyl04-ux/sol-dev", "a/b"] }])
+    { ...fresh, id: "shuai" }, { ...fresh, repos: ["frank/room"] }, { ...fresh, repos: ["sol-mif/sol-dev"] }, { ...older, repos: ["marcocyl04-ux/sol-dev", "a/b"] }])
     assert.equal(madeUp(r), false, JSON.stringify(r));
   const made = { ...fresh, id: "shuai", provider: "cloud", repos: [], code: "2QKTYA" };
   assert.deepEqual(groupsOf([fresh, made]).map((r) => r.id), ["shuai"]);

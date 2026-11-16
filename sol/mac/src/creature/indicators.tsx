@@ -4,7 +4,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { enginePhase, live } from "./state";
 import { Bands, Droplet, Goo, JOBS, Light, bandsCss, reduced } from "./goo";
-import { useSpring, type Cfg } from "../motion";
+import { CFG, useSpring, type Cfg } from "../motion";
 import { SOL_EYES } from "../solShape";
 
 // ---- a rounded rectangle's outline as a path you can walk by distance ----
@@ -96,8 +96,8 @@ export function Runner() { return <Droplet kind="running" className="runner" see
 // hue tells the value. A native range stays over it, invisible, for pointer and keyboard.
 const SU = 1.8, SY = 30, KR = 4, LH = 2;   // px per unit, the channel's centre, the knob's radius, the liquid's half height
 const SX = (f: number) => KR + Math.max(0, Math.min(1, f)) * (100 - 2 * KR);
-const KNOB: Cfg = { k: 380, z: 0.42, eps: 0.02 }, LIQ: Cfg = { k: 150, z: 0.55, eps: 0.02 }, BUDX: Cfg = { k: 260, z: 0.6, eps: 0.02 };
-const BUD_UP: Cfg = { k: 300, z: 0.55, eps: 0.004 }, BUD_DOWN: Cfg = { k: 360, z: 0.85, eps: 0.004 };
+const KNOB: Cfg = { ...CFG.settle, eps: 0.02 }, LIQ: Cfg = { ...CFG.travel, eps: 0.02 }, BUDX: Cfg = { ...CFG.travel, eps: 0.02 };
+const BUD_UP: Cfg = { ...CFG.travel, eps: 0.004 }, BUD_DOWN: Cfg = { ...CFG.fade, eps: 0.004 };
 const KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]);
 
 export function CellRange(props: React.InputHTMLAttributes<HTMLInputElement> & { min: number; max: number; value: number }) {

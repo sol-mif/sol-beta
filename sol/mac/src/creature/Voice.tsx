@@ -12,6 +12,7 @@ import { useEffect, useId, useRef } from "react";
 import { live } from "./state";
 import { Bands, JOBS, Light, reduced } from "./goo";
 import { SOL_PATH, SOL_BODY, SOL_LOBES, SOL_EYES } from "../solShape";
+import { clock, slowFactor } from "../motion";
 
 type Level = () => number;
 const TAU = Math.PI * 2;
@@ -40,9 +41,9 @@ function useFrames(step: (dt: number, t: number) => void) {
     const go = (now: number) => {
       raf = requestAnimationFrame(go);
       if (document.hidden) { prev = now; return; }
-      const dt = Math.min((now - prev) / 1000, 0.05);
+      const dt = Math.min((now - prev) / 1000, 0.05) / slowFactor();   // slow ×4 slows it too (motion.ts)
       prev = now;
-      fn.current(dt, now / 1000);
+      fn.current(dt, clock() / 1000);
     };
     raf = requestAnimationFrame(go);
     return () => cancelAnimationFrame(raf);

@@ -60,10 +60,10 @@ export function Permit({ which, bead, say, test, onGranted, onLater }: {
   // in: the card slides up, its lines one after another; the creature hops to the card's left edge, by the title
   useLayoutEffect(() => {
     const c = card.current!;
-    enter(c, { y: 18, cfg: CFG.slide, scale: 0.03 });
-    c.querySelectorAll<HTMLElement>(".permit-step, .permit-acts").forEach((r, i) => enter(r, { y: 8, delay: 140 + i * 70, cfg: CFG.slide }));
+    enter(c, { y: 18, cfg: CFG.travel, scale: 0.03 });
+    c.querySelectorAll<HTMLElement>(".permit-step, .permit-acts").forEach((r, i) => enter(r, { y: 8, delay: 140 + i * 70, cfg: CFG.travel }));
     const r = c.getBoundingClientRect();
-    void bead?.hop(Math.round(r.left - BEAD - 12), Math.round(r.top + 18), { lift: 36, ms: 620 }).then(() => bead?.look(3, 0));
+    void bead?.hop(Math.round(r.left - BEAD - 12), Math.round(r.top + 18), { lift: 36 }).then(() => bead?.look(3, 0));
     say(which === "accessibility" ? "Sol needs one permission to scroll." : "Sol needs one permission to see the window.");
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 

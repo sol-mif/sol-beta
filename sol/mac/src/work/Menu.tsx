@@ -31,7 +31,7 @@ export function Menu({ x, y, items, onClose, up, scroll, box }: { x: number; y: 
     const r = el.getBoundingClientRect();
     const top = up ? Math.max(8, y - r.height) : y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y;
     setPos({ x: Math.min(x, innerWidth - r.width - 8), y: top });
-    enter(el, { y: up ? 6 : -6, cfg: CFG.snap });
+    enter(el, { y: up ? 6 : -6, cfg: CFG.settle });
     const held = document.activeElement as HTMLElement | null;   // who had the keys before: the box, mostly
     el.focus({ preventScroll: true });   // the keys are the menu's now, not the box's under it
     if (box) { const k = items.findIndex((it) => it.on); if (k >= 0) { setHot(k); el.querySelectorAll<HTMLElement>(".mitem")[rows(items).indexOf(items[k])]?.scrollIntoView({ block: "nearest" }); } }

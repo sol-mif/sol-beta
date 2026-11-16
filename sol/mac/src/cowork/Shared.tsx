@@ -75,7 +75,7 @@ export function Shared({ team }: { team: Team }) {
   const s = useSt();
   useEffect(() => { hear(); if (!st.at || Date.now() - st.at > 60_000) void read(team); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const list = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (list.current) stagger(list.current.children, { y: 12, cfg: CFG.slide, gap: 40, max: 6 }); }, [s.repos.length]);
+  useLayoutEffect(() => { if (list.current) stagger(list.current.children, { y: 12, cfg: CFG.travel, gap: 40, max: 6 }); }, [s.repos.length]);
   const count = s.repos.reduce((n, r) => n + r.memory.length + r.designs.length + r.cards.length, 0);
   return (
     <div className="cpage cshared">
@@ -246,7 +246,7 @@ const T = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
 const F = (login: string, agent = false): Sign => ({ login, agent });
 const FAKE: RepoShare[] = [
   {
-    repo: "marcocyl04-ux/sol-dev", from: "checkout", folder: "~/computer/personal/projects/ecosystem",
+    repo: "sol-mif/sol-dev", from: "checkout", folder: "~/computer/personal/projects/ecosystem",
     memory: [
       { path: "README.md", title: "Ecosystem", kind: "md", by: F("marco"), at: T(20) },
       { path: "now.md", title: "now", kind: "md", by: F("marco", true), at: T(3) },

@@ -58,14 +58,14 @@ function Say({ text, className, onDone, delay = 0 }: { text: string; className?:
 // a row of things arriving one after another (motion.ts stagger)
 function Arrive({ children, className, gap = 70 }: { children: ReactNode; className?: string; gap?: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (ref.current) stagger(ref.current.children, { y: 14, gap, cfg: CFG.slide }); }, [gap]);
+  useLayoutEffect(() => { if (ref.current) stagger(ref.current.children, { y: 14, gap, cfg: CFG.travel }); }, [gap]);
   return <div ref={ref} className={className}>{children}</div>;
 }
 
 // a scene: its children arrive one after another from below, on the arrive spring, so a scene is entered, not shown
 function Scene({ children, className }: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLElement>(null);
-  useLayoutEffect(() => { if (ref.current) stagger(ref.current.children, { y: 22, gap: 80, cfg: CFG.arrive }); }, []);
+  useLayoutEffect(() => { if (ref.current) stagger(ref.current.children, { y: 22, gap: 80, cfg: CFG.travel }); }, []);
   return <section ref={ref} className={`fr-scene ${className ?? ""}`}>{children}</section>;
 }
 
@@ -99,9 +99,9 @@ function Hero({ life, pose, hatch, onRest }: { life: React.RefObject<HeroLife | 
       first.current = false;
       cur.current = { ...t }; put();
       sp.current = {
-        x: spring(t.x, CFG.arrive, (v) => { cur.current.x = v; put(); }),
-        y: spring(t.y, CFG.arrive, (v) => { cur.current.y = v; put(); }, () => rest.current?.(pose)),
-        s: spring(t.s, CFG.arrive, (v) => { cur.current.s = v; put(); }),
+        x: spring(t.x, CFG.travel, (v) => { cur.current.x = v; put(); }),
+        y: spring(t.y, CFG.travel, (v) => { cur.current.y = v; put(); }, () => rest.current?.(pose)),
+        s: spring(t.s, CFG.travel, (v) => { cur.current.s = v; put(); }),
       };
       if (!hatch) { d.style.opacity = "1"; return; }
       // the hatch is the body's own (goo.tsx Hero: a seed of goo, he grows out of it); here he only rises a little into place
@@ -114,7 +114,7 @@ function Hero({ life, pose, hatch, onRest }: { life: React.RefObject<HeroLife | 
     const l = life.current;
     if (l && pose !== "gone") { l.hop(pose === "notch" ? 1.3 : 0.9); if (pose === "notch") l.trail(520); }
     d.style.opacity = pose === "gone" ? "0" : "1";
-    const cfg = pose === "notch" ? { k: 120, z: 0.86 } : CFG.arrive;
+    const cfg = CFG.travel;
     sp.current!.y.rest = () => rest.current?.(pose);
     sp.current!.x.to(t.x, { cfg }); sp.current!.y.to(t.y, { cfg }); sp.current!.s.to(t.s, { cfg });
   }, [pose]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -278,6 +278,10 @@ function Hello({ name, setName, life, onNamed, onNext, onLift }: { name: string;
   );
 }
 
+// what the install tells a Sol tester about the counts (#485, sol/install says the same on the terminal): the app's
+// install is always the beta's, so always a Sol tester's
+export const INSTALL_COUNTS_LINE = "Sol counts how it is used and what breaks, for the team: when something breaks, which part of Sol's engine, what type of error and which Sol version, never what failed or what you wrote. The counts carry your name. To stop it, say so in the beta testers' Discord.";
+
 // the install as one liquid line at the foot of the window, and a phrase under it
 function InstallLine({ inst }: { inst: Install }) {
   const [open, setOpen] = useState(false);
@@ -291,6 +295,7 @@ function InstallLine({ inst }: { inst: Install }) {
         {inst.failed ? <>something stopped: {inst.failed} <button className="link" onClick={() => setOpen((o) => !o)}>{open ? "hide" : "what it said"}</button></> : <>{inst.phrase} · {Math.round(inst.frac * 100)}%</>}
       </p>
       {open && <pre className="fr-log">{inst.lines.join("\n")}</pre>}
+      <p className="fr-phrase dim">{INSTALL_COUNTS_LINE}</p>
     </div>
   );
 }
@@ -309,7 +314,7 @@ function Senses({ name, life, onNext }: { name: string; life: React.RefObject<He
   // a sense landing is felt: the card pops on the pop spring and washes spring green, Sol hops, sheds and washes green
   // with it (done), the glyph's bud turns spring
   const landed = (k: Permission) => {
-    const el = cardEls.current[k]; if (el) { enter(el, { scale: 0.05, cfg: CFG.pop }); el.dataset.just = "1"; window.setTimeout(() => { delete el.dataset.just; }, 1200); }
+    const el = cardEls.current[k]; if (el) { enter(el, { scale: 0.05, cfg: CFG.settle }); el.dataset.just = "1"; window.setTimeout(() => { delete el.dataset.just; }, 1200); }
     const l = life.current; if (l) { l.hop(1.1); l.shed(14, 1.1); l.wear("ok", 900); }
   };
   const [state, setState] = useState<Partial<Record<Permission, PermissionState>>>({});

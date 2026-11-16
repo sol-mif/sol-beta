@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { computeVersion, versionLine } from "../src/version.ts";
+import { computeVersion, versionLine, releaseTag } from "../src/version.ts";
 import { RelayHub, solVersionOf } from "../src/hub/index.ts";
 
 const ENV = { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
@@ -55,6 +55,36 @@ test("a */mine branch over stable: the release plus my own commits, even when ma
   // a newer stable this Sol has not updated to: one behind
   git(d, "checkout", "-q", "stable"); commit(d, "a newer stable"); git(d, "checkout", "-q", "marco/mine");
   assert.equal(versionLine(await computeVersion(d)), "release stable-20261030-0900 + 3 of mine, 1 behind");
+});
+
+test("#529 R5: a */mine branch over dev: the dev release is the base, only my own commits count as mine", async () => {
+  const { d } = repo();
+  for (let i = 0; i < 3; i++) commit(d, `main: ${i}`);
+  const dv = commit(d, "the dev release");
+  git(d, "branch", "dev");
+  git(d, "tag", "dev-20261031-1517", dv);
+  git(d, "checkout", "-q", "-b", "marco/mine", "dev");
+  for (let i = 0; i < 2; i++) commit(d, `mine: ${i}`);
+  git(d, "checkout", "-q", "main"); commit(d, "main moves on past dev"); git(d, "checkout", "-q", "marco/mine");
+  const v = await computeVersion(d);
+  assert.deepEqual(v, { release: "dev-20261031-1517", commit: dv.slice(0, 8), mine: 2 });
+  assert.equal(versionLine(v), "release dev-20261031-1517 + 2 of mine");
+});
+
+test("#529 R12: of two tags on the base commit, a dev-* beats an older stable-* stamp, and the newer dev-* wins", async () => {
+  const { d, st } = repo();
+  git(d, "tag", "dev-20261031", st);
+  assert.equal((await computeVersion(d))?.release, "dev-20261031");
+  git(d, "tag", "dev-20261031-1517", st);
+  git(d, "tag", "release-20261029", st);
+  assert.equal((await computeVersion(d))?.release, "dev-20261031-1517");
+});
+
+test("#529 R12: releaseTag, the one pick ship.ts and version.ts share: dev-* first, then newest by the date in the name", () => {
+  assert.equal(releaseTag(["stable-20261030-0900", "dev-20261031"]), "dev-20261031");
+  assert.equal(releaseTag(["dev-20261031-1517", "dev-20261031", "dev-20261030-2300"]), "dev-20261031-1517");
+  assert.equal(releaseTag(["stable-20261029-2120", "release-20261030", "stable-20261030-0900"]), "stable-20261030-0900");
+  assert.equal(releaseTag([]), "");
 });
 
 test("no tag on the commit: the branch's name and the commit; a tester's beta main says its export's release", async () => {

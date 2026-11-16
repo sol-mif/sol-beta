@@ -89,7 +89,7 @@ export function LifeTalk({ e, mark, onSwitch, onMode }: { e: ReturnType<typeof u
   const box = useRef<HTMLTextAreaElement>(null);
 
   // the composer grows on a spring: measure what it would be, then let the height travel there (overshoots a hair)
-  const boxH = useSpring(0, CFG.grow, (v) => { if (box.current) box.current.style.height = `${v}px`; });
+  const boxH = useSpring(0, CFG.settle, (v) => { if (box.current) box.current.style.height = `${v}px`; });
   const grow = () => {
     const t = box.current;
     if (!t) return;
@@ -102,7 +102,7 @@ export function LifeTalk({ e, mark, onSwitch, onMode }: { e: ReturnType<typeof u
   };
   // sending: the box presses down, then comes back past rest; the words fly up from it
   const askBox = useRef<HTMLDivElement>(null);
-  const sendP = useSpring(0, CFG.pop, (v) => { const el = askBox.current; if (el) el.style.scale = v === 0 ? "" : `${1 - 0.012 * v} ${1 - 0.075 * v}`; });
+  const sendP = useSpring(0, CFG.settle, (v) => { const el = askBox.current; if (el) el.style.scale = v === 0 ? "" : `${1 - 0.012 * v} ${1 - 0.075 * v}`; });
   const stick = useRef<Follow | null>(null);
   const [flw, setFlw] = useState<Follow | null>(null);   // the same follow, for the orb to draw
   const attach = async (files: File[]) => {
@@ -153,7 +153,7 @@ export function LifeTalk({ e, mark, onSwitch, onMode }: { e: ReturnType<typeof u
     const lead = atts.filter((a) => a.note).map((a) => a.note + "\n").join("");
     if (e.say(draft.trim(), atts, lead)) {
       setDraft(""); setAtts([]); requestAnimationFrame(grow);
-      sendP.set(1); sendP.to(0, { cfg: CFG.pop, delay: 60 });
+      sendP.set(1); sendP.to(0, { cfg: CFG.settle, delay: 60 });
       stick.current?.glide();
     }
   };

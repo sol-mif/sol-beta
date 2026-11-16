@@ -18,7 +18,7 @@
 // a scroll refused for Accessibility means Sol may not turn the wheel. The pointer and the page are put back first, as
 // always; the card waits for the permission and then this same window is taken again from the start, by itself.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Spring } from "../motion";
+import { CFG, Spring } from "../motion";
 import { BEAD, type Bead } from "./Bead";
 import type { Rect } from "./Room";
 import { blank, fixedBands, fixedColumns, rowsOf, sameRows, segments, shiftOf, stitchedHeight, type Px, type Rows } from "./stitch";
@@ -81,7 +81,7 @@ export function PageRoom({ bead, say, onTaken, onLeave }: {
   // the dark room's entrance, exactly: the veil comes in, the outlines draw themselves, the tags slide up
   useLayoutEffect(() => {
     const v = veil.current!;
-    const s = new Spring(0, { k: 120, z: 1 }, (x) => { v.style.opacity = String(x); });
+    const s = new Spring(0, CFG.fade, (x) => { v.style.opacity = String(x); });
     s.to(1);
     return () => s.stop();
   }, []);
@@ -89,15 +89,15 @@ export function PageRoom({ bead, say, onTaken, onLeave }: {
     if (!wins?.length || !svg.current) return;
     const springs: Spring[] = [];
     svg.current.querySelectorAll<SVGPathElement>("path.outline").forEach((r, i) => {
-      const s = new Spring(100, { k: 90, z: 1, eps: 0.05 }, (x) => { r.style.strokeDashoffset = String(x); });
+      const s = new Spring(100, { ...CFG.travel, eps: 0.05 }, (x) => { r.style.strokeDashoffset = String(x); });
       s.to(0, { delay: 150 + i * 140 }); springs.push(s);
     });
     document.querySelectorAll<HTMLElement>(".room .tag").forEach((t, i) => {
-      const s = new Spring(0, { k: 260, z: 0.8 }, (x) => { t.style.opacity = String(x); t.style.translate = `0 ${(1 - x) * 6}px`; });
+      const s = new Spring(0, CFG.travel, (x) => { t.style.opacity = String(x); t.style.translate = `0 ${(1 - x) * 6}px`; });
       s.to(1, { delay: 560 + i * 60 }); springs.push(s);
     });
     const w = wins[0];
-    if (!permit) void bead?.hop(w.x + w.w / 2 - BEAD / 2, Math.max(8, w.y + Math.min(w.h / 2, 120)), { lift: 40, ms: 640 });
+    if (!permit) void bead?.hop(w.x + w.w / 2 - BEAD / 2, Math.max(8, w.y + Math.min(w.h / 2, 120)), { lift: 40 });
     return () => springs.forEach((s) => s.stop());
   }, [wins]);   // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Mutate: an edit to Sol's own face becomes one commit. The seat runs it after each change it makes in mutable mode
-# (sol/PROTOCOL.md, round 10): ../mutate "the creature in the notch blinks twice when a timer ends"
+# (round 10 of the protocol): ../mutate "the creature in the notch blinks twice when a timer ends"
 # It commits sol/mac and sol/design only, as "mutate: <message>", and nothing else that happens to be staged.
 # It refuses when those folders hold staged changes from before (someone else's work in progress): a seat's edits
 # are never staged, so a mutate never sweeps in what it did not make.

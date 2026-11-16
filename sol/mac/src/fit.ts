@@ -47,8 +47,8 @@ export function fitRow(vw: number, side: number, pinned: boolean, want: number[]
 // a docked side makes room: the main's left edge travels on the spring the side glides on, and goes when it lets go
 export function useDock(side: number, docked: boolean) {
   const main = useRef<HTMLDivElement>(null);
-  const dock = useSpring(docked ? side : 0, CFG.glide, (v) => { if (main.current) main.current.style.paddingLeft = `${Math.max(0, v)}px`; });
+  const dock = useSpring(docked ? side : 0, CFG.travel, (v) => { if (main.current) main.current.style.paddingLeft = `${Math.max(0, v)}px`; });
   useLayoutEffect(() => { if (main.current) main.current.style.paddingLeft = `${dock.v}px`; }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { dock.to(docked ? side : 0, { cfg: docked ? CFG.glide : CFG.away }); }, [docked]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { dock.to(docked ? side : 0, { cfg: docked ? CFG.travel : CFG.fade }); }, [docked]); // eslint-disable-line react-hooks/exhaustive-deps
   return main;
 }

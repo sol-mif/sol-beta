@@ -57,7 +57,7 @@ test("A10: SOL_HUB_MOVED rewrites an old hub to its new address, once, case and 
   assert.deepEqual([...S.movedHubs(`${old}=>${HUB}, ws://bad, x=>y, ${HUB}=>${HUB}`)], [[old, HUB]]);
   process.env.SOL_HUB_MOVED = `${old}=>${HUB},${HUB}=>wss://loop.example/relay`;
   try {
-    assert.equal(S.cleanRoom({ name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "wss://NUCBOX.example.ts.net/relay/" })!.hub, HUB, "one step, never on to a third");
+    assert.equal(S.cleanRoom({ name: "Sol", repos: ["sol-mif/sol-dev"], hub: "wss://NUCBOX.example.ts.net/relay/" })!.hub, HUB, "one step, never on to a third");
     assert.equal(S.cleanRoom({ name: "Mine", repos: ["o/r"], hub: "" })!.hub, "", "this Mac's own stays");
   } finally { delete process.env.SOL_HUB_MOVED; }
   assert.equal(S.cleanRoom({ name: "Sol", repos: ["o/r"], hub: old })!.hub, old, "an empty table changes nothing");
@@ -159,7 +159,7 @@ test("the goal: parse and write its file; compare-and-swap; files beside it text
 });
 
 test("make: on a cloud I am signed in to, no repository; registered as a cloud room first; a room for code the GitHub way", async () => {
-  S.patchTeam({ me: { login: "franktsai2008-eng" }, rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }], room: "sol" });
+  S.patchTeam({ me: { login: "franktsai2008-eng" }, rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }], room: "sol" });
   const calls: { method: string; url: string; body?: string }[] = [];
   const f = (async (url: string, init: RequestInit = {}) => {
     calls.push({ method: init.method ?? "GET", url, body: init.body as string | undefined });

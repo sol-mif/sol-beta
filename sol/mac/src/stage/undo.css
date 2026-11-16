@@ -1,0 +1,11 @@
+/* a close's outline (#778, Scar.tsx): a dashed pearl outline where the block was, the ring (44: 48 less 4) at its
+   centre draining over life.scar (set from the kit, kit/feel.ts), the undo glyph (18: 16 + 2 hairlines) inside */
+.st-scar { position: absolute; z-index: 240; display: grid; place-items: center; border: var(--hair) dashed var(--c-pearl-line); border-radius: var(--curve-block); pointer-events: none; transition: opacity var(--d-turn) var(--e-leave); }
+.st-scar.gone { opacity: 0; }
+.st-scar-u { pointer-events: auto; position: relative; display: grid; place-items: center; width: calc(var(--s12) - var(--s1)); height: calc(var(--s12) - var(--s1)); padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--c-pearl); cursor: pointer; }
+.st-scar-u:active { transform: scale(0.94); }
+.st-scar-rg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.st-scar-rg circle { fill: none; stroke: var(--c-pearl); stroke-width: var(--hair); opacity: 0.55; stroke-dashoffset: 0; animation: st-scar-drain var(--life-scar) linear forwards; }
+.st-scar-ic { width: calc(var(--s4) + var(--hair) * 2); height: calc(var(--s4) + var(--hair) * 2); fill: none; stroke: currentColor; stroke-width: calc(var(--hair) * 1.6); stroke-linecap: round; stroke-linejoin: round; }
+@keyframes st-scar-drain { to { stroke-dashoffset: var(--ring-len); } }
+@media (prefers-reduced-motion: reduce) { .st-scar-rg circle { animation: none; } }

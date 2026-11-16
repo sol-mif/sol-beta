@@ -1,0 +1,40 @@
+/* Sources and the policy paragraph (#796, home/whole/Sources.tsx), behind sol.home.whole: Home's layout only. The
+   looks (glass, the ladder, the dot's and the lines' colours) come from the kit and are set in code. */
+.hsrc-back { border: 0; background: none; padding: 0; font: inherit; cursor: default; }
+.hsrc-back:hover { color: var(--ink) !important; }
+.hsrc-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s8); align-items: start; min-width: 0; }
+.hsrc-left, .hsrc-right { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+.hsrc-label { font-size: var(--t-label); line-height: var(--t-label-line); margin-top: var(--s2); }
+
+/* the policy, in your words */
+.hpol { position: relative; isolation: isolate; padding: var(--s6); display: flex; flex-direction: column; gap: var(--s4); }
+.hpol-text { cursor: text; outline: 0; }
+.hpol-s { text-decoration-line: underline; text-decoration-thickness: 1px; text-underline-offset: var(--s1); transition: color var(--d-turn) var(--e-move); }
+.hpol-s[data-new] { animation: hpol-flash var(--d-pour) var(--e-arrive); }
+@keyframes hpol-flash { from { color: var(--flash); } }
+.hpol-edit { width: 100%; min-height: var(--s12); field-sizing: content; resize: none; border: 0; outline: 0; background: none; padding: 0; font: inherit; }
+.hpol-read { font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* what Sol learned */
+.hlrn { display: flex; flex-direction: column; }
+.hlrn-row { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-top: 1px solid var(--c-on-line); min-width: 0; }
+.hlrn-row > span:first-child { flex: 1; min-width: 0; }
+.hlrn-seen { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; margin: 0 var(--s2); }
+
+/* a source's row */
+.hsrc-row { position: relative; isolation: isolate; display: grid; grid-template-columns: var(--s6) minmax(0, 1fr); gap: var(--s3); align-items: start; padding: var(--s3) var(--s4); }
+.hsrc-glyph { display: grid; place-items: center; height: var(--s6); }
+.hsrc-main { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.hsrc-name { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-height: var(--s6); }
+.hsrc-health { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hsrc-health i { width: var(--s2); height: var(--s2); border-radius: 50%; }
+.hsrc-scope, .hsrc-folders { font-size: var(--t-label); line-height: var(--t-label-line); }
+.hsrc-folders { display: flex; flex-direction: column; }
+.hsrc-folders [data-held] { color: var(--dim); }
+.hsrc-side { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s1); }
+.hsrc-would { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.hsrc-dash { width: var(--s3); height: var(--s2); border: 1px dashed; border-radius: var(--r-pill); box-sizing: border-box; }
+.hsrc-receipt { position: sticky; bottom: 0; isolation: isolate; align-self: flex-start; display: flex; align-items: center; gap: var(--s3); margin-top: var(--s6); padding: var(--s2) var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hsrc-foot { font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s1); }
+
+@media (prefers-reduced-motion: reduce) { .hpol-s[data-new] { animation: none; } }

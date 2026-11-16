@@ -45,14 +45,19 @@ export type WorkMode = "default" | "acceptEdits" | "plan" | "auto" | "bypassPerm
 export type Bubble = "slab" | "glass" | "edge" | "classic" | "outline" | "bare";
 // the look (mine/look/SPEC.md): the window's base colour, its opacity over the desktop, the native blur, his bubble's style,
 // the size of the chat's words (#268)
-export type Look = { color: string; alpha: number; blur: number; bubble: Bubble; text: number };
+export type Skin = "pearl" | "ink";   // the clean Home's skin (#589), a cosmetic pick
+export type Look = { color: string; alpha: number; blur: number; bubble: Bubble; text: number; skin: Skin };
 export type Settings = {
   voice: string; patienceMs: number; language: Language; mic?: string;
   defaults: { seat: Seat; model: Record<Seat, string>; effort: Record<Seat, Effort>; mode: WorkMode };
   look: Look;
   // how Sol is used, as counts (engine/src/track.ts, #356): usage, on unless turned off by hand in the engine's file;
   // told, the one card on the first window was pressed (CountsCard.tsx); absent on an older engine
-  track?: { usage: boolean; told: boolean };
+  track?: { usage: boolean; told: boolean; toldErrors?: boolean };
+  // whether this Sol counts its errors for the team (a Sol tester's or developer's, #485); absent on an older engine
+  errorCounts?: boolean;
+  // the frame's switch as the engine was told it (#633): its blocks' engine halves load only with it on; absent until turned
+  frame?: boolean;
 };
 // the person's arrangement (engine/src/arrange.ts, PROTOCOL.md round 31): their rails, presets and layout
 export type Arrangement = {
@@ -159,7 +164,7 @@ export function useEngine() {
   const [notice, setNotice] = useState("");
   const noticeTimer = useRef<number | undefined>(undefined);
   const frameSubs = useRef(new Set<(f: Frame) => void>());
-  const rawSubs = useRef(new Set<(m: any) => void>()); // Work mode listens to the work.* messages itself (work/useWork.ts), the sticky note to sticky.* (work/Sticky.tsx)
+  const rawSubs = useRef(new Set<(m: any) => void>()); // Work mode listens to the work.* messages itself (work/useWork.ts)
   const heardCb = useRef<(text: string) => void>(() => {});
   const partialCb = useRef<(text: string, tag: number) => void>(() => {}); // words read from one clip, while dictation goes on
   const interrupting = useRef(0);                               // stopped "done"s still owed by turns a new say cut off
@@ -340,8 +345,10 @@ export function useEngine() {
         return;
       }
       landWords();   // whatever comes next comes after the words before it
-      // browser.inspected / browser.located: the page pane's questions about a tab, answered by rid (work/PagePane.tsx)
-      if (typeof m.type === "string" && (m.type.startsWith("work.") || m.type.startsWith("browser.") || m.type.startsWith("sticky") || m.type === "ran")) { rawSubs.current.forEach((f) => f(m)); return; }
+      // browser.inspected / browser.located: questions about a tab, answered by rid.
+      // A team.* answer with a rid goes too (#579): Work's card presses ask for a key and press by rid (work/useWork.ts),
+      // and without it every keyed press in Work (hand-in, tonight, checkpoint, the box's merge) waited out its timeout
+      if (typeof m.type === "string" && (m.type.startsWith("work.") || m.type.startsWith("browser.") || m.type === "ran" || (m.type.startsWith("team.") && typeof m.rid === "string"))) { rawSubs.current.forEach((f) => f(m)); return; }
       if (m.type === "engine.renewing") { setNotice("engine renewing"); return; }   // a new build going live; back in a few seconds
       if (m.type === "engine.reverted") { setNotice("engine went back to its last good build"); window.clearTimeout(noticeTimer.current); noticeTimer.current = window.setTimeout(() => setNotice(""), 60_000); return; }   // the keeper put the last good build back after a bad one
       if (m.type === "face.reverted") { flash(`face went back: ${m.line}`); return; }   // an edit that did not compile was taken back (engine/src/changing.ts)

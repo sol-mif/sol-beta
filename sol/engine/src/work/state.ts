@@ -28,7 +28,20 @@ export type Marks = {
   goalv?: string;     // the room's goal it started with (#234): the first turn carried that snapshot
   thing?: string;     // the room's thing beside it when it started (#238): its room show names it
   memv?: string;      // the group's memory it started with (#316): the shas of the memory files its first turn carried
+  role?: Role;        // its part in the dev cycle (#484): given to the guard as SOL_ROLE on every run, set once, at its start
 };
+// the parts a session plays in the dev cycle (#484, sol/locks/team.mjs ROLES, the same list): the guard holds each to its
+// locks. Kept on the session, so every run of it (a resume, a restart) is held the same
+export const ROLES = ["builder", "verifier", "reviewer", "triage", "first-timer", "dev", "beta", "hand-in"] as const;
+export type Role = (typeof ROLES)[number];
+// how much a role is held to, most first (team.mjs STRICT): the first-timer touches nothing, the builder never edits
+// eval.md, the verifier only adds its Releases line; the rest share the same locks. No role is held to least
+const STRICT: readonly string[] = ["first-timer", "builder", "verifier"];
+const strictness = (r?: string) => (r ? (STRICT.includes(r) ? STRICT.length - STRICT.indexOf(r) : 0) : -1);
+/** a role as given: one of ROLES, undefined for none, and "builder" for one nobody knows (a typo never loosens a lock) */
+export const roleIn = (v: unknown): Role | undefined => { const s = String(v ?? "").trim(); return !s ? undefined : (ROLES as readonly string[]).includes(s) ? s as Role : "builder"; };
+/** the stricter of two roles: a session started from one with a role never sheds its locks */
+export const stricter = (a?: string, b?: string): Role | undefined => { const x = roleIn(a), y = roleIn(b); return strictness(y) > strictness(x) ? y : x; };
 // folders: whole folders in it (one group each). in: a topic group inside that folder, holding that folder's sessions
 // only (never folders). about: one line on what it is for, so a fresh session there can be filed in it by the model
 export type Group = { id: string; name: string; at: number; folders?: string[]; in?: string; about?: string };
@@ -89,13 +102,14 @@ function save() {
   }, 150);
 }
 
-const KEYS = ["pinned", "done", "unread", "archived", "group", "parent", "seen", "failed", "mode", "card", "moved", "folder", "room", "roomId", "goalv", "memv"] as const;
+const KEYS = ["pinned", "done", "unread", "archived", "group", "parent", "seen", "failed", "mode", "card", "moved", "folder", "room", "roomId", "goalv", "memv", "role"] as const;
 export function mark(sessionId: string, patch: Partial<Record<keyof Marks, unknown>>) {
   const s = workState();
   const m = { ...(s.marks[sessionId] ?? {}) } as Record<string, unknown>;
   for (const k of KEYS) {
     if (!(k in patch)) continue;
     const v = patch[k];
+    if (k === "role") { if (m.role === undefined && roleIn(v)) m.role = roleIn(v); continue; }   // set once: never changed or taken off
     if (v === null || v === false || v === "" || v === undefined) delete m[k];
     else m[k] = k === "group" || k === "parent" || k === "card" || k === "moved" || k === "folder" || k === "room" || k === "roomId" || k === "goalv" || k === "memv" ? String(v) : k === "seen" ? Number(v) : k === "mode" ? (v === "life" || v === "cowork" ? v : "work") : true;
   }

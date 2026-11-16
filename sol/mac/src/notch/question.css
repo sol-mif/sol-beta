@@ -1,0 +1,15 @@
+/* The question card in the notch (#794, Question.tsx), behind sol.home.whole: its layout only, on the scale's
+   variables; the looks come from the kit (Card, Button) and Home's warm answer. */
+.nq { position: absolute; left: 50%; transform: translateX(-50%); z-index: 3; color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); animation: nq-drop var(--d-turn) var(--e-arrive); }
+@keyframes nq-drop { from { opacity: 0; transform: translate(-50%, calc(-1 * var(--s2))); } to { opacity: 1; transform: translateX(-50%); } }
+.nq-in { padding: var(--s4) var(--s4) var(--s3); display: flex; flex-direction: column; }
+.nq-meta { display: flex; align-items: center; gap: var(--s2); min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.nq-crumb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nq-when { margin-left: auto; white-space: nowrap; font-weight: 500; }
+.nq-title { margin-top: var(--s2); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nq-why { font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nq-acts { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); }
+.nq-space { flex: 1; }
+.nq-home { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .nq { animation: none; } }
+.nq-dot { opacity: .6; }

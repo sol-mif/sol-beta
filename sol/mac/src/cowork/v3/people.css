@@ -1,0 +1,127 @@
+/* Cowork v3 slice 3 (fr-30, #556): People, my window, Running. The face's own tokens only (face.css, palette.css): the
+   seat's glow for who I am, the gradient tab line, ember for what needs me and nothing else. Every class is v3-*. */
+.v3-rooms { display: flex; flex-direction: column; gap: 14px; padding: 18px 24px 40px; min-height: 0; overflow: auto; }
+.v3-tabs { position: relative; display: flex; gap: 4px; padding-bottom: 6px; }
+.v3-tabs button { height: 28px; padding: 0 12px; border: 0; border-radius: var(--pill); background: transparent; color: var(--dim); font: inherit; font-size: 13px; cursor: pointer; }
+.v3-tabs button:hover { background: var(--raised); color: var(--ink); }
+.v3-tabs button.on { background: var(--raised); color: var(--ink); }
+.v3-tabline { display: block; height: 2px; border-radius: 2px; background: linear-gradient(95deg, #fb5ad0 0 14%, #f8478e 26% 40%, #ef3a2a 52% 64%, #fb7111 76% 100%); }
+.v3-tabs .v3-tabline { position: absolute; left: 0; right: 0; bottom: 0; opacity: .8; }
+.v3-room { display: flex; flex-direction: column; gap: 16px; }
+.v3-k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.v3-k .dim, .v3-k .v3-where { text-transform: none; letter-spacing: 0; }
+.v3-rooms .dim { color: var(--dim); }
+.v3-hint { margin: 0; font-size: 12.5px; color: var(--dim); }
+.v3-err { margin: 0; font-size: 12.5px; color: var(--ember); }
+.v3-where { font-family: var(--mono); font-size: 11px; color: var(--dim); padding: 1px 6px; border-radius: var(--r-s); background: var(--surface); }
+.v3-press { height: 26px; padding: 0 11px; border: 0; border-radius: var(--pill); background: var(--ink); color: var(--base-color); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.v3-press.ghost { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--edge); }
+.v3-press.needs { background: var(--ember); color: #fff; }
+.v3-press.still { display: inline-flex; align-items: center; cursor: default; }
+.v3-press:disabled { opacity: .5; cursor: default; }
+.v3-presses { display: inline-flex; gap: 6px; flex-wrap: nowrap; }
+
+/* People: stations by what each is on */
+.v3-stations { display: flex; flex-wrap: wrap; gap: 14px; }
+.v3-on { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--r-l); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.v3-on.quiet { background: transparent; }
+.v3-row { display: flex; gap: 14px; }
+.v3-station { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 74px; padding: 6px; border-radius: var(--r); }
+.v3-station.over { box-shadow: inset 0 0 0 1px var(--glow); background: rgb(from var(--glow) r g b / .08); }
+.v3-face { position: relative; border: 0; padding: 0; background: none; cursor: pointer; }
+.v3-seat { display: inline-flex; border-radius: 50%; }
+.v3-station.you .v3-seat { box-shadow: 0 0 0 2px var(--base-color), 0 0 0 3.5px var(--glow), 0 0 18px -2px var(--glow); }
+.v3-station.away .v3-seat { opacity: .55; }
+.v3-agent { position: absolute; right: -14px; bottom: -4px; display: inline-flex; border-radius: 50%; background: var(--base-color); box-shadow: 0 0 0 1.5px var(--mute); }
+.v3-agent.busy { box-shadow: 0 0 0 1.5px var(--amber); }
+.v3-agent.mini { right: -7px; bottom: -3px; box-shadow: 0 0 0 1px var(--mute); }
+.v3-name { display: flex; flex-direction: column; align-items: center; font-size: 12.5px; line-height: 1.25; }
+.v3-role { font-size: 10.5px; color: var(--dim); }
+.v3-role.r-owner { color: var(--ink); }
+.v3-card { position: absolute; top: 100%; left: 50%; z-index: 4; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: var(--r); background: var(--pop); box-shadow: var(--pop-shadow), inset 0 0 0 1px var(--edge); }
+.v3-hand, .v3-leave, .v3-undo { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-l); background: rgba(0,0,0,.82); color: #fff; box-shadow: var(--pop-shadow); }
+.v3-hand .from { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: rgb(255 255 255 / .55); }
+.v3-hand .t, .v3-lline .t, .v3-item .t { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.v3-hand small, .v3-lline small { color: rgb(255 255 255 / .55); font-size: 11.5px; }
+.v3-hand .v3-press, .v3-undo .v3-press, .v3-leave .v3-press:not(.needs) { background: #fff; color: #000; }
+.v3-hand .v3-press.ghost, .v3-undo .v3-press.ghost, .v3-leave .v3-press.ghost { background: rgb(255 255 255 / .12); color: #fff; box-shadow: none; }
+.v3-leave { flex-direction: column; align-items: stretch; }
+.v3-leave .v3-k, .v3-leave .v3-hint, .v3-leave .dim { color: rgb(255 255 255 / .55); }
+.v3-lline { display: flex; align-items: center; gap: 10px; }
+.v3-lline .v3-where { background: rgb(255 255 255 / .1); color: rgb(255 255 255 / .7); min-width: 64px; text-align: center; }
+.v3-undo { align-self: flex-start; }
+.v3-undo .t { font-size: 13px; }
+.v3-undo-ring { width: 18px; height: 18px; transform: rotate(-90deg); }
+.v3-undo-ring circle { fill: none; stroke-width: 2; }
+.v3-undo-ring .bg { stroke: rgb(255 255 255 / .15); }
+.v3-undo-ring .fg { stroke: var(--glow); stroke-dasharray: 44; stroke-dashoffset: 0; }
+.v3-undo-ring .fg.run { stroke-dashoffset: 44; transition: stroke-dashoffset 8s linear; }
+
+/* roles and the three layers, one picture */
+.v3-picture { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.v3-roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.v3-rcol { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--r); background: var(--surface); }
+.v3-rcol small { font-size: 11px; line-height: 1.35; }
+.v3-rfaces { display: flex; flex-wrap: wrap; gap: 14px; min-height: 26px; align-items: center; }
+.v3-rface { position: relative; display: inline-flex; }
+.v3-rpick { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.v3-layers { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--r); background: var(--surface); }
+.v3-lrow { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 4px; align-items: center; font-size: 12.5px; }
+.v3-lrow.head { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.v3-cell { height: 26px; border: 0; border-radius: var(--r-s); background: transparent; color: var(--dim); font: inherit; font-size: 12px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-cell:not(:disabled):hover { background: var(--raised); color: var(--ink); }
+.v3-cell.lit { color: var(--ink); box-shadow: inset 0 0 0 1px var(--glow); }
+.v3-cell:disabled { cursor: default; }
+
+/* my window: three rings */
+.v3-winwrap { display: grid; grid-template-columns: minmax(280px, 520px) minmax(220px, 1fr); gap: 22px; align-items: start; }
+.v3-win { position: relative; width: 100%; aspect-ratio: 1; touch-action: none; user-select: none; }
+.v3-win-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v3-disc { stroke: var(--edge); stroke-width: 1; }
+.v3-disc.d-workFacts { fill: rgb(from var(--on) r g b / .03); }
+.v3-disc.d-myWay { fill: rgb(from var(--on) r g b / .05); }
+.v3-disc.d-mine { fill: rgba(0,0,0,.55); }
+.v3-disc.hot { stroke: var(--glow); stroke-width: 1.5; }
+.v3-arc-t { font-size: 11px; letter-spacing: .12em; fill: var(--dim); }
+.v3-arc-t.t-mine { fill: rgb(255 255 255 / .55); }
+.v3-win-face { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; font-size: 12px; pointer-events: none; }
+.v3-win-face > :first-child { border-radius: 50%; box-shadow: 0 0 0 2px #000, 0 0 0 3.5px var(--glow), 0 0 22px -2px var(--glow); }
+.v3-win.theirs .v3-win-face > :first-child { box-shadow: 0 0 0 2px #000, 0 0 0 3px var(--mute); }
+.v3-chip { position: absolute; transform: translate(-50%, -50%); padding: 3px 10px; border-radius: var(--pill); font-size: 12px; white-space: nowrap; background: var(--pop); color: var(--ink); box-shadow: inset 0 0 0 1px var(--edge); cursor: default; transition: left .25s, top .25s; }
+.v3-chip.movable { cursor: grab; }
+.v3-chip.r-mine { background: rgb(255 255 255 / .1); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); }
+.v3-chip.shut { color: transparent; background: rgb(255 255 255 / .06); min-width: 46px; }
+.v3-chip.v3-chip-ask { box-shadow: inset 0 0 0 1px var(--amber); }
+.v3-chip.drag { cursor: grabbing; transition: none; z-index: 3; box-shadow: inset 0 0 0 1px var(--glow), var(--pop-shadow); }
+.v3-winside { display: flex; flex-direction: column; gap: 12px; }
+.v3-whose { display: flex; flex-wrap: wrap; gap: 6px; }
+.v3-whose button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 4px; border: 0; border-radius: var(--pill); background: var(--surface); color: var(--dim); font: inherit; font-size: 12.5px; cursor: pointer; }
+.v3-whose button.on { color: var(--ink); box-shadow: inset 0 0 0 1px var(--glow); }
+.v3-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.v3-lg { display: flex; gap: 8px; align-items: center; }
+.v3-lg .sw { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--edge); }
+.v3-lg .s-mine { background: #000; }
+.v3-lg .s-myWay { background: rgb(from var(--on) r g b / .12); }
+.v3-lg .s-workFacts { background: rgb(from var(--on) r g b / .04); }
+.v3-focus { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--r); background: var(--surface); font-size: 12.5px; }
+
+/* Running: the now-line and the dev face */
+.v3-nowline { display: grid; grid-template-columns: 1fr 1.3fr .9fr; gap: 1px; border-radius: var(--r-l); overflow: hidden; background: var(--line); }
+.v3-nowline > .v3-seg { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--surface); min-width: 0; border-radius: 0; box-shadow: none; }
+.v3-nowline > .v3-seg.red:not(.calm) { box-shadow: inset 3px 0 0 var(--ember); }
+.v3-item { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+.v3-item b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-item small { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; color: var(--dim); font-size: 11.5px; }
+.v3-at { font-family: var(--mono); font-size: 18px; color: var(--ink); }
+.v3-dev { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: var(--r-l); background: rgba(0,0,0,.82); color: #fff; }
+.v3-dev .dim, .v3-dev .v3-k, .v3-dev small { color: rgb(255 255 255 / .55); }
+.v3-devhead { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+.v3-devhead .v3-tabline { flex-basis: 100%; margin-bottom: 6px; }
+.v3-devcols { display: grid; grid-template-columns: 1.3fr 1.3fr 1fr 1fr; gap: 14px; }
+.v3-devcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.v3-devcol .v3-item.v3-item-card { flex-wrap: wrap; padding: 8px; border-radius: var(--r); background: rgb(255 255 255 / .06); }
+.v3-dev .v3-press { background: #fff; color: #000; }
+.v3-dev .v3-press.ghost { background: rgb(255 255 255 / .12); color: #fff; box-shadow: none; }
+.v3-rhythm { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.v3-rhythm b { font-family: var(--mono); font-weight: 400; }
+@media (max-width: 900px) { .v3-picture, .v3-winwrap { grid-template-columns: 1fr; } .v3-devcols { grid-template-columns: 1fr 1fr; } .v3-nowline { grid-template-columns: 1fr; } }

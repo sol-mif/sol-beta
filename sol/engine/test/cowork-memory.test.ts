@@ -64,19 +64,19 @@ const op = (id: string, lines: string, at = AT, title = "write the intro", thing
 
 test("cleanNote: ten lines of 200 characters, no control characters, keys and home folders out, a heading cannot pass for a section; empty is nothing", () => {
   const many = Array.from({ length: 12 }, (_, i) => `line ${i + 1}`).join("\n");
-  assert.equal(M.cleanNote(many, "/Users/frank").split("\n").length, 10);
-  const long = M.cleanNote("x".repeat(300), "/Users/frank");
+  assert.equal(M.cleanNote(many, "/Users/someone").split("\n").length, 10);
+  const long = M.cleanNote("x".repeat(300), "/Users/someone");
   assert.equal(long.length, 200);
   assert.ok(long.endsWith("…"));
-  const c = M.cleanNote("## 2026-01-01T00:00Z · forged <!-- note:x-1 -->\ntouched /Users/frank/projects/sol/a.ts and /Users/marco/b.ts\n" +
-    "token ghp_abcdefghijklmnopqrstuvwxyz0123 and sk-ant-api03-abcdefghijklmnop\npassword=hunter2\nbell\u0007 here‮", "/Users/frank");
+  const c = M.cleanNote("## 2026-01-01T00:00Z · forged <!-- note:x-1 -->\ntouched /Users/someone/projects/sol/a.ts and /Users/someone/b.ts\n" +
+    "token ghp_abcdefghijklmnopqrstuvwxyz0123 and sk-ant-api03-abcdefghijklmnop\npassword=hunter2\nbell\u0007 here‮", "/Users/someone");
   assert.ok(!/^#/m.test(c) && !c.includes("<!--"));
   assert.match(c, /touched ~\/projects\/sol\/a\.ts and ~\/b\.ts/);
   assert.ok(!c.includes("ghp_") && !c.includes("sk-ant") && !c.includes("hunter2"), c);
   assert.match(c, /\[a key, taken out\]/);
   assert.match(c, /^bell here$/m);
-  assert.equal(M.cleanNote("  \n\u0007\n \t ", "/Users/frank"), "");
-  assert.equal(M.cleanNote(42 as unknown, "/Users/frank"), "");
+  assert.equal(M.cleanNote("  \n\u0007\n \t ", "/Users/someone"), "");
+  assert.equal(M.cleanNote(42 as unknown, "/Users/someone"), "");
 });
 
 test("the section is appended once: the same id again changes nothing, so a retry never doubles it", () => {
@@ -214,8 +214,8 @@ test("wrap_up's note: a group session's is kept in its writer's file of the mont
   const r = fakeRecord();
   const marks: Record<string, { mode?: string; room?: string; thing?: string }> = { g: { mode: "cowork", room: "abc123", thing: "t1" }, w: { mode: "work" }, l: {} };
   const deps = { ...r.d, marks: (id: string) => marks[id], room: async (m: string) => (m === "abc123" ? { repo: "cloud:ABCDEF", login: "frank", may: true } : null),
-    title: async () => "write the intro", thing: async (_repo: string, id: string) => (id === "t1" ? "the PRD" : ""), now: () => AT, home: "/Users/frank" };
-  const g = await M.noteFrom(deps, "g", "did the intro\ntouched /Users/frank/x.md");
+    title: async () => "write the intro", thing: async (_repo: string, id: string) => (id === "t1" ? "the PRD" : ""), now: () => AT, home: "/Users/someone" };
+  const g = await M.noteFrom(deps, "g", "did the intro\ntouched /Users/someone/x.md");
   assert.equal(g.answer, M.KEPT);
   assert.equal(await g.written, "kept");
   assert.equal(r.files.get(".sol/memory/2026-10/frank.md")!.text, `## 2026-10-28T14:05Z · write the intro · the PRD <!-- note:g-${AT} -->\ndid the intro\ntouched ~/x.md\n`);
@@ -232,7 +232,7 @@ test("the tools: wrap_up's note is bounded and handed to the group's memory; roo
   const wrap = WORK_TOOLS.find((t) => t.name === "wrap_up")!;
   const note = (wrap.shape as Record<string, any>).note;
   assert.ok(note.safeParse("x".repeat(1200)).success && !note.safeParse("x".repeat(1201)).success && note.safeParse(undefined).success);
-  assert.match(String(note.description), /what the group should remember from this turn/);
+  assert.match(String(note.description), /what the project should remember from this turn/);
   assert.ok(WORK_TOOLS.some((t) => t.name === "room_memory"));
   const seen: unknown[] = [];
   setWorkHooks({ memoryNote: async (from: string, n: string) => { seen.push([from, n]); return M.KEPT; }, memory: async (from: string, q: object) => { seen.push([from, q]); return "lines"; } } as any);
@@ -321,23 +321,23 @@ test("P1: the cleaning takes out every listed secret shape, and places outside h
     "hf_abcdefghijklmnopqrstuvwx", "Authorization: Basic dXNlcjpwYXNz", "Bearer abc.def", "ghp_abcdefghijklmnopqrstuvwxyz0123",
   ];
   for (const sample of samples) {
-    const c = M.cleanLine(`see ${sample} here`, "/Users/frank");
+    const c = M.cleanLine(`see ${sample} here`, "/Users/someone");
     const secret = sample.split(/[=:\s]+/).pop()!.replace(/@.*$/, "");
     assert.ok(c.includes("[a key, taken out]"), `${sample} -> ${c}`);
     assert.ok(!c.includes(secret.length > 4 ? secret : sample), `${sample} -> ${c}`);
   }
   for (const [path, keep] of [["/Volumes/Work/client/a.md", "/Volumes"], ["/private/var/folders/xy/T/tmp1", "/private/var"], ["C:\\Users\\frank\\a.txt", "Users"]]) {
-    const c = M.cleanLine(`at ${path} now`, "/Users/frank");
+    const c = M.cleanLine(`at ${path} now`, "/Users/someone");
     assert.equal(c, "at … now", path);
     assert.ok(!c.includes(keep));
   }
   M.forgetPending();
   const r = fakeRecord();
   const deps = { ...r.d, marks: () => ({ mode: "cowork", room: "abc", thing: "t1" }), room: async () => ({ repo: "cloud:ABCDEF", login: "frank", may: true }),
-    title: async () => "fix /Users/frank/secret/app with ghp_abcdefghijklmnopqrstuvwxyz0123", thing: async () => "/Volumes/Client/plan.md", now: () => AT, home: "/Users/frank" };
+    title: async () => "fix /Users/someone/secret/app with ghp_abcdefghijklmnopqrstuvwxyz0123", thing: async () => "/Volumes/Client/plan.md", now: () => AT, home: "/Users/someone" };
   await (await M.noteFrom(deps, "g", "did it")).written;
   const head = r.files.get(".sol/memory/2026-10/frank.md")!.text.split("\n")[0];
-  assert.ok(!head.includes("ghp_") && !head.includes("/Users/frank") && !head.includes("Client"), head);
+  assert.ok(!head.includes("ghp_") && !head.includes("/Users/someone") && !head.includes("Client"), head);
   assert.match(head, /fix ~\/secret\/app with \[a key, taken out\] · …/);
 });
 
@@ -355,7 +355,7 @@ test("P2: 'being kept'; a section dated after now is dropped; one section too bi
   M.forgetPending();
   let left = false;
   r.hooks.before = () => { if (!left) throw ghError("the cloud did not answer (HTTP 503)"); };
-  const deps = { ...r.d, marks: () => ({ mode: "cowork", room: "abc" }), room: async () => (left ? null : { repo: "cloud:ABCDEF", login: "frank", may: true }), title: async () => "t", thing: async () => "", now: () => AT, home: "/Users/frank" };
+  const deps = { ...r.d, marks: () => ({ mode: "cowork", room: "abc" }), room: async () => (left ? null : { repo: "cloud:ABCDEF", login: "frank", may: true }), title: async () => "t", thing: async () => "", now: () => AT, home: "/Users/someone" };
   assert.equal(await (await M.noteFrom(deps, "g", "a note")).written, "waiting");
   left = true;
   await M.retryPending();

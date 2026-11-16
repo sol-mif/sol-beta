@@ -10,7 +10,8 @@
 #   4. your name (what should we call you?) and, optional, a Gemini key: asked on the terminal, or taken from the
 #      environment (SOL_OWNER, GEMINI_API_KEY, ELEVENLABS_API_KEY: the app's welcome page passes them so); no terminal, the login name
 #   5. Node, one pinned version from nodejs.org into ~/.sol/node, its checksum checked before anything is unpacked
-#   6. the clone (SOL_REPO), on a branch of your own, <you>/mine, with sol/mine/setup
+#   6. the clone (SOL_REPO), on a branch of your own, <you>/mine, with sol/mine/setup; from the beta repo, one line
+#      saying Sol counts its errors for the team (#485)
 #   7. Claude Code when missing, and its sign-in on the terminal (SOL_SKIP_CLAUDE=1 skips the step)
 #   8. bash sol/setup, with the install's node first on PATH: packages, Sol's own gh (~/.sol/gh), the sol skill, your
 #      keys, the engine's job
@@ -67,7 +68,7 @@ sol_install() {
   sha256() { if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1"; else sha256sum "$1"; fi | cut -d' ' -f1; }
   fetch() { curl -fsSL --retry 2 -o "$2" "$1"; }   # fetch URL file
   # the checkout a launchd job runs from, read from its plist (a link into a checkout's tracked plists, or WorkingDirectory)
-  # a link into a checkout's tracked plists names that checkout; any other plist (a link to sol/mine/live's copy in
+  # a link into a checkout's tracked plists names that checkout; any other plist (a link to another checkout's copy in
   # sol/engine/.live/, or a plain file) is read for its WorkingDirectory
   job_root() {
     [ -e "$1" ] || return 0
@@ -191,6 +192,8 @@ sol_install() {
     ( cd "$DIR" && git switch -q -c "$slug/mine" && bash sol/mine/setup >/dev/null ) \
       || { miss "could not make your branch $slug/mine in $(tilde "$DIR"); the clone is removed, run the line again"; rm -rf "$DIR"; return 1; }
     ok "Sol is in $(tilde "$DIR"), on $slug/mine (yours: commits there get \"mine: \" in front)"
+    # Sol testers (the beta repo): the one line about error counts (#485, engine/src/errcount.ts, decision 20)
+    case $REPO in *sol-beta*) say "Sol counts how it is used and what breaks, for the team: when something breaks, which part of Sol's engine, what type of error and which Sol version, never what failed or what you wrote. The counts carry your name. To stop it, say so in the beta testers' Discord." ;; esac
     root_file
   fi
 

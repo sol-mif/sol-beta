@@ -1,0 +1,11 @@
+/* the used-Cowork mark (#431): a pearl dot and a quiet line under a reply that read the project; who used what on the
+   strip (under the version, as quiet) and on the project's page */
+.us-mark { display: flex; align-items: center; gap: 7px; margin: 4px 0 0; font-size: 11px; line-height: 16px; color: var(--mute); letter-spacing: .01em; }
+.us-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dim); box-shadow: 0 0 0 2px color-mix(in srgb, var(--dim) 22%, transparent); }
+.gp .gp-who .u { font-size: 10.5px; color: var(--mute); max-width: 160px; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
+.gp .gp-who .u .us-dot { width: 4px; height: 4px; box-shadow: none; }
+.us-grid { display: grid; grid-template-columns: max-content 1fr; gap: 10px 22px; }
+.us-grid .us-row { display: contents; }
+.us-grid dd { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.us-part { font-size: 13px; color: var(--ink); }
+.us-part small { font-size: 11px; color: var(--mute); margin-left: 3px; }

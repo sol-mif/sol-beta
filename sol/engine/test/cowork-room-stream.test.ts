@@ -27,7 +27,7 @@ function seat(hub: InstanceType<typeof RelayHub>, who: string, v = 2) {
 }
 
 test("the hub's sanitizer: a show is rebuilt by its own fields, junk dropped, a room show names no issue", () => {
-  const raw = { kind: "show", from: { login: "x", agent: false }, at: 1, ...roomShow("line", line("did it\nnext")), cwd: "/Users/frank/secret", input: { file: "~/.ssh" }, repo: "acme/x", issue: 7, thing: "a1b2c3d4" };
+  const raw = { kind: "show", from: { login: "x", agent: false }, at: 1, ...roomShow("line", line("did it\nnext")), cwd: "/Users/someone/secret", input: { file: "~/.ssh" }, repo: "acme/x", issue: 7, thing: "a1b2c3d4" };
   const s = showOf(raw)!;
   assert.deepEqual(s, { issue: 0, repo: "", session: { id: "s-room-1", title: "the deck" }, event: "line", scope: "room", thing: "a1b2c3d4", line: { role: "agent", text: "did it\nnext", at: 5 } });
   assert.ok(!JSON.stringify(s).includes("secret") && !JSON.stringify(s).includes("ssh"));
@@ -49,7 +49,7 @@ for (const [name, opts] of [["the engine's own hub", { ...ENGINE_HUB }], ["the c
     t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
     const hub = new RelayHub(opts);
     const frank = seat(hub, "frank"), marco = seat(hub, "marco"), isaac = seat(hub, "isaac");
-    hub.message(frank, say("frank", "show", { ...roomShow("start"), cwd: "/Users/frank" }));
+    hub.message(frank, say("frank", "show", { ...roomShow("start"), cwd: "/Users/someone" }));
     assert.equal(shows(marco).length, 1);
     assert.equal(shows(isaac).length, 1);
     assert.equal(shows(marco)[0].cwd, undefined, "the start rebuilt too");
@@ -141,7 +141,7 @@ function engine(login = "frank") {
     git: async (args) => { calls.push(["git", ...args]); return ""; },
     login: async () => login, mayGitHub: () => true, now: () => 2_000_000,
     every: (_ms, fn) => { tick = fn; return () => { tick = null; }; },
-    home: "/Users/frank",
+    home: "/Users/someone",
   };
   return { d, sent, told, calls, tick: () => tick?.() };
 }
@@ -150,10 +150,10 @@ test("engine: a room show starts with no issue, its last words first, and ends w
   const f = engine(), s = new Shows(f.d);
   const items = [
     { id: "1", kind: "me", text: "<room-content ab12>\nthe goal\n</room-content ab12>\n\nmake the deck" },
-    { id: "2", kind: "tool", name: "Read", input: { file_path: "/Users/frank/x" } },
-    { id: "3", kind: "you", text: "Started on /Users/frank/deck.", live: false },
+    { id: "2", kind: "tool", name: "Read", input: { file_path: "/Users/someone/x" } },
+    { id: "3", kind: "you", text: "Started on /Users/someone/deck.", live: false },
   ];
-  await s.startRoom("s-room-1", { cwd: "/Users/frank/Sol/rooms/r", title: "the deck", thing: "a1b2c3d4", items: items as never });
+  await s.startRoom("s-room-1", { cwd: "/Users/someone/Sol/rooms/r", title: "the deck", thing: "a1b2c3d4", items: items as never });
   assert.deepEqual(f.sent[0], { issue: 0, repo: "", session: { id: "s-room-1", title: "the deck" }, scope: "room", thing: "a1b2c3d4", event: "start" });
   for (let i = 0; i < 5; i++) f.tick();
   const lines = f.sent.filter((m) => m.event === "line").map((m) => m.line.text);

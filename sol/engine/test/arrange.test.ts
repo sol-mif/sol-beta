@@ -21,7 +21,7 @@ const say = async (a: object) => (await runArrangeTool("arrange", a)).content.ma
 
 test("defaults: no file is Sol's own, Everyday, Build and Team from the presets the face ships", () => {
   const a = getArrangement();
-  assert.deepEqual(a.presets.everyday.buttons, ["browser", "desk", "file-it", "page"]);
+  assert.deepEqual(a.presets.everyday.buttons, ["browser", "file-it", "page"]);
   assert.equal(a.presets.build.name, "Build");
   assert.deepEqual(a.rails.home, [{ presets: ["everyday", "build"] }]);
   assert.deepEqual(a.rails.cowork, [{ presets: ["team"] }]);
@@ -32,21 +32,21 @@ test("defaults: no file is Sol's own, Everyday, Build and Team from the presets 
 
 test("add, remove and reorder a button, through the tool; every face is told", async () => {
   assert.match(await say({ do: "add", button: "terminal", preset: "everyday" }), /Done/);
-  assert.deepEqual(onDisk().presets.everyday.buttons, ["browser", "desk", "file-it", "page", "terminal"]);
+  assert.deepEqual(onDisk().presets.everyday.buttons, ["browser", "file-it", "page", "terminal"]);
   assert.equal(onDisk().rails.home[0].at, "everyday", "the preset changed is the one showing");
   assert.equal(told.length, 1);
   assert.equal((told[0] as any).type, "arrange.changed");
 
   await say({ do: "move", button: "terminal", preset: "everyday", to: 0 });
-  assert.deepEqual(getArrangement().presets.everyday.buttons, ["terminal", "browser", "desk", "file-it", "page"]);
+  assert.deepEqual(getArrangement().presets.everyday.buttons, ["terminal", "browser", "file-it", "page"]);
 
   await say({ do: "remove", button: "browser" });   // no preset named: the one the rail shows
-  assert.deepEqual(getArrangement().presets.everyday.buttons, ["terminal", "desk", "file-it", "page"]);
+  assert.deepEqual(getArrangement().presets.everyday.buttons, ["terminal", "file-it", "page"]);
   assert.match(await say({ do: "remove", button: "browser" }), /not on Everyday/);
 });
 
 test("an 11th button is refused with the line, and nothing is written", async () => {
-  setArrangement({ presets: { everyday: { buttons: ["call", "browser", "desk", "file-it", "page", "terminal", "files", "tasks", "plan", "helpers"] } } });
+  setArrangement({ presets: { everyday: { buttons: ["call", "browser", "thread", "file-it", "page", "terminal", "files", "tasks", "plan", "helpers"] } } });
   const before = readFileSync(join(home, "arrangement.json"), "utf8");
   const r = setArrangement({ presets: { everyday: { buttons: [...getArrangement().presets.everyday.buttons, "show"] } } });
   assert.deepEqual(r, { ok: false, why: TOO_MANY });
@@ -66,7 +66,7 @@ test("merge: a patch changes only what it names; a null takes a preset away, and
   assert.equal(a.layout.home, "split");
   assert.equal(a.split.share, 0.3);
   assert.deepEqual(a.presets.everyday, DEFAULTS.presets.everyday);
-  assert.match(await say({ do: "new", name: "Study", buttons: ["desk", "browser", "call", "page", "file-it"] }), /Done/);
+  assert.match(await say({ do: "new", name: "Study", buttons: ["show", "browser", "call", "page", "file-it"] }), /Done/);
   assert.deepEqual(getArrangement().rails.home[0], { presets: ["everyday", "build", "study"], at: "study" });
   await say({ do: "rename", preset: "study", name: "Exams" });
   assert.equal(getArrangement().presets.study.name, "Exams");
@@ -100,7 +100,7 @@ test("a bad file is put aside with one line, and Sol's own shows", () => {
 });
 
 test("new refuses an 11th button with the line, and names ids not on the shelf, changing nothing", async () => {
-  const eleven = ["call", "browser", "desk", "file-it", "page", "terminal", "files", "tasks", "plan", "pr", "changes"];
+  const eleven = ["call", "browser", "thread", "file-it", "page", "terminal", "files", "tasks", "plan", "pr", "changes"];
   assert.equal(await say({ do: "new", name: "Big", buttons: eleven }), TOO_MANY);
   assert.match(await say({ do: "new", name: "Odd", buttons: ["call", "my-nothing", "Not An Id"] }), /not on the shelf: my-nothing, Not An Id/);
   assert.equal(getArrangement().presets.big, undefined);
@@ -120,7 +120,7 @@ test("an unknown button id is kept in its place, and a field from a later Sol is
 
 test("get names every button on the shelf with its line", async () => {
   const t = await say({ do: "get" });
-  for (const id of ["call", "browser", "desk", "terminal", "action-board"]) assert.match(t, new RegExp(`\\n  ${id}: \\S`));
+  for (const id of ["call", "browser", "page", "terminal", "action-board"]) assert.match(t, new RegExp(`\\n  ${id}: \\S`));
   assert.doesNotMatch(t, /\n {2}(Rail|Ink|index|types|own):/);
 });
 
@@ -168,14 +168,14 @@ test("the undo note: an agent's change tells the rail who and what, and undo put
 
 // Mine stays mine (PRD section 12, check 10): the ignore file holds both, and nothing that moves stable names either
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-test("the arrangement and own buttons are ignored, and no stamp, promote or rebase names them", { skip: devOnly("sol/promote") }, () => {
+test("the arrangement and own buttons are ignored, and no release, promote or rebase names them", { skip: devOnly("sol/promote") }, () => {
   const ignore = readFileSync(join(ROOT, ".gitignore"), "utf8").split("\n");
   assert.ok(ignore.includes("sol/home/arrangement.json"));
   assert.ok(ignore.includes("sol/home/buttons/"));
   const ignored = (p: string) => { try { execFileSync("git", ["check-ignore", "-q", p], { cwd: ROOT }); return true; } catch { return false; } };
   assert.ok(ignored("sol/home/arrangement.json"));
   assert.ok(ignored("sol/home/buttons/my-date.tsx"));
-  for (const f of ["sol/promote", "sol/engine/src/team/ship.ts", "sol/mine/rebase"]) {
+  for (const f of ["sol/promote", "sol/release", "sol/engine/src/team/ship.ts", "sol/engine/src/team/release.ts", "sol/mine/rebase"]) {
     const src = readFileSync(join(ROOT, f), "utf8");
     assert.doesNotMatch(src, /arrangement\.json|home\/buttons/, `${f} names a person's own`);
   }

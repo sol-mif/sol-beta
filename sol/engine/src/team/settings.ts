@@ -3,8 +3,8 @@
 // ../settings.ts: whatever is on disk or in a patch is made into a valid TeamSettings, anything unknown is dropped.
 // See owns this file; the other slices read and write through its exports. The schema is complete: no slice changes it.
 // Control (#32) adds: the machine rows, the login guard and the Life seat mirror in patchTeam, and where my agent may
-// speak (mayAgentSpeak, speakParagraph, speakRefusal). The night job (#99) adds `night`: its hour and the days a claim
-// may sit still (docs/how-we-work/PRD.md section 12, a team value). Pings (#100) add the dials: per ping kind, always,
+// speak (mayAgentSpeak, speakParagraph, speakRefusal). The night job's `night` (#99) left in conversion step 0002 (#428):
+// its hour and still-claim days are the project's rhythm now (project.ts, nightfile.ts). Pings (#100) add the dials: per ping kind, always,
 // when it matters, or never (pings.ts).
 // Rooms (#154, docs/room-provider/FOUNDATION.md): a list of rooms, one active. A room is a group's record and its
 // people: a provider, an org or repos, the hub it meets on. `org`, `repos` and `relay.url` stay at the top and are
@@ -42,7 +42,10 @@ export type Room = { id: string; name: string; provider: "github" | "drive" | "c
   quiet?: true;
   /** a cloud group's repos of mine my own gh checked as their admin (#320's check, kept with `repos`): its connectors
    *  row says `admin`. Always a part of `repos` */
-  admins?: string[] };
+  admins?: string[];
+  /** a GitHub room's record repository as GitHub named it (#510, findrecord.ts), first in `repos`: kept so the lookup is
+   *  asked once. Absent: not asked yet */
+  record?: string };
 /** a room that moved hubs (A10, S6b): how team.json says it, the hub, key and gate before the move. The move is made on
  *  every read and never written: team.json keeps the old words, so a Sol from before the move (one stable back) still
  *  meets where it did, and SOL_HUB_MOVED=off undoes it. Only the engine has it; never a face's (forFace) */
@@ -59,14 +62,14 @@ export type TeamSettings = {
   leaves: { prompts: boolean; memory: boolean; transcripts: boolean; audit: "ask" | "never" };
   seats: { life: "codex" | "claude"; work: "codex" | "claude" };
   machines: { name: string; url: string }[];           // my machines (the engines I can pick); Control owns the rows
-  night: { hour: number; staleDays: number };          // the night job (#99): when it runs, and when a still claim is dropped
+  channel: "" | "dev" | "beta";                        // the releases this Sol follows (#418, ship.ts): "" = dev for a developer, beta for a tester
   dials: Dials;                                        // per ping kind: always, matters (default), never (#100)
 };
 
 export const TEAM_DEFAULTS: TeamSettings = {
   me: { login: "", name: "" },
   org: "",
-  repos: ["marcocyl04-ux/sol-dev"],
+  repos: [],      // none (#441): a stranger's Sol reads no tracker; sol/setup writes the record and sol-mif/sol-dev for a dev checkout (#507)
   relay: { url: "", key: "", host: false, open: false },   // host off by default (#210, MASTER section 8 step 1): see readTeam
   rooms: [],      // absent in a file: one room, "team", from org, repos and relay.url (#154)
   room: "",
@@ -74,9 +77,27 @@ export const TEAM_DEFAULTS: TeamSettings = {
   leaves: { prompts: false, memory: false, transcripts: false, audit: "ask" },
   seats: { life: "codex", work: "claude" },
   machines: [],   // absent in a file: this Mac and the relay's machine (defaultMachines); present and empty: empty
-  night: { hour: 3, staleDays: 7 },
+  channel: "",
   dials: { ...DIAL_DEFAULTS },
 };
+
+/** the record first in a list (#507, #510, pure): the team's repository keeps its main PR-only
+ *  (.github/rulesets/main.json), so the record files (things, goal, owners, who walked the project) go to a repository
+ *  beside it, put first where recordOf reads it. Which repository that is GitHub says, not the code: the lookup
+ *  (findrecord.ts) asks the code repository's SOL_RECORD variable, else `<owner>/<name>-record`, else the repository is
+ *  its own record; its answer is kept on the room (`record`) so it is asked once. No record: the list as it is */
+export const withRecord = (repos: string[], record = ""): string[] =>
+  !record ? repos : [record, ...repos.filter((r) => r.toLowerCase() !== record.toLowerCase())];
+
+/** whether a GitHub room still waits for GitHub's answer on its record (#510, pure): it has a repository, and its first
+ *  is not the record the lookup gave (never asked, or a hand edit put another first) */
+export const needsRecord = (r: Pick<Room, "provider" | "repos" | "record">): boolean =>
+  r.provider === "github" && isRepo(r.repos[0]) && (r.record ?? "").toLowerCase() !== r.repos[0].toLowerCase();
+
+/** the room's code repository (#510, pure): the first that is not its record, what joining by code clones (letin.ts);
+ *  a room whose only repository is its record clones that */
+export const codeRepoOf = (r: Pick<Room, "repos" | "record">): string =>
+  r.repos.find((x) => isRepo(x) && x.toLowerCase() !== (r.record ?? "").toLowerCase()) ?? r.repos[0] ?? "";
 
 // The rows when a file names none (#169): this Mac, and the machine that runs the team's relay when team.json names
 // one (`wss://HOST/relay` is also a Sol at `wss://HOST/`: the NucBox for Marco's team). Before this the NucBox's
@@ -97,7 +118,6 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 const str = (v: unknown, d = "", max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : d);
 const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
 const seat = (v: unknown, d: "codex" | "claude") => (v === "codex" || v === "claude" ? v : d);
-const int = (v: unknown, d: number, lo: number, hi: number) => (Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi ? (v as number) : d);
 // the format rules are the hub's (#206): hub/hub-types.ts keeps the one copy (#208: the package sol/hub), read here as before
 import { REPO, LOGIN, CODE } from "../hub/index.js";
 export { REPO, LOGIN, CODE };
@@ -214,7 +234,7 @@ export function cleanRoom(v: unknown): Room | null {
   // which is public and knows people by their accounts alone; it meets there as who I am (codex, #227). A key never
   // meets the cloud at all, moved or not. A move to another hub (a self-hoster's) takes the key along, as before
   const moving = hub !== before.hub, bare = isCloud(hub);
-  return { id, name, provider, org, repos, hub, key: bare ? "" : before.key, code, gate: bare ? "github" : before.gate, folder: folderOf(v.folder), mine: v.mine === true, joined: v.joined === true, ...(v.quiet === true ? { quiet: true as const } : {}), ...(moving || (bare && before.key) ? { was: before } : {}) };
+  return { id, name, provider, org, repos, hub, key: bare ? "" : before.key, code, gate: bare ? "github" : before.gate, folder: folderOf(v.folder), mine: v.mine === true, joined: v.joined === true, ...(v.quiet === true ? { quiet: true as const } : {}), ...(provider === "github" && isRepo(v.record) ? { record: v.record } : {}), ...(moving || (bare && before.key) ? { was: before } : {}) };
 }
 
 /** the repositories a room's board reads (#320, pure): a GitHub room's own repos, a cloud room's connected ones, none for
@@ -271,7 +291,7 @@ export function cleanMachines(v: unknown, relayUrl = ""): { name: string; url: s
 export function cleanTeam(raw: unknown): TeamSettings {
   const r = isObj(raw) ? raw : {};
   const me = isObj(r.me) ? r.me : {}, relay = isObj(r.relay) ? r.relay : {}, speak = isObj(r.speak) ? r.speak : {};
-  const leaves = isObj(r.leaves) ? r.leaves : {}, seats = isObj(r.seats) ? r.seats : {}, night = isObj(r.night) ? r.night : {};
+  const leaves = isObj(r.leaves) ? r.leaves : {}, seats = isObj(r.seats) ? r.seats : {};
   const login = str(me.login);
   const repos = Array.isArray(r.repos)
     ? [...new Set(r.repos.filter((x): x is string => typeof x === "string" && REPO.test(x.trim())).map((x) => x.trim()))]
@@ -286,7 +306,7 @@ export function cleanTeam(raw: unknown): TeamSettings {
   }
   if (!rooms.length) {
     const rs = repos.length ? repos : [...TEAM_DEFAULTS.repos];
-    rooms.push({ id: "team", name: nameOf(org, rs), provider: "github", org, repos: rs, hub: hubOf(relay.url), key: "", code: "", gate: "key", folder: "", mine: false, joined: false });
+    rooms.push({ id: "team", name: nameOf(org, rs) || "room", provider: "github", org, repos: rs, hub: hubOf(relay.url), key: "", code: "", gate: "key", folder: "", mine: false, joined: false });
   }
   const here = rooms.find((x) => x.id === r.room) ?? rooms[0];
   return {
@@ -308,7 +328,7 @@ export function cleanTeam(raw: unknown): TeamSettings {
     },
     seats: { life: seat(seats.life, "codex"), work: seat(seats.work, "claude") },
     machines: cleanMachines(r.machines, here.hub),   // #169: the rows by default follow the relay this Sol dials
-    night: { hour: int(night.hour, 3, 0, 23), staleDays: int(night.staleDays, 7, 1, 90) },
+    channel: r.channel === "dev" || r.channel === "beta" ? r.channel : "",
     dials: cleanDials(r.dials),
   };
 }
@@ -474,8 +494,10 @@ function keepKeys(before: TeamSettings, p: Record<string, unknown>): Record<stri
     const joined = typeof r.joined === "boolean" ? r.joined : had?.joined ?? false;
     const repos = had?.provider === "cloud" && (r.provider ?? "cloud") === "cloud" && !Array.isArray(r.repos) ? { repos: had.repos } : {};
     // a moved room's words from before the move stay while it is still where it moved to (S6b)
+    // the record GitHub named (#510) is the engine's word: a face that sends the room without it keeps it
+    const record = typeof r.record === "string" ? {} : had?.record ? { record: had.record } : {};
     const was = had?.was && (r.hub === undefined || r.hub === had.hub) ? { was: had.was } : {};
-    return { ...r, key, code, gate, folder, mine, joined, ...was, ...repos };
+    return { ...r, key, code, gate, folder, mine, joined, ...record, ...was, ...repos };
   }) };
 }
 
@@ -485,7 +507,9 @@ function keepKeys(before: TeamSettings, p: Record<string, unknown>): Record<stri
 // gives back the same code, which it does only for the same repos and maker. A room new in the patch is as it came.
 // A cloud room's repos are the ones connected to it (#320), never what its hub registered: connecting one keeps it mine
 function unmine(before: TeamSettings, s: TeamSettings): TeamSettings {
-  const changed = (r: Room) => { const had = before.rooms.find((x) => x.id === r.id); return r.provider !== "cloud" && !!had && had.repos.join("\n") !== r.repos.join("\n"); };
+  // the record put first by the lookup (#510) is no change of words: the hub registered the code repository
+  const plain = (x: Room, rec = "") => x.repos.filter((y) => y.toLowerCase() !== rec.toLowerCase()).join("\n");
+  const changed = (r: Room) => { const had = before.rooms.find((x) => x.id === r.id); return r.provider !== "cloud" && !!had && plain(had, r.record) !== plain(r, r.record); };
   if (!s.rooms.some((r) => r.mine && changed(r))) return s;
   return { ...s, rooms: s.rooms.map((r) => (r.mine && changed(r) ? { ...r, mine: false } : r)) };
 }
@@ -567,7 +591,7 @@ export function speakRefusal(s: TeamSettings, tool: string, input: unknown): str
   return null;
 }
 
-/** my GitHub login, asked of gh once when team.json has none yet (Ship signs the stamp with it) */
+/** my GitHub login, asked of gh once when team.json has none yet */
 export async function myLogin(): Promise<string> {
   const s = getTeam();
   if (s.me.login) return s.me.login;

@@ -13,9 +13,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, readFileSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
+import { freePort, ownHealth } from "./test-engine.ts";
 
 const ENGINE = join(import.meta.dirname, "..");
-const PORT = 8030 + Math.floor(Math.random() * 9);
+let PORT = 0;   // the system's free port, taken at the start (test-engine.ts, #938)
 const dir = realpathSync(mkdtempSync(join(tmpdir(), "sol-gpt-")));
 const fakeHome = join(dir, "me"), home = join(dir, "solhome"), folder = join(fakeHome, "kaat");
 const rollouts = join(fakeHome, ".codex", "sessions", "2026", "10", "24"), started = join(dir, "codex.log");
@@ -54,6 +55,7 @@ const starts = () => (existsSync(started) ? readFileSync(started, "utf8").trim()
 const after1 = (args: string[], flag: string) => args[args.indexOf(flag) + 1];
 
 async function up() {
+  PORT ||= await freePort();
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: ENGINE, stdio: "ignore",
     env: {
@@ -62,11 +64,7 @@ async function up() {
       SOL_CODEX: join(dir, "codex"), SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1",
     },
   });
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return; } catch {}
-    await wait(200);
-  }
-  throw new Error("the test engine did not come up");
+  await ownHealth(engine, PORT);   // the engine this test started, not another run's on the port (#938)
 }
 
 async function face() {
@@ -78,7 +76,10 @@ async function face() {
     for (let i = 0; i < 150; i++) { const m = got.slice(from).find(pred); if (m) return m; await wait(100); }
     throw new Error(`${what}: timed out; got ${got.map((m) => m.type).join(" ")}`);
   };
-  return { got, next, send: (m: object) => ws.send(JSON.stringify(m)) };
+  // the engine's own word that the counter emptied: its last engine.busy since `from` names no job. A turn says done on
+  // Codex's turn.completed and leaves the counter when the child exits, a moment later on a loaded machine (#968)
+  const idle = (from: number) => next((m) => m === got.slice(from).filter((x) => x.type === "engine.busy").at(-1) && m.jobs.length === 0, "the counter emptied", from);
+  return { got, next, idle, send: (m: object) => ws.send(JSON.stringify(m)) };
 }
 
 test("a GPT talk in a folder works there, carries its folder while it runs, files under it, and the switch carries its gist", { timeout: 90_000 }, async () => {
@@ -115,6 +116,7 @@ test("a GPT talk in a folder works there, carries its folder while it runs, file
   assert.ok(existsSync(folder), "the folder is where it was");
 
   await f.next((m) => m.type === "done" && m.sessionId === id, "the turn ended", n);
+  await f.idle(n);
   const after = (await (await fetch(`http://127.0.0.1:${PORT}/health`)).json()).busy;
   assert.equal(after.length, 0, "nothing left on the counter");
 

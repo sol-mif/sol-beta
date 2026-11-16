@@ -94,8 +94,11 @@ import { Swap } from "../MotionKit";
 import { useNotch } from "./useNotch";
 import { pinLine } from "../useEngine";
 import { useRenovation, seen as seenPing, askOpen, pingLine, pingColour } from "../renovation";
+import { NotchPins } from "../stage/NotchPins";
 import { CrewCanvas, crewState, CLIMB_MS, type CrewMode } from "./Crew";
 import { Buttons, EyeMark, Thumbs, useCard, answer, onKey, DEV_CARD, DEV_EYE, DEV_SHELF, SHELF_DRAG } from "./Card";
+import { NotchQuestion, useNotchQuestion } from "./Question";   // C31: Home's question card
+import { answeredLine } from "../home/whole/question";   // C31
 import { PrivateRow, DEV_PRIVATE, type PrivateApp } from "./Card";   // the clean screen
 import { LineBtns, LinePills, FoldCount, DEV_FOLDED } from "./Card";   // the free notch
 import { TalkDrop, DEV_TALK, DEV_WHY, DEV_TALK_CARDS } from "./Card";   // Anticipate
@@ -215,7 +218,7 @@ export default function Notch() {
   const lean = useRef<{ x: Spring; y: Spring } | null>(null);
   if (!lean.current) {
     const put = () => { const m = markEl.current, l = lean.current; if (m && l) m.style.translate = l.x.v || l.y.v ? `${l.x.v.toFixed(2)}px ${l.y.v.toFixed(2)}px` : ""; };
-    lean.current = { x: new Spring(0, CFG.snap, put), y: new Spring(0, CFG.snap, put) };
+    lean.current = { x: new Spring(0, CFG.settle, put), y: new Spring(0, CFG.settle, put) };
   }
   const leanTo = useCallback((_b: Btn | null, el: HTMLElement | null) => {
     const l = lean.current!, m = markEl.current;
@@ -285,9 +288,9 @@ export default function Notch() {
       }
     };
     sp.current = {
-      w: spring(g.W0, { k: 300, z: 0.82, eps: 0.1 }, put),
-      h: spring(g.H0, { k: 300, z: 0.82, eps: 0.1 }, put),
-      press: spring(0, CFG.pop, put),
+      w: spring(g.W0, { ...CFG.travel, eps: 0.1 }, put),
+      h: spring(g.H0, { ...CFG.travel, eps: 0.1 }, put),
+      press: spring(0, CFG.settle, put),
     };
   }
   // the springs on their way to the open card (or the moon) or to the closed rest, for the geometry known now. Also called
@@ -299,16 +302,16 @@ export default function Notch() {
     moonTo.current = on && geo.current.moon;
     if (on && geo.current.moon) {
       // the moon swells down out of the cutout: height first, the width narrows to the moon 40 ms behind
-      s.h.to(geo.current.OH, { cfg: { k: 210, z: 0.8, eps: 0.1 } });
-      s.w.to(geo.current.OW, { delay: 40, cfg: { k: 220, z: 0.82, eps: 0.1 } });
+      s.h.to(geo.current.OH, { cfg: { ...CFG.travel, eps: 0.1 } });
+      s.w.to(geo.current.OW, { delay: 40, cfg: { ...CFG.travel, eps: 0.1 } });
     } else if (on) {
       // the notch blooms out of the camera slot, width first; the island swells down out of the menu bar, height first
-      s.w.to(geo.current.W1, { delay: island ? 30 : 0, cfg: { k: 210, z: 0.78, eps: 0.1 } });
-      s.h.to(geo.current.H1 + growRef.current, { delay: island ? 0 : 40, cfg: { k: 200, z: 0.8, eps: 0.1 } });
+      s.w.to(geo.current.W1, { delay: island ? 30 : 0, cfg: { ...CFG.travel, eps: 0.1 } });
+      s.h.to(geo.current.H1 + growRef.current, { delay: island ? 0 : 40, cfg: { ...CFG.travel, eps: 0.1 } });
     } else {
       const r = rest();
-      s.w.to(r.w, { cfg: { k: 300, z: 0.95, eps: 0.1 } });
-      s.h.to(r.h, { delay: 20, cfg: { k: 300, z: 0.95, eps: 0.1 } });
+      s.w.to(r.w, { cfg: { ...CFG.settle, eps: 0.1 } });
+      s.h.to(r.h, { delay: 20, cfg: { ...CFG.settle, eps: 0.1 } });
     }
   };
   const expand = useCallback((on: boolean) => {
@@ -525,7 +528,7 @@ export default function Notch() {
   // ---- the buttons (Notch buttons #6): one set per thing the card shows ----
   // a new stable (Ship #33): the card offers Update · Later; a stable not seen before peeks the notch open once
   const sb = useStable();
-  const stable = sb ? { sha: sb.sha, tag: sb.tag, by: sb.by, updating: sb.doing?.updating, said: sb.doing?.said, failed: sb.doing?.failed } : null;
+  const stable = sb ? { sha: sb.sha, tag: sb.tag, by: sb.by, channel: sb.channel, updating: sb.doing?.updating, said: sb.doing?.said, failed: sb.doing?.failed } : null;
   const peekedSha = useRef("");
   useEffect(() => { if (sb && !sb.doing && peekedSha.current !== sb.sha) { peekedSha.current = sb.sha; peekNow(); } }, [sb?.sha, sb?.doing, peekNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // --- Hand (#34): the card offers Take · Pass · Later (a review: Open · Later); a hand not seen before peeks once
@@ -667,6 +670,8 @@ export default function Notch() {
     dropT.current = window.setTimeout(() => setDropS(null), 260);
   };
   const closeDropRef = useRef(closeDrop); closeDropRef.current = closeDrop;
+  // C31 (#794): with sol.home.whole on, the question at the front of Home's list drops the notch open once
+  const { q: homeQ, drawn: homeQDrawn } = useNotchQuestion(() => { window.clearTimeout(peek.current); expand(true); }, open);
   useEffect(() => () => window.clearTimeout(dropT.current), []);
   // the notch's own clock (RUBRIC A15): it stops on the first frame the card is drawn, and the engine is told
   const dropShown = drop && !drop.leaving ? drop.n : -1;
@@ -968,8 +973,8 @@ export default function Notch() {
   useEffect(() => {
     if (openRef.current) return;
     const r = rest();
-    sp.current!.w.to(r.w, { cfg: { k: 260, z: 0.8, eps: 0.1 } });
-    sp.current!.h.to(r.h, { delay: 20, cfg: { k: 260, z: 0.8, eps: 0.1 } });
+    sp.current!.w.to(r.w, { cfg: { ...CFG.settle, eps: 0.1 } });
+    sp.current!.h.to(r.h, { delay: 20, cfg: { ...CFG.settle, eps: 0.1 } });
   }, [ajar, g]); // eslint-disable-line react-hooks/exhaustive-deps
   // arming: what the card answers changed at this moment; a press or a Return before ARM_MS is refused
   const key = cardKey(card);
@@ -992,7 +997,8 @@ export default function Notch() {
   growRef.current = 0;
   const underTop = g.top + g.H1 + DROP_GAP;
   const privShown = privOpen && open && crew === "up" && QUIET.has(card.kind) && !drop && !drawer;
-  const underShown = !drawer && (!!(drop && open) || privShown);
+  const qShown = !!homeQ && open && !drop && !drawer && !privShown;   // C31
+  const underShown = !drawer && (!!(drop && open) || privShown || qShown);
   const [underH, setUnderH] = useState(0);
   const underRO = useRef<ResizeObserver | null>(null);
   const underRef = useCallback((el: HTMLDivElement | null) => {
@@ -1388,7 +1394,7 @@ export default function Notch() {
       className={`notch ${g.form} shape-${g.shape}${open ? " open" : ""}${card.kind === "shelf" ? " shelfed" : ""}${talkOn ? " talking" : ""}${drawer ? " drawn" : ""}${dropping ? " drop" : ""}${crew !== "up" ? " crew" : ""}${pingShows ? " pinged" : ""}${hasBtns ? " btns" : ""}${lineOn && open ? " lined" : ""}${moon ? " moon" : ""}`}
       style={{ "--off": `${g.off}px`, "--tab-top": `${g.top}px` } as React.CSSProperties}
       onMouseDown={() => sp.current!.press.to(1)}
-      onMouseUp={() => sp.current!.press.to(0, { cfg: CFG.pop })}
+      onMouseUp={() => sp.current!.press.to(0, { cfg: CFG.settle })}
       onClick={onClick}
       onDragEnter={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(SHELF_DRAG)) return; setDrop(true); expand(true); }}
       onDragOver={(e) => e.preventDefault()}
@@ -1397,7 +1403,7 @@ export default function Notch() {
         e.preventDefault(); setDrop(false);
         const files = Array.from(e.dataTransfer.files);
         if (e.dataTransfer.types.includes(SHELF_DRAG) || !files.length) return;   // its own thumb, or nothing to keep
-        sp.current!.press.set(1); sp.current!.press.to(0, { cfg: CFG.pop }); flashNow("done");
+        sp.current!.press.set(1); sp.current!.press.to(0, { cfg: CFG.settle }); flashNow("done");
         void n.shelfAdd(files).then((ok) => { if (ok) setNote("On the shelf.", 4000); else setNote("the shelf did not take it", 5000); });
       }}
     >
@@ -1407,7 +1413,7 @@ export default function Notch() {
         {/* the slab: no black of its own, the pointer (it opens the moon) and the hit strips' box */}
         <div className="slab" ref={pill} onPointerEnter={() => { if (!openRef.current) expand(true); }} />
         <div className="slab-top" ref={pillTop}>
-          <div className="mark" ref={markEl} style={{ visibility: crew !== "up" ? "hidden" : undefined }}><Mark size={24} /></div>
+          <div className="mark" ref={markEl} style={{ visibility: crew !== "up" ? "hidden" : undefined }}><Mark size={24} />{n.needMe > 0 && <NeedMe n={n.needMe} />}</div>
         </div>
         {crew === "up" && <MoonDiscs off={g.off} apiRef={discApi} kNow={moonK} invisible={invisible} privHeld={privOpen} talk={talkOn ? clock(talkSecs) : null} drawerOn={drawer}
           sessDot={sessOut.length > 0 || sessCount > 0 || runs.some((c) => c.kind === "ping")} sessCount={sessCount} sessRows={sessRows} shelfOn={shelfOpen} grabOn={grabbing}
@@ -1416,16 +1422,18 @@ export default function Notch() {
         {floatsJsx}
       </> : <>
       <div className="slab" ref={pill}>
-        <div className="mark" ref={markEl} style={{ visibility: crew !== "up" ? "hidden" : undefined }}><Mark size={24} />
+        <div className="mark" ref={markEl} style={{ visibility: crew !== "up" ? "hidden" : undefined }}><Mark size={24} />{n.needMe > 0 && <NeedMe n={n.needMe} />}
           {open && foldN > 0 && <FoldCount n={foldN} onUnfold={unfold} />}</div>
         <div className="say-box" ref={say}>
           {open && crew === "up" && (QUIET.has(card.kind) || lineOn) && <EyeMark invisible={invisible} held={privShown} onFlick={flickEye} onHold={holdEye} />}
           {/* the line; a permission sentence on it opens its System Settings page when pressed (not the call) */}
           <div className={`say-text${linePage ? " linked" : ""}`} title={linePage ? "Open System Settings" : undefined}
             onClick={linePage ? (e) => { e.stopPropagation(); log(`line pressed: ${linePage}`); openPage(linePage); } : undefined}>
-            <Swap k={`${prev.current.key}:${card.ask?.id ?? ""}`} dist={18} cfg={CFG.arrive}><p className={`say${dim ? " dim" : ""}${(card.line && text === card.line && card.kind !== "stable") || lineOn ? " one" : ""}${holdLine?.red && text === talkLine ? " red" : ""}`} aria-live="polite">{text}</p></Swap>
+            <Swap k={`${prev.current.key}:${card.ask?.id ?? ""}`} dist={18} cfg={CFG.travel}><p className={`say${dim ? " dim" : ""}${(card.line && text === card.line && card.kind !== "stable") || lineOn ? " one" : ""}${holdLine?.red && text === talkLine ? " red" : ""}`} aria-live="polite">{text}</p></Swap>
             {/* the free notch: a session's own buttons, small, under its line */}
-            {lineOn && <LineBtns card={card} keys={keysLive} onPress={press} />}</div>
+            {lineOn && <LineBtns card={card} keys={keysLive} onPress={press} />}
+            {/* stage: joins lens (#701): the blocks pinned to the notch, chips with their state dots */}
+            <NotchPins open={open} ask={n.pinned} /></div>
           {lineOn ? <LinePills onPress={pillPress} onHover={leanTo} lit={talkOn ? { b: "anticipate", label: `Anticipate · ${clock(talkSecs)}` } : null} />
             : <Buttons card={card} keys={keysLive} onPress={press} onHover={leanTo} lit={talkOn ? { b: "anticipate", label: `Anticipate · ${clock(talkSecs)}` } : null}
             lead={card.kind === "shelf" ? <Thumbs items={shelfItems} /> : undefined} meta={card.kind === "shelf" ? shelfMeta(shelfItems.length) : undefined} />}
@@ -1441,8 +1449,13 @@ export default function Notch() {
       {/* the clean screen: the private list's row under the card, while the eye is held open */}
       {privShown && <PrivateRow apps={privApps} clean={cleanOn} busy={cleanBusy} top={underTop} rowRef={underRef} onTick={tickApp} onClean={cleanPress} />}
       </>}
+      {qShown && <NotchQuestion q={homeQ!} top={underTop} boxRef={underRef} onAnswered={(w) => setNote(answeredLine(w), 4000)} onDrawn={homeQDrawn} />}{/* C31 */}
       <CrewCanvas pill={pill} st={cs} />
     </div>
   );
 }
 
+/** Cowork v3 (fr-30, #555): the one "needs me" count by the mark, in ember, only when something needs me */
+function NeedMe({ n }: { n: number }) {
+  return <span className="cw3-need" title={`${n} need you in Cowork`} aria-label={`${n} need you`}>{n > 9 ? "9+" : n}</span>;
+}

@@ -35,7 +35,7 @@ const run = (dir: string, ...args: string[]) => {
 };
 
 test("a Sol from the public repo: the team's tools are optional, no MISS for them", () => {
-  const out = run(checkout("mine", "https://github.com/marcocyl04-ux/sol-beta.git"));
+  const out = run(checkout("mine", "https://github.com/sol-mif/sol-beta.git"));
   assert.match(out, /ok {4}the GitHub CLI: Sol's own would go to ~\/\.sol\/gh/, out);
   for (const t of ["Codex", "Tailscale", "ffmpeg"]) assert.match(out, new RegExp(`ok    ${t}.*optional|ok    ${t}, `), `${t}: ok\n${out}`);
   assert.ok(!/MISS.*(GitHub CLI|Codex|Tailscale|ffmpeg)/.test(out), `no MISS for the team's tools\n${out}`);
@@ -43,7 +43,7 @@ test("a Sol from the public repo: the team's tools are optional, no MISS for the
 });
 
 test("a dev checkout: the same tools are needed, except gh, which setup would fetch", () => {
-  const out = run(checkout("dev", "https://github.com/marcocyl04-ux/sol-dev.git"));
+  const out = run(checkout("dev", "https://github.com/sol-mif/sol-dev.git"));
   assert.ok(!/MISS.*GitHub CLI/.test(out), `gh absent is no MISS: Sol's own would be fetched\n${out}`);
   assert.match(out, /ok {4}the GitHub CLI: Sol's own would go to ~\/\.sol\/gh/, out);
   assert.match(out, /MISS  Codex/, out);

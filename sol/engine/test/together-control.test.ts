@@ -18,7 +18,7 @@ test("clean: nothing on disk is the defaults of BUILD.md", () => {
   assert.deepEqual(s.speak, { github: true, cowork: true, discord: "builds", whatsapp: false });
   assert.deepEqual(s.leaves, { prompts: false, memory: false, transcripts: false, audit: "ask" });
   assert.deepEqual(s.seats, { life: "codex", work: "claude" });
-  assert.deepEqual(s.repos, ["marcocyl04-ux/sol-dev"]);
+  assert.deepEqual(s.repos, []);                                   // no tracker unless named (#441)
   assert.deepEqual(s.machines.map((m) => m.name), ["this Mac"]);   // no relay: no far machine (#169)
   assert.equal(s.me.login, "");
 });

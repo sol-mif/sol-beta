@@ -7,9 +7,9 @@ mod hot;
 mod link;
 mod mute;
 mod permit;
+mod pop;
 mod root;
 mod thing;
-mod vibe;
 mod welcome;
 
 use std::net::TcpStream;
@@ -599,8 +599,7 @@ pub fn run() {
             welcome::install_run, welcome::claude_login, welcome::claude_status, welcome::codex_login, welcome::codex_status, welcome::claude_install, welcome::welcome_done, dictate::type_text, grab::grab_sheet, grab::page_scroll, eye::eye_set, eye::eye_get,
             clean::clean_open, clean::clean_set, clean::clean_close, clean::clean_get,
             permit::permit_state, permit::permit_open, permit::permit_back, mute::call_mute,
-            vibe::vibe_start, vibe::vibe_stop, vibe::vibe_glow,
-            thing::thing_open, thing::thing_show, thing::thing_bounds, thing::thing_close, thing::thing_nav, thing::thing_outside, thing::sites_sign_out, thing::sites_clear, link::sol_url_take])
+            thing::thing_open, thing::thing_show, thing::thing_bounds, thing::thing_close, thing::thing_nav, thing::thing_outside, thing::sites_sign_out, thing::sites_clear, thing::block_view_open, thing::block_view_bounds, thing::block_view_hide_all, thing::block_view_nav, thing::block_view_close, pop::block_pop, pop::block_pop_close, link::sol_url_take])
         .setup(|app| {
             eye::load(app.handle());        // the eye as it was left, before any window is shown (eye.rs)
             eye::apply_all(app.handle());   // the main window was made before setup
@@ -719,7 +718,9 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             // Closing the window hides it; the menu bar icon stays, the engine keeps running.
+            // A popped block's window (pop.rs) really closes: its block goes back on the stage.
             if let WindowEvent::CloseRequested { api, .. } = event {
+                if pop::is_pop(window.label()) { return; }
                 api.prevent_close();
                 let _ = window.hide();
             }
@@ -728,6 +729,7 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app, event| {
             // A click on the Dock icon (or "open" again) shows the hidden window back.
+            #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = event {
                 show_main(app);
             }

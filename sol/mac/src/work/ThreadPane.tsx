@@ -74,7 +74,7 @@ export function ThreadPane({ w, id, map, err }: { w: Work; id: string; map: Thre
   }, [!map]); // eslint-disable-line react-hooks/exhaustive-deps
   // the lanes grow in from the left, on a spring, each time the map changes shape
   const grow = useRef<SVGGElement>(null);
-  const sp = useSpring(0, CFG.slide, (v) => { grow.current?.style.setProperty("--grow", String(Math.max(0, Math.min(1, v)))); });
+  const sp = useSpring(0, CFG.travel, (v) => { grow.current?.style.setProperty("--grow", String(Math.max(0, Math.min(1, v)))); });
   const shape = laid.map((s) => s.id + s.x1 + (s.settled ?? "")).join();
   useEffect(() => { sp.set(0); sp.to(1); }, [shape]); // eslint-disable-line react-hooks/exhaustive-deps
 

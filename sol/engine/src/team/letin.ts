@@ -24,7 +24,7 @@
 import { execFile } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { activeRoom, mayAgentSpeak, recordOf, LOGIN, REPO, ROOMS_DIR, type Room, type TeamSettings } from "./settings.js";
+import { activeRoom, codeRepoOf, mayAgentSpeak, recordOf, LOGIN, REPO, ROOMS_DIR, type Room, type TeamSettings } from "./settings.js";
 import { GITHUB_LOGIN } from "../hub/hub-types.js";
 import type { ConnectorsFile, ConnectorsOp } from "./connectors.js";
 import type { RoomRecord } from "./record.js";
@@ -184,7 +184,7 @@ export async function askIn(d: LetInDeps, room: Room = activeRoom(d.team())): Pr
   // join and the relay coming up) finds them all asked; the clone the same way
   const due_ = asks ? repos.filter((r) => due(asked, key(r), t, ASK_WAIT) && due(turnedDown, key(r), t, NO_WAIT)) : [];
   for (const r of due_) asked.set(key(r), t);
-  const first = repos[0] ?? "";
+  const first = codeRepoOf({ repos, record: room.record });   // #510: the code repository, not the record
   const clone = own && !!first && !housed && due(cloned, key(first), t, CLONE_WAIT) && !cloning.has(room.id);
   if (clone) cloned.set(key(first), t);
   const sent: string[] = [];
@@ -354,7 +354,7 @@ export async function cloneWhenIn(d: LetInDeps, id: string): Promise<{ folder: s
   const room = d.team().rooms.find((r) => r.id === id);
   if (!room) return { error: "which room?" };
   if (room.folder && d.exists(room.folder)) return { folder: room.folder };
-  const first = room.repos[0] ?? "";
+  const first = codeRepoOf(room);   // #510: the code repository, not the record
   if (!REPO.test(first)) return { error: "this room has no repository to clone" };
   if (!due(cloned, key(first), d.now(), CLONE_WAIT) || cloning.has(room.id)) return { error: "cloned a moment ago" };
   cloned.set(key(first), d.now());   // marked before the waits: two answers at once clone once
@@ -364,7 +364,8 @@ export async function cloneWhenIn(d: LetInDeps, id: string): Promise<{ folder: s
   return cloneRoom(d, room.id);
 }
 
-/** the room's first repository, cloned into ROOMS_DIR/<room id> when it has no folder on disk yet, and kept on the
+/** the room's code repository (#510: the first that is not its record, codeRepoOf), cloned into ROOMS_DIR/<room id>
+ *  when it has no folder on disk yet, and kept on the
  *  room. A folder there already with the same origin is reused; one with another origin, or none, makes it -2, -3.
  *  git asks gh for the credentials (gh auth git-credential), whatever protocol gh was set up with; a clone that fails is
  *  said in a receipt and the room keeps no folder. Then the board and the shared things are read again. A second clone
@@ -372,7 +373,7 @@ export async function cloneWhenIn(d: LetInDeps, id: string): Promise<{ folder: s
 export async function cloneRoom(d: LetInDeps, id: string): Promise<{ folder: string } | { error: string }> {
   const room = d.team().rooms.find((r) => r.id === id);
   if (!room) return { error: "which room?" };
-  const repo = room.repos[0] ?? "";
+  const repo = codeRepoOf(room);
   if (room.provider !== "github" || !REPO.test(repo)) return { error: "this room has no repository to clone" };
   if (room.folder && d.exists(room.folder)) return { folder: room.folder };
   if (cloning.has(room.id)) return { error: "cloning already" };

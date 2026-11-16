@@ -9,11 +9,12 @@ export const codeTyped = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]+/g, "
 export const meets = (hub: string) => (hub ? hub.replace(/^wss?:\/\//, "").replace(/[/?#].*$/, "") : "this Mac");
 
 
-/** the room the engine makes up when team.json names none (settings.ts: id "team", TEAM_DEFAULTS' repo, no hub, no
- *  code, neither mine nor joined): nobody made it, so the face counts it as no group (#314, the first-time page) */
-export const DEFAULT_REPO = "marcocyl04-ux/sol-dev";
+/** the room the engine makes up when team.json names none (settings.ts: id "team", TEAM_DEFAULTS' repos, none since
+ *  #441, no hub, no code, neither mine nor joined): nobody made it, so the face counts it as no group (#314, the
+ *  first-time page). OLD_DEFAULT_REPO is the one repo the default named before #441, still in team.json files written then */
+export const OLD_DEFAULT_REPO = "marcocyl04-ux/sol-dev";
 export const madeUp = (r: { id: string; repos: string[]; hub?: string; code?: string; mine?: boolean; joined?: boolean }) =>
-  r.id === "team" && !r.mine && !r.joined && !r.code && !r.hub && r.repos.length === 1 && r.repos[0] === DEFAULT_REPO;
+  r.id === "team" && !r.mine && !r.joined && !r.code && !r.hub && (r.repos.length === 0 || (r.repos.length === 1 && r.repos[0] === OLD_DEFAULT_REPO));
 /** my groups (pure): the rooms, less the made-up one */
 export const groupsOf = <R extends Parameters<typeof madeUp>[0]>(rooms: R[]): R[] => rooms.filter((r) => !madeUp(r));
 

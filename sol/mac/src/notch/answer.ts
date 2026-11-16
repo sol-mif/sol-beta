@@ -30,7 +30,7 @@ export type Ask = { id: string; sessionId: string; seat: string; tool: string; t
 export type Turn = { seat: string; sessionId: string; title: string; kind: "life" | "work" | "call" };
 export type PingIn = { id: string; seat: string; sessionId?: string; line: string };
 // a new stable the team stamped (team.stable, PROTOCOL.md round 19); `said` replaces the line once Update was pressed
-export type StableIn = { sha: string; tag: string; by: string; updating?: boolean; said?: string; failed?: boolean };
+export type StableIn = { sha: string; tag: string; by: string; channel?: "dev" | "beta"; updating?: boolean; said?: string; failed?: boolean };
 // --- Hand (#34): a hand to me (team.handed, PROTOCOL.md round 21); `said` replaces the line once Take was pressed
 export type HandIn = { id: string; from: string; issue: number; title: string; review?: boolean; taking?: boolean; said?: string; failed?: boolean };
 // --- end Hand
@@ -140,7 +140,7 @@ export const handLine = (h: HandIn) => {
 // --- end Hand
 
 /** the stable card's one line: the offer, or what Update is doing */
-export const stableLine = (s: StableIn) => s.said || `a new stable is out (${s.tag || s.sha.slice(0, 7)}${s.by ? `, by ${s.by}` : ""})`;
+export const stableLine = (s: StableIn) => s.said || `a new ${s.channel === "dev" ? "dev release" : "stable"} is out (${s.tag || s.sha.slice(0, 7)}${s.by ? `, by ${s.by}` : ""})`;
 
 export function cardOf(c: CardIn): Card {
   if (c.crew) return { kind: "plain", buttons: [], meta: "" };

@@ -90,6 +90,12 @@
 .gp .gp-feed time { font-family: var(--mono); font-size: 11px; color: var(--mute); font-variant-numeric: tabular-nums; }
 .gp .gp-feed .tx { min-width: 0; color: var(--dim); overflow-wrap: anywhere; }
 .gp .gp-feed .tx b { font-weight: 600; color: var(--ink); }
+.gp .gp-feed .gp-broke { margin-left: 8px; padding: 0 8px; background: none; border: 1px solid transparent; border-radius: var(--pill); font: inherit; font-size: 11px; line-height: 18px; color: var(--mute); cursor: pointer; opacity: 0; }
+.gp .gp-feed li:hover .gp-broke, .gp .gp-feed .gp-broke:focus-visible { opacity: 1; }
+.gp .gp-feed .gp-broke:hover { color: var(--red-strong); border-color: var(--red-strong); }
+.gp .gp-feed .gp-brokeform { grid-column: 3; display: flex; gap: 6px; align-items: center; }
+.gp .gp-feed .gp-brokeform input { flex: 1; min-width: 0; height: 30px; padding: 0 12px; background: transparent; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); font: inherit; font-size: 12.5px; }
+.gp .gp-feed .gp-brokeform input:focus { outline: none; border-color: var(--mute); }
 .gp .gp-feed li.ag .tx b { color: var(--amber); font-weight: 500; }
 
 /* connectors: two columns */
@@ -253,3 +259,18 @@
 /* a repository's row is the busiest: its name gives way before who connected it and when */
 .gp .gp-repo .gp-cn-in .nm { flex: 0 1 auto; min-width: 0; }
 .gp .gp-repo .gp-cn-in .dd { flex: none; }
+
+/* agents as members (#435): a member's agent right after its human, joined by a hairline, drawn apart: the small ringed
+   Sol, its name a step dimmer, never bolder than the person it works for */
+.gp .gp-ag { position: relative; display: flex; align-items: center; gap: 8px; margin-left: -32px; padding: 6px 0 6px 16px; background: none; border: 0; font: inherit; color: var(--dim);
+  text-align: left; cursor: pointer; white-space: nowrap; transition: opacity 160ms ease-out; }
+.gp .gp-ag .gp-ag-tie { position: absolute; left: 0; top: 50%; width: 10px; border-top: 1px solid var(--edge); }
+.gp .gp-ag.away { opacity: .5; }
+.gp .gp-ag:hover { opacity: 1; color: var(--ink); }
+.gp .gp-ag:focus-visible, .gp .gp-who:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+.gp .gp-ag .tx { display: flex; flex-direction: column; }
+.gp .gp-ag .n { font-size: 12px; font-weight: 500; line-height: 1.3; }
+.gp .gp-ag .l { font-size: 11.5px; color: var(--mute); }
+.gp .gp-ag.on .l { color: var(--dim); }
+.gp .gp-ag .u { font-size: 10.5px; color: var(--mute); max-width: 150px; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
+.gp .gp-ag .u .us-dot { width: 4px; height: 4px; box-shadow: none; }

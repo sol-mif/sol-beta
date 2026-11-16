@@ -1,0 +1,19 @@
+/* the whole stage's resize hold (#775, Edges.tsx): a band 10 wide astride every edge (8 + 2 hairlines), corners 18
+   (16 + 2 hairlines), set half outside the block; the corners sit over the bands */
+.st-edge { position: absolute; z-index: 5; }
+.st-edge.n, .st-edge.s { left: var(--s4); right: var(--s4); height: calc(var(--s2) + var(--hair) * 2); cursor: ns-resize; }
+.st-edge.n { top: calc((var(--s1) + var(--hair)) * -1); }
+.st-edge.s { bottom: calc((var(--s1) + var(--hair)) * -1); }
+.st-edge.e, .st-edge.w { top: var(--s4); bottom: var(--s4); width: calc(var(--s2) + var(--hair) * 2); cursor: ew-resize; }
+.st-edge.e { right: calc((var(--s1) + var(--hair)) * -1); }
+.st-edge.w { left: calc((var(--s1) + var(--hair)) * -1); }
+.st-edge.ne, .st-edge.nw, .st-edge.se, .st-edge.sw { width: calc(var(--s4) + var(--hair) * 2); height: calc(var(--s4) + var(--hair) * 2); z-index: 6; }
+.st-edge.nw { left: calc((var(--s1) + var(--hair) * 2) * -1); top: calc((var(--s1) + var(--hair) * 2) * -1); cursor: nwse-resize; }
+.st-edge.se { right: calc((var(--s1) + var(--hair) * 2) * -1); bottom: calc((var(--s1) + var(--hair) * 2) * -1); cursor: nwse-resize; }
+.st-edge.ne { right: calc((var(--s1) + var(--hair) * 2) * -1); top: calc((var(--s1) + var(--hair) * 2) * -1); cursor: nesw-resize; }
+.st-edge.sw { left: calc((var(--s1) + var(--hair) * 2) * -1); bottom: calc((var(--s1) + var(--hair) * 2) * -1); cursor: nesw-resize; }
+.st-stage.held .st-edge { pointer-events: none; }
+
+/* cut content says so (whole.md "resize"): "+N lines" at the foot, in the label's type, mute; never a hidden scrollbar */
+.st-cut { position: absolute; z-index: 3; left: var(--hair); right: var(--hair); bottom: 0; height: calc(var(--s12) + var(--s3)); display: flex; align-items: flex-end; justify-content: center; padding-bottom: var(--s2); pointer-events: none; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); background: linear-gradient(transparent, color-mix(in srgb, var(--c-deep) 97%, transparent) 58%); opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-cut.on { opacity: 1; }

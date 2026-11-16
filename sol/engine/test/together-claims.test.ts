@@ -107,7 +107,7 @@ test("the harness: a push from a base branch stops while another person's base b
   const run = (o: { prs: unknown[]; cmd: string; branch?: string }) => {
     const dir = mkdtempSync(join(tmpdir(), "claims-guard-"));
     const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, stdio: "ignore" });
-    g("init", "-q", "-b", o.branch ?? "marco/base-wire-17"); g("config", "sol.login", "marcocyl04-ux");
+    g("init", "-q", "-b", o.branch ?? "marco/base-wire-17"); g("config", "sol.login", "marcocyl04-ux"); g("remote", "add", "origin", "https://github.com/sol-mif/sol-dev.git");   // a sol-dev checkout (#479)
     const bin = join(dir, ".bin"); execFileSync("mkdir", [bin]);
     writeFileSync(join(bin, "gh"), `#!/bin/sh\necho x >> "${join(dir, ".asked")}"\ncat <<'J'\n${JSON.stringify(o.prs)}\nJ\n`); chmodSync(join(bin, "gh"), 0o755);
     const once = () => execFileSync("node", [guard], { cwd: dir, encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },

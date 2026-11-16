@@ -9,10 +9,13 @@
 // the level. SVG and CSS; the word is the one canvas, on the creature's shared loop (creature/Widget.tsx).
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { reducedMotion } from "./motion";
+import { anyWhole } from "./flag";
+import { moves } from "./attention";
 import { Swap } from "./MotionKit";
 import { Creature } from "./creature/Widget";
 import { bayer } from "./creature/ring";
-import { Bands, JOBS, Light, bandsCss } from "./creature/goo";
+import { jellyBands } from "./kit/paint";
+import { JELLY } from "./kit/tokens";
 
 const OPEN_MS = 180, HOVER_MS = 300, SWEEP_MS = 220, POUR_MS = 520;
 const KNOB = 9;                         // the knob's slot (the droplet is a touch larger, it is round)
@@ -23,22 +26,23 @@ const GAP_REST = 8, GAP_OPEN = 10;      // between the knob (the track) and the 
 // the heat of level k of n, by its name when it has a known one, else by where it sits
 const LOW = /^(low|minimal|min|none|off)$/, HIGH = /^(high|xhigh|max|ultra)/;
 type Heat = { cols: readonly string[]; op: number; dur: number; tier: 0 | 1 | 2 };
-const MEDIUM = [JOBS.sun[1], JOBS.brand[2], JOBS.brand[5]] as const;
+// the heat is the jelly's colours (#647, off the old goo kit): low its warm four, faint; medium yellow, orange, pink; high all six
+const MEDIUM = [JELLY.six[4], JELLY.six[2], JELLY.six[1]] as const;
 function heatOf(options: string[], k: number): Heat {
   const n = options.length, name = (options[k] ?? "").toLowerCase();
   const tier = LOW.test(name) ? 0 : name === "medium" ? 1 : HIGH.test(name) ? 2 : n <= 1 ? 1 : k / (n - 1) < 0.25 ? 0 : k / (n - 1) < 0.5 ? 1 : 2;
-  if (tier === 0) return { cols: JOBS.shore, op: 0.35, dur: 0, tier };
+  if (tier === 0) return { cols: JELLY.warm, op: 0.35, dur: 0, tier };
   if (tier === 1) return { cols: MEDIUM, op: 0.6, dur: 4, tier };
   const first = options.findIndex((o) => HIGH.test(o.toLowerCase()));   // each level above the first high one drifts faster
-  return { cols: JOBS.brand, op: 0.9, dur: Math.max(1.2, 2.2 - 0.4 * Math.max(0, k - (first < 0 ? k : first))), tier };
+  return { cols: JELLY.six, op: 0.9, dur: Math.max(1.2, 2.2 - 0.4 * Math.max(0, k - (first < 0 ? k : first))), tier };
 }
 
 // one layer of heat: the bands twice the pill's width, drifting there and back (low stands still)
 function HeatLayer({ h, pour }: { h: Heat; pour?: boolean }) {
-  const still = !h.dur || reducedMotion();
+  const still = !h.dur || reducedMotion() || (anyWhole() && !moves("decor", []));   // #891: one thing moves at a time
   return (
     <span className={`eheat-l${pour ? " pour" : ""}`} style={{ opacity: h.op, animationDuration: pour ? `${POUR_MS}ms` : undefined }}>
-      <span className="eheat-b" style={{ backgroundImage: bandsCss(h.cols, 90, h.tier === 2 ? 0.03 : 0.06), animation: still ? "none" : `eheat-drift ${h.dur}s ease-in-out infinite alternate` }} />
+      <span className="eheat-b" style={{ backgroundImage: jellyBands(h.cols, 90, h.tier === 2 ? 0.03 : 0.06), animation: still ? "none" : `eheat-drift ${h.dur}s ease-in-out infinite alternate` }} />
     </span>
   );
 }
@@ -48,7 +52,11 @@ function Drop({ h }: { h: Heat }) {
   const id = useId().replace(/:/g, "");
   return (
     <svg width="12" height="12" viewBox="0 0 100 100" aria-hidden="true">
-      <defs><Bands id={`${id}b`} cols={h.cols} angle={60} spread={0.8} soft={0.06} /><Light id={id} cx={34} cy={30} r={40} /></defs>
+      <defs>
+        <linearGradient id={`${id}b`} x1="0.2" y1="0.1" x2="0.8" y2="0.9">{h.cols.flatMap((c, j) => [<stop key={`${j}a`} offset={j / h.cols.length + 0.06} stopColor={c} />, <stop key={`${j}b`} offset={(j + 1) / h.cols.length - 0.06} stopColor={c} />])}</linearGradient>
+        <radialGradient id={`${id}hi`} gradientUnits="userSpaceOnUse" cx={34} cy={30} r={40}><stop offset="0" stopColor="#fff" stopOpacity=".5" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></radialGradient>
+        <radialGradient id={`${id}lo`} gradientUnits="userSpaceOnUse" cx={66} cy={80} r={56}><stop offset="0" stopColor="#000" stopOpacity=".22" /><stop offset="1" stopColor="#000" stopOpacity="0" /></radialGradient>
+      </defs>
       <circle cx="50" cy="50" r="44" fill={`url(#${id}b)`} />
       <circle cx="50" cy="50" r="44" fill={`url(#${id}hi)`} />
       <circle cx="50" cy="50" r="44" fill={`url(#${id}lo)`} />

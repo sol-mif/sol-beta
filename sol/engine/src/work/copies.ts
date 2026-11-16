@@ -7,8 +7,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { homedir } from "node:os";
 import { prefs, copies, noteCopy } from "./state.js";
 
@@ -33,8 +33,44 @@ async function repoOf(root: string) {
 export function copyOf(cwd: string): { repo: string; name: string } | null {
   for (const [at, repo] of Object.entries(copies())) if (inside(cwd, at)) return { repo, name: basename(at) };
   const w = /^(.*?)\/\.claude\/worktrees\/([^/]+)/.exec(cwd);
-  return w ? { repo: w[1], name: w[2] } : null;
+  return w ? { repo: w[1], name: w[2] } : worktreeOf(cwd);
 }
+
+// Any other git worktree (a terminal's `git worktree add`, a session's, a plugin's reviews in it) is a copy of its repo
+// too: each one listed as a folder of its own filled the side (#496). Its top holds a .git file, `gitdir:
+// <repo>/.git/worktrees/<name>`; a submodule's points under .git/modules and stays a folder. Read from the disk, no
+// git run, as fileSessions is sync and runs over every session: a folder found to be one is one for good, so a worktree
+// removed since stays filed under its repo (marked gone) for as long as the engine runs; a folder found not to be is
+// asked again after a minute (a worktree made in it since)
+const found = new Map<string, { repo: string; name: string } | null>(), notAt = new Map<string, number>();
+const NOT_FOR_MS = 60_000;
+export function worktreeOf(cwd: string, now = Date.now()): { repo: string; name: string } | null {
+  if (found.has(cwd)) return found.get(cwd)!;
+  if ((notAt.get(cwd) ?? -Infinity) > now - NOT_FOR_MS) return null;
+  let r: { repo: string; name: string } | null = null;
+  for (let dir = cwd, i = 0; i < 40; i++) {
+    const dotGit = join(dir, ".git");
+    let st;
+    try { st = statSync(dotGit); } catch { st = null; }
+    if (st?.isDirectory()) break;   // a main checkout: not a copy
+    if (st?.isFile()) {
+      let line = "";
+      try { line = readFileSync(dotGit, "utf8").slice(0, 4096); } catch { /* unreadable: a folder of its own */ }
+      const m = /^gitdir:\s*(.+?)\s*$/m.exec(line);
+      const gitdir = m ? resolve(dir, m[1]) : "";
+      const w = /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir);
+      if (w && w[1] !== dir) r = { repo: w[1], name: basename(dir) };
+      break;
+    }
+    const up = dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  if (r) { found.set(cwd, r); notAt.delete(cwd); } else notAt.set(cwd, now);
+  return r;
+}
+/** forgets the folders found not to be worktrees (sessions.ts invalidate); the ones found to be are kept */
+export function forgetWorktrees() { notAt.clear(); }
 
 // the copy's folder for a session that would start in `cwd` (a subfolder of the repo stays the same subfolder)
 export async function makeCopy(cwd: string, hint: string): Promise<{ cwd: string; branch: string }> {

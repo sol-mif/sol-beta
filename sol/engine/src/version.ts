@@ -3,10 +3,10 @@
 // fetch: the refs are as fresh as the last update or fetch), in the background after start, kept, and read again after
 // an update run and every ten minutes. Said in /health, on the relay's hello and presence, and to the faces (team.state).
 //
-// The base is whichever of stable and main (origin's first, then the local branch) has the fewest of HEAD's commits
-// outside it; a tie goes to stable. On main that is main itself (none of mine); on a */mine branch rebased onto stable
-// it is stable, and its commits over stable are mine. The release is a release tag on the base's commit
-// (stable-*, dev-*, beta-*, release-*), or, in a tester's clone of the beta repo, the "Sol stable-..." its main's
+// The base is whichever of stable, dev and main (origin's first, then the local branch) has the fewest of HEAD's commits
+// outside it; a tie goes to stable, then dev. On main that is main itself (none of mine); on a */mine branch rebased onto
+// stable or dev (#529: a dev-channel Sol) it is that branch, and its commits over it are mine. The release is a release
+// tag on the base's commit (stable-*, dev-*, beta-*, release-*), picked by releaseTag as ship.ts picks the offer's, or, in a tester's clone of the beta repo, the "Sol stable-..." its main's
 // export commit says; else the branch's own name.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -14,10 +14,19 @@ import type { SolVersion } from "./hub/index.js";
 
 export type { SolVersion };
 const run = promisify(execFile);
-const BASES = ["refs/remotes/origin/stable", "refs/heads/stable", "refs/remotes/origin/main", "refs/heads/main"];
+const BASES = ["refs/remotes/origin/stable", "refs/heads/stable", "refs/remotes/origin/dev", "refs/heads/dev", "refs/remotes/origin/main", "refs/heads/main"];
 const TAG = /^(stable|dev|beta|release)-[\w.-]+$/;
 
 type Git = (args: string[]) => Promise<string>;
+/** of the release tags on one commit, the one it is (#529, shared with ship.ts askOrigin so the offer and Settings
+ * name the same release): any dev-* before any other, then the newest by the date in the name (dev-YYYYMMDD-HHMM
+ * after dev-YYYYMMDD), then by name; none: "" */
+export function releaseTag(tags: string[]): string {
+  const when = (t: string) => { const m = /(\d{8})(?:-(\d{4}))?/.exec(t); return m ? m[1] + (m[2] ?? "0000") : ""; };
+  const rank = (a: string, b: string) => (Number(a.startsWith("dev-")) - Number(b.startsWith("dev-"))) || when(a).localeCompare(when(b)) || a.localeCompare(b);
+  return [...new Set(tags)].sort(rank).at(-1) ?? "";
+}
+
 const gitIn = (cwd: string): Git => (args) => run("git", args, { cwd, timeout: 5000 }).then((r) => r.stdout.trim());
 
 /** the version of the checkout at `cwd`, or null when it is not a git checkout or has neither stable nor main */
@@ -34,8 +43,8 @@ export async function computeVersion(cwd: string, git: Git = gitIn(cwd)): Promis
   const at = await git(["merge-base", "HEAD", best.ref]).catch(() => "");
   if (!at) return null;
   const behind = Number(await git(["rev-list", "--count", `HEAD..${best.ref}`]).catch(() => "0")) || 0;
-  const tags = (await git(["tag", "--points-at", at]).catch(() => "")).split("\n").map((t) => t.trim()).filter((t) => TAG.test(t)).sort().reverse();
-  let release = tags[0] ?? "";
+  const tags = (await git(["tag", "--points-at", at]).catch(() => "")).split("\n").map((t) => t.trim()).filter((t) => TAG.test(t));
+  let release = releaseTag(tags);
   if (!release) {
     const subject = await git(["log", "-1", "--format=%s", at]).catch(() => "");
     const m = /^Sol ((?:stable|dev|beta)-[\w.-]+)/.exec(subject);

@@ -4,10 +4,14 @@
 // before the engine answers.
 import type { Look } from "./useEngine";
 import { setPaperLook } from "./creature/ring";
+import { anyWhole } from "./flag";
+import { SHADE } from "./kit/tokens";
 import type { RGB } from "./creature/palette";
 
-export const LOOK_DEFAULT: Look = { color: "#000000", alpha: 0.78, blur: 48, bubble: "edge", text: 15 };
+export const LOOK_DEFAULT: Look = { color: "#000000", alpha: 0.78, blur: 48, bubble: "edge", text: 15, skin: "pearl" };
 export const BUBBLES: [Look["bubble"], string][] = [["edge", "edge"], ["slab", "slab"], ["glass", "glass"], ["outline", "outline"], ["bare", "bare"], ["classic", "classic"]];
+// the clean Home's skin (#589, home.css [data-skin]): pearl, a sheen on what has you; ink, lines and words only
+export const SKINS: [Look["skin"], string, string][] = [["pearl", "pearl", "a pearl light on what you have open"], ["ink", "ink", "lines and words, nothing filled"]];
 export const SWATCHES: [string, string][] = [["#000000", "black"], ["#06101f", "deep blue"], ["#2a1030", "aubergine"], ["#0c2418", "forest"], ["#ffffff", "white"]];
 const KEY = "sol.look";
 
@@ -28,6 +32,7 @@ export function cleanLook(raw: unknown): Look {
     blur: Math.round(num(r.blur, 0, 64, LOOK_DEFAULT.blur)),
     bubble: BUBBLES.some(([b]) => b === r.bubble) ? (r.bubble as Look["bubble"]) : LOOK_DEFAULT.bubble,
     text: Math.round(num(r.text, 12, 24, LOOK_DEFAULT.text)),
+    skin: SKINS.some(([k]) => k === r.skin) ? (r.skin as Look["skin"]) : LOOK_DEFAULT.skin,
   };
 }
 
@@ -57,9 +62,13 @@ export function applyLook(look: Look | undefined | null, engine = true) {
   root.style.setProperty("--base-blur", `${l.blur}px`);
   root.style.setProperty("--on", `rgb(${on.join(",")})`);
   root.style.setProperty("--base", rgba(base, l.alpha));
-  for (const [name, of, a] of STEPS) root.style.setProperty(name, rgba(of === "base" ? base : on, a));
+  // #891: behind the run's switches the quiet words wear the readable strengths (tokens.json shade.read): inline here
+  // wins over every stylesheet, so this is where they must be set
+  const read = anyWhole(), word = (name: string, a: number) => (read && name === "--dim" ? SHADE.read.dim : read && name === "--mute" ? SHADE.read.mute : a);
+  for (const [name, of, a] of STEPS) root.style.setProperty(name, rgba(of === "base" ? base : on, word(name, a)));
   root.style.colorScheme = on[0] ? "dark" : "light";
   root.dataset.bubble = l.bubble;
+  root.dataset.skin = l.skin;
   root.style.setProperty("--chat-text", `${l.text}px`);   // the talk's words (face.css .msg, cowork's .tk-line); nothing else reads it
   setPaperLook(base, on);
   try { localStorage.setItem(KEY, JSON.stringify(l)); } catch { /* private mode: the default next time */ }

@@ -55,7 +55,7 @@ export function mutableWrite(home: string, p: string): boolean {
 // and (#16 blocker 5) what the fence itself imports: the ring (the colours as data) and the frame loop, so no
 // seat-editable file can break the boundaries that take a broken edit back
 const FENCE = ["Site.tsx", "renovation.ts", "socket.ts", "engine.ts", "sites.ts", "hot.ts", "main.tsx", "notch/main.tsx", "useEngine.ts", "run.ts", "work/useWork.ts", "notch/useNotch.ts", "away/useDoor.ts",
-  "creature/ring.ts", "creature/loop.ts", "creature/states.ts", "notch/devTauri.ts", "creature/palette.ts"]; // palette.ts: generated from design/palette.json
+  "creature/ring.ts", "creature/loop.ts", "creature/states.ts", "notch/devTauri.ts", "creature/palette.ts"]; // palette.ts: generated from design/system/tokens.json
 export function fenced(home: string, p: string): boolean {
   const abs = real(isAbsolute(p) ? p : resolve(real(home), p));
   const src = resolve(real(home), "..", "mac", "src");

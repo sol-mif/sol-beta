@@ -20,8 +20,9 @@ type PR = import("../src/team/board.ts").PR;
 // ---- settings ----
 test("team settings: defaults, cleaning and merging", () => {
   const d = cleanTeam(undefined);
-  // no rows on disk and no relay: this Mac alone (Control, #169); no rooms: one, "team", of the default repo (#154)
-  const team = { id: "team", name: "sol-dev", provider: "github", org: "", repos: TEAM_DEFAULTS.repos, hub: "", key: "", code: "", gate: "key", folder: "", mine: false, joined: false };
+  // no rows on disk and no relay: this Mac alone (Control, #169); no rooms: one, "team", of the default repos (#154),
+  // none since #441, so it is named "room"
+  const team = { id: "team", name: "room", provider: "github", org: "", repos: TEAM_DEFAULTS.repos, hub: "", key: "", code: "", gate: "key", folder: "", mine: false, joined: false };
   assert.deepEqual(d, { ...TEAM_DEFAULTS, machines: [THIS_MACHINE], rooms: [team], room: "team" });
   const s = cleanTeam({ me: { login: "frank", name: " Frank " }, repos: ["a/b", "nope", "a/b"], relay: { url: "http://x" }, speak: { discord: "loud" }, seats: { life: "claude" }, extra: 1 });
   assert.equal(s.me.name, "Frank");

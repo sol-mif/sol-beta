@@ -78,3 +78,26 @@
   .tl-head { grid-template-columns: 40px minmax(0, 1fr); }
   .tl-here { grid-column: 1 / -1; margin-top: 8px; }
 }
+
+/* the project's settings (#428, Project.tsx): each part a heading with "propose a change", where it comes from, then
+   the values as a two-column list; a change is a card with who agreed, who said not yet and who is still asked */
+.tl-page .pj { display: flex; flex-direction: column; }
+.tl-page .pj-part .rm-pg-h { display: flex; align-items: baseline; gap: 14px; margin-top: 26px; }
+.tl-page .pj-part .rm-pg-h .rm-th-link { font-size: 12.5px; }
+.tl-page .pj-wait { font-size: 12.5px; font-weight: 400; color: var(--dim); }
+.tl-page .pj-from { margin: 2px 0 10px; font-size: 12.5px; color: var(--dim); }
+.tl-page .pj-note { margin: 18px 0 0; font-size: 13.5px; color: var(--ember); }
+.tl-page .pj-grid { display: grid; grid-template-columns: 160px minmax(0, 1fr); margin: 0; border-top: 1px solid var(--line); }
+.tl-page .pj-grid dt, .tl-page .pj-grid dd { margin: 0; padding: 9px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.tl-page .pj-grid dt { color: var(--dim); }
+.tl-page .pj-who { display: flex; flex-wrap: wrap; gap: 12px; }
+.tl-page .pj-who > span, .tl-page .pj-votes > span { display: inline-flex; align-items: center; gap: 6px; }
+.tl-page .pj-form { margin-top: 0; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.tl-page .pj-f { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--dim); }
+.tl-page .pj-f.wide { width: 100%; }
+.tl-page .pj-votes { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 10px; font-size: 13px; }
+.tl-page .pj-votes .yes { color: var(--ink); }
+.tl-page .pj-votes .no { color: var(--ember); }
+.tl-page .pj-votes .wait { color: var(--mute); }
+.tl-page .pj-prop .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tl-page .pj-prop .dim { font-size: 12.5px; color: var(--dim); }

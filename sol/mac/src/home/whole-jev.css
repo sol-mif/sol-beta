@@ -1,0 +1,28 @@
+/* Jev, all day (#803, home/whole/JevAllDay.tsx), behind sol.home.whole: Home's layout only. Where each dot and line
+   sits is computed and set on it; their colours come from the kit and the jelly, set in code. */
+.hjev-back, .hjev-undo { border: 0; background: none; padding: 0; font: inherit; cursor: default; }
+.hjev-undo { font-weight: 500; }
+.hjev-back:hover, .hjev-undo:hover { color: var(--ink) !important; }
+.hjev-day { position: relative; height: var(--s12); margin: var(--s2) 0 var(--s4); flex: none; }
+.hjev-axis { position: absolute; left: 0; right: 0; top: 50%; height: 1px; }
+.hjev-day .hjev-axis { top: var(--s3); }
+.hjev-tick { position: absolute; top: var(--s6); transform: translateX(-50%); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hjev-now { position: absolute; top: var(--s4); transform: translateX(-100%); padding-right: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hjev-dot { position: absolute; border-radius: 50%; border: 1px solid; box-sizing: border-box; }
+
+.hjev-rows { display: flex; flex-direction: column; }
+.hjev-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 4.6fr) minmax(0, 2fr); gap: var(--s6); align-items: center; padding: var(--s2) 0; border-top: 1px solid var(--c-on-line); }
+.hjev-heads { font-size: var(--t-label); line-height: var(--t-label-line); border-top: 0; }
+.hjev-scale { display: flex; justify-content: space-between; }
+.hjev-q { display: flex; flex-direction: column; min-width: 0; }
+.hjev-q small { font-size: var(--t-label); line-height: var(--t-label-line); }
+.hjev-dist { position: relative; height: var(--s12); touch-action: none; cursor: ew-resize; }
+.hjev-line { position: absolute; top: var(--s1); bottom: var(--s1); width: 2px; transform: translateX(-50%); border-radius: var(--r-pill); outline: 0; cursor: ew-resize; }
+.hjev-line i { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; }
+.hjev-line:focus-visible i { text-decoration: underline; }
+.hjev-counts { font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.hjev-counts b { font-weight: 500; }
+
+.hjev-receipt { position: relative; isolation: isolate; align-self: flex-start; display: flex; align-items: center; gap: var(--s3); margin-top: var(--s4); padding: var(--s2) var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hjev-sugg { position: sticky; bottom: 0; isolation: isolate; display: flex; align-items: center; gap: var(--s3); margin-top: auto; padding: var(--s3) var(--s4); flex: none; }
+.hjev-sugg-t { flex: 1; min-width: 0; }

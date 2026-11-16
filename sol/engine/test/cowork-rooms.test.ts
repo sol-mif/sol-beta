@@ -18,7 +18,7 @@ const T = await import("../src/team/settings.ts");
 
 const two = {
   rooms: [
-    { id: "sol", name: "Sol", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"], hub: "" },
+    { id: "sol", name: "Sol", provider: "github", org: "", repos: ["sol-mif/sol-dev"], hub: "" },
     { id: "kao", name: "Kao", provider: "github", org: "kao-ai", repos: ["kao-ai/site", "kao-ai/site"], hub: "wss://kao.example.net/relay?key=oops#x" },
   ],
   room: "kao",
@@ -33,9 +33,9 @@ test("a file from before rooms reads as one room, team, and the top level is unc
   assert.deepEqual(s.repos, ["kao-ai/sol", "kao-ai/site"]);
   assert.equal(s.relay.url, "wss://hub.example.net/relay");
   assert.equal(s.relay.key, "k");
-  // no org: the room is named for its first repo
+  // nothing named (#441): one room, "team", of no repository, named "room"; a stranger's Sol reads no tracker
   const d = T.cleanTeam({});
-  assert.deepEqual(d.rooms, [{ id: "team", name: "sol-dev", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"], hub: "", key: "", code: "", gate: "key", folder: "", mine: false, joined: false }]);
+  assert.deepEqual(d.rooms, [{ id: "team", name: "room", provider: "github", org: "", repos: [], hub: "", key: "", code: "", gate: "key", folder: "", mine: false, joined: false }]);
   assert.deepEqual(T.activeRoom(d), d.rooms[0]);
 });
 
@@ -52,7 +52,7 @@ test("with rooms, org, repos and relay.url come from the active room; the file's
 test("a room id that is not there falls back to the first room", () => {
   const s = T.cleanTeam({ ...two, room: "gone" });
   assert.equal(s.room, "sol");
-  assert.deepEqual(s.repos, ["marcocyl04-ux/sol-dev"]);
+  assert.deepEqual(s.repos, ["sol-mif/sol-dev"], "as written: the record comes from GitHub's answer (#510)");
   assert.equal(s.relay.url, "");
 });
 
@@ -62,14 +62,14 @@ test("bad rooms are dropped, ids deduped, a missing id made from the name", () =
     { provider: "github", repos: ["not a repo"] },                    // points at nothing
     { name: "Kao AI Site", repos: ["kao-ai/site"], hub: "http://no" },  // no id: a slug of the name; not a ws hub
     { id: "kao-ai-site", name: "again", repos: ["kao-ai/other"] },    // the same id: the first stays
-    { id: "Has Spaces!", org: "kao-ai" },                             // an org and no repos: the default repo
+    { id: "Has Spaces!", org: "kao-ai" },                             // an org and no repos: the default, none (#441)
     { id: "notes", provider: "drive", name: "Notes", repos: [" 1AbCdEfG ", "x".repeat(201)] },
     { id: "odd", provider: "dropbox", repos: ["a/b"], org: "bad org!" },
   ] });
   assert.deepEqual(s.rooms.map((r) => r.id), ["kao-ai-site", "has-spaces", "notes", "odd"]);
   assert.equal(s.rooms[0].hub, "");
   assert.equal(s.rooms[0].name, "Kao AI Site");
-  assert.deepEqual(s.rooms[1].repos, ["marcocyl04-ux/sol-dev"]);
+  assert.deepEqual(s.rooms[1].repos, []);
   assert.equal(s.rooms[1].name, "kao-ai");
   assert.deepEqual(s.rooms[2], { id: "notes", name: "Notes", provider: "drive", org: "", repos: ["1AbCdEfG"], hub: "", key: "", code: "", gate: "key", folder: "", mine: false, joined: false });
   assert.equal(s.rooms[3].provider, "github");
@@ -96,12 +96,12 @@ test("patch: an org, repos or relay url with no rooms writes into the active roo
 });
 
 test("patch: { rooms } replaces the list, { room } switches and the derived fields follow", () => {
-  T.patchTeam({ rooms: [T.getTeam().rooms[0], { id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }] });
+  T.patchTeam({ rooms: [T.getTeam().rooms[0], { id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }] });
   assert.equal(T.getTeam().room, "team");   // the active room is still there: it stays active
   const s = T.patchTeam({ room: "sol" });
   assert.equal(s.room, "sol");
   assert.equal(s.org, "");
-  assert.deepEqual(s.repos, ["marcocyl04-ux/sol-dev"]);
+  assert.deepEqual(s.repos, ["sol-mif/sol-dev"], "as written: the record comes from GitHub's answer (#510)");
   assert.equal(s.relay.url, "");
   assert.equal(s.relay.key, "k1");          // the key is the engine's, not the room's
   assert.equal(T.patchTeam({ room: "nowhere" }).room, "sol");   // not a room: no switch

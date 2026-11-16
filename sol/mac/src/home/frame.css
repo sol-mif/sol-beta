@@ -1,0 +1,40 @@
+/* The frame (#630): the chrome and the state around a thing; the thing owns only its inside. Every value is a token
+   from sol/design/system/tokens.json (tokens.css) or the scale (palette.css); loaded only with sol.frame on. */
+.fr-things { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--col-pad) 0; }
+.fr-frame {
+  width: var(--frame-card-w); max-width: 100%; display: flex; flex-direction: column;
+  background: var(--frame-fill); border: var(--hair) solid var(--frame-ring); border-radius: var(--frame-r); overflow: hidden;
+  animation: fr-arrive var(--frame-arrive) var(--frame-arrive-ease) both;
+}
+.fr-frame[data-leaving] { animation: fr-leave var(--frame-arrive) var(--frame-leave-ease) both; pointer-events: none; }
+.fr-frame[data-pinned] { border-color: var(--frame-pinned); }
+.fr-frame[data-state="broken"] { border-color: var(--frame-broken); }
+@keyframes fr-arrive { from { opacity: 0; transform: translateY(var(--s2)); } }
+@keyframes fr-leave { to { opacity: 0; transform: translateY(var(--s2)); } }
+@media (prefers-reduced-motion: reduce) { .fr-frame, .fr-frame[data-leaving] { animation: none; } }
+
+.fr-head { display: flex; align-items: center; gap: var(--frame-gap); height: var(--frame-head); padding: 0 var(--s2) 0 var(--frame-pad); border-bottom: var(--hair) solid var(--frame-ring); }
+.fr-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--frame-title); font-size: var(--t-body); line-height: var(--t-body-line); }
+.fr-stale { color: var(--frame-stale); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fr-wrote { color: var(--ok); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }   /* a write that passed the gate, as it happens (#633) */
+.fr-key { background: none; border: 0; color: var(--frame-key); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s1); border-radius: var(--r-chip); cursor: pointer; }
+.fr-key:hover, .fr-key:focus-visible { color: var(--frame-title); background: var(--c-picked); }
+.fr-key[aria-pressed="true"] { color: var(--frame-pinned); }
+
+.fr-in { position: relative; height: var(--frame-card-h); }
+.fr-in iframe { width: 100%; height: 100%; border: 0; display: block; background: none; }
+.fr-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--frame-key); font-size: var(--t-label); line-height: var(--t-label-line); }
+.fr-broken { height: 100%; display: flex; flex-direction: column; gap: var(--s1); padding: var(--frame-pad); overflow: auto; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--frame-title); }
+.fr-broken b { color: var(--frame-broken); font-weight: 600; }
+.fr-broken small { color: var(--frame-key); font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+.fr-note { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: var(--s3); color: var(--frame-key); font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s1); }
+.fr-note button { background: none; border: 0; color: var(--frame-title); font: inherit; padding: 0; cursor: pointer; text-decoration: underline; }
+
+/* the one card after a release (#634): the frame's own chrome, a full row above the things */
+.fr-release { flex-basis: 100%; max-width: var(--col); background: var(--frame-fill); border: var(--hair) solid var(--frame-ring); border-radius: var(--frame-r); overflow: hidden; animation: fr-arrive var(--frame-arrive) var(--frame-arrive-ease) both; }
+.fr-release[data-busy] { cursor: progress; }
+.fr-release-list { margin: 0; padding: var(--s2) var(--frame-pad) var(--frame-pad); list-style: none; display: flex; flex-direction: column; gap: var(--s1); color: var(--frame-title); font-size: var(--t-body); line-height: var(--t-body-line); }
+.fr-release-list li[data-marked] { color: var(--frame-stale); }
+.fr-release-list li[data-refused] { color: var(--frame-broken); }
+@media (prefers-reduced-motion: reduce) { .fr-release { animation: none; } }

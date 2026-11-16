@@ -12,7 +12,6 @@ import { micLevel, outLevel } from "../voice";
 import { tintOf, lookOf, seatName, type Look, type SeatName, type Tint } from "./ring";
 import { CREATURE_STATES, FLASH_MS, type CreatureState, type Flash } from "./states";
 import { onTick } from "./loop";
-import { vibe } from "../vibe";
 import { onWire } from "../renovation";
 
 export type { CreatureState, SeatName };
@@ -54,7 +53,7 @@ export const live = {
   look: lookOf(start, null) as Look,
   seat: (forcedSeat ?? "home") as SeatName,
   env: 0,
-  slice: tintOf(start, null, 1e9, forcedSeat ?? "home") as Tint,   // the colour it wears (ring.ts tintOf, from design/palette.json)
+  slice: tintOf(start, null, 1e9, forcedSeat ?? "home") as Tint,   // the colour it wears (ring.ts tintOf, from design/system/tokens.json palette)
   tempo: 1,                     // how fast creature time runs: slow at rest, quicker the louder it speaks
   // the transition record (Widget.tsx plays the move from A to B instead of snapping)
   prevLook: lookOf(start, null) as Look,
@@ -131,7 +130,7 @@ export function tick(dt: number, now: number) {
   else if (state === "speaking") { const o = outLevel(); target = o === null ? synthetic(now / 1000) : level(o); }
   live.env += (target - live.env) * (1 - Math.pow(0.001, dt / 0.08));
   live.now = now;
-  const tempo = look === "rest" ? 0.25 : state === "speaking" ? 0.6 + live.env * 2.2 : 1 + (vibe.move ? vibe.env * 0.9 : 0);   // music quickens the band a little (vibe.ts)
+  const tempo = look === "rest" ? 0.25 : state === "speaking" ? 0.6 + live.env * 2.2 : 1;
   // coming to rest the tempo winds down slowly; anything else catches up quickly
   live.tempo += (tempo - live.tempo) * ease(dt, tempo < live.tempo && look === "rest" ? 1.6 : 0.25);
   const asks = forced === "yourcall" ? Math.max(1, inputs.asks) : inputs.asks;

@@ -78,7 +78,7 @@ const DEV_PRESS = dev?.get("press") != null ? Number(dev.get("press")) : -1;
 export const DEV_EYE: boolean | null = dev?.get("eye") === "off" ? true : dev?.get("eye") === "on" ? false : null;
 
 const devAsk = (n: number, of: number, i: number): Ask => [
-  { id: "perm:dev-edit", sessionId: "dev-work", seat: "claude", tool: "Edit", title: "Claude wants to edit Notch.tsx", path: "/Users/marcol04/computer/personal/projects/ecosystem/sol/mac/src/notch/Notch.tsx", n, of },
+  { id: "perm:dev-edit", sessionId: "dev-work", seat: "claude", tool: "Edit", title: "Claude wants to edit Notch.tsx", path: "/Users/someone/computer/personal/projects/ecosystem/sol/mac/src/notch/Notch.tsx", n, of },
   { id: "perm:dev-bash", sessionId: "dev-work-2", seat: "claude", tool: "Bash", title: "Claude wants to run: build the notch page", n, of },
   { id: "perm:dev-write", sessionId: "dev-work-3", seat: "claude", tool: "Write", title: "Claude wants to write RUBRIC.md", path: "/x/design/notch-buttons/RUBRIC.md", n, of },
 ][i % 3];
@@ -91,7 +91,7 @@ export const DEV_FOLDED: string[] = DEV_CARD === "ask-folded" ? ["ask:dev-work/p
   : DEV_CARD === "folded2" ? ["ask:dev-work/perm:dev-edit"] : [];   // the half moon: the ask in the Sessions disc (a turn is never folded)
 const DEV_PING: PingIn = { id: "ping:dev", seat: "work", sessionId: "dev-work", line: "the sidebar's timer row is in" };
 // --- Hand (#34)
-const DEV_HAND: HandIn = { id: "marcocyl04-ux/sol-dev#34", from: "frank", issue: 34, title: "Hand: give a session, issue or PR to a teammate" };
+const DEV_HAND: HandIn = { id: "sol-mif/sol-dev#34", from: "frank", issue: 34, title: "Hand: give a session, issue or PR to a teammate" };
 // --- end Hand
 const DEV_STABLE: StableIn = { sha: "7a53b17e2c4d9f1a0b6c3e8d5f2a7b9c1d4e6f80", tag: "stable-20261020-2214", by: "frank" };
 
@@ -291,7 +291,7 @@ ICON.ear = ICON.anticipate;
 /** Anticipate: a hold this long on Answer (or on Fn) adds the front window's picture */
 export const HOLD_MS = 500;
 const STAGGER = 70, SINK_MS = 300;
-const SINK = { k: 330, z: 0.95 };   // CFG.away's numbers: about 240 ms, no settle
+const SINK = CFG.fade;   // steps back, no settle
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** one set of discs; when the set changes, the old ones stay a moment over the same spot, sinking, and the new rise */
@@ -358,8 +358,8 @@ function IconButton({ b, delay, leaving, held, onPress, onHover, label }: { b: B
       el.style.translate = `0 ${(10 * (1 - r) - 8 * k).toFixed(2)}px`;
       el.style.scale = String(((0.9 + 0.1 * r) * (1 - 0.1 * k)).toFixed(4));
     };
-    sp.current = { lift: new Spring(0, CFG.pop, putDisc), squash: new Spring(held ? 1 : 0, CFG.press, putDisc), nm: new Spring(0, CFG.snap, putName),
-      rise: new Spring(leaving ? 1 : 0, CFG.slide, putMove), sink: new Spring(0, SINK, putMove) };
+    sp.current = { lift: new Spring(0, CFG.settle, putDisc), squash: new Spring(held ? 1 : 0, CFG.lift, putDisc), nm: new Spring(0, CFG.settle, putName),
+      rise: new Spring(leaving ? 1 : 0, CFG.travel, putMove), sink: new Spring(0, SINK, putMove) };
   }
   useLayoutEffect(() => {
     const s = sp.current!;
@@ -372,9 +372,9 @@ function IconButton({ b, delay, leaving, held, onPress, onHover, label }: { b: B
     const s = sp.current!;
     hovered.current = on;
     ref.current?.classList.toggle("on", on || held);
-    s.nm.to(on || held ? 1 : 0, { cfg: CFG.snap });
-    s.lift.to(on ? 1 : 0, { cfg: CFG.pop });
-    if (!on && !held) s.squash.to(0, { cfg: CFG.pop });
+    s.nm.to(on || held ? 1 : 0, { cfg: CFG.settle });
+    s.lift.to(on ? 1 : 0, { cfg: CFG.settle });
+    if (!on && !held) s.squash.to(0, { cfg: CFG.settle });
     onHover?.(on ? b : null, on ? ref.current : null);
   };
   return (
@@ -388,11 +388,11 @@ function IconButton({ b, delay, leaving, held, onPress, onHover, label }: { b: B
       onPointerEnter={() => hover(true)}
       onPointerLeave={() => { hover(false); window.clearTimeout(holdT.current); holdWord(false); downAt.current = undefined; }}
       onPointerDown={(e) => {
-        e.stopPropagation(); sp.current!.squash.to(1, { cfg: CFG.press });
+        e.stopPropagation(); sp.current!.squash.to(1, { cfg: CFG.lift });
         downAt.current = performance.now();
         if (b === "answer") { window.clearTimeout(holdT.current); holdT.current = window.setTimeout(() => holdWord(true), HOLD_MS); }
       }}
-      onPointerUp={() => { if (!held) sp.current!.squash.to(0, { cfg: CFG.pop }); window.clearTimeout(holdT.current); }}
+      onPointerUp={() => { if (!held) sp.current!.squash.to(0, { cfg: CFG.settle }); window.clearTimeout(holdT.current); }}
       onClick={(e) => {
         e.stopPropagation(); window.dispatchEvent(new Event("sol-greet"));
         const at = downAt.current; downAt.current = undefined;
@@ -418,7 +418,7 @@ export function Thumbs({ items }: { items: ShelfItem[] }) {
 function Thumb({ it, delay }: { it: ShelfItem; delay: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const sp = useRef<Spring | null>(null);
-  if (!sp.current) sp.current = new Spring(0, CFG.slide, (v) => {
+  if (!sp.current) sp.current = new Spring(0, CFG.travel, (v) => {
     const el = ref.current;
     if (!el) return;
     el.style.opacity = String(clamp01(v));
@@ -580,10 +580,10 @@ export function Button({ b, first, ret, held, onPress, label, small }: { b: Btn;
       el.style.translate = l || q ? `0 ${(-1.5 * l + 0.8 * q).toFixed(2)}px` : "";
       el.style.scale = l || q ? `${((1 + 0.04 * l) * (1 + 0.05 * q)).toFixed(4)} ${((1 + 0.04 * l) * (1 - 0.12 * q)).toFixed(4)}` : "";
     };
-    sp.current = { lift: new Spring(0, CFG.pop, put), squash: new Spring(held ? 1 : 0, CFG.press, put) };
+    sp.current = { lift: new Spring(0, CFG.settle, put), squash: new Spring(held ? 1 : 0, CFG.lift, put) };
   }
   useEffect(() => { if (held) sp.current!.squash.set(1); const s = sp.current!; return () => { s.lift.stop(); s.squash.stop(); }; }, [held]);
-  const release = () => { if (!held) sp.current!.squash.to(0, { cfg: CFG.pop }); };
+  const release = () => { if (!held) sp.current!.squash.to(0, { cfg: CFG.settle }); };
   return (
     <button
       ref={ref}
@@ -591,9 +591,9 @@ export function Button({ b, first, ret, held, onPress, label, small }: { b: Btn;
       data-nopress
       data-tint={TINT[b] || undefined}
       className={`cbtn ${first ? "first" : ""} ${pressed ? "pressed" : ""}${small ? " fl-btn" : ""}`}
-      onPointerEnter={() => sp.current!.lift.to(1, { cfg: CFG.pop })}
-      onPointerLeave={() => { sp.current!.lift.to(0, { cfg: CFG.pop }); release(); if (!held) setPressed(false); }}
-      onPointerDown={(e) => { e.stopPropagation(); sp.current!.squash.to(1, { cfg: CFG.press }); setPressed(true); }}
+      onPointerEnter={() => sp.current!.lift.to(1, { cfg: CFG.settle })}
+      onPointerLeave={() => { sp.current!.lift.to(0, { cfg: CFG.settle }); release(); if (!held) setPressed(false); }}
+      onPointerDown={(e) => { e.stopPropagation(); sp.current!.squash.to(1, { cfg: CFG.lift }); setPressed(true); }}
       onPointerUp={release}
       onClick={(e) => { e.stopPropagation(); onPress(); window.setTimeout(() => { if (!held) setPressed(false); }, 420); }}
     >{label ?? LABEL[b]}{ret && <span className="ret" aria-hidden>⏎</span>}</button>

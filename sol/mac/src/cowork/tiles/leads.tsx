@@ -6,7 +6,6 @@ import { LABELS, leadsOf } from "../useTeam";
 import "../leads.css";
 
 const leads: TileDef = {
-  name: "who leads what",
   Tile: ({ team, board }) => {
     if (!board.repos.some((r) => board.leads?.[r])) return <p className="ctile-none">no CODEOWNERS read yet</p>;
     const s = team.state;

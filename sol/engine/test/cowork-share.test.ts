@@ -26,7 +26,7 @@ const T = await import("../src/team/settings.ts");
 type RelayMsg = import("../src/team/relay.ts").RelayMsg;
 
 const file = () => join(tmp("sol-relay-"), "relay", "rooms.json");
-const sol = { name: "Sol", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"] };
+const sol = { name: "Sol", provider: "github", org: "", repos: ["sol-mif/sol-dev"] };
 
 // ---- the registry ----
 test("registry: the same room and maker get the same code; another maker or other repos another", () => {
@@ -51,7 +51,7 @@ test("registry: a lookup is upper-cased and trimmed, changes nothing, and an unk
   const before = readFileSync(f, "utf8");
   const e = reg.lookup("  k7qx2m ");
   assert.equal(e?.code, "K7QX2M");
-  assert.deepEqual(e?.repos, ["marcocyl04-ux/sol-dev"]);
+  assert.deepEqual(e?.repos, ["sol-mif/sol-dev"]);
   assert.equal(reg.lookup("ZZZZZZ"), null);
   assert.equal(reg.lookup("nope"), null);
   e!.people.push("eve");
@@ -423,7 +423,7 @@ test("hubHttp: the socket's address as http, the path kept, /relay when there is
 });
 
 test("share: a room that meets here is registered on this engine's own registry and keeps its code", async () => {
-  T.patchTeam({ me: { login: "frank" }, relay: { key: "engine-key" }, rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }], room: "sol" });
+  T.patchTeam({ me: { login: "frank" }, relay: { key: "engine-key" }, rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }], room: "sol" });
   const reg = new Registry(file(), () => 1, () => "HERE22");
   const { calls, f } = hubs({});
   assert.deepEqual(await shareRoom(deps(f, reg), "sol"), { code: "HERE22" });
@@ -466,7 +466,7 @@ test("share: a room elsewhere is posted to its hub, a Bearer when it has no key,
 
 test("join: the hubs I know are asked in turn, the first that knows the code gives the room, which is the one in use", async () => {
   T.patchTeam({ rooms: [
-    { id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" },
+    { id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" },
     { id: "kao", name: "Kao", repos: ["kao-ai/site"], hub: "wss://kao.example.net/relay", key: "kao-key" },
   ], room: "sol" });
   const { calls, f } = hubs({
@@ -491,7 +491,7 @@ test("join: the hubs I know are asked in turn, the first that knows the code giv
 });
 
 test("join: this engine's own registry last; a 403 everywhere says sign in; a bad code says six symbols", async () => {
-  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }], room: "sol" });
+  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }], room: "sol" });
   const reg = new Registry(file(), () => 1, () => "MYQWN2");
   reg.register({ name: "Mine", repos: ["frank/mine"] }, "frank");
   const miss = hubs({ "https://shared.example.net": () => [404, {}] });
@@ -509,7 +509,7 @@ test("join: this engine's own registry last; a 403 everywhere says sign in; a ba
 });
 
 test("peek (#327): the shared hub's read-only peek gives a code's name, with no sign-in sent; a room I am in answers here", async () => {
-  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "", code: "K7QX2M" }], room: "sol" });
+  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "", code: "K7QX2M" }], room: "sol" });
   const { calls, f } = hubs({
     "https://shared.example.net/relay/peek/2QKTYA": () => [200, { code: "2QKTYA", name: " 帥\u0007 group\n " }],
     "https://shared.example.net/relay/peek/ZZZZZZ": () => [404, { error: "no group has this code" }],
@@ -529,7 +529,7 @@ test("peek (#327): the shared hub's read-only peek gives a code's name, with no 
 });
 
 test("peek (#342): the answer says whether I have a Sol account on the hub asked, so the card can say sign in first", async () => {
-  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "", code: "K7QX2M" }], room: "sol" });
+  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "", code: "K7QX2M" }], room: "sol" });
   const { f } = hubs({ "https://shared.example.net/relay/peek/2QKTYA": () => [200, { code: "2QKTYA", name: "smoke group" }] });
   const asked: string[] = [];
   const on = (hub: string) => { asked.push(hub); return hub === "https://shared.example.net/relay"; };
@@ -581,7 +581,7 @@ test("over real sockets: an open hub registers a room for frank, answers its cod
     assert.equal(post.status, 200);
     const { code, room } = await post.json() as { code: string; room: object };
     assert.match(code, CODE);
-    assert.deepEqual(room, { name: "Sol", provider: "github", org: "", repos: ["marcocyl04-ux/sol-dev"] });
+    assert.deepEqual(room, { name: "Sol", provider: "github", org: "", repos: ["sol-mif/sol-dev"] });
     assert.equal(reg.lookup(code)?.by, "frank", "GitHub's login, not the body's");
     const got = await fetch(`${base}/${code.toLowerCase()}`, { headers: { authorization: "Bearer tok-marco" } });
     assert.deepEqual(await got.json(), { code, room });
@@ -626,7 +626,7 @@ test("over real sockets: an open hub registers a room for frank, answers its cod
 });
 
 test("join: a code for a room I am in by its record on the same hub, with no code yet, goes there and the room takes it", async () => {
-  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }, { id: "kao", name: "Kao", repos: ["b/two", "a/one"], hub: "wss://kao.example.net/relay", key: "kk" }], room: "sol" });
+  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }, { id: "kao", name: "Kao", repos: ["b/two", "a/one"], hub: "wss://kao.example.net/relay", key: "kk" }], room: "sol" });
   const { f } = hubs({ "https://kao.example.net": () => [200, { code: "SAMEQ2", room: { name: "the same room", provider: "github", org: "", repos: ["A/one", "b/TWO"] } }] });
   const r = await joinRoom(deps(f), "sameq2");
   assert.ok("room" in r && r.already, "no new room");
@@ -637,7 +637,7 @@ test("join: a code for a room I am in by its record on the same hub, with no cod
 });
 
 test("join: the same record on another hub, or on the same hub with another code, is another room", async () => {
-  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["marcocyl04-ux/sol-dev"], hub: "" }, { id: "kaox", name: "Kao", repos: ["a/one"], hub: "wss://kao.example.net/relay", key: "kk" }], room: "sol" });
+  T.patchTeam({ rooms: [{ id: "sol", name: "Sol", repos: ["sol-mif/sol-dev"], hub: "" }, { id: "kaox", name: "Kao", repos: ["a/one"], hub: "wss://kao.example.net/relay", key: "kk" }], room: "sol" });
   // my own registry knows the code: it meets here, not on kao's hub, so it is not kao
   const reg = new Registry(join(tmp("sol-reg-"), "rooms.json"), () => 1000, () => "QTHRW2");
   reg.register({ name: "Kao here", provider: "github", org: "", repos: ["a/one"] }, "frank");

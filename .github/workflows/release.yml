@@ -2,7 +2,7 @@
 # push there is one export of a stable). A macOS runner builds Sol.app for both Mac chips, zips it with ditto, writes
 # its SHA-256, and publishes a release named after the export, marked latest, so sol/install and the site's download
 # button find it at releases/latest/download/Sol-mac.zip. Actions pinned by commit; no secrets; contents: write on
-# the release job only. In sol-dev this file is carried but never runs.
+# the release job only. In the development repository this file is carried but never runs.
 name: release
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          tag=$(git log -1 --format=%s | sed -n 's/^Sol \(stable-[0-9]*-[0-9]*\)$/\1/p')
+          tag=$(git log -1 --format=%s | sed -nE 's/^Sol ((stable|dev)-[0-9]+(-[0-9]+)?)$/\1/p')   # a stamp's export, or a dev release's since #418
           [ -n "$tag" ] || tag="build-$(date -u +%Y%m%d-%H%M)"
           gh release create "$tag" Sol-mac.zip Sol-mac.zip.sha256 --latest --title "Sol $tag" \
             --notes "Sol.app for the Mac, built by GitHub from this export. Not yet signed with Apple: the first time, Open Anyway once (System Settings, Privacy & Security). The one line, curl -fsSL https://sol.matterfold.tech/install | sh, needs no click." \

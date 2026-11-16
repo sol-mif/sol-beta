@@ -36,9 +36,9 @@ export function PaneFrame({ open, frac, onFrac, tabs, active, onPick, onClose, c
     if (outer.current) outer.current.style.width = `${Math.max(0, v) * W.current}px`;
     if (inner.current) { inner.current.style.width = `${W.current}px`; inner.current.style.translate = `${(1 - Math.min(1, v)) * 36}px 0`; }
   };
-  const sp = useSpring(open ? 1 : 0, CFG.panel, (v) => put(v), () => { if (!isOpen.current) setMounted(false); });
+  const sp = useSpring(open ? 1 : 0, CFG.travel, (v) => put(v), () => { if (!isOpen.current) setMounted(false); });
   useLayoutEffect(() => { put(sp.v); });
-  useEffect(() => { sp.to(open ? 1 : 0, { cfg: open ? CFG.panel : CFG.away }); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { sp.to(open ? 1 : 0, { cfg: open ? CFG.travel : CFG.fade }); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the grip: the pane's left edge follows the pointer; the share is kept when the drag ends
   const drag = (ev: React.PointerEvent) => {
@@ -77,7 +77,7 @@ export function PaneFrame({ open, frac, onFrac, tabs, active, onPick, onClose, c
 export function PaneBody({ className = "", hidden = false, ...p }: { className?: string; hidden?: boolean } & ({ b: ButtonDef; c: ButtonCtx } | { k: string; children: React.ReactNode })) {
   const ref = useRef<HTMLDivElement>(null);
   const k = "b" in p ? p.b.id : p.k;
-  useLayoutEffect(() => { if (ref.current && !hidden) enter(ref.current, { y: 10, cfg: CFG.slide }); }, [k, hidden]);
+  useLayoutEffect(() => { if (ref.current && !hidden) enter(ref.current, { y: 10, cfg: CFG.travel }); }, [k, hidden]);
   if ("b" in p && hidden && !p.b.kept) return null;
   const Pane = "b" in p ? p.b.Pane : null;
   return <div ref={ref} className={`wpbody ${className}`} data-pane={"b" in p ? k : undefined} hidden={hidden}>{Pane ? <Pane {...(p as { c: ButtonCtx }).c} /> : "children" in p && p.children}</div>;

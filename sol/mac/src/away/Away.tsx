@@ -202,13 +202,13 @@ function Sheet({ open, setOpen, dy: dyIn, setDy: setDyIn, follow, className, chi
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open && follow && body.current) body.current.scrollTop = body.current.scrollHeight;
-    if (open && body.current) stagger(body.current.children, { y: 20, gap: 32, delay: 90, max: 10, cfg: CFG.slide }); // the lines rise in behind the sheet
+    if (open && body.current) stagger(body.current.children, { y: 20, gap: 32, delay: 90, max: 10, cfg: CFG.travel }); // the lines rise in behind the sheet
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (open && follow && body.current) body.current.scrollTop = body.current.scrollHeight; }, [follow]); // eslint-disable-line react-hooks/exhaustive-deps
   // the sheet is one spring on its height above the foot. A finger drags it directly (and the spring remembers how
   // fast the finger was going); letting go flings it to open or shut with that speed.
   const base = open ? 0 : h;
-  const sy = useSpring(base, { k: 210, z: 0.8, eps: 0.3 }, (v) => { if (ref.current) ref.current.style.transform = `translateY(${v}px)`; });
+  const sy = useSpring(base, { ...CFG.travel, eps: 0.3 }, (v) => { if (ref.current) ref.current.style.transform = `translateY(${v}px)`; });
   const last = useRef({ y: 0, t: 0, v: 0 });
   const placed = useRef(false), wasOpen = useRef(open);
   useLayoutEffect(() => {
@@ -312,6 +312,6 @@ function SettingsBody({ d, demo }: { d: ReturnType<typeof useDoor>; demo: boolea
 // a step line slides in from the left; a finished one's marker turns over
 function Li({ s }: { s: Step }) {
   const ref = useRef<HTMLLIElement>(null);
-  useLayoutEffect(() => { if (ref.current) enter(ref.current, { x: -22, cfg: CFG.slide }); }, []);
+  useLayoutEffect(() => { if (ref.current) enter(ref.current, { x: -22, cfg: CFG.travel }); }, []);
   return <li ref={ref} className={s.done ? "done" : "run"}><i />{s.text}</li>;
 }

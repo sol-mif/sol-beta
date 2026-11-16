@@ -15,14 +15,14 @@ export function Line({ say }: { say: LineSay | null }) {
     const p = pill.current!, n = nowEl.current, w = wasEl.current;
     // the pill's width, to the new words (0 when there is nothing to say: the pill tucks up)
     const want = n ? n.scrollWidth + 36 : 0;
-    if (!width.current) width.current = new Spring(want, CFG.snap, (v) => { p.style.width = `${Math.max(0, v)}px`; });
+    if (!width.current) width.current = new Spring(want, CFG.settle, (v) => { p.style.width = `${Math.max(0, v)}px`; });
     width.current.to(want);
-    if (!drop.current) drop.current = new Spring(want ? 0 : -60, CFG.slide, (v) => { p.style.translate = `-50% ${v}px`; });
+    if (!drop.current) drop.current = new Spring(want ? 0 : -60, CFG.travel, (v) => { p.style.translate = `-50% ${v}px`; });
     drop.current.to(want ? 0 : -60);
     p.style.width = `${width.current.v}px`;
-    if (n) { const s = new Spring(30, CFG.slide, (v) => { n.style.translate = `0 ${v}px`; }); s.set(30); s.to(0, { delay: 40 }); }
-    if (w) { const s = new Spring(0, { k: 330, z: 0.95 }, (v) => { w.style.translate = `0 ${v}px`; }); s.to(-30); }
-    if (n && shown.now?.check && chk.current) { const c = chk.current, s = new Spring(100, { k: 120, z: 1 }, (v) => { c.style.strokeDashoffset = String(v); }); s.set(100); s.to(0, { delay: 160 }); }
+    if (n) { const s = new Spring(30, CFG.travel, (v) => { n.style.translate = `0 ${v}px`; }); s.set(30); s.to(0, { delay: 40 }); }
+    if (w) { const s = new Spring(0, CFG.fade, (v) => { w.style.translate = `0 ${v}px`; }); s.to(-30); }
+    if (n && shown.now?.check && chk.current) { const c = chk.current, s = new Spring(100, CFG.travel, (v) => { c.style.strokeDashoffset = String(v); }); s.set(100); s.to(0, { delay: 160 }); }
   }, [shown]);
   return (
     <div className="line" ref={pill}>

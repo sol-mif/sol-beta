@@ -88,7 +88,7 @@ export function HandLine({ onTaken }: { onTaken: (sessionId: string, repo: strin
   // the notch's Pass: the field opens here
   useEffect(() => { if (h && passingId === h.id && !h.review) { setAsking(true); requestAnimationFrame(() => field.current?.focus()); } }, [h?.id, passingId]); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => { setWhy(""); if (!(h && passingId === h.id)) setAsking(false); }, [h?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (ref.current && h) enter(ref.current, { y: -8, cfg: CFG.arrive }); }, [h?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ref.current && h) enter(ref.current, { y: -8, cfg: CFG.travel }); }, [h?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!h) return null;
   const d = h.doing;
   const cls = d ? (d.taking ? "busy" : d.failed ? "failed" : "done") : "";

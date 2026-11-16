@@ -3,7 +3,7 @@
 // a page opened from it, the board, the action board, or a session started here. A session started here is a Work
 // session marked `cowork` and with its room's id (PROTOCOL round 17, #314): Cowork lists it under its group, Home under
 // its "groups" fold. With no group yet the stage is the first-time page.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { useEngine } from "../useEngine";
 import type { AppMode } from "../ModeSwitch";
 import { Space } from "../creature/Space";
@@ -21,7 +21,7 @@ import { button, type ButtonCtx, type Talk as ToTalk } from "../buttons";
 import { Rail } from "../buttons/Rail";
 import { FilePane } from "../work/FilePane";
 import { useTeam, PING_WORD, DEV_SESSIONS, type Card } from "./useTeam";
-import { CoworkSidebar, onGroupPage, stageKey, type Stage } from "./CoworkSidebar";
+import { CoworkSidebar, onGroupPage, stageKey, type Stage, type V3RoomId } from "./CoworkSidebar";
 import { Dashboard } from "./Dashboard";
 import { Group, FirstGroup, MovedAwayLine } from "./Group";
 import { notNow } from "./quota";   // a moved group's card, "not now" on this Mac (#326)
@@ -45,15 +45,46 @@ import { Glyph } from "./Room";
 import { Droplet } from "../creature/goo";
 import "../work/work.css";
 import "./cowork.css";
+import { blocksOf } from "./blocks";   // a team tool's name in the title (#436)
+// --- Cowork v3 (fr-30): the switch is the only static import; every v3 page loads lazily, only when it is on (F7)
+import { v3On } from "./v3/flag";
+const V3Front = lazy(() => import("./v3/Front").then((m) => ({ default: m.Front })));            // slice 2: the front
+const V3NeedsMe = lazy(() => import("./v3/NeedsMe").then((m) => ({ default: m.NeedsMe })));       // slice 2: the one count
+const V3FrontCross = lazy(() => import("./v3/FrontCross").then((m) => ({ default: m.FrontCross }))); // slice 1: the front's crossing card
+const V3Frame = lazy(() => import("./v3/Frame"));                                                  // #573: a project's rooms, one frame
+const V3Search = lazy(() => import("./v3/Search").then((m) => ({ default: m.Search })));          // slice 7: search
+const V3_STAGES = new Set(["v3front", "v3plan", "v3", "v3places", "v3five", "v3studio", "v3art", "v3floor", "v3room"]);
+const V3_WORD: Record<V3RoomId, string> = { plan: "space and plan", talk: "talk", people: "people", running: "running", automations: "automations", places: "places", artifacts: "artifacts", setup: "setup" };
+/** one way around (#573): with the switch on, every way into a project's page is one of its rooms in the prototype's
+ *  order; today's group page, board, action board, chat and shared, and the earlier v3 pages, are read into it */
+const v3Room = (s: Stage, inUse: string): Stage | null => {
+  const at = (room: V3RoomId, project = inUse, id?: string): Stage => ({ k: "v3room", project, room, ...(id ? { id } : {}) });
+  switch (s.k) {
+    case "dashboard": case "repo": case "actions": case "goal": case "tool": case "thing": return inUse ? at("plan") : { k: "v3front" };
+    case "chat": return at("talk");
+    case "member": return at("people");
+    case "shared": return at("artifacts");
+    case "v3plan": return at("plan", s.project);
+    case "v3five": return at(s.view === "join" ? "people" : s.view, s.project);
+    case "v3": return at(s.room);
+    case "v3places": return at("places", s.project);
+    case "v3studio": return at("automations", s.project);
+    case "v3art": return at("artifacts", s.project, s.id);
+    case "v3floor": return at("people", s.project);
+    default: return null;
+  }
+};
+// --- end Cowork v3
 
 const STORE = "sol.cowork.current";
-const keptStage = (): Stage => { try { const s = JSON.parse(sessionStorage.getItem("sol.cowork.stage") ?? "null"); return s?.k ? s : { k: "dashboard" }; } catch { return { k: "dashboard" }; } };
+const keptStage = (): Stage => { try { const s = JSON.parse(sessionStorage.getItem("sol.cowork.stage") ?? "null"); return s?.k && s.k !== "v3" ? s : { k: "dashboard" }; } catch { return { k: "dashboard" }; } };
 const base = (p?: string) => (p ? p.replace(/\/+$/, "").split("/").pop() : "");
 // the Team preset's buttons are Cowork's views: pressed here, each takes the whole stage
 // the rail's dashboard button is the board, so it opens the repo page; the room is the sidebar's first row and ⌘B
 const STAGE: Record<string, "repo" | "actions" | "chat" | "shared"> = { dashboard: "repo", "action-board": "actions", "group-chat": "chat", shared: "shared" };
 // the bar's last word: where I am in the room
-const WHERE: Record<string, string> = { thing: "a thing", dashboard: "", repo: "the repo", actions: "action board", shared: "shared with me", chat: "talk", member: "a person", goal: "goal" };
+const WHERE: Record<string, string> = { thing: "a thing", dashboard: "", repo: "the repo", actions: "action board", shared: "shared with me", chat: "talk", member: "a person", goal: "goal",
+  v3front: "all projects", v3plan: "space and plan", v3places: "places", v3studio: "automations", v3art: "artifacts", v3floor: "the floor" };
 
 // the thing beside each session (S4), kept on this Mac by session id: the engine starts a session with it, and the
 // face brings it back beside the session when it is opened again from the side
@@ -78,6 +109,8 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
   const toggleSide = () => setPinned((s) => { localStorage.setItem("sol.cowork.pin", s ? "0" : "1"); return !s; });
   const [stage, setStageS] = useState<Stage>(keptStage);
   const setStage = (s: Stage) => { setStageS(s); try { sessionStorage.setItem("sol.cowork.stage", JSON.stringify(s)); } catch { /* private */ } };
+  const v3 = v3On(e.settings);   // Cowork v3 (fr-30): off, a v3 page left from before goes back to the group's page (F7)
+  useEffect(() => { if (e.settings && !v3 && V3_STAGES.has(stage.k)) setStage({ k: "dashboard" }); }, [e.settings, v3, stage.k]); // eslint-disable-line react-hooks/exhaustive-deps
   const [issue, setIssue] = useState<Card | null>(null);   // a new session about a card (its #N names the session)
   const [file, setFile] = useState<string | null>(null);   // the actions README, in the pane at the right
   const [draft, setDraft] = useState<Draft>({ text: "", atts: [] });
@@ -187,7 +220,7 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
 
   const page = useRef<HTMLDivElement>(null);
   const first = useRef(true);
-  useLayoutEffect(() => { if (!first.current && page.current) enter(page.current, { y: 14, cfg: CFG.panel }); first.current = false; }, [stageKey(stage), raw.current]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (!first.current && page.current) enter(page.current, { y: 14, cfg: CFG.travel }); first.current = false; }, [stageKey(stage), raw.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the box (#234): a line to my own agent opens a session under this room, the thing it names beside it (step 6 draws
   // the thing; until then the session opens alone). Nothing else is asked first
@@ -224,6 +257,21 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
   const [holding, setHolding] = useState(false);
   const firstTime = !!team.state && (groupsOf(team.state.settings.rooms).length === 0 || holding);
   useEffect(() => { if (firstTime && !onGroupPage(stage)) setStage({ k: "dashboard" }); }, [firstTime, stage.k]); // eslint-disable-line react-hooks/exhaustive-deps
+  // --- Cowork v3 (fr-30): with the switch on Cowork opens on the front (unless this window was elsewhere)
+  const v3Start = useRef(sessionStorage.getItem("sol.cowork.stage") === null);
+  useEffect(() => { if (v3 && v3Start.current && stage.k === "dashboard" && !firstTime) { v3Start.current = false; setStage({ k: "v3front" }); } }, [v3, firstTime]); // eslint-disable-line react-hooks/exhaustive-deps
+  // one way around (#573): a stage of today's or of the earlier v3 pages becomes the project's room; nothing of it draws meanwhile
+  const v3Want = v3 && !firstTime && e.settings ? v3Room(stage, team.state?.settings.room ?? "") : null;
+  const v3Stale = !!v3Want && !(v3Start.current && stage.k === "dashboard");
+  useEffect(() => { if (v3Stale && v3Want) setStage(v3Want); }, [v3Stale, v3Want && stageKey(v3Want)]); // eslint-disable-line react-hooks/exhaustive-deps
+  const v3names = useMemo(() => Object.fromEntries((team.state?.settings.rooms ?? []).map((r) => [r.id, r.name])), [team.state?.settings.rooms]);
+  // a result opens where it lives: an artifact on the stage here; the rest is asked of the room that shows it
+  // (sol:v3open, the other slices' rooms answer it by preventing the default), else the project's page
+  const v3hit = (h: { kind: string; id: string; project: string; open: unknown }) => {
+    if (h.kind === "artifact") { setStage({ k: "v3room", project: h.project, room: "artifacts", id: h.id }); return; }
+    if (window.dispatchEvent(new CustomEvent("sol:v3open", { detail: h, cancelable: true }))) setStage({ k: "dashboard" });
+  };
+  // --- end Cowork v3
   const [fyOpen, setFyOpen] = useState(false);
   const handNow = useHands().current;   // only to count the bar card's faces; HandLine reads its own
   // a join link's card (#327, App's JoinAsk) joined a group: its page, as the engine is in it now
@@ -263,14 +311,18 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
         <div className="wtitle" data-tauri-drag-region>
           <span className="tt">{title || "untitled"}</span>
           {cwd && <span className="where" title={cwd}>{base(cwd)}{raw.thread?.branch ? ` · ${raw.thread.branch}` : ""}</span>}
-          {stage.k !== "session" && <span className="where">{stage.k === "thing" ? room.things.find((t) => t.id === stage.id)?.name ?? WHERE.thing : stage.k === "member" ? stage.login : stage.k === "tool" ? ({ calendar: "the calendar", decisions: "decisions", polls: "polls" } as const)[stage.id] : WHERE[stage.k] ?? ""}</span>}
+          {stage.k !== "session" && <span className="where">{stage.k === "thing" ? room.things.find((t) => t.id === stage.id)?.name ?? WHERE.thing : stage.k === "member" ? stage.login : stage.k === "v3room" ? `${v3names[stage.project] && stage.project !== team.state?.settings.room ? `${v3names[stage.project]} · ` : ""}${V3_WORD[stage.room]}` : stage.k === "tool" ? (({ calendar: "the calendar", decisions: "decisions", polls: "polls", settings: "project settings" } as Record<string, string>)[stage.id] ?? blocksOf("tool").find((b) => b.id === stage.id)?.name ?? "") : WHERE[stage.k] ?? ""}</span>}
         </div>
         <div className="spacer" data-tauri-drag-region />
+        {/* Cowork v3 (fr-30): one search over all of mine, in the bar */}
+        {v3 && !firstTime && <Suspense fallback={null}><V3Search project={team.state?.settings.room} projectName={roomNow?.name} names={v3names} me={team.me} onOpen={v3hit} /></Suspense>}
         {(stage.k === "repo" || stage.k === "actions") && <button className="wbtn ghost" onClick={() => void team.refresh()} title="read the board again">read again</button>}
         {/* for you (§3, §9.4): the hands to me and the pings that reached me, one list; not on the first-time page */}
-        {!firstTime && <div className="rm-fy">
+        {/* Cowork v3 (fr-30): the one count in place of for you's own; it opens the front */}
+        {v3 && !firstTime && <Suspense fallback={null}><V3NeedsMe team={team} onOpen={() => setStage({ k: "v3front" })} /></Suspense>}
+        {!v3 && !firstTime && <div className="rm-fy">
           <button className={`rm-fy-pill ${room.foryou.length ? "on" : ""}`} onClick={() => setFyOpen((o) => !o)} aria-expanded={fyOpen}
-            title="what waits on you in this group: a hand to you, a decision, a line naming you, a clash or a claim">
+            title="what waits on you in this project: a hand to you, a decision, a line naming you, a clash or a claim">
             {room.foryou.length ? <Droplet kind="needs" size={13} seed="foryou" /> : <span className="cnobody" aria-hidden="true" />}for you {room.foryou.length}
           </button>
           {fyOpen && (
@@ -293,12 +345,12 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
             </div>
           )}
         </div>}
-        <span className="rm-who" title="who you are in this group, and which machine this Sol runs on">{team.me || "not signed in"} · this Mac</span>
-        {!firstTime && <Rail c={ctx} on={Object.keys(STAGE).find((id) => STAGE[id] === stage.k) ?? null} onPane={ctx.open} />}
+        <span className="rm-who" title="who you are in this project, and which machine this Sol runs on">{team.me || "not signed in"} · this Mac</span>
+        {!firstTime && !v3 && <Rail c={ctx} on={Object.keys(STAGE).find((id) => STAGE[id] === stage.k) ?? null} onPane={ctx.open} />}
       </div>
       <div className="shell">
         <CoworkSidebar team={team} w={DEV_SESSIONS.length ? { ...raw, sessions: [...raw.sessions, ...DEV_SESSIONS] } : raw} pinned={lay.docked} stage={stage} onMode={onMode} onStage={(s) => { if (s.k === "session") setIssue(null); setStage(s); }}
-          onNew={newGroupSession} />
+          onNew={newGroupSession} v3={v3} />
         <div ref={main} className="main">
           {/* what waits on me hangs from the bar as one black card (BarCard), one face at a time: a hand to me, a friend who
               wants in, and, off the room's page (where a ping is in for you, the bar's pill), a ping as before */}
@@ -332,26 +384,35 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
           ]} />
           <div ref={page} className="page-in cstage" data-view={stage.k}>
             {firstTime ? <FirstGroup team={team} onHold={setHolding} />
-              : onGroupPage(stage) && <Group team={team} room={room} flash={e.flash}
+              : onGroupPage(stage) && !v3Want && <Group team={team} room={room} flash={e.flash}
               onPerson={(login) => setStage({ k: "member", login })} onGoal={() => setStage({ k: "goal" })} onThing={(t) => setStage({ k: "thing", id: t.id })}
               onRepo={() => setStage({ k: "repo" })} onTool={(id) => setStage({ k: "tool", id })} onBack={() => setStage({ k: "dashboard" })} onHand={() => setStage({ k: "repo" })} onWork={workOn}
               open={stage.k === "thing" ? room.things.find((t) => t.id === stage.id) ?? null : null}
               person={stage.k === "member" ? stage.login : null} goal={stage.k === "goal"} tool={stage.k === "tool" ? stage.id : null} />}
             {/* the repo page (§7): the board as it was, one click from the repo's tile */}
-            {stage.k === "repo" && <Dashboard team={team} />}
-            {stage.k === "actions" && <ActionBoard team={team} onOpenWork={(c) => openInHome(c, raw, folders, toHome)} onNewAction={() => setFile(`${folder ?? ""}/${ACTIONS_HOWTO}`)} />}
+            {stage.k === "repo" && !v3Want && <Dashboard team={team} />}
+            {/* --- Cowork v3 (fr-30): its pages, each only with the switch on */}
+            {v3 && !firstTime && stage.k === "v3front" && <Suspense fallback={null}><V3Front team={team} onOpen={(project) => { if (project !== team.state?.settings.room) void team.ask("team.settings", { patch: { room: project } }); setStage({ k: "v3room", project, room: "plan" }); }} /><V3FrontCross names={v3names} /></Suspense>}
+            {v3 && !firstTime && stage.k === "v3room" && <Suspense fallback={null}><V3Frame key={stage.project} team={team} w={raw} project={stage.project} room={stage.room} id={stage.id}
+              name={v3names[stage.project] ?? stage.project}
+              hasRepos={(team.state?.settings.rooms.find((r) => r.id === stage.project)?.repos.length ?? 0) > 0}
+              what={stage.project === team.state?.settings.room ? room.goal?.title : undefined} flash={e.flash}
+              onRoom={(r, id) => setStage({ k: "v3room", project: stage.project, room: r, ...(id ? { id } : {}) })} onFront={() => setStage({ k: "v3front" })}
+              onAsk={(text) => startFromBox(text)} onOpenWork={(c) => openInHome(c, raw, folders, toHome)} onNewAction={() => setFile(`${folder ?? ""}/${ACTIONS_HOWTO}`)} /></Suspense>}
+            {/* --- end Cowork v3 */}
+            {stage.k === "actions" && !v3Want && <ActionBoard team={team} onOpenWork={(c) => openInHome(c, raw, folders, toHome)} onNewAction={() => setFile(`${folder ?? ""}/${ACTIONS_HOWTO}`)} />}
             {/* --- Share (#36) */}
-            {stage.k === "shared" && <Shared team={team} />}
+            {stage.k === "shared" && !v3Want && <Shared team={team} />}
             {/* --- end Share */}
             {/* --- Talk (#37) */}
-            {stage.k === "chat" && <Talk team={team} flash={e.flash} />}
+            {stage.k === "chat" && !v3Want && <Talk team={team} flash={e.flash} />}
             {/* --- end Talk */}
             {stage.k === "session" && (<div className={`rm-s4 ${beside ? "with" : ""}`}><div className="rm-s4-talk">
               {!beside && openable.length > 0 && (
                 <div className="rm-s4-open">
-                  <button className="rm-th-link" onClick={() => setPicking((p) => !p)} aria-expanded={picking} title="put one of the group's things beside this session">open a thing beside it ▾</button>
+                  <button className="rm-th-link" onClick={() => setPicking((p) => !p)} aria-expanded={picking} title="put one of the project's things beside this session">open a thing beside it ▾</button>
                   {picking && (
-                    <div className="rm-s4-pick" role="menu" aria-label="the group's things" onKeyDown={(ev) => { if (ev.key === "Escape") { ev.stopPropagation(); setPicking(false); } }}>
+                    <div className="rm-s4-pick" role="menu" aria-label="the project's things" onKeyDown={(ev) => { if (ev.key === "Escape") { ev.stopPropagation(); setPicking(false); } }}>
                       {openable.map((t, i) => <button key={t.id} role="menuitem" autoFocus={i === 0} onClick={() => { setPicking(false); putBeside(t.id); }}><Glyph kind={t.kind} size={16} />{t.name}</button>)}
                     </div>
                   )}
@@ -364,7 +425,7 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
                   ) : (
                     <div className="empty wempty">
                       <Mark size={56} live />
-                      <p className="wwhere">{stage.k === "session" && !stage.repo ? <>a session of {roomNow?.name ?? "this group"}{beside ? <>, <b>{beside.name}</b> beside it</> : ""}: your first line starts it</> : folder ? <>a session in <b title={folder}>{base(folder)}</b>, shared on the board as yours</> : "no folder on this machine holds this repository"}</p>
+                      <p className="wwhere">{stage.k === "session" && !stage.repo ? <>a session of {roomNow?.name ?? "this project"}{beside ? <>, <b>{beside.name}</b> beside it</> : ""}: your first line starts it</> : folder ? <>a session in <b title={folder}>{base(folder)}</b>, shared on the board as yours</> : "no folder on this machine holds this repository"}</p>
                     </div>
                   )}
                 </div>
@@ -384,7 +445,7 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
         <TryFrame team={team} />
         {/* --- end Try */}
         {/* --- Share (#36) */}
-        {stage.k === "shared" && <SharedPane e={e} w={raw} folders={folders} />}
+        {(stage.k === "shared" || (v3 && stage.k === "v3room" && stage.room === "artifacts")) && <SharedPane e={e} w={raw} folders={folders} />}
         {/* --- end Share */}
       </div>
     </div>

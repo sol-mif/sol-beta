@@ -8,7 +8,7 @@ import { Sol, hopKeys, type SolLife } from "../Sol";
 import { SOL_PATH, SOL_BODY } from "../solShape";
 import { Bands, JOBS, Light, budPath, rnd, shoreVar, type Job } from "../creature/goo";
 import { outline } from "../creature/indicators";
-import { reducedMotion, spring, type Cfg, type Spring } from "../motion";
+import { CFG, reducedMotion, spring, type Cfg, type Spring } from "../motion";
 import type { live } from "../creature/state";
 
 type Look = typeof live.look;
@@ -114,7 +114,7 @@ export const Hero = forwardRef(function Hero({ size, hatch, onHatched }: { size:
   }));
   // the hatch: a seed of goo, the drops round it running in, it swells; he grows out of it, lands, opens his eyes
   useLayoutEffect(() => {
-    grown.current = spring(hatch && !reduced ? 0 : 1, { k: 230, z: 0.5 }, (v) => setGrown(v));
+    grown.current = spring(hatch && !reduced ? 0 : 1, CFG.travel, (v) => setGrown(v));
     setGrown(hatch && !reduced ? 0 : 1);
     if (!hatch) return;
     if (reduced) { onHatched?.(); return; }
@@ -167,7 +167,7 @@ export const Hero = forwardRef(function Hero({ size, hatch, onHatched }: { size:
 // left) in one mask, so near bodies bridge. They start as one small drop at the top middle, under Sol, and travel to
 // their places one after another; while they pass each other they are one body with necks, at rest they stand apart.
 // The child's own words fade in once its body is there.
-const BODY: Cfg = { k: 150, z: 0.6, eps: 0.2 };
+const BODY: Cfg = { ...CFG.travel, eps: 0.2 };
 type Box = { cx: Spring; cy: Spring; w: Spring; h: Spring };
 export function GooBodies({ children, className, gap = 110, rx = 26, from = "top", k }: { children: ReactNode[] | ReactNode; className?: string; gap?: number; rx?: number; from?: "top" | "centre"; k?: string | number }) {
   const id = useId().replace(/:/g, "");

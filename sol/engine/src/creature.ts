@@ -52,11 +52,15 @@ export function addCreatureFace(key: Key, out: Out) {
   out.send({ type: "creature.turn", turn: lastTurn });
 }
 export function removeCreatureFace(key: Key) {
-  faces.delete(key); calls.delete(key); tally.delete(key); dictating.delete(key); lifeOn.delete(key);
+  faces.delete(key); solWindows.delete(key); calls.delete(key); tally.delete(key); dictating.delete(key); lifeOn.delete(key);
   if (presence?.key === key) presence = null;
   update();
 }
 export function setRole(key: Key, role: Role) { const f = faces.get(key); if (f) f.role = role; }
+// Sol's own main window (its page, said hello as "window"): not the notch, the phone, or a program on this Mac (#416)
+const solWindows = new Set<Key>();
+export function markSolWindow(key: Key) { if (faces.has(key)) solWindows.add(key); }
+export const solWindowOn = () => solWindows.size > 0;
 export const roleOf = (key: Key) => faces.get(key)?.role;
 
 export function setPresence(key: Key, focused: boolean, idleSeconds: number | null) {

@@ -101,7 +101,7 @@ function write(el: HTMLElement, h: string, animate: boolean) {
       if (was !== undefined) growTo(n, was);   // the same place, another kind: it opens from the old one's height
       else if (moving) {
         // when several blocks arrive together (a whole answer at once) they follow one another down the page
-        enter(n, { y: 12, delay: fresh * 70, cfg: CFG.arrive });
+        enter(n, { y: 12, delay: fresh * 70, cfg: CFG.travel });
         growTo(n, 0);
         fresh++;
       }
@@ -139,7 +139,7 @@ function decorate(el: HTMLElement, key: string) {
       out.className = "ran";
       out.innerHTML = '<div class="ran-head"><i></i><span class="ran-code"></span></div><pre class="ran-out"></pre>';
       pre.after(out);
-      if (!reducedMotion()) { enter(out, { y: 8, cfg: CFG.arrive }); growTo(out, 0); }
+      if (!reducedMotion()) { enter(out, { y: 8, cfg: CFG.travel }); growTo(out, 0); }
     }
     out.classList.toggle("busy", !r.done);
     out.classList.toggle("bad", r.done && r.code !== 0);
@@ -164,7 +164,7 @@ function Mine({ m }: { m: Msg }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const row = ref.current;
-    if (row && !m.old) { enter(row, { x: 14, y: 34, scale: 0.08, cfg: { k: 300, z: 0.62 } }); growTo(row, 0, { k: 300, z: 0.8 }); }
+    if (row && !m.old) { enter(row, { x: 14, y: 34, scale: 0.08, cfg: CFG.travel }); growTo(row, 0, CFG.travel); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // a long one (a paste) shows its first lines and a quiet foot that unfolds it in place; unfolded, it stays so
   const [all, setAll] = useState(false);
@@ -188,7 +188,7 @@ export function firstOf(t: string) {
 // A line of a call: slides up when it begins; its words update in place while they are still being heard
 function CallLine({ m }: { m: Msg }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (ref.current && !m.old) { enter(ref.current, { y: 14, cfg: CFG.arrive }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (ref.current && !m.old) { enter(ref.current, { y: 14, cfg: CFG.travel }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <div ref={ref} className={`msg you call ${m.done ? "" : "live"}`}>{m.text}</div>;
 }
 
@@ -226,14 +226,14 @@ function StepRow({ s, k, shown, can, arrive, onToggle, ran }: {
   s: Msg; k: Kind; shown: boolean; can: boolean; arrive: boolean; onToggle: () => void; ran: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { if (ref.current && arrive) { enter(ref.current, { x: -16, cfg: CFG.arrive }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (ref.current && arrive) { enter(ref.current, { x: -16, cfg: CFG.travel }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const running = s.done === false;
   return (
     <div ref={ref} data-item={s.id} data-ping={s.text?.startsWith(PINGING) ? pingKey(s.text.slice(PINGING.length)) : undefined}
       className={`step ${k} ${running ? "running" : ""} ${s.ok === false ? "failed" : ""} ${can ? "can" : ""} ${shown ? "open" : ""}`}>
       <div className="step-row" onClick={can ? onToggle : undefined}>
         {/* the runner leaves upward as the glyph comes in from below: a step finishing */}
-        <span className="glyph"><Swap k={running ? "run" : "glyph"} dist={14} cfg={CFG.snap}>{running ? <Runner /> : GLYPH[k]}</Swap></span>
+        <span className="glyph"><Swap k={running ? "run" : "glyph"} dist={14} cfg={CFG.settle}>{running ? <Runner /> : GLYPH[k]}</Swap></span>
         <span className="step-text">{k === "reasoning" ? <><span className="pre">thinking… </span>{s.text}</> : s.text}</span>
         <span className="step-state">{running ? null : s.ok === false || k === "error" ? <i className="bad" /> : s.ok === true ? <CellCheck land={ran} /> : null}</span>
       </div>
@@ -253,7 +253,7 @@ export const Steps = memo(function Steps({ steps, old }: { steps: Msg[]; old?: b
   const card = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
   useLayoutEffect(() => {
-    if (card.current && !old) { enter(card.current, { y: 14, cfg: CFG.arrive }); growTo(card.current, 0); }
+    if (card.current && !old) { enter(card.current, { y: 14, cfg: CFG.travel }); growTo(card.current, 0); }
     mounted.current = true;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (

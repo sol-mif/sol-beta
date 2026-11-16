@@ -8,9 +8,10 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, chmodS
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
+import { freePort, ownHealth } from "./test-engine.ts";
 
 const ENGINE = join(import.meta.dirname, "..");
-const PORT = 8010 + Math.floor(Math.random() * 9);
+let PORT = 0;   // the system's free port, taken at the start (test-engine.ts, #938)
 const dir = mkdtempSync(join(tmpdir(), "sol-ask-"));
 const home = join(dir, "home"), prompts = join(dir, "prompts.log");
 mkdirSync(home);
@@ -26,6 +27,7 @@ const said = () => (existsSync(prompts) ? readFileSync(prompts, "utf8").split("\
 const ASK = /Sol's rail use so far: (.*)\. Ask once whether they want you to keep their rail tidy, or keep choosing themselves\./;
 
 test("after the 100th press, the next chat's prompt carries the one ask, once, and manage is asked", { timeout: 90_000 }, async () => {
+  PORT = await freePort();
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: ENGINE, stdio: "ignore",
     env: {
@@ -34,10 +36,7 @@ test("after the 100th press, the next chat's prompt carries the one ask, once, a
       SOL_CODEX: join(dir, "codex"), SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1",
     },
   });
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) break; } catch {}
-    await wait(200);
-  }
+  await ownHealth(engine, PORT);   // the engine this test started, not another run's on the port (#938)
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}`);
   const got: Msg[] = [];
   ws.on("message", (raw) => got.push(JSON.parse(raw.toString())));

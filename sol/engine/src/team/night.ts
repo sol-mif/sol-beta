@@ -9,6 +9,7 @@
 // and the two rules of the leads (#118, leads.ts), read off origin/main's .github/CODEOWNERS:
 //   routing  an open issue wearing one of the six labels gets its missing leads assigned and pinged
 //   flags    a PR merged since the last digest without its labels' leads' word gets one signed line and a ping
+// and done issues (#440): one a PR merged since the last run says it fixes, left open, is closed with a signed line.
 // Run by hand: bash sol/night --dry-run (prints what it would post, posts nothing). The hour and the days are team
 // values, `night` in sol/engine/team.json. GitHub and git are the deps below, so the tests fake them.
 import { readFileSync, realpathSync } from "node:fs";
@@ -22,6 +23,7 @@ import { ghHelper, ownGhOnPath } from "./gh.js";
 import { owners, type Owners } from "./claims.js";
 import { leads, routeIssues, mergeFlag, flagText, FLAG, type Leads, type MergedPr, type OpenIssue } from "./leads.js";
 import type { PingKind } from "./pings.js";
+import { nightFileBeside, nightNow } from "./nightfile.js";
 
 export type Run = { code: number; out: string };
 export type NightDeps = {
@@ -124,7 +126,7 @@ export function digestText(o: {
 
 const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const json = <T>(s: string): T[] => lines(s).map((l) => JSON.parse(l) as T);
-const rec = (d: NightDeps) => makeGithubRecord(d.gh);
+const rec = (d: Pick<NightDeps, "gh">) => makeGithubRecord(d.gh);
 
 async function comments(d: NightDeps, n: number): Promise<Comment[]> {
   return json<Comment>(await rec(d).notes.lines(n));
@@ -135,25 +137,28 @@ async function post(d: NightDeps, n: number, body: string) {
   d.say(`posted on #${n}`);
 }
 
-export async function openPrs(d: NightDeps): Promise<Pr[]> {
+export async function openPrs(d: Pick<NightDeps, "gh">): Promise<Pr[]> {   // also "I'm on" (#432, on.ts)
   const raw = JSON.parse(await rec(d).code.openPrs() || "[]") as
     { number: number; headRefName: string; author?: { login?: string }; title: string; body?: string; isDraft?: boolean }[];
   return raw.map((p) => ({ number: p.number, branch: p.headRefName, login: p.author?.login ?? "?", title: p.title, body: p.body ?? "", isDraft: !!p.isDraft }));
 }
 
-export async function findClashes(d: NightDeps, prs: Pr[]): Promise<Clash[]> {
+/** `o.base`: the branch PRs fold into (main by default); `o.only`: only the clashes that touch these PRs (the hand-in
+ *  session, #420, asks for one person's), so the pairs of two other people's PRs are never merged */
+export async function findClashes(d: Pick<NightDeps, "git">, prs: Pr[], o: { base?: string; only?: (p: Pr) => boolean } = {}): Promise<Clash[]> {
   const here: Pr[] = [];
-  for (const p of prs) if ((await d.git(["rev-parse", "--verify", "-q", `origin/${p.branch}`])).code === 0) here.push(p);
+  for (const p of prs) if (p.branch && (await d.git(["rev-parse", "--verify", "-q", `origin/${p.branch}`])).code === 0) here.push(p);
   const mt = async (x: string, y: string) => parseMergeTree(await d.git(["merge-tree", "--write-tree", "--name-only", "--no-messages", x, y]));
   const out: Clash[] = [];
   const withMain = new Map<number, string[]>();
   for (const p of here) {
-    const files = await mt("origin/main", `origin/${p.branch}`);
+    const files = await mt(`origin/${o.base ?? "main"}`, `origin/${p.branch}`);
     withMain.set(p.number, files);
-    if (files.length) out.push({ a: p, b: null, files });
+    if (files.length && (!o.only || o.only(p))) out.push({ a: p, b: null, files });
   }
   // a file one side already fights main over is said once, against main, not again for every pair
   for (const [a, b] of pairs(here)) {
+    if (o.only && !o.only(a) && !o.only(b)) continue;
     const known = new Set([...(withMain.get(a.number) ?? []), ...(withMain.get(b.number) ?? [])]);
     const files = (await mt(`origin/${a.branch}`, `origin/${b.branch}`)).filter((f) => !known.has(f));
     if (files.length) out.push({ a, b, files });
@@ -208,13 +213,14 @@ export async function lastRun(d: NightDeps): Promise<{ n: number; since: Date }>
 }
 const isoOf = (since: Date) => since.toISOString().replace(/\.\d+Z$/, "Z");
 
-/** the PRs merged since a moment, with who merged, the reviews and the files (the flag's read; the digest's list) */
-export async function mergedSince(d: NightDeps, since: Date): Promise<MergedPr[]> {
-  type P = { number: number; title: string; author?: { login?: string }; mergedBy?: { login?: string } | null;
+/** the PRs merged since a moment, with who merged, the reviews, the files and the body (the flag's read; the digest's
+ * list; the done issues) */
+export async function mergedSince(d: NightDeps, since: Date): Promise<(MergedPr & { body: string })[]> {
+  type P = { number: number; title: string; body?: string; author?: { login?: string }; mergedBy?: { login?: string } | null;
     reviews?: { author?: { login?: string }; state?: string; submittedAt?: string }[]; files?: { path?: string }[] };
-  const raw = JSON.parse(await rec(d).code.prSearch("merged", `merged:>=${isoOf(since)}`, "number,title,author,mergedBy,reviews,files") || "[]") as P[];
+  const raw = JSON.parse(await rec(d).code.prSearch("merged", `merged:>=${isoOf(since)}`, "number,title,author,mergedBy,reviews,files,body") || "[]") as P[];
   return raw.map((p) => ({
-    number: p.number, title: p.title, author: p.author?.login ?? "?", mergedBy: p.mergedBy?.login ?? "",
+    number: p.number, title: p.title, body: p.body ?? "", author: p.author?.login ?? "?", mergedBy: p.mergedBy?.login ?? "",
     files: (p.files ?? []).map((f) => String(f.path ?? "")).filter(Boolean),
     reviews: (p.reviews ?? []).map((r) => ({ login: r.author?.login ?? "", state: String(r.state ?? ""), at: r.submittedAt })),
   }));
@@ -259,14 +265,32 @@ export async function routeAll(d: NightDeps, l: Leads): Promise<number> {
   return done.length;
 }
 
+/** the PR body's risk (the risk-rating skill's `**Risk:** <level>` line), "" when it has none */
+export function riskLine(body: string): string {
+  return (/\*\*Risk:\*\*\s*(critical|high|medium|low)\b/i.exec(body ?? "")?.[1] ?? "").toLowerCase();
+}
+/** the night press took it in (#544): the press's own comment on the PR (tonight.ts prComment "fold", sentback.ts
+ * the re-check), written by the login that merged it, so the same words from anyone else count for nothing */
+export function nightPressed(p: Pick<MergedPr, "mergedBy">, cs: Comment[]): boolean {
+  const by = p.mergedBy.replace(/\[bot\]$/i, "").toLowerCase();
+  return !!by && cs.some((c) => (c.login ?? "").toLowerCase() === by
+    && /^\*\*(?:Into [^*\n]+\*\* in the dev review of |Re-checked\*\*, and into )/.test(c.body ?? ""));
+}
+/** the night press counts as the lead's read on a small PR (Marco 2026-10-31, #544): low or medium risk, or no Risk
+ * line at all; a high or critical one is still flagged */
+export const pressCovers = (p: Pick<MergedPr, "mergedBy"> & { body?: string }, cs: Comment[]) =>
+  !["high", "critical"].includes(riskLine(p.body ?? "")) && nightPressed(p, cs);
+
 /** the flags: each PR merged since the last run without its leads' word, one signed line (never twice) and a ping to
- * the leads and the author */
-export async function flagMerges(d: NightDeps, merged: MergedPr[], own: Owners, l: Leads): Promise<number> {
+ * the leads and the author. A small PR the night press took in is not flagged (#544) */
+export async function flagMerges(d: NightDeps, merged: (MergedPr & { body?: string })[], own: Owners, l: Leads): Promise<number> {
   let n = 0;
   for (const p of merged) {
     const f = mergeFlag(p, own, l);
     if (!f) continue;
-    if ((await comments(d, p.number)).some((c) => c.body.includes(FLAG))) { d.say(`already flagged #${p.number}`); continue; }
+    const cs = await comments(d, p.number);
+    if (cs.some((c) => c.body.includes(FLAG))) { d.say(`already flagged #${p.number}`); continue; }
+    if (pressCovers(p, cs)) { d.say(`#${p.number} went in by the night press: the lead's read`); continue; }
     await post(d, p.number, `${flagText(f)}\n\n${nightSign(d.login)}`);
     const line = `#${p.number} ${p.title} was merged without the lead's approval (${f.unmet.map((u) => u.label).join(", ")})`.slice(0, 300);
     const to = [...new Set([...f.unmet.flatMap((u) => u.leads), p.author].filter((x) => x && x !== "?"))];
@@ -279,7 +303,32 @@ export async function flagMerges(d: NightDeps, merged: MergedPr[], own: Owners, 
   return n;
 }
 
-/** the whole night: fetch, routing, clashes, claims, flags, digest; a line for each step */
+/** the issues a PR body says it finishes ("Fixes #n", "Closes #n", "Resolves #n"; never "Part of #n") */
+export function fixedIssues(body: string): number[] {
+  const re = /\b(?:fix|fixes|fixed|close|closes|closed|resolve|resolves|resolved)\s+#(\d+)\b/gi;
+  return [...new Set([...(body ?? "").matchAll(re)].map((m) => Number(m[1])))];
+}
+
+/** done issues (#440): an issue a PR merged since the last run says it fixes, still open (GitHub closes on the default
+ * branch only), is closed with one signed line naming the PR. Only merges since the last run, so a reopen stays. */
+export async function closeFixed(d: NightDeps, merged: { number: number; body?: string }[]): Promise<number> {
+  let n = 0;
+  for (const p of merged) {
+    for (const i of fixedIssues(p.body ?? "")) {
+      if (i === p.number) continue;
+      const state = (await d.gh(["issue", "view", String(i), "--json", "state", "--jq", ".state"]).catch(() => "")).trim();
+      if (state !== "OPEN") continue;
+      const body = `Closed: #${p.number} fixes it and was merged.\n\n${nightSign(d.login)}`;
+      if (d.dryRun) { d.say(`would close #${i} (fixed by #${p.number})`); n++; continue; }
+      await d.gh(["issue", "close", String(i), "--comment", body]);
+      d.say(`closed #${i} (fixed by #${p.number})`);
+      n++;
+    }
+  }
+  return n;
+}
+
+/** the whole night: fetch, routing, clashes, claims, flags, done issues, digest; a line for each step */
 export async function night(d: NightDeps, o: { staleDays: number }): Promise<void> {
   const v = (await d.git(["--version"])).out;
   if (!gitOk(v)) throw new Error(`this git is too old for the night job (${v.trim() || "unknown"}); it needs git 2.38 or newer for merge-tree --write-tree`);
@@ -306,20 +355,26 @@ export async function night(d: NightDeps, o: { staleDays: number }): Promise<voi
   const merged = await mergedSince(d, last.since);
   const flagged = named ? await flagMerges(d, merged, own, l) : 0;
   d.say(`${merged.length} merged since the last run, ${flagged} ${d.dryRun ? "would be flagged" : "flagged"} for no lead's approval`);
+  const closed = await closeFixed(d, merged);
+  d.say(`${closed} done issues ${d.dryRun ? "would be closed" : "closed"}`);
   await digest(d, { prs, clashes, dropped, holds, last, merged });
 }
 
 // ---- run as a program: node dist/team/night.js [--dry-run] [--hour] ----
 
 const ENGINE = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const TEAM_FILE = () => process.env.SOL_TEAM ?? process.env.SOL_TEAM_FILE ?? join(ENGINE, "team.json");
 export function readTeam(): TeamSettings {
-  try { return fromDisk(JSON.parse(readFileSync(process.env.SOL_TEAM ?? process.env.SOL_TEAM_FILE ?? join(ENGINE, "team.json"), "utf8"))); }
+  try { return fromDisk(JSON.parse(readFileSync(TEAM_FILE(), "utf8"))); }
   catch { return cleanTeam({}); }
 }
 
 async function main(argv: string[]) {
   const team = readTeam();
-  if (argv.includes("--hour")) { process.stdout.write(`${team.night.hour}\n`); return; }
+  // the hour and the still-claim days are the project's rhythm (#428): night.json beside team.json, which the engine
+  // keeps as the project's record says (nightfile.ts); 3:00 and 7 days when there is none
+  const nightly = nightNow(nightFileBeside(TEAM_FILE()), TEAM_FILE());
+  if (argv.includes("--hour")) { process.stdout.write(`${nightly.hour}\n`); return; }
   const root = resolve(ENGINE, "..", "..");
   ownGhOnPath();   // a job's PATH is short too: Sol's own gh, as the engine finds it (gh.ts)
   const dryRun = argv.includes("--dry-run") || !team.speak.github;
@@ -329,11 +384,26 @@ async function main(argv: string[]) {
     execFile("git", args, { cwd: root, timeout: 120_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
       (err, out, errOut) => ok({ code: err ? (typeof (err as { code?: unknown }).code === "number" ? (err as { code: number }).code : 128) : 0, out: String(out) || String(errOut) })));
   const login = team.me.login || (await makeGithubRecord(gh).who.login()).trim();
-  console.log(`night job${dryRun ? " (dry run: nothing is posted)" : ""}, ${new Date().toISOString()}, as ${login}'s agent, claims still after ${team.night.staleDays} days`);
+  console.log(`night job${dryRun ? " (dry run: nothing is posted)" : ""}, ${new Date().toISOString()}, as ${login}'s agent, claims still after ${nightly.staleDays} days`);
   const relay = dryRun ? null : relayPinger(login, activeRoom(team).code);
   try {
-    await night({ gh, git, login, now: () => new Date(), dryRun, say: (l) => console.log(l), ...(relay ? { ping: relay.ping } : {}) }, { staleDays: team.night.staleDays });
+    await night({ gh, git, login, now: () => new Date(), dryRun, say: (l) => console.log(l), ...(relay ? { ping: relay.ping } : {}) }, { staleDays: nightly.staleDays });
   } finally { await relay?.close(); }
+}
+
+/** one relay connection for a job that runs alone (the night, the release runner #418): signed as `login`'s agent in the
+ *  room whose share code is `room` (#157), null when the relay is not in sight within ten seconds */
+export async function relayLink(login: string, room = ""): Promise<{ send: (kind: "ping" | "stable", p: Record<string, unknown>) => boolean; stop: () => void } | null> {
+  const { RelayClient, relayUrl, relayAuth } = await import("./relay.js");
+  const c = new RelayClient(() => relayUrl(), () => ({ login, state: "away" as const, room }), "night", () => relayAuth());
+  c.start();
+  const ok = await new Promise<boolean>((done) => {
+    if (c.up) return done(true);
+    const t = setTimeout(() => { off(); done(false); }, 10_000);
+    const off = c.onStatus(() => { if (c.up) { clearTimeout(t); off(); done(true); } });
+  });
+  if (!ok) { c.stop(); return null; }
+  return { send: (kind, p) => c.send(kind, p, true), stop: () => c.stop() };
 }
 
 /** the night's pings: one relay connection, opened at the first ping (the hub, this machine's engine, keeps a ping for
@@ -341,17 +411,10 @@ async function main(argv: string[]) {
 function relayPinger(login: string, room = "") {   // room: the share code of the room it reads (#157), so a ping meets its person there
   let up: Promise<{ send: (p: Record<string, unknown>) => boolean; stop: () => void } | null> | null = null;
   const open = async () => {
-    const { RelayClient, relayUrl, relayAuth } = await import("./relay.js");
-    const c = new RelayClient(() => relayUrl(), () => ({ login, state: "away" as const, room }), "night", () => relayAuth());
-    c.start();
-    const ok = await new Promise<boolean>((done) => {
-      if (c.up) return done(true);
-      const t = setTimeout(() => { off(); done(false); }, 10_000);
-      const off = c.onStatus(() => { if (c.up) { clearTimeout(t); off(); done(true); } });
-    });
-    if (!ok) { c.stop(); console.log("the relay is not in sight: no pings tonight"); return null; }
+    const c = await relayLink(login, room);
+    if (!c) { console.log("the relay is not in sight: no pings tonight"); return null; }
     const repo = (await makeGithubRecord((args) => runGh(args, resolve(ENGINE, "..", ".."))).members.room().catch(() => "")).trim();
-    return { send: (p: Record<string, unknown>) => c.send("ping", { ...p, ...(repo ? { repo } : {}) }, true), stop: () => c.stop() };
+    return { send: (p: Record<string, unknown>) => c.send("ping", { ...p, ...(repo ? { repo } : {}) }), stop: () => c.stop() };
   };
   return {
     ping: async (p: { to: string; kind: PingKind; line: string; issue: number }) => {

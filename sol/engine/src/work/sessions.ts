@@ -14,7 +14,7 @@ import { homedir } from "node:os";
 import { listSessions, getSessionMessages, type SDKSessionInfo } from "@anthropic-ai/claude-agent-sdk";
 import { workState, prefs, moved, type Marks } from "./state.js";
 import { Items, type Item } from "./items.js";
-import { copyOf } from "./copies.js";
+import { copyOf, worktreeOf, forgetWorktrees } from "./copies.js";
 import { heldElsewhere, type Holder } from "./holders.js";
 import { lastSaid } from "./said.js";
 import { inHome, machineOf, twinIn, type Machine } from "../home.js";
@@ -34,6 +34,8 @@ export { twinIn };
 
 // the same folder in this machine's home
 const local = (p: string) => twinIn(p, homedir());
+// the repo a folder is a copy of: as copies.ts reads it, else read in this home (a worktree on the other machine, #496)
+const copyIn = (cwd: string) => copyOf(cwd) ?? (local(cwd) !== cwd ? worktreeOf(local(cwd)) : null);
 
 // scratch folders (test fixtures, other sessions' scratchpads) stay out unless Marco adds one by hand
 const SCRATCH = /^\/(private\/)?(tmp|var\/folders)\//;
@@ -67,6 +69,16 @@ const transcript = (id: string, ...cwds: string[]) => {
   const guesses = [...new Set(cwds.flatMap((c) => (inHome(c) ? [c, local(c)] : [c])))].map((c) => join(homedir(), ".claude", "projects", slug(c), `${id}.jsonl`));
   return guesses.find((f) => existsSync(f)) ?? guesses[0];
 };
+/** a session's transcript and those of the background agents it started (Claude Code keeps them beside it, under
+ *  `<id>/subagents`): where the hand-in card reads which PRs the session opened (#579, team/handin.ts openedIn) */
+export function transcriptFiles(id: string, cwd: string): string[] {
+  const f = transcript(id, cwd);
+  if (!existsSync(f)) return [];
+  const sub = join(f.slice(0, -".jsonl".length), "subagents");
+  let agents: string[] = [];
+  try { agents = readdirSync(sub).filter((x) => x.endsWith(".jsonl")).map((x) => join(sub, x)); } catch { /* it started none */ }
+  return [f, ...agents];
+}
 
 // the SDK's list, kept until a transcript changes (the watcher below) or a write here invalidates; 10 s is the net under both
 let cache: { at: number; list: SDKSessionInfo[] } | null = null;
@@ -144,7 +156,7 @@ export function fileSessions(list: SDKSessionInfo[], gpt: GptInfo[] = []): { ses
   for (const s of both) {
     if (!s.cwd) continue;
     const cwd = at(s.cwd);   // a folder that moved: the session is in its new place (its transcript still says the old one)
-    const w = copyOf(cwd);
+    const w = copyIn(cwd);
     const marked = st.marks[s.sessionId]?.folder;   // Marco put it under another folder
     const project = marked || at(local(w ? w.repo : cwd));
     if ((SCRATCH.test(cwd) || (APP_SCRATCH.test(cwd) && !stale)) && !byHand.has(project)) continue;
@@ -188,7 +200,7 @@ export function withRuns(filed: { sessions: WorkSession[]; projects: Project[] }
   const sessions = [...filed.sessions], projects = [...filed.projects];
   for (const r of runs) {
     if (have.has(r.sessionId) || !r.cwd) continue;
-    const w = copyOf(r.cwd);
+    const w = copyIn(r.cwd);
     const project = st.marks[r.sessionId]?.folder || local(w ? w.repo : r.cwd);
     const at = r.since ?? Date.now();
     sessions.push({ id: r.sessionId, title: "new session", cwd: r.cwd, project, ...(w ? { worktree: w.name } : {}), updatedAt: at, createdAt: at, ...(st.marks[r.sessionId] ?? {}) });
@@ -202,12 +214,12 @@ export function withRuns(filed: { sessions: WorkSession[]; projects: Project[] }
 // the folder a session files under (its own, or the one Marco moved it to), and the topic groups there the model may
 // pick from: those inside that folder that say what they are for
 export function topicsFor(sessionId: string, cwd: string): { id: string; about: string }[] {
-  const st = workState(), w = copyOf(cwd);
+  const st = workState(), w = copyIn(cwd);
   const project = st.marks[sessionId]?.folder || relocated(local(w ? w.repo : cwd));
   return st.groups.filter((g) => g.in === project && g.about).map((g) => ({ id: g.id, about: g.about! }));
 }
 
-export function invalidate() { cache = null; there.clear(); }
+export function invalidate() { cache = null; there.clear(); forgetWorktrees(); }
 
 // A session's transcript as items. Subagents' own steps are read on demand (the subagent pane).
 export async function sessionItems(id: string): Promise<Items> {

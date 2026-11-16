@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { harnessFiles } from "./dev-copy.ts";
 
 Object.assign(process.env, {
   GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1",
@@ -22,12 +23,16 @@ const git = (cwd: string, ...a: string[]) => execFileSync("git", a, { cwd, encod
 test("the user's door goes to testers, the dev's door stays home", async () => {
   const repo = mkdtempSync(join(tmpdir(), "sol-beta-keep-"));
   git(repo, "init", "-q", "-b", "main");
-  const userDoor = ["sol/mine/setup", "sol/mine/rebase", "sol/mine/hooks/commit-msg", "sol/harness/guard", ".claude/settings.json"];
+  const harness = harnessFiles();   // the guard, sol-dev.mjs, and whatever else the harness holds
+  const userDoor = ["sol/mine/setup", "sol/mine/rebase", "sol/mine/hooks/commit-msg", ...Object.keys(harness), ".claude/settings.json"];
   const devDoor = ["sol/take", "sol/brief", "sol/night", "sol/promote", "sol/kit", "sol/mine/stage", "sol/mine/live",
     "sol/mine/unlive", ".claude/launch.json", "sol/design/together/BUILD.md", "now.md", "CONTRIBUTING.md"];
+  // the guard, its sol-dev check and its wiring as they are: the leak check (#479) reads and runs them
+  const real: Record<string, string> = { ...harness,
+    ".claude/settings.json": readFileSync(join(import.meta.dirname, "../../../.claude/settings.json"), "utf8") };
   for (const f of ["sol/engine/src/index.ts", "sol/setup", ...userDoor, ...devDoor]) {
     mkdirSync(join(repo, dirname(f)), { recursive: true });
-    writeFileSync(join(repo, f), `${f}\n`);
+    writeFileSync(join(repo, f), real[f] ?? `${f}\n`);
   }
   git(repo, "add", "-A"); git(repo, "commit", "-qm", "the house");
   const { commit, prev } = await exportTree(join(repo, "sol"), git(repo, "rev-parse", "HEAD"), "stable-20261022-1200");
@@ -35,8 +40,9 @@ test("the user's door goes to testers, the dev's door stays home", async () => {
   const files = git(repo, "ls-tree", "-r", "--name-only", commit).split("\n");
   for (const f of userDoor) assert.ok(files.includes(f), `${f} goes to testers`);
   for (const f of devDoor) assert.ok(!files.includes(f), `${f} stays home`);
-  assert.deepEqual(files.sort(), [".claude/settings.json", "README.md", "sol/engine/src/index.ts", "sol/harness/guard",
-    "sol/mine/hooks/commit-msg", "sol/mine/rebase", "sol/mine/setup", "sol/setup"]);
+  assert.deepEqual(files.sort(), [".claude/settings.json", "README.md", "sol/engine/src/index.ts", ...Object.keys(harness),
+    "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/life/.keep", "sol/home/memory/.keep",   // the neutral home (#479)
+    "sol/mine/hooks/commit-msg", "sol/mine/rebase", "sol/mine/setup", "sol/setup"].sort());
   // the list names the user's door by path, never sol/mine whole (the stage and live are the dev's)
   assert.ok(!BETA_KEEP.includes("sol/mine") && !BETA_KEEP.includes(".claude"));
   assert.match(betaReadme("stable-x"), /git switch -c <you>\/mine && bash sol\/mine\/setup/, "the README says how to make it yours");
@@ -81,7 +87,7 @@ test("a tester's rebase: a beta repo with no stable (exports before 2026-10-29) 
   const beta = join(top, "sol-beta.git"), house = join(top, "house"), tester = join(top, "tester");
   git(top, "init", "-q", "--bare", "-b", "main", beta);
   git(top, "init", "-q", "-b", "main", house);
-  const put = (cwd: string, f: string, body: string, msg: string) => { mkdirSync(join(cwd, dirname(f)), { recursive: true }); writeFileSync(join(cwd, f), body); git(cwd, "add", "-A"); git(cwd, "commit", "-qm", msg); };
+  const put = (cwd: string, f: string, body: string, msg: string) => { mkdirSync(join(cwd, dirname(f)), { recursive: true }); writeFileSync(join(cwd, f), body); git(cwd, "add", "-A"); git(cwd, "add", "-u", "--renormalize"); git(cwd, "commit", "-qm", msg); };
   const rebase = join(import.meta.dirname, "../../mine/rebase");
   put(house, "sol/HELP.md", "v1\n", "Sol stable-20261022-1200");
   git(house, "push", "-q", beta, "main");

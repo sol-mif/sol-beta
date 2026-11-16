@@ -33,17 +33,17 @@ export function Tray({ bead, say, onSend }: { bead: Bead | null; say: (t: string
 
   // the tray slides up into place; the bead comes down from the notch to its corner
   useLayoutEffect(() => {
-    enter(tray.current!, { y: 40, cfg: CFG.glide });
+    enter(tray.current!, { y: 40, cfg: CFG.travel });
     const r = tray.current!.getBoundingClientRect();
-    void bead?.hop(r.left - BEAD / 2 + 4, r.top - BEAD / 2 + 4, { lift: 36, ms: 680 });
-    light.current = slidePill(body.current!, ring.current!, { cfg: CFG.snap });
+    void bead?.hop(r.left - BEAD / 2 + 4, r.top - BEAD / 2 + 4, { lift: 36 });
+    light.current = slidePill(body.current!, ring.current!, { cfg: CFG.settle });
     return () => light.current?.destroy();
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (!items?.length || !body.current) return;
     if (!body.current.dataset.came) {
       body.current.dataset.came = "1";
-      body.current.querySelectorAll<HTMLElement>(".thumb").forEach((t, i) => enter(t, { y: 14, delay: 120 + Math.min(i, 12) * 30, cfg: CFG.slide }));
+      body.current.querySelectorAll<HTMLElement>(".thumb").forEach((t, i) => enter(t, { y: 14, delay: 120 + Math.min(i, 12) * 30, cfg: CFG.travel }));
     }
   }, [items]);
 

@@ -1,0 +1,12 @@
+# The files that hold the shape of something Sol keeps on disk (#422). A pull request that changes one of them must add
+# a conversion step, a new sol/engine/src/convert/NNNN-name.ts, so every Sol's saved data follows (sol/engine/convert-check,
+# run by .github/workflows/convert.yml). A change that leaves the saved shape as it was (a comment, a new read, a fix)
+# takes the label `no-conversion` on its PR instead. One path from the repository's root per line.
+sol/engine/src/settings.ts
+sol/engine/src/team/settings.ts
+sol/engine/src/arrange.ts
+sol/engine/src/doors.ts
+sol/engine/src/titles.ts
+sol/engine/src/private.ts
+sol/engine/src/shelf.ts
+sol/engine/src/work/state.ts

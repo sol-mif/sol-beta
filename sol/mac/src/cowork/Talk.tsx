@@ -24,8 +24,8 @@ import "./talk.css";
 
 export type TalkLine = { id: string; thread: string; from: string; at: number; text: string; source: "relay" | "discord" | "whatsapp"; agent?: boolean; to?: "discord"; file?: TalkFile; heard?: true };
 type Cursor = { at: number; id: string };
-type History = { thread?: string; lines?: TalkLine[]; threads?: string[]; discord?: boolean; older?: boolean; more?: boolean; next?: Cursor; error?: string };
-type Answer = { ok?: boolean; id?: string; sent?: boolean; error?: string };
+export type History = { thread?: string; lines?: TalkLine[]; threads?: string[]; discord?: boolean; older?: boolean; more?: boolean; next?: Cursor; error?: string };
+export type Answer = { ok?: boolean; id?: string; sent?: boolean; error?: string };
 type Read = { path?: string; mime?: string; size?: number; bytes?: string; local?: string; open?: "open" | "reveal"; error?: string };
 
 const Q = new URLSearchParams(location.search);
@@ -37,9 +37,21 @@ const keep = (t: string) => { try { sessionStorage.setItem(KEY, t); } catch { /*
 const TEXT = "sol.talk.text";
 const unsent = () => { try { return sessionStorage.getItem(TEXT) ?? ""; } catch { return ""; } };
 const plain = (e: string) => (e === "not connected" || e === "no answer" ? "Sol is not answering on this machine right now" : e);
+/** Cowork v3 (fr-30, #558): this Talk over another record. Given, it reads and sends through `via` instead of team.talk,
+ * holds the one thread it is given (the threads are listed beside it), puts `end` after each line, lights the @names
+ * of `names`, and with `readOnly` has its words where the box was. Not given, Talk is as it always was */
+export type TalkVia = {
+  thread: string; about?: string; names?: string[]; readOnly?: string;
+  history: (thread: string) => Promise<History>; say: (thread: string, text: string) => Promise<Answer>;
+  line: (m: any) => TalkLine | null; end?: (l: TalkLine) => React.ReactNode;
+};
+/** @name lit when it is someone's here (v3 only) */
+const lit = (text: string, names?: string[]) => !names?.length ? text : text.split(/(@[A-Za-z0-9][A-Za-z0-9-]{0,38})/).map((w, i) =>
+  i % 2 && names.some((n) => n.toLowerCase() === w.slice(1).toLowerCase()) ? <b key={i} className="tk-at-name">{w}</b> : w);
 
-export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }) {
-  const [thread, setThread] = useState(read);
+export function Talk({ team, flash, via }: { team: Team; flash: (s: string) => void; via?: TalkVia }) {
+  const [thread, setThread] = useState(via?.thread ?? read);
+  useEffect(() => { if (via) setThread(via.thread); }, [via?.thread]); // eslint-disable-line react-hooks/exhaustive-deps
   const [lines, setLines] = useState<Record<string, TalkLine[]>>({});
   const [threads, setThreads] = useState<string[]>(["general"]);
   const [discord, setDiscord] = useState(false);
@@ -84,7 +96,7 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
   // the thread's lines, again on every link up (a face that opens late gets what was said)
   useEffect(() => {
     let on = true;
-    void ask<History>("team.talk.history", { thread }).then((h) => {
+    void (via ? via.history(thread) : ask<History>("team.talk.history", { thread })).then((h) => {
       if (!on) return;
       if (h.error) { setSaid({ t: plain(h.error), bad: true }); return; }
       cursors.current.drop(thread);   // read anew: a cursor from before would start in the wrong place
@@ -105,7 +117,10 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
   // a line said anywhere on the team, or brought in from an export, arrives here
   useEffect(() => {
     if (DEV_TALK) { devAdd = add; return () => { devAdd = null; }; }
-    return link(ENGINE).on((m) => { if (m?.type === "team.talk.line" && typeof m.id === "string") add(m as TalkLine); });
+    return link(ENGINE).on((m) => {
+      if (via) { const l = via.line(m); if (l) add(l); return; }
+      if (m?.type === "team.talk.line" && typeof m.id === "string") add(m as TalkLine);
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the follow and the orb, the way every talk in Sol scrolls
@@ -121,7 +136,7 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
   const groups = useMemo(() => group(here), [here]);
   useLayoutEffect(() => {
     inner.current?.querySelectorAll<HTMLElement>("[data-id]").forEach((el) => {
-      if (fresh.current.delete(el.dataset.id!)) enter(el, { y: 10, cfg: CFG.slide });
+      if (fresh.current.delete(el.dataset.id!)) enter(el, { y: 10, cfg: CFG.travel });
     });
   }, [here]);
 
@@ -131,7 +146,7 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
     if ((!t && !chip) || busy) return;
     setBusy(true);
     // a file goes into the group's record first, which can take a while on GitHub: two minutes before "no answer"
-    const r = await ask<Answer>("team.talk", { thread, text: t, ...(chip ? { file: { name: chip.name, bytes: chip.bytes, kind: chip.kind } } : {}) }, chip ? 120_000 : undefined);
+    const r = via ? await via.say(thread, t) : await ask<Answer>("team.talk", { thread, text: t, ...(chip ? { file: { name: chip.name, bytes: chip.bytes, kind: chip.kind } } : {}) }, chip ? 120_000 : undefined);
     setBusy(false);
     if (r.ok) {
       setText(""); setChip(null);
@@ -174,25 +189,26 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
   return (
     <div className="tk">
       <header className="tk-head">
-        <div className="tk-threads" role="tablist" aria-label="threads">
+        {!via && <div className="tk-threads" role="tablist" aria-label="threads">
           {threads.map((t) => (
             <button key={t} role="tab" aria-selected={t === thread} className={`tk-thread ${t === thread ? "on" : ""}`} onClick={() => pick(t)}>{title(t)}</button>
           ))}
           <button className="tk-thread ghost" onClick={issues} title="talk about one issue">+ issue</button>
-        </div>
-        {card && <span className="tk-about" title={card.url}>{card.title}</span>}
+        </div>}
+        {via?.about ? <span className="tk-about">{via.about}</span> : card && <span className="tk-about" title={card.url}>{card.title}</span>}
       </header>
       <div className="talk-wrap">
         <div className="talk tk-talk" ref={talk}>
           <div className="talk-inner" ref={inner}>
             {here.length > 0 && older[thread] && <p className="tk-earlier"><button className="wlink" disabled={paging} onClick={() => void earlier()}>{paging ? "reading…" : "earlier lines"}</button></p>}
-            {here.length === 0 ? <Empty thread={thread} /> : groups.map((g) => mineOf(g[0], team.me) ? (
+            {here.length === 0 ? <Empty thread={via ? via.about ?? thread : thread} /> : groups.map((g) => mineOf(g[0], team.me) ? (
               <section key={g[0].id} className="tk-group mine">
                 {g.map((l) => (
                   <div key={l.id} data-id={l.id} className="me-row tk-me">
                     {l.to === "discord" && <span className="ctag tk-src">to Discord</span>}
                     {l.file && <Attached file={l.file} ask={ask} flash={flash} />}
-                    {l.text && <p className="msg me">{l.text}</p>}
+                    {l.text && <p className="msg me">{lit(l.text, via?.names)}</p>}
+                    {via?.end?.(l)}
                   </div>
                 ))}
                 <time className="tk-at" title={new Date(g[g.length - 1].at).toLocaleString()}>{since(g[g.length - 1].at)}</time>
@@ -208,9 +224,10 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
                   </div>
                   {g.map((l) => (
                     <div key={l.id} data-id={l.id} className="tk-line">
-                      {l.text && <p>{l.text}</p>}
+                      {l.text && <p>{lit(l.text, via?.names)}</p>}
                       {l.file && <Attached file={l.file} ask={ask} flash={flash} />}
                       {l.to === "discord" && <span className="ctag tk-src">to Discord</span>}
+                      {via?.end?.(l)}
                     </div>
                   ))}
                 </div>
@@ -222,9 +239,9 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
       </div>
       <div className="tk-foot">
         {said && <p className={`tk-said ${said.bad ? "tk-no" : ""}`} role="status"><StateMark kind={said.bad ? "failed" : "done"} />{said.t}</p>}
-        {team.state?.cloud?.need && <p className="tk-said tk-no" role="status"><StateMark kind="needs" />this room meets on the cloud: sign in to Sol to talk here{" "}
+        {team.state?.cloud?.need && <p className="tk-said tk-no" role="status"><StateMark kind="needs" />this project meets on the cloud: sign in to Sol to talk here{" "}
           <button className="wlink" disabled={signing} onClick={() => void signInSol()}>{signing ? "finish in the browser…" : "sign in with Google"}</button></p>}
-        {team.state?.cloud?.gone && <p className="tk-said tk-no" role="status"><StateMark kind="failed" />the cloud does not know this room's code yet: its maker can move it there (bash sol/cloud/move), or ask Frank or Marco to bring the NucBox's rooms over</p>}
+        {team.state?.cloud?.gone && <p className="tk-said tk-no" role="status"><StateMark kind="failed" />the cloud does not know this project's code yet: its maker can move it there (bash sol/cloud/move), or ask Frank or Marco to bring the NucBox's rooms over</p>}
         {chip && (
           <div className="tk-chip" role="status">
             <span className="tk-chip-name" title={chip.name}>{chip.name}</span>
@@ -232,19 +249,19 @@ export function Talk({ team, flash }: { team: Team; flash: (s: string) => void }
             <button className="tk-chip-x" aria-label="take the file off" title="take the file off" onClick={() => setChip(null)}>×</button>
           </div>
         )}
-        <div className={`tk-box ${drop ? "drop" : ""}`}
+        {via?.readOnly ? <p className="tk-hint">{via.readOnly}</p> : <div className={`tk-box ${drop ? "drop" : ""}`}
           onDragOver={(ev) => { if (ev.dataTransfer.types.includes("Files")) { ev.preventDefault(); ev.dataTransfer.dropEffect = "copy"; if (!drop) setDrop(true); } }}
           onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setDrop(false); }}
           onDrop={(ev) => { ev.preventDefault(); setDrop(false); const f = ev.dataTransfer.files[0]; if (f) void take(f, kindOfDrop(f.type)); }}>
-          <button className="tk-att" aria-label="attach an image" title="attach an image" onClick={() => pickImage.current?.click()}><ImageGlyph /></button>
-          <button className="tk-att" aria-label="attach a file" title="attach a file" onClick={() => pickFile.current?.click()}><ClipGlyph /></button>
+          {!via && <button className="tk-att" aria-label="attach an image" title="attach an image" onClick={() => pickImage.current?.click()}><ImageGlyph /></button>}
+          {!via && <button className="tk-att" aria-label="attach a file" title="attach a file" onClick={() => pickFile.current?.click()}><ClipGlyph /></button>}
           <input ref={pickImage} type="file" accept={IMAGE_TYPES} hidden onChange={(ev) => { void take(ev.target.files?.[0], "image"); ev.target.value = ""; }} />
           <input ref={pickFile} type="file" hidden onChange={(ev) => { void take(ev.target.files?.[0], "file"); ev.target.value = ""; }} />
-          <textarea ref={box} rows={1} value={text} placeholder={`say something in ${title(thread)}`} spellCheck
+          <textarea ref={box} rows={1} value={text} placeholder={`say something in ${via?.about ?? title(thread)}`} spellCheck
             onChange={(ev) => { setText(ev.target.value); if (said) setSaid(null); }}
             onKeyDown={(ev) => { if (ev.key === "Enter" && !ev.shiftKey && !composing(ev)) { ev.preventDefault(); void send(); } }} />
           <button className="wbtn" disabled={(!text.trim() && !chip) || busy} onClick={() => void send()}>{busy && chip ? "sending…" : "send"}</button>
-        </div>
+        </div>}
         {thread === "general" && discord && <p className="tk-hint">start with <code>/discord</code> to post it to the team's Discord as your agent</p>}
       </div>
       {menu && <Menu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}

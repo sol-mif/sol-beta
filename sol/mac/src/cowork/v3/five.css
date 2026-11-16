@@ -1,0 +1,100 @@
+/* Cowork v3, slice 5 (fr-30, #558): Talk per thing, setup by conversation, joining. The face's tokens (face.css), Sol's
+   gradient for the tab in use (palette.css --sol), ember only for what asks me, the notch's black slab with pearl words
+   for the one card that waits on my press. */
+.v5 { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 14px; padding: 6px 22px 18px; }
+.v5-head { display: flex; align-items: flex-end; gap: 22px; }
+.v5-head h2 { margin: 0; font-size: 20px; font-weight: 550; color: var(--ink); letter-spacing: -0.01em; }
+.v5-tabs { display: flex; gap: 4px; }
+.v5-tab { position: relative; background: none; border: 0; padding: 6px 10px 8px; color: var(--dim); font-size: 13px; cursor: pointer; border-radius: var(--r-s); }
+.v5-tab:hover { color: var(--ink); background: var(--surface); }
+.v5-tab.on { color: var(--ink); }
+.v5-tab.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px; border-radius: var(--pill); background: var(--sol); }
+.v5-quiet { color: var(--dim); font-size: 12.5px; margin: 0; }
+.v5-bad { color: var(--ember); font-size: 12.5px; margin: 0 0 6px; }
+.v5-row .v5-row-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sol); flex: none; margin: 0 5px; }
+
+/* Talk: threads beside the conversation */
+.v5-talk { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 16px; flex: 1; min-height: 0; }
+.v5-threads { display: flex; flex-direction: column; gap: 2px; overflow: auto; padding-right: 2px; }
+.v5-th { all: unset; display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: var(--r); cursor: pointer; color: var(--ink); }
+.v5-th:hover { background: var(--surface); }
+.v5-th.on { background: var(--raised); box-shadow: inset 0 1px 0 var(--edge); }
+.v5-th-t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.v5-th-t b { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v5-th-t small { color: var(--mute); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v5-gen { width: 18px; height: 18px; display: grid; place-items: center; color: var(--dim); font-size: 13px; }
+.v5-ember { min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--pill); background: var(--ember); color: #fff; font-size: 10.5px; display: grid; place-items: center; }
+.v5-convo { display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.v5-convo .tk { flex: 1; min-height: 0; }
+.v5-ask { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: var(--r); background: var(--surface); box-shadow: inset 2px 0 0 var(--ember); font-size: 12.5px; color: var(--ink); }
+.v5-ask-t { flex: 1; }
+.tk-at-name { font-weight: 600; color: var(--glow); }
+.v5-toloose { all: unset; cursor: pointer; font-size: 11px; color: var(--mute); opacity: 0; transition: opacity .15s; margin-top: 2px; }
+.tk-line:hover .v5-toloose, .tk-me:hover .v5-toloose, .v5-toloose:focus-visible { opacity: 1; }
+.v5-toloose:hover { color: var(--ink); text-decoration: underline; }
+.v5-loosed { font-size: 11px; color: var(--dim); padding: 1px 7px; border-radius: var(--pill); background: var(--surface); align-self: flex-start; }
+
+/* Setup: the agent large, the cards beside it */
+.v5-setup { display: grid; grid-template-columns: minmax(0, 640px); justify-content: center; gap: 24px; flex: 1; min-height: 0; overflow: auto; }
+.v5-setup.has-cards { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-content: stretch; }
+.v5-convo-big { display: flex; flex-direction: column; gap: 14px; background: var(--surface); border-radius: var(--r-l); padding: 22px 24px; box-shadow: inset 0 1px 0 var(--edge); min-height: 0; }
+.v5-agent { display: flex; align-items: center; gap: 14px; }
+.v5-agent b { display: block; font-size: 15px; font-weight: 550; color: var(--ink); }
+.v5-agent small { color: var(--dim); font-size: 12px; }
+.v5-log { display: flex; flex-direction: column; gap: 10px; overflow: auto; flex: 1; }
+.v5-msg p { margin: 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+.v5-msg.sol p { color: var(--ink); font-size: 15px; }
+.v5-msg.me { align-self: flex-end; max-width: 80%; }
+.v5-msg.me p { background: var(--raised); padding: 7px 12px; border-radius: var(--r-l); color: var(--ink); }
+.v5-presses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.v5-presses.four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.v5-like { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.v5-like small { color: var(--mute); font-size: 11.5px; margin-right: 4px; }
+.v5-box { display: flex; gap: 8px; align-items: center; background: var(--raised); border-radius: var(--pill); padding: 4px 4px 4px 14px; box-shadow: inset 0 1px 0 var(--edge); }
+.v5-box input { flex: 1; background: none; border: 0; outline: 0; color: var(--ink); font: inherit; font-size: 13.5px; }
+.v5-cards { display: flex; flex-direction: column; gap: 18px; }
+.v5-cg { display: flex; flex-direction: column; gap: 6px; }
+.v5-cg-k { font-size: 11px; color: var(--mute); letter-spacing: .06em; text-transform: uppercase; }
+.v5-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r); background: var(--surface); box-shadow: inset 0 1px 0 var(--edge); }
+.v5-card.not { opacity: .45; }
+.v5-card.in { box-shadow: inset 0 1px 0 var(--edge), inset 2px 0 0 var(--glow); }
+.v5-card-t { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.v5-card-t b { font-weight: 500; font-size: 13px; color: var(--ink); }
+.v5-card-t small { color: var(--dim); font-size: 11.5px; }
+.v5-card-acts { display: flex; gap: 6px; }
+.v5-in { font-size: 11.5px; color: var(--glow); }
+.v5-core { color: var(--mute); font-size: 12px; margin: 0; }
+
+/* Join: the let-in card is the notch's black slab, pearl words */
+.v5-join { display: flex; flex-direction: column; gap: 18px; overflow: auto; flex: 1; min-height: 0; max-width: 980px; }
+.v5-letins { display: flex; flex-direction: column; gap: 8px; }
+.v5-letin { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-l); background: #000; color: #e9e6df; }
+.v5-letin-t { display: flex; flex-direction: column; flex: 1; }
+.v5-letin small { color: rgb(233 230 223 / .6); font-size: 11.5px; }
+.v5-pearl { all: unset; cursor: pointer; padding: 6px 14px; border-radius: var(--pill); background: #e9e6df; color: #000; font-size: 12.5px; font-weight: 550; }
+.v5-pearl:hover { background: #fff; }
+.v5-invite h3 { margin: 0 0 8px; font-size: 13px; font-weight: 550; color: var(--ink); }
+.v5-link { display: flex; flex-direction: column; gap: 3px; margin: 10px 0 0; }
+.v5-link code { font-size: 12px; color: var(--ink); background: var(--surface); padding: 6px 10px; border-radius: var(--r-s); user-select: all; overflow-wrap: anywhere; }
+.v5-link small { color: var(--mute); font-size: 11.5px; }
+.v5-arrs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.v5-arr { background: var(--surface); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; opacity: .72; }
+.v5-arr.you { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--ink); }
+.v5-arr-h { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.v5-arr-h b { color: var(--ink); font-weight: 550; }
+.v5-arr-h small { color: var(--dim); flex: 1; }
+.v5-you { font-size: 11px; padding: 1px 8px; border-radius: var(--pill); background: var(--ink); color: var(--base-color, #000); }
+.v5-faces { display: inline-flex; gap: 2px; }
+.v5-arr-c { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; font-size: 12.5px; color: var(--dim); }
+.v5-what { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.4; }
+.v5-mods { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; }
+.v5-mods span { padding: 3px 9px; border-radius: var(--pill); background: var(--raised); color: var(--ink); font-size: 11.5px; }
+.v5-three { list-style: none; counter-reset: n; }
+.v5-three li { display: flex; flex-direction: column; counter-increment: n; padding-left: 26px; position: relative; }
+.v5-three li::before { content: counter(n); position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--mute); display: grid; place-items: center; font-size: 10px; }
+.v5-three small { color: var(--mute); font-size: 11px; }
+.v5-three span { color: var(--ink); }
+.v5-marks { display: flex; gap: 4px; margin-top: 3px; }
+.v5-marks i { font-style: normal; font-size: 11px; padding: 1px 8px; border-radius: var(--pill); background: var(--raised); color: var(--ink); }
+.v5-open { max-width: 520px; }
+@media (max-width: 1000px) { .v5-setup.has-cards, .v5-arrs { grid-template-columns: 1fr; } .v5-talk { grid-template-columns: 1fr; } }

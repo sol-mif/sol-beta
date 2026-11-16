@@ -1,0 +1,15 @@
+/* The kit's six type steps (#762, #751 slice A2; sol/design/system/ui.md "Type"), as classes the whole face can use.
+   Sizes and line heights are palette.css's (tokens.json palette.scale.type); weights 400/500/600 only, the count's 700
+   the one exception. No capitals: a label is sentence case, never tracked uppercase or small caps.
+     display 28/34 600 −.02em   Home's one line; a page opened full. One per screen
+     title   20/28 600 −.01em   a thing opened, a settings page, a block in focus
+     read    15/24 400          the box's field, the policy, card heads (600)
+     body    13/20 400          the talk, rows, block heads (500), most text
+     code    12/20 mono 400     diff, terminal, step output, the making line, values
+     label   11/16 400 +.01em   meta, crumbs, captions, chips, the judge's track */
+.t-display { font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 600; letter-spacing: -0.02em; }
+.t-title { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; letter-spacing: -0.01em; }
+.t-read { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 400; letter-spacing: 0; }
+.t-body { font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 400; letter-spacing: 0; }
+.t-code { font-family: var(--mono, ui-monospace, "SF Mono", Menlo, monospace); font-size: var(--t-code); line-height: var(--t-code-line); font-weight: 400; letter-spacing: 0; }
+.t-label { font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 400; letter-spacing: 0.01em; text-transform: none; font-variant-caps: normal; }

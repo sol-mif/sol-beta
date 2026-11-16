@@ -11,10 +11,10 @@ export function GroupOffer({ offer, onMode, onSkip }: { offer: Offer; onMode: (m
   const open = () => { setPendingGroup({ k: "new", name: offer.name }); onMode("cowork"); };
   const pick = () => { setPendingGroup({ k: "pick" }); onMode("cowork"); };
   return (
-    <div className="gsug" role="group" aria-label="want a group for this?">
-      <p className="gsug-q">want a group for this?</p>
-      <button className="gsug-go" onClick={open} title={offer.name ? `a new group named ${offer.name}, in cowork` : "a new group, in cowork"}><span>open a new group</span></button>
-      <button className="gsug-in" onClick={pick}>add to a group I'm in ›</button>
+    <div className="gsug" role="group" aria-label="want a project for this?">
+      <p className="gsug-q">want a project for this?</p>
+      <button className="gsug-go" onClick={open} title={offer.name ? `a new project named ${offer.name}, in cowork` : "a new project, in cowork"}><span>open a new project</span></button>
+      <button className="gsug-in" onClick={pick}>add to a project I'm in ›</button>
       <button className="gsug-skip" onClick={onSkip}>skip</button>
     </div>
   );

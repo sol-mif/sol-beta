@@ -1,34 +1,73 @@
-// Motion for everything that is not a canvas: one tiny spring solver, one frame loop, and the helpers every
-// surface uses (enter, press, slide pills). No dependency: a spring is ten lines and a retargetable spring is
-// what makes motion feel physical (hover in, hover out mid-flight, and the velocity carries on, never a restart).
+// The one place timing lives (#763, ui.md "Motion", build/feel.md "Tokens"). A spring solver and one frame loop for
+// every running spring, the five springs and the timed tokens read from tokens.json (kit/tokens.ts), the ×4 slow
+// toggle, and the helpers every surface uses (enter, press, slide pills, growTo, follow). Nothing else imports timing:
+// a part asks for a spring by name (CFG.settle) and for a duration by name (dur("turn")); the css reads --d-<name>.
 //
-// Rules this file enforces for the rest of the app:
-//  - motion slides, never fades: the helpers move `translate` / `scale` / `height`, never opacity (one exception the
-//    PRD names: the scroll orb, Orb.tsx, fades on `arrive` as it rises);
-//  - one retargetable spring per moving thing (Spring.to keeps position and velocity), so an interrupted move bends;
-//  - every spring has mass, stiffness and a damping ratio, tuned per move (CFG below);
-//  - reduced motion: every spring jumps to its target.
+// The springs (mass 1, k stiffness, c damping), and the verbs that use them (ui.md's verb table):
+//   settle  release, snap, resize, nudge, reopen        travel  comes forward, unfold, a side opening, a trade
+//   glide   a flick's landing                           lift    press, grab, a stamp
+//   fade    steps back, close, opacity
+// A spring never passes its target by more than SPRING.clamp (4, in the value's own unit: px for a position) — the
+// integrator clamps, and stops it there. The timed tokens: reveal 120 · turn 150 (main's; ui.md says 160, a separate
+// decision, #993) · glass 220 · pour (the body) 850 · breath 4800 · lag 140.
 //
-// Springs write with `apply(value, spring)` each frame and once more at rest. They are stepped in 1/240 s
-// sub-steps (semi-implicit Euler) so a slow frame cannot blow a stiff one up.
+// Slow (×4, the debug toggle): every spring steps at a quarter of real time, every duration is four times as long, in
+// code (dur) and in the css (--d-<name> is rewritten on the root). Never the hand: Spring.set (a drag following the
+// finger) writes at once, and lag (the drag follow) keeps its 140.
+//
+// Reduced motion: every spring jumps to its target. Springs write with `apply(value, spring)` each frame and once
+// more at rest, stepped in 1/240 s sub-steps (semi-implicit Euler) so a slow frame cannot blow a stiff one up.
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { EASE, SPRING, TIMED } from "./kit/tokens.ts";
 
-export type Cfg = { k: number; z: number; m?: number; eps?: number };
-// stiffness k (1/s² at unit mass), damping ratio z (1 critical, below 1 overshoots), mass m (heavier = slower, lazier)
-export const CFG = {
-  glide: { k: 190, z: 0.92 },              // panels: the sidebar, the sheet; lands with the faintest settle
-  away: { k: 330, z: 0.95 },               // a panel leaving: brisk, no settle
-  panel: { k: 260, z: 0.72, eps: 0.0015 },    // a page changing: a little overshoot
-  fold: { k: 230, z: 0.76, eps: 0.0015 },     // heights unfolding
-  tuck: { k: 300, z: 0.95, eps: 0.0015 },     // heights folding away
-  slide: { k: 240, z: 0.7 },               // things arriving: rows, lines, bubbles
-  arrive: { k: 170, z: 0.78, m: 1.1 },     // heavier arrivals: an answer opening
-  snap: { k: 420, z: 0.6 },                // knobs and pills: quick, one small overshoot
-  pop: { k: 520, z: 0.38 },                // tactile: a press released
-  press: { k: 700, z: 0.8 },               // a press going in
-  grow: { k: 340, z: 0.8 },                // the composer
-  settle: { k: 90, z: 1 },                 // slow, no overshoot
-} satisfies Record<string, Cfg>;
+export type SpringName = "settle" | "travel" | "glide" | "lift" | "fade";
+/** a spring: one of the five by name (k, c from tokens.json), and the precision it rests at in its own unit */
+export type Cfg = { readonly name: SpringName; readonly k: number; readonly c: number; eps?: number };
+const of = (name: SpringName): Cfg => Object.freeze({ name, k: SPRING[name].k, c: SPRING[name].c });
+export const CFG = { settle: of("settle"), travel: of("travel"), glide: of("glide"), lift: of("lift"), fade: of("fade") } as const;
+/** the same five under the name #939 gave them; the drafts behind switches import it (#993) */
+export const SPRINGS = CFG;
+export const MASS = SPRING.mass, CLAMP = SPRING.clamp;
+
+// ---- the timed tokens ----
+export type Timed = keyof typeof TIMED;
+export type Ease = keyof typeof EASE;
+/** a duration in ms, slowed with the toggle; lag (the drag follow) is the hand's and never slows */
+export const dur = (name: Timed) => (name === "lag" ? TIMED.lag : TIMED[name] * factor);
+/** a curve, as css writes it */
+export const ease = (name: Ease) => EASE[name];
+
+// ---- slow ×4 ----
+let factor = 1;
+const SLOW_KEY = "sol.motion.slow";
+const slowSubs = new Set<() => void>();
+/** the factor every spring and duration runs at: 1, or SPRING.slow while the toggle is on */
+export const slowFactor = () => factor;
+export const isSlow = () => factor !== 1;
+/** the debug toggle: every motion four times slower, never the hand. Kept for this tab only (sessionStorage: the kit
+ *  page's switch never reaches the app's window, and a new session starts at ×1), written to css */
+export function setSlow(on: boolean) {
+  const f = on ? SPRING.slow : 1;
+  if (f === factor) return;
+  clockBase = clock(); clockAt = realNow(); factor = f;
+  try { if (on) sessionStorage.setItem(SLOW_KEY, "1"); else sessionStorage.removeItem(SLOW_KEY); } catch { /* no storage */ }
+  writeCss();
+  slowSubs.forEach((s) => s());
+}
+export function onSlow(cb: () => void) { slowSubs.add(cb); return () => { slowSubs.delete(cb); }; }
+function writeCss() {
+  if (typeof document === "undefined") return;
+  const st = document.documentElement.style;
+  for (const name of Object.keys(TIMED) as Timed[]) {
+    if (name === "lag") continue;
+    if (factor === 1) st.removeProperty(`--d-${name}`); else st.setProperty(`--d-${name}`, `${TIMED[name] * factor}ms`);
+  }
+}
+const realNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+let clockBase = 0, clockAt = 0;
+/** the motion clock in ms: real time divided by the slow factor (ambient drawing — the jelly's breath — reads this) */
+export function clock() { return clockBase + (realNow() - clockAt) / factor; }
+try { if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(SLOW_KEY)) { factor = SPRING.slow; writeCss(); } } catch { /* no storage */ }
 
 const mq = typeof matchMedia !== "undefined" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
 export const reducedMotion = () => !!mq?.matches;
@@ -37,33 +76,40 @@ export class Spring {
   v: number; vel = 0; target: number; cfg: Cfg;
   at = 0;                 // frame time before which it waits (a stagger)
   on = false;
-  constructor(v: number, cfg: Cfg, private apply: (v: number, s: Spring) => void, public rest?: () => void) {
-    this.v = v; this.target = v; this.cfg = cfg;
+  /** the side it comes from (+1 above the target, −1 below): the clamp holds it on the far side within CLAMP */
+  side = 0;
+  private apply: (v: number, s: Spring) => void;
+  rest?: () => void;
+  constructor(v: number, cfg: Cfg, apply: (v: number, s: Spring) => void, rest?: () => void) {
+    this.v = v; this.target = v; this.cfg = cfg; this.apply = apply; this.rest = rest;
   }
-  /** Move toward `t`, keeping position and velocity. `vel` adds a kick; `delay` (ms) waits before it starts. */
+  /** Move toward `t`, keeping position and velocity. `vel` adds a kick; `delay` (ms, slowed) waits before it starts. */
   to(t: number, o: { vel?: number; delay?: number; cfg?: Cfg } = {}) {
     if (o.cfg) this.cfg = o.cfg;
     this.target = t;
     if (o.vel) this.vel += o.vel;
     if (reducedMotion()) { this.v = t; this.vel = 0; this.apply(this.v, this); this.rest?.(); this.stop(); return this; }
-    this.at = o.delay ? performance.now() + o.delay : 0;
+    this.side = Math.sign(this.v - t) || -Math.sign(this.vel);
+    this.at = o.delay ? realNow() + o.delay * factor : 0;
     this.go();
     return this;
   }
-  /** Jump there, now, with no velocity (a drag follows the finger). */
-  set(v: number, vel = 0) { this.v = v; this.target = v; this.vel = vel; this.apply(v, this); return this; }
-  kick(dv: number) { this.vel += dv; this.go(); return this; }
+  /** The hand: jump there, now, with no velocity (a drag follows the finger). Never slowed. */
+  set(v: number, vel = 0) { this.v = v; this.target = v; this.vel = vel; this.side = 0; this.apply(v, this); return this; }
+  kick(dv: number) { this.vel += dv; if (Math.abs(this.v - this.target) < 1e-9) this.side = -Math.sign(this.vel); this.go(); return this; }
   get resting() { return !this.on; }
   stop() { this.on = false; active.delete(this); }
   private go() { if (!this.on) { this.on = true; active.add(this); } wake(); }
+  /** one step of `dt` seconds of motion time (the loop has already divided real time by the slow factor) */
   step(dt: number): boolean {
-    const { k, z, m = 1, eps = 0.01 } = this.cfg;
-    const c = 2 * z * Math.sqrt(k * m);
+    const { k, c, eps = 0.01 } = this.cfg;
     let left = dt;
     while (left > 1e-6) {
       const h = left > 1 / 240 ? 1 / 240 : left;
-      this.vel += ((-(this.v - this.target) * k - c * this.vel) / m) * h;
+      this.vel += ((-(this.v - this.target) * k - c * this.vel) / MASS) * h;
       this.v += this.vel * h;
+      // the clamp: past the target by more than CLAMP, it stops on the clamp's line
+      if (this.side && (this.v - this.target) * this.side < -CLAMP) { this.v = this.target - this.side * CLAMP; this.vel = 0; }
       left -= h;
     }
     if (Math.abs(this.v - this.target) < eps && Math.abs(this.vel) < eps * 8) {
@@ -89,9 +135,16 @@ function stepAll(dt: number, now: number) {
   for (const s of [...active]) {
     if (s.at && now < s.at) continue;
     s.at = 0;
-    if (!s.step(dt)) active.delete(s);
+    if (!s.step(dt / factor)) active.delete(s);
   }
 }
+/** step every running spring by `ms` of real time, as the loop would (tests; the page has the frame clock) */
+export function advance(ms: number, frame = 1000 / 60) {
+  let now = realNow(), left = ms;
+  while (left > 1e-9 && active.size) { const h = Math.min(left, frame); now += h; stepAll(h / 1000, now); left -= h; }
+}
+/** how many springs are moving */
+export const running = () => active.size;
 /** one motion run (from the first spring moving to the last at rest): the frame gaps and the work in each frame, for a
  *  smoothness report (the notch logs it): frames, the longest gap, how many gaps ran past 20 ms, the work's p95 */
 export type RunReport = { frames: number; ms: number; maxGap: number; longGaps: number; workP95: number; workMax: number };
@@ -170,7 +223,7 @@ export function useSpring(init: number, cfg: Cfg, apply: (v: number, s: Spring) 
 // ---- enter: a thing arrives by sliding from an offset, springs home, no opacity ----
 const entering = new WeakMap<HTMLElement, Spring>();
 export function enter(el: HTMLElement, o: { x?: number; y?: number; delay?: number; cfg?: Cfg; scale?: number; kick?: number } = {}) {
-  const { x = 0, y = 0, delay = 0, cfg = CFG.slide, scale = 0 } = o;
+  const { x = 0, y = 0, delay = 0, cfg = CFG.travel, scale = 0 } = o;
   entering.get(el)?.stop();
   if (reducedMotion()) { el.style.translate = ""; el.style.scale = ""; return null; }
   const put = (p: number) => {
@@ -212,19 +265,19 @@ export function installPress() {
     const amt = Math.min(0.09, Math.max(0.014, 5 / w));
     let s = held.get(el);
     if (!s) {
-      s = new Spring(0, { ...CFG.press, eps: 0.003 }, (p, sp) => {
+      s = new Spring(0, { ...CFG.lift, eps: 0.003 }, (p, sp) => {
         if (sp.resting && Math.abs(p) < 0.004) { el.style.scale = ""; held.delete(el); } else el.style.scale = String(1 - amt * p);
       });
       held.set(el, s);
     }
-    s.cfg = CFG.press;
+    s.cfg = CFG.lift;
     (s as Spring & { t0?: number }).t0 = performance.now();
     s.to(1);
   };
   const up = () => {
     for (const [, s] of held) {
       const wait = Math.max(0, 70 - (performance.now() - ((s as Spring & { t0?: number }).t0 ?? 0)));
-      s.to(0, { cfg: CFG.pop, delay: wait });
+      s.to(0, { cfg: CFG.settle, delay: wait });
     }
   };
   document.addEventListener("pointerdown", down, true);
@@ -236,7 +289,7 @@ export function installPress() {
 // Position and size are four springs, so the pill stretches as it travels; it grows in from nothing the first
 // time and shrinks away to nothing when there is nowhere to be.
 export function slidePill(container: HTMLElement, pill: HTMLElement, o: { fit?: boolean; dx?: number; dy?: number; cfg?: Cfg } = {}) {
-  const fit = o.fit !== false, cfg = { ...(o.cfg ?? CFG.snap), eps: 0.05 };
+  const fit = o.fit !== false, cfg = { ...(o.cfg ?? CFG.settle), eps: 0.05 };
   const v = { x: 0, y: 0, w: 0, h: 0, s: 0 };
   let seen = false, el: HTMLElement | null = null;
   const put = () => {
@@ -246,7 +299,7 @@ export function slidePill(container: HTMLElement, pill: HTMLElement, o: { fit?: 
     pill.style.visibility = v.s < 0.01 && !el ? "hidden" : "visible";
   };
   const mk = (key: "x" | "y" | "w" | "h" | "s", c: Cfg) => new Spring(0, c, (n) => { v[key] = n; put(); });
-  const sx = mk("x", cfg), sy = mk("y", { ...cfg, k: cfg.k * 0.8 }), sw = mk("w", cfg), sh = mk("h", { ...cfg, k: cfg.k * 0.9 }), ss = mk("s", { k: 360, z: 0.8, eps: 0.004 });
+  const sx = mk("x", cfg), sy = mk("y", cfg), sw = mk("w", cfg), sh = mk("h", cfg), ss = mk("s", { ...CFG.fade, eps: 0.004 });
   put();
   // layout position, not painted position: a row still sliding in does not drag its pill off to the side
   const rectOf = (t: HTMLElement) => {
@@ -287,7 +340,7 @@ export function slidePill(container: HTMLElement, pill: HTMLElement, o: { fit?: 
 const heights = new WeakMap<HTMLElement, Spring>();
 /** the element is opening on a spring right now */
 export const growing = (el: HTMLElement) => { const s = heights.get(el); return !!s && !s.resting; };
-export function growTo(el: HTMLElement, from?: number, cfg: Cfg = CFG.arrive) {
+export function growTo(el: HTMLElement, from?: number, cfg: Cfg = CFG.travel) {
   const s = heights.get(el);
   const flying = !!s && !s.resting;
   const was = flying ? s!.v : from ?? el.offsetHeight;
@@ -333,7 +386,7 @@ export function follow(scroller: HTMLElement, content: HTMLElement) {
   const end = () => Math.max(0, scroller.scrollHeight - scroller.clientHeight);
   const atEnd = () => end() - scroller.scrollTop <= 1;
   const write = (v: number) => { scroller.scrollTop = v; wrote = scroller.scrollTop; lastTop = wrote; };
-  const sp = new Spring(scroller.scrollTop, { k: 220, z: 1, eps: 0.5 }, (v) => { if (Math.abs(scroller.scrollTop - v) >= 1) write(v); });
+  const sp = new Spring(scroller.scrollTop, { ...CFG.travel, eps: 0.5 }, (v) => { if (Math.abs(scroller.scrollTop - v) >= 1) write(v); });
 
   const subs = new Set<() => void>();
   let told = "";

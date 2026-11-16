@@ -18,6 +18,7 @@
 // The notch is a door (engine/src/doors.ts): its calls go to conversations of its own, never to the chat
 // open in the main window, and it continues its last one when that spoke less than 20 minutes ago. It shows only
 // what Sol says through it (Marco, 2026-10-14: the notch must not reflect what happens in a chat).
+import type { Pinned } from "../stage/NotchPins";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ENGINE, NEXT, sameEngine, type Card, type CallState, type FileOut } from "../useEngine";
 import { invoke } from "@tauri-apps/api/core";
@@ -102,6 +103,8 @@ export function useNotch() {
   };
   // ---- the shelf: its things, and the asks that wait for their answer by rid ----
   const [shelf, setShelf] = useState<ShelfItem[]>([]);
+  // Cowork v3 (fr-30, #555): the one "needs me" count; the engine sends it only with the switch on, so off it stays 0
+  const [needMe, setNeedMe] = useState(0);
   const waits = useRef(new Map<string, (m: any) => void>());
   // grab.* and shelf.* are this Mac's (the screen, home/shelf), so they go to this Mac's engine even when the pick is
   // the NucBox; when the pick is this Mac it is the same socket (link() keeps one per address)
@@ -173,6 +176,7 @@ export function useNotch() {
     const offMsg = L.on((m) => {
       if (m.rid && waits.current.has(m.rid)) { const f = waits.current.get(m.rid)!; waits.current.delete(m.rid); f(m); }
       if ((m.type === "shelf.items" || m.type === "shelf.list") && Array.isArray(m.items)) { setShelf(m.items as ShelfItem[]); return; }
+      if (m.type === "cw3.needsme" && typeof m.count === "number") { setNeedMe(Math.max(0, m.count)); return; }
       if (same && onTalk(m)) return;
       if (m.type === "threads") {
         // the door's own newest conversation, for the last thing Sol said through it
@@ -361,10 +365,13 @@ export function useNotch() {
   }, [ask]);
   // ---- The clean screen (#253): the private list, kept by this Mac's engine (private.ts) ----
   type Apps = { apps?: { name: string; bundle: string; on: boolean }[] } & Err;
+  const pinned = useCallback(async () => ask<{ pinned: Pinned[] }>("work.stage.pinned", {}, PRIVATE_MS), [ask]);
   const privateList = useCallback(async (): Promise<Apps> => ask<Apps>("eye.list", {}, PRIVATE_MS), [ask]);
   const privateTick = useCallback(async (bundle: string, on: boolean): Promise<Apps> => ask<Apps>("eye.tick", { bundle, on }, PRIVATE_MS), [ask]);
   const setDictInto = useCallback((f: ((text: string) => void) | null) => { dictInto.current = f; }, []);
 
-  return { up, callState, sentence: said, working, pin, toggle, dictating, dictDown, dictUp, shelf, grabShot, shelfAdd, tellEye,
-    talk, talkCast, talkStart, talkStop, talkCard, talkAsk, talkSnapshot, talkName, talkHold, talkTook, frontWindow, setDictInto, privateList, privateTick };
+  return { needMe, up, callState, sentence: said, working, pin, toggle, dictating, dictDown, dictUp, shelf, grabShot, shelfAdd, tellEye,
+    talk, talkCast, talkStart, talkStop, talkCard, talkAsk, talkSnapshot, talkName, talkHold, talkTook, frontWindow, setDictInto, privateList, privateTick,
+    // stage: joins lens (#701): the blocks pinned to the notch, as chips (stage/NotchPins.tsx)
+    pinned };
 }

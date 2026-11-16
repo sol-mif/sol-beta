@@ -54,13 +54,13 @@ test("first run: your Sol on tester/mine with its hook, the workshop beside it o
   write(join(me, "look.txt"), "mine\n"); git(me, "add", "look.txt"); git(me, "commit", "-qm", "my look");
   assert.equal(git(me, "log", "-1", "--format=%s"), "mine: my look", "a commit in your Sol gets mine: in front");
   const ws = join(top, "a", "sol-dev");
-  assert.match(r.out, new RegExp(`the workshop is ${ws}, a clone of sol-dev on main`));
+  assert.match(r.out, new RegExp(`the workshop is ${ws}, a clone of the team's repository on main`));
   assert.equal(git(ws, "symbolic-ref", "--short", "HEAD"), "main");
   assert.equal(git(ws, "rev-parse", "HEAD"), git(origin, "rev-parse", "main"));
   assert.match(r.out, /the stage: up\. Open http:\/\/127\.0\.0\.1:1422/);
   assert.deepEqual(stageRuns(), ["up"]);
   assert.match(r.out, /rule {2}your own Sol is never the dev checkout/);
-  assert.match(r.out, new RegExp(`your Sol {7}${me}\n.*bash sol/mine/rebase\n.*the workshop {3}${ws}\n.*bash sol/take <issue>`));
+  assert.match(r.out, new RegExp(`your Sol {7}${me}\n.*bash sol/mine/rebase\n.*the workshop {3}${ws}\n.*then Take an issue`));
   assert.ok(!existsSync(join(top, "gh.log")), "gh cloned nothing");
 
   // again: everything is there, it says so, nothing moves
@@ -102,7 +102,7 @@ test("never over what is there: a dirty Sol stays on stable; a folder that is no
   write(join(top, "c", "sol-dev", "notes.txt"), "someone's\n");
   r = setup(me);
   assert.equal(r.code, 1, r.out);
-  assert.match(r.out, /sol-dev is there but is not a checkout of sol-dev; not touching it/);
+  assert.match(r.out, /sol-dev is there but is not a checkout of the team's repository; not touching it/);
   assert.equal(readFileSync(join(top, "c", "sol-dev", "notes.txt"), "utf8"), "someone's\n");
 });
 

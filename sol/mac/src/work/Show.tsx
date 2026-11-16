@@ -30,7 +30,7 @@ const HELPER = new Set(["Agent", "Task"]);
 // a helper is at work until it ends; one sent to the background ends when its result comes back, not when it is sent
 const working = (h: Item) => !h.done || (!!h.bg && !h.bgDone);
 const EMBER: RGB = FUNCTIONAL.red.strong, GREEN: RGB = FUNCTIONAL.green.strong;
-// helpers take the creature's colours (design/palette.json "creature"), the ones that read on pearl paper first
+// helpers take the creature's colours (design/system/tokens.json palette "creature"), the ones that read on pearl paper first
 const LANE_COLOURS = LANES;
 const COLD = /(^|\/)(engine|src-tauri)\/|\.rs$/;   // takes effect only after a restart
 
@@ -220,7 +220,7 @@ type Heat = { colour: RGB; at: number; read?: number; cool?: number };
 // ---- a number that rolls like a counter: each digit a column sliding on a spring ----
 function Digit({ d }: { d: number }) {
   const col = useRef<HTMLSpanElement>(null);
-  const s = useSpring(d, CFG.snap, (v) => { if (col.current) col.current.style.transform = `translateY(${-v * 1.2}em)`; });
+  const s = useSpring(d, CFG.settle, (v) => { if (col.current) col.current.style.transform = `translateY(${-v * 1.2}em)`; });
   useLayoutEffect(() => { if (col.current) col.current.style.transform = `translateY(${-s.v * 1.2}em)`; }, [s]);
   useEffect(() => { if (s.target !== d) s.to(d); }, [d, s]);
   return <span className="rd"><span ref={col}>{"0123456789".split("").map((n) => <i key={n}>{n}</i>)}</span></span>;
@@ -466,7 +466,7 @@ export function ShowPane({ items, busy, streaming, w, cwd, stat }: {
   // the stage grows a lane per helper at work, on a spring
   const lanes = scene.helpers.filter((h) => !h.done).length;
   const tall = 160 + lanes * 54;
-  const grow = useSpring(tall, CFG.fold, (v) => { if (stage.current) stage.current.style.height = `${Math.round(v)}px`; });
+  const grow = useSpring(tall, CFG.travel, (v) => { if (stage.current) stage.current.style.height = `${Math.round(v)}px`; });
   useEffect(() => { if (grow.target !== tall) grow.to(tall); }, [tall, grow]);
   const typed = useTyped(scene.cmd);
   return (

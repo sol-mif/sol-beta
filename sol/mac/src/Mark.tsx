@@ -4,7 +4,6 @@ import type { RGB } from "./creature/ring";
 // Sol's mark: the flat splat (Sol.tsx, from sol/design/sol.svg, 2026-10-26). Small (the sidebar, 22 px) it breathes and
 // blinks and follows the creature's state; `live` (the empty state, 56 px) it also watches the pointer and can be poked.
 // The pixel creature's cell map stays below for the places that still draw it (the notch crew, Show, Bead, Person).
-// The vibe switch is Sol in the seat scene at the top of the sidebar (SeatScene.tsx, vibe.ts), not this mark.
 export function Mark({ size = 22, className, live: alive }: { size?: number; className?: string; live?: boolean }) {
   return <Sol size={size} watch={!!alive} className={`${alive ? "mark-live" : "mark-small"} ${className ?? ""}`} />;
 }

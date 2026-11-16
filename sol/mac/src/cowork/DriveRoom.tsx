@@ -59,14 +59,14 @@ export function DriveRow({ team, folder }: { team: Team; folder: string }) {
   return (
     <div className="cdrive" data-s>
       <div className="cdrivehead">
-        <button className="wlink" onClick={open} title="open the room's folder in Google Drive">the Drive folder</button>
+        <button className="wlink" onClick={open} title="open the project's folder in Google Drive">the Drive folder</button>
         {!drive.connected && <button className="wlink" disabled={busy} onClick={() => void connect()}>{busy ? "finish in your browser…" : "connect Google Drive"}</button>}
       </div>
       {bad && <p className="cbad">{bad}</p>}
       {drive.connected && m && (m.known
         ? <ul className="cdrivepeople">
           {m.people.map((p) => <li key={p.email} title={p.email}><span className="t">{p.name || p.email}{p.email === m.me && <small className="cdim"> (you)</small>}</span><small className="cwhat">{p.role === "writer" || p.role === "owner" || p.role === "organizer" || p.role === "fileOrganizer" ? (p.role === "owner" ? "owner" : "can edit") : "can read"}</small></li>)}
-          {(m.anyone || m.domain) && <li className="cdim"><small>{m.anyone ? "anyone with the link can open it" : `anyone at ${m.domain} can open it`}; only the people above can open the room's record</small></li>}
+          {(m.anyone || m.domain) && <li className="cdim"><small>{m.anyone ? "anyone with the link can open it" : `anyone at ${m.domain} can open it`}; only the people above can open the project's record</small></li>}
         </ul>
         : <small className="cdim">who is in: unknown ({m.error ?? "Drive did not say"})</small>)}
     </div>

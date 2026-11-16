@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const top = realpathSync(mkdtempSync(join(tmpdir(), "sol-gptrows-")));
-const me = join(top, "Users", "marco");   // the fixture's home
+const me = join(top, "Users", "someone");   // the fixture's home
 process.env.HOME = me;
 process.env.SOL_STATE = join(top, "work.json");
 const home = join(me, "sol", "home"), proj = join(me, "kaat"), oldSol = join(me, "ecosystem");
@@ -34,7 +34,7 @@ const term = rollout(proj, "from a Terminal", "codex_cli_rs");                 /
 const exec = rollout(proj, "review this diff", "codex_exec");                  // a one-shot `codex exec`: not a talk
 const rev = rollout(proj, "Review the change");                                // the review seat's thread
 const app = rollout(join(me, ".codex", ".chatgpt-projects", "g-p-1"), "app");  // the ChatGPT app's own folder
-const twin = rollout("/home/marco/kaat", "on the NucBox");                     // the other machine's path of the same folder
+const twin = rollout("/home/someone/kaat", "on the NucBox");                     // the other machine's path of the same folder
 const moved = rollout(join(oldSol, "home"), "an old chat");                    // Sol's home before it moved (#129)
 const scratch = rollout("/tmp/sol-fixture", "scratch");                        // a scratch folder
 workState().moved = { [oldSol]: join(me, "sol") };
@@ -57,7 +57,7 @@ test("GPT rows file like Claude's: under the folder, seat codex; scratch out; a 
   workState().folders = [proj];   // the fixture lives in the system's temp folder, scratch to the side: added by hand
   const g = (sessionId: string, cwd: string) => ({ sessionId, cwd, summary: `talk in ${cwd}`, lastModified: 5000 + ++n });
   const claude = { sessionId: "claude-1", cwd: proj, summary: "a Claude session", lastModified: 1000, fileSize: 10 } as any;
-  const r = fileSessions([claude], [g("g-folder", proj), g("g-scratch", "/tmp/sol-fixture"), g("g-moved", OLD), g("g-twin", "/home/marco/kaat")]);
+  const r = fileSessions([claude], [g("g-folder", proj), g("g-scratch", "/tmp/sol-fixture"), g("g-moved", OLD), g("g-twin", "/home/someone/kaat")]);
   const by = (id: string) => r.sessions.find((s) => s.id === id);
   assert.equal(by("claude-1")?.seat, undefined, "a Claude row stays plain");
   assert.equal(by("g-folder")?.seat, "codex");

@@ -32,7 +32,7 @@ export function Beside({ w, id, view, up, onClose, onSwap, onLink }: {
     f.jump();
     return () => { f.destroy(); stick.current = null; setFlw(null); };
   }, [id, has]);
-  useLayoutEffect(() => { if (page.current) enter(page.current, { x: 28, cfg: CFG.panel }); }, [id]);
+  useLayoutEffect(() => { if (page.current) enter(page.current, { x: 28, cfg: CFG.travel }); }, [id]);
 
   const send = () => { if (sw.say(draft)) { setDraft(""); stick.current?.glide(); } };
   return (

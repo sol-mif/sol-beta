@@ -71,7 +71,7 @@ export const Sig = ({ s }: { s?: Sign }) => (s ? (
 /** hover lifts it on the pop spring (a card on the board) */
 export function useLift() {
   const el = useRef<HTMLDivElement>(null);
-  const s = useSpring(0, CFG.pop, (v) => { if (el.current) el.current.style.translate = v ? `0 ${-2 * v}px` : ""; });
+  const s = useSpring(0, CFG.settle, (v) => { if (el.current) el.current.style.translate = v ? `0 ${-2 * v}px` : ""; });
   return { ref: el, onMouseEnter: () => s.to(1), onMouseLeave: () => s.to(0) };
 }
 

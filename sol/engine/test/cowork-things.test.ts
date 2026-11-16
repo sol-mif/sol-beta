@@ -416,11 +416,11 @@ test("recordOf: a GitHub room's first repo, nothing for a Drive room, and the ro
   const s = S.cleanTeam({ rooms: [
     { id: "a", provider: "github", repos: ["o/one", "o/two"] },
     { id: "b", provider: "drive", repos: ["1AbCdEfG"] },
-    { id: "c", provider: "github", org: "kao-ai" },   // an org and no repos: the default repo
+    { id: "c", provider: "github", org: "kao-ai" },   // an org and no repos: the default, none since #441, so no record
   ] });
   assert.equal(S.recordOf(s.rooms[0]), "o/one");
   assert.equal(S.recordOf(s.rooms[1]), "");
-  assert.equal(S.recordOf(s.rooms[2]), "marcocyl04-ux/sol-dev");
+  assert.equal(S.recordOf(s.rooms[2]), "");
   assert.equal(S.recordOf(S.activeRoom(S.cleanTeam({ repos: ["franktsai2008-eng/room"] }))), "franktsai2008-eng/room");
 });
 

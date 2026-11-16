@@ -11,9 +11,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
+import { freePort, ownHealth } from "./test-engine.ts";
 
 const ENGINE = join(import.meta.dirname, "..");
-const PORT = 7990 + Math.floor(Math.random() * 9);
+let PORT = 0;   // the system's free port, taken at the start (test-engine.ts, #938)
 const dir = mkdtempSync(join(tmpdir(), "sol-wire-"));
 mkdirSync(join(dir, "home"));
 // the stand-in: a say with "fail" in it dies at once, any other one waits to be stopped
@@ -25,6 +26,7 @@ after(() => { engine?.kill(); rmSync(dir, { recursive: true, force: true }); });
 
 async function up() {
   if (engine) return;
+  PORT ||= await freePort();
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: ENGINE, stdio: "ignore",
     env: {
@@ -33,11 +35,7 @@ async function up() {
       SOL_CODEX: join(dir, "codex"), SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1", SOL_TRACK: "off",   // #356: nothing counted, no settings written, nothing sent
     },
   });
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return; } catch {}
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  throw new Error("the test engine did not come up");
+  await ownHealth(engine, PORT);   // the engine this test started, not another run's on the port (#938)
 }
 
 type Msg = { type: string; [k: string]: any };

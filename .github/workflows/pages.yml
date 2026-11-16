@@ -1,6 +1,6 @@
 # The page people are sent to, sol.matterfold.tech (#169, #308): site/ published with GitHub Pages, only in the public beta repo (the
 # guard below), on every push to its main. site/install is the export's copy of sol/install, so the one line serves
-# the same file the app bundles. Actions pinned by commit. In sol-dev this file is carried but never runs.
+# the same file the app bundles. Actions pinned by commit. In the development repository this file is carried but never runs.
 name: pages
 on:
   push:

@@ -174,21 +174,11 @@
 .wcard .instead::placeholder { color: var(--mute); }
 
 /* the list (sitting 2, c-today): one slab, "THE LIST" in small caps, "6 of 7" right, done rows dim, open rows ink, a 2 px progress hairline at the foot */
-.wplan { padding: 10px 14px 10px; border: 0; box-shadow: inset 0 1px 0 var(--edge); }
-.wplan .whead { font-size: 11px; letter-spacing: 0.08em; font-variant-caps: all-small-caps; color: var(--mute); }
-.wplan .whead .pn { flex: none; font-style: normal; font-family: var(--mono); font-size: 11px; letter-spacing: 0; font-variant-caps: normal; color: var(--dim); font-variant-numeric: tabular-nums; }
-.pstep { display: flex; align-items: center; gap: 12px; min-height: 26px; color: var(--ink); }
-.pstep.completed .pt { color: var(--dim); }   /* done rows dim, still readable (the chat map, board 16, 2026-10-25) */
-.pstep.in_progress .pt { color: var(--ink); }
-.pbar { height: 2px; margin: 8px 0 0; border-radius: 1px; background: var(--line); overflow: hidden; }
-.pbar i { display: block; height: 100%; background: var(--ink); border-radius: 1px; }
 .pmark { flex: none; display: grid; place-items: center; width: 12px; height: 12px; }
 .pmark i { width: 7px; height: 7px; border: 1px solid var(--mute); }
 .pmark svg { width: 11px; height: 11px; color: var(--mute); }
 .pmark canvas { width: 12px !important; height: 12px !important; }
 .pt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ptag { flex: none; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 8px; background: none; border: 1px solid var(--line); border-radius: var(--pill); color: var(--dim); font: inherit; font-size: 11px; line-height: 18px; cursor: pointer; }
-.ptag:hover:not(:disabled) { color: var(--ink); border-color: var(--mute); }
 
 /* Codex's review card: the same card, its remarks ruled apart; a sent or dismissed one goes quiet */
 .wreview .wrvstat { margin: 0; color: var(--dim); line-height: 1.55; }
@@ -461,13 +451,6 @@
 .wforkhere { position: absolute; right: calc(100% + 12px); top: 2px; white-space: nowrap; padding: 0 8px; background: var(--page); border: 1px solid var(--line); border-radius: var(--pill); color: var(--mute); font: inherit; font-size: 11px; line-height: 18px; cursor: pointer; visibility: hidden; translate: 6px 0; transition: translate .2s cubic-bezier(.2,.9,.3,1.25), visibility 0s .2s; }
 .wyou:hover .wforkhere { visibility: visible; translate: 0 0; transition: translate .2s cubic-bezier(.2,.9,.3,1.25), visibility 0s; }
 .wforkhere:hover { color: var(--ink); border-color: var(--mute); }
-.ptag { display: inline-flex; align-items: center; gap: 5px; }
-.ptag .wst-i { display: grid; place-items: center; width: 10px; height: 10px; }
-.ptag .wst-i i { width: 5px; height: 5px; border-radius: 50%; background: var(--mute); }   /* at rest: --line2 was never defined, so the dot drew nothing */
-.ptag .wst-i i.needs { background: var(--glow); }
-.ptag .wst-i i.failed { background: var(--red-strong); }
-.ptag .wst-i canvas { width: 10px !important; height: 10px !important; }
-.ptag .wst-i svg { width: 9px; height: 9px; }
 
 /* ---- P6: Work's drawers in Settings ---- */
 .wfield { width: 220px; padding: 7px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-s); color: var(--ink); font: inherit; font-size: 12.5px; font-family: var(--mono); }
@@ -777,20 +760,40 @@
 .wpkept .wremark code { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-right: 4px; }
 .wpkept .wremark .wlink { padding: 0 4px; font-size: 11px; }
 
-/* the sticky note (Sticky.tsx): a small card under the bar's right end, on Sol's own paper, one short line a thing, crossed out by a click */
-.barbtn.wsticky { position: relative; }
-.barbtn.wsticky i { position: absolute; top: 1px; right: 0; min-width: 12px; height: 12px; padding: 0 2px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line); color: var(--ink); font: 500 9px/12px var(--mono); font-style: normal; text-align: center; }
-.wnote { position: fixed; top: 46px; right: 12px; z-index: 40; width: 208px; padding: 12px 12px 8px; background: var(--page); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 16px 40px rgba(0,0,0,.35); font-size: 13px; line-height: 1.35; }
-.wnote ul { list-style: none; margin: 0; padding: 0; }
-.wnote li { display: flex; align-items: baseline; gap: 4px; }
-.wnote .ln { flex: 1; min-width: 0; padding: 3px 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
-.wnote li.done .ln { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--mute); }
-.wnote .x { flex: none; padding: 0 2px; background: none; border: 0; color: var(--mute); font-size: 13px; cursor: pointer; opacity: 0; }
-.wnote li:hover .x { opacity: 1; }
-.wnote .x:hover { color: var(--ink); }
-.wnote input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 3px 0; background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); font: inherit; outline: none; }
-.wnote input::placeholder { color: var(--mute); }
-.wnote .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font: 11px var(--mono); color: var(--mute); }
-.wnote .foot button { padding: 2px 6px; background: none; border: 1px solid var(--line); border-radius: var(--r-s); color: var(--dim); font: inherit; cursor: pointer; }
-.wnote .foot button:hover:not(:disabled) { color: var(--ink); border-color: var(--mute); }
-.wnote .foot button:disabled { opacity: .35; cursor: default; }
+
+/* the review session's card (#416): one row a change, its risk, area and who made it as quiet tags, what to try dim;
+   the buttons are the talk's own choices; a decided row goes dim with its word */
+.wtonight .whead .pn { flex: none; font-style: normal; font-family: var(--mono); font-size: 11px; letter-spacing: 0; font-variant-caps: normal; color: var(--dim); font-variant-numeric: tabular-nums; }
+.wtonight .tn-row { padding: 10px 0; border-top: 1px solid var(--line); }
+.wtonight .tn-row:first-of-type { border-top: 0; padding-top: 2px; }
+.wtonight .tn-top { display: flex; gap: 8px; align-items: baseline; }
+.wtonight .tn-n { flex: none; font-family: var(--mono); font-size: 12px; color: var(--dim); text-decoration: none; }
+.wtonight .tn-n:hover { color: var(--ink); }
+.wtonight .tn-t { flex: 1; min-width: 0; line-height: 1.45; }
+.wtonight .tn-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.wtonight .tn-tags span { padding: 0 8px; border: 1px solid var(--line); border-radius: var(--pill); font-size: 11px; line-height: 18px; color: var(--dim); }
+.wtonight .tn-risk.high { color: var(--red-strong); border-color: var(--red-strong); }
+.wtonight .tn-risk.medium { color: var(--ink); border-color: var(--mute); }
+.wtonight .tn-by, .wtonight .tn-felt { border-color: transparent !important; padding: 0 2px !important; }
+.wtonight .tn-try { margin: 6px 0 0; color: var(--dim); line-height: 1.5; }
+.wtonight .tn-try b { font-weight: 500; font-size: 10.5px; letter-spacing: 0.08em; font-variant-caps: all-small-caps; color: var(--mute); margin-right: 4px; }
+.wtonight .choices { margin-top: 8px; }
+.wtonight .tn-was, .wwrap .tn-was { display: block; margin-top: 6px; font-size: 11.5px; color: var(--mute); }
+.wtonight .tn-row.folded .tn-t, .wtonight .tn-row.slight .tn-t, .wtonight .tn-row.severe .tn-t { color: var(--dim); }
+.wtonight .tn-back { color: var(--amber) !important; border-color: var(--amber) !important; }
+.wtonight .tn-fix { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+.wtonight .tn-fix input { flex: 1; min-width: 0; padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--pill); background: transparent; color: var(--ink); font: inherit; font-size: 12.5px; }
+.wtonight .tn-fix input:focus { outline: none; border-color: var(--mute); }
+.wtonight .tn-none { margin: 8px 0 0; color: var(--mute); font-size: 12px; }
+.wtonight .tn-err, .wwrap .tn-err { display: block; margin-top: 6px; font-style: normal; font-size: 12px; color: var(--red-strong); }
+/* the hand-in card (#476): the question first, then the change it is about */
+.whandin .hi-ask { margin: 0 0 8px; line-height: 1.45; }
+.whandin.gone .hi-ask, .whandin.held .hi-ask { color: var(--dim); }
+
+/* Scoped and Approve (#482): the card the session's agent shows; only the Sol developer's press writes the Status line */
+.wcheckpoint .whead .cp-folder { flex: none; font-style: normal; font-family: var(--mono); font-size: 11px; letter-spacing: 0; font-variant-caps: normal; color: var(--dim); }
+.wcheckpoint .cp-ask { margin: 0; line-height: 1.5; }
+.wcheckpoint .cp-why { margin: 6px 0 0; color: var(--dim); font-size: 12px; line-height: 1.5; }
+.wcheckpoint .choices { margin-top: 10px; }
+.wcheckpoint .cp-done { display: block; margin-top: 6px; font-size: 11.5px; color: var(--mute); }
+.wcheckpoint .cp-err { display: block; margin-top: 6px; font-style: normal; font-size: 12px; color: var(--red-strong); }

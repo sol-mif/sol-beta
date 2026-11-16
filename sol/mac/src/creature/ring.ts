@@ -1,5 +1,5 @@
 // How each state is coloured (Companion step 3, design/companion/PRD.md "Colour"). The values live in one file,
-// design/palette.json, generated into ./palette.ts; this file only says which colour a state wears and how it moves.
+// design/system/tokens.json palette, generated into ./palette.ts; this file only says which colour a state wears and how it moves.
 // Colour catches attention and nothing else: Working wears the sol gradient moving (the only moving colour), Your call
 // yellow (strong on arrival, soft after), done green, wrong red, Unplugged red soft and steady. Every other state wears
 // its seat's gradient (home candy to heart, work sun to orange), as before step 3 (repair, Marco 2026-10-18: "some things
@@ -84,7 +84,7 @@ export function bandColour(t: Tint, x: number, i: number, j: number): RGB {
   return t.stops[Math.max(0, Math.min(n - 1, k))];
 }
 
-/** the creature's ten colours in its own order (palette.json "creature"), for shimmers that run through all of them */
+/** the creature's ten colours in its own order (tokens.json palette "creature"), for shimmers that run through all of them */
 export const FAMILY: readonly RGB[] = Object.values(CREATURE);
 /** the Show's helper lanes: the creature's colours, the ones that read on pearl paper first (the old order) */
 export const LANES: readonly RGB[] = (["amber", "pink", "green", "orange", "blush", "sun", "heart", "candy", "ember", "lime"] as const).map((n) => CREATURE[n]);

@@ -1,0 +1,24 @@
+/* The tray (#779, #751 B16; WholeTray.tsx): a hairline at the stage's foot with its squares and count; its shelf of
+   small copies by session. Sizes, z and timings come from the kit (kit/feel.ts TRAY, Z), written inline */
+.st-wtray { position: absolute; left: var(--s3); right: var(--s3); bottom: 0; display: flex; align-items: center; gap: var(--s2); color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); cursor: default; }
+.st-wtray::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--hair); background: var(--line); transition: background var(--d-turn) var(--e-move); }
+.st-wtray.open::before, .st-wtray:hover::before { background: var(--c-pearl-line); }
+.st-tq { display: flex; align-items: center; }
+.st-tq i { flex: none; border: var(--hair) solid var(--edge); background: color-mix(in srgb, var(--c-pearl) 4%, transparent); }
+.st-tq i.new { animation: st-landed var(--tray-land) var(--e-arrive); }
+@keyframes st-landed { 0% { transform: scale(var(--tray-land-from)); background: color-mix(in srgb, var(--c-pearl) 50%, transparent); } 100% { transform: none; } }
+.st-tn { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.st-tn.bump { animation: st-bump var(--tray-bump) var(--e-arrive); }
+@keyframes st-bump { 40% { color: var(--c-pearl); transform: translateY(calc(var(--hair) * -1)); } }
+.st-tshelf { position: absolute; left: var(--s3); right: var(--s3); display: flex; gap: var(--s6); padding: var(--s3) var(--s4); overflow-x: auto; background: var(--pop); border: var(--hair) solid var(--edge); border-radius: var(--r-card); scrollbar-width: none; }
+.st-tgroup { flex: none; display: flex; flex-direction: column; gap: var(--s2); }
+.st-tgroup h6 { margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--mute); white-space: nowrap; }
+.st-tminis { display: flex; gap: var(--s3); }
+.st-tmini { position: relative; flex: none; overflow: hidden; border-radius: var(--r-row); background: color-mix(in srgb, var(--c-pearl) 4%, transparent); border: var(--hair) solid var(--edge); cursor: grab; transition: transform var(--d-turn) var(--e-arrive), border-color var(--d-turn) var(--e-arrive); }
+.st-tmini:hover { transform: translateY(calc(var(--hair) * -2)); border-color: var(--c-pearl-line); }
+.st-tmark { position: absolute; left: var(--s2); top: var(--s2); }
+.st-tmt { position: absolute; left: var(--s2); right: var(--s2); bottom: var(--s2); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--t-label); line-height: var(--t-label-line); }
+/* #954: a copy draws its block live (WholeTray.tsx Live; whole.html's .mini .mc): inset and scale inline from TRAY.mini */
+.st-tlive { position: absolute; overflow: hidden; pointer-events: none; }
+.st-tlivein { transform-origin: 0 0; color: var(--dim); font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-tterm { margin: 0; font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); white-space: pre; overflow: hidden; }

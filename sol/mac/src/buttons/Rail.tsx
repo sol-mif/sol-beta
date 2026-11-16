@@ -64,7 +64,7 @@ export function Rail({ c, fallback, on, onPane, foot }: {
   if (shown !== at) { setGone(shown); setShown(at); }
   const box = useRef<HTMLDivElement>(null), row = useRef<HTMLDivElement>(null), out = useRef<HTMLDivElement>(null);
   const span = useRef({ from: 0, to: 0 });
-  const sp = useSpring(1, CFG.slide, (v) => {
+  const sp = useSpring(1, CFG.travel, (v) => {
     const h = box.current?.offsetHeight ?? 0, d = dir.current;
     if (row.current) row.current.style.translate = v >= 1 ? "" : `0 ${(1 - v) * h * d}px`;
     if (out.current) out.current.style.translate = `0 ${-v * h * d}px`;

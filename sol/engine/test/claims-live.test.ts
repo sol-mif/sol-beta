@@ -32,12 +32,12 @@ test("claimLine: a PR says read it and build on it; a side copy says build on it
 });
 
 test("claimPing: the door's body becomes a claim ping to the holder, on their issue, that pingOf accepts", () => {
-  const m = claimPing({ path: "sol/README.md", issue: 194, pr: 195, branch: "frank/cowork-things", login: "franktsai2008-eng", from: { login: "marcocyl04-ux", branch: "marco/cowork-claims-live-an-202", issue: 202 }, repo: "marcocyl04-ux/sol-dev" }, "marcocyl04-ux");
+  const m = claimPing({ path: "sol/README.md", issue: 194, pr: 195, branch: "frank/cowork-things", login: "franktsai2008-eng", from: { login: "marcocyl04-ux", branch: "marco/cowork-claims-live-an-202", issue: 202 }, repo: "sol-mif/sol-dev" }, "marcocyl04-ux");
   assert.ok(m);
   assert.equal(m.to, "franktsai2008-eng");
   assert.equal(m.pingKind, "claim");
   assert.equal(m.issue, 194);
-  assert.equal(m.repo, "marcocyl04-ux/sol-dev");
+  assert.equal(m.repo, "sol-mif/sol-dev");
   assert.equal(m.line, "claim: sol/README.md on your frank/cowork-things (#195) is also being changed on marco/cowork-claims-live-an-202 (marcocyl04-ux, #202): they build on yours or say in their PR how theirs differs.");
   const p = pingOf(m);
   assert.ok(p);
