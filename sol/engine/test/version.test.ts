@@ -131,3 +131,20 @@ test("the hub: a hello's version is in the roster; an older Sol's hello has none
   t.mock.timers.tick(1000);
   assert.deepEqual(roster(b).find((e) => e.who === "frank").version, v2, "after an update");
 });
+
+test("a beta release's number (#1300): v<N> on a dev-* commit never stands for it; of two numbers the higher", () => {
+  assert.equal(releaseTag(["v3", "dev-20261112"]), "dev-20261112", "the offer and the count still name the dev release");
+  assert.equal(releaseTag(["v3", "stable-20261030-0900"]), "stable-20261030-0900");
+  assert.equal(releaseTag(["v9", "v10"]), "v10", "by number, not by name");
+  assert.equal(releaseTag(["v2"]), "v2");
+});
+
+test("a commit with only a number still reads as a release (#1300)", async () => {
+  const { d } = repo();
+  const head = commit(d, "three");
+  git(d, "branch", "-f", "stable", head);
+  git(d, "tag", "v1", head);
+  const v = await computeVersion(d);
+  assert.deepEqual(v, { release: "v1", commit: head.slice(0, 8) });
+  assert.equal(versionLine(v), "release v1");
+});

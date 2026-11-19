@@ -86,7 +86,7 @@
 .bar .wbtn { margin-right: 8px; }
 
 /* ---- the bar card (BarCard.tsx): what waits on me, one black goo card hanging from the bar on a neck under the for-you
-   pill, the notch card's recipe (black, pearl words, a filled first answer, outlines after it); +N steps to the next ---- */
+   pill, the black card's recipe (black, pearl words, a filled first answer, outlines after it); +N steps to the next ---- */
 .cbarcard { flex: none; align-self: flex-end; position: relative; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; max-width: calc(100% - 24px); margin: -2px 12px 8px; }
 .cbarcard.none { display: none; }
 .cbarcard .cneck { display: block; width: 30px; height: 14px; margin-right: var(--neck, 120px); background: #000;

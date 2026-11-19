@@ -3,7 +3,7 @@
 // The rule for an id this file has not met: drop the seat's own prefix when the seat pill already names it, read the
 // digits as a version with dots, capitalise the family, and keep whatever trails the version as words.
 const KNOWN: Record<string, string> = {
-  "claude-fable-5-1": "Fable 5.1", "claude-opus-5-5": "Opus 5.5", "claude-sonnet-5-5": "Sonnet 5.5", "claude-haiku-5-5": "Haiku 5.5",
+  "claude-fable-5-2": "Fable 5.2", "claude-fable-5-1": "Fable 5.1", "claude-opus-5-5": "Opus 5.5", "claude-sonnet-5-5": "Sonnet 5.5", "claude-haiku-5-5": "Haiku 5.5",
   "gpt-5.6-luna": "GPT-5.6 Luna", "gpt-5.6": "GPT-5.6", "gpt-6.1-sol": "GPT-6.1 Sol",
   // the rest of Codex's list as the engine gives it (sitting 5): "sol" is a name, not an acronym, so it is not shouted
   "gpt-6-astra": "GPT-6 Astra", "gpt-6-sol": "GPT-6 Sol", "gpt-6-luna": "GPT-6 Luna", "gpt-5.6-sol": "GPT-5.6 Sol", "gpt-5.6-terra": "GPT-5.6 Terra",
@@ -30,3 +30,12 @@ export function prettyModel(id: string, seat?: string): string {
 }
 // the native list's line: the friendly name, then the id, so a person who knows ids finds theirs
 export const modelLine = (id: string, seat?: string) => { const p = prettyModel(id, seat); return p === id ? id : `${p} · ${id}`; };
+// A saved pick the seat no longer offers moves to the same family's model in the list (#863): a saved Fable 5.1 shows,
+// and runs, as Fable 5.2 once Claude offers it. No family match: the pick as it is, and the caller falls back. The
+// engine's rule (engine/src/models.ts family): an id with a tail such as "[1m]" is not a version and stays as it is.
+const familyOf = (id: string) => id.match(/^claude-([a-z]+)-\d+(?:-\d{1,2})?(?:-\d{8})?$/)?.[1];
+export function follow(id: string, list: string[]): string {
+  if (!id || list.includes(id)) return id;
+  const f = familyOf(id);
+  return (f && list.find((m) => familyOf(m) === f)) || id;
+}

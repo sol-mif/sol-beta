@@ -1,0 +1,166 @@
+/* The one folder's pieces (Folder.tsx, #1088). The folder itself is Home's `.fh-folder` (folders.css); only what is
+   new is here. Sizes are palette.css's steps (--s*), type is type.css's steps; the yellow is the person's call. */
+.obf { min-height: 0; padding: var(--s4); gap: var(--s2); align-items: stretch; text-align: left; transition: transform .35s var(--pour), box-shadow .2s, opacity .3s; }
+.obf.l { padding: var(--s6); gap: var(--s3); }
+.obf h2 { font-size: var(--t-title); line-height: var(--t-title-line); }
+.obf.l h2 { font-size: 26px; line-height: 30px; }
+.obf .who { padding-right: var(--s8); }
+.obf[role="button"] { cursor: pointer; }
+.obf[role="button"]:hover { transform: translateY(-3px); }
+.obf:focus-visible { outline: 1px solid var(--pearl); outline-offset: 3px; }
+
+/* nothing in it yet: the proposal's dash, on the folder and on its tab */
+.obf.obf-empty, .obf.ghost { background: transparent; box-shadow: none; outline: 1px dashed rgba(var(--on), .22); outline-offset: -1px; }
+.obf.obf-empty::before, .obf.ghost::before { background: transparent; box-shadow: none; border: 1px dashed rgba(var(--on), .22); border-bottom: 0; box-sizing: border-box; }
+.obf.ghost { opacity: .55; outline-color: rgba(var(--on), .14); }
+.obf.ghost:hover { opacity: 1; }
+/* a fact just landed: the folder takes its weight (the parent sets .lit for 220 ms) */
+.obf.lit { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgba(var(--on), .22), 0 18px 40px rgba(0,0,0,.35); }
+
+.obf-count { position: absolute; left: var(--s3); top: -14px; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); font-variant-numeric: tabular-nums; }
+.obf-pieces { display: grid; grid-template-columns: 1fr; gap: var(--s1); margin-top: var(--s2); }
+/* small: each piece is one row, its picture then its names; large (the folder open): four columns, the picture over the names */
+.obf.s:not(.you) .obf-piece { flex-direction: row; align-items: center; justify-content: flex-start; gap: var(--s3); min-height: 48px; }
+.obf.s:not(.you) .obf-week { width: 76px; flex: none; }
+.obf.s:not(.you) .obf-names { flex: 1; }
+.obf:not(.you) .obf-files { flex: 1; align-items: center; justify-content: flex-start; gap: var(--s4); min-width: 0; }
+.obf.l .obf-files { flex: none; }
+.obf-files .obf-names, .obf-letters .obf-names { flex: 1; min-width: 0; }
+.obf.you .obf-letters .obf-names { display: none; }
+.obf-letters { flex-wrap: nowrap; min-width: 0; }
+.obf.l .obf-pieces { grid-template-columns: repeat(4, 1fr); }
+.obf.you .obf-pieces { grid-template-columns: repeat(6, max-content); gap: var(--s2) var(--s4); }
+.obf.l .obf-pieces { gap: var(--s3); }
+.obf-coming { flex: 1; }
+.obf-piece { position: relative; display: flex; flex-direction: column; gap: var(--s1); justify-content: flex-end; min-height: 64px; padding: var(--s2); border-radius: 12px; background: rgba(var(--on), .04); box-sizing: border-box; animation: obf-in .32s var(--pour) both; min-width: 0; }
+.obf.l .obf-piece { min-height: 96px; padding: var(--s3); }
+.obf.you .obf-piece { min-height: 56px; background: none; padding: 0; }
+.obf-piece:hover { background: rgba(var(--on), .08); }
+.obf.you .obf-piece:hover { background: none; }
+.obf-piece.unsure { box-shadow: inset 0 0 0 1px var(--yellow-strong); }
+/* new since the last look: a pearl dot, the yellow ring's place; it pops in as the thing lands and goes once the folder is opened */
+.obf-piece.fresh::after { content: ""; position: absolute; right: var(--s2); top: var(--s2); width: 8px; height: 8px; border-radius: 50%; background: var(--pearl); animation: obf-in .32s var(--pour) both; }
+.obf-back span.new b::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: var(--s1); border-radius: 50%; background: var(--pearl); vertical-align: 2px; }
+.obf.s:not(.you) .obf-piece.fresh, .obf.s:not(.you) .obf-piece.unsure { padding-right: calc(var(--s2) + 14px); }   /* the mark never sits on a name */
+.obf-piece.unsure::after { content: ""; position: absolute; right: var(--s2); top: var(--s2); width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--yellow-strong); }
+@keyframes obf-in { from { opacity: 0; transform: scale(.7); } }
+@keyframes obf-pop { from { transform: scale(0); } }
+
+.obf-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; align-items: end; }
+.obf-day { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.obf-day span { font-size: 10px; line-height: 12px; color: var(--dim); }
+.obf-dots { display: flex; flex-direction: column-reverse; gap: 2px; min-height: 20px; }
+.obf-dots i { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--pearl); animation: obf-pop .3s var(--pour) both; }
+.obf.l .obf-dots i { width: 8px; height: 8px; }
+.obf-names { display: flex; flex-direction: column; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); min-width: 0; }
+.obf-names span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obf-names .more { color: var(--mute); }
+.obf-coming { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.obf-coming div:last-child { display: flex; flex-direction: column; min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.obf-coming b { font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obf-coming span { color: var(--dim); white-space: nowrap; }
+/* small, a second date is only a count at the piece's end: the nearest thing keeps its whole name */
+.obf.s:not(.you) .obf-coming ~ .obf-names { flex: none; }
+.obf.s:not(.you) .obf-coming { flex: 1 1 0; }
+.obf-files { display: flex; align-items: flex-end; justify-content: space-between; }
+.obf-stack { display: flex; }
+.obf-stack > span { margin-right: -8px; animation: obf-pop .3s var(--pour) both; transform-origin: bottom center; }
+.obf-n { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); font-variant-numeric: tabular-nums; }
+.obf-letters { display: flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
+.obf-letters i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-style: normal; font-size: var(--t-label); font-weight: 600; color: var(--ink); background: rgba(var(--on), .1); animation: obf-pop .3s var(--pour) both; }
+.obf.l .obf-letters i { width: 28px; height: 28px; }
+.obf-letters i.obf-ask { background: none; box-shadow: inset 0 0 0 1px var(--yellow-strong); color: var(--yellow-strong); }
+.obf-screens { position: relative; flex: none; }
+.obf-screens i { position: absolute; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(var(--on), .4); }
+.obf-screens i.obf-main { background: var(--pearl); box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .obf-piece, .obf-dots i, .obf-stack > span, .obf-letters i { animation: none; } }
+.obf.you::before { width: 150px; }
+.obf-letters.sq i { border-radius: 7px; }
+.obf-letters i { font-size: 10px; letter-spacing: -.02em; }
+
+/* a piece turned over: what is in it and where each thing was read */
+.obf-piece.turned { justify-content: flex-start; background: rgba(var(--on), .1); }
+.obf-back { display: flex; flex-direction: column; gap: var(--s1); width: 100%; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); animation: obf-turn .28s var(--pour) both; }
+.obf-back span { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* a name and where it was read: one line each, never wrapped (the whole is in the title) */
+.obf-back b { display: block; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--ink); }
+@keyframes obf-turn { from { opacity: 0; transform: rotateY(70deg); } }
+
+/* routines: when, then where, then with what, on one line; a guess is dashed, kept it is whole */
+.obf-routines { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); }
+.obf-routine { display: flex; align-items: center; gap: var(--s2); height: 40px; padding: 0 var(--s2) 0 var(--s3); border-radius: 12px; font-size: var(--t-label); color: var(--dim); min-width: 0; transition: background .2s; }
+.obf-routine:hover, .obf-routine.going { background: rgba(var(--on), .06); }
+.obf-routine .when { width: 92px; flex: none; color: var(--dim); }
+.obf-routine b { font-weight: 500; color: var(--ink); font-size: var(--t-body); white-space: nowrap; }
+.obf-routine span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obf-routine.obf-kept { color: var(--ink); }
+/* the line between two stops: dashed while guessed, whole once kept; on a run it fills from the left (pearl) */
+.obf-routine i.ln { position: relative; flex: 1; min-width: var(--s6); max-width: 120px; height: 1px; background: rgba(var(--on), .28); }
+.obf-routine.guess i.ln { background: none; border-top: 1px dashed rgba(var(--on), .4); height: 0; }
+.obf-routine i.ln::after { content: ""; position: absolute; left: 0; top: -0.5px; height: 2px; width: 0; border-radius: 1px; background: var(--pearl); }
+.obf-routine i.ln.now::after { width: 100%; transition: width .8s cubic-bezier(.45,0,.2,1); }
+.obf-routine i.ln.on::after { width: 100%; }
+.obf-routine i.at { display: grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%; background: rgba(var(--on), .1); font-style: normal; font-weight: 600; color: var(--ink); }
+.obf-routine em { display: grid; place-items: center; flex: none; font-style: normal; border-radius: 6px; }
+/* the stop being opened breathes; the one it broke on wears the person's yellow */
+.obf-routine .now { animation: obf-stop 1s ease-in-out infinite; }
+.obf-routine i.at.now { background: var(--pearl); color: #0a0a0b; }
+.obf-routine .broke { box-shadow: 0 0 0 1px var(--yellow-strong); color: var(--yellow-strong); }
+.obf-routine .obf-why { margin-left: var(--s2); height: 28px; padding: 0 var(--s3); border-radius: 14px; background: none; color: var(--yellow-strong); box-shadow: inset 0 0 0 1px var(--yellow-strong); white-space: nowrap; }
+.obf-routine i.at.broke { cursor: pointer; background: none; }
+.obf-routine em.made { animation: obf-pop .32s var(--pour) both; }
+.obf-routine em.made .dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--pearl); }
+.obf-routine span.made { color: var(--ink); animation: obf-in .3s ease-out both; }
+@keyframes obf-stop { 50% { transform: scale(1.18); } }
+.obf-routine button { margin-left: auto; flex: none; border: 0; font: inherit; cursor: pointer; }
+.obf-routine .keep { height: 28px; padding: 0 var(--s3); border-radius: 14px; background: none; color: var(--dim); box-shadow: inset 0 0 0 1px rgba(var(--on), .14); }
+.obf-routine .keep:hover { color: var(--ink); box-shadow: inset 0 0 0 1px rgba(var(--on), .4); }
+.obf-routine .run { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--pearl); animation: obf-pop .32s var(--pour) both; transition: transform .2s var(--pour), opacity .2s; }
+.obf-routine .run svg { width: 12px; height: 12px; fill: #0a0a0b; }
+.obf-routine .run:hover { transform: scale(1.12); }
+.obf-routine .run:active { transform: scale(.94); }
+.obf-routine .run:disabled { opacity: .3; cursor: default; }
+.obf-routine .obf-why { flex: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }   /* four plain words at most; the whole reason is its title */
+/* the ▶ on a closed folder's head: its kept routine, one press from being done while she watches */
+.obf-go { position: absolute; right: var(--s3); top: var(--s3); display: grid; place-items: center; width: 28px; height: 28px; border: 0; padding: 0; border-radius: 50%; background: var(--pearl); cursor: pointer; animation: obf-pop .32s var(--pour) both; transition: transform .2s var(--pour); }
+.obf-go svg { width: 12px; height: 12px; fill: #0a0a0b; }
+.obf-go:hover { transform: scale(1.12); }
+.obf-go:active { transform: scale(.94); }
+.obf-go.dry { background: none; outline: 1px dashed rgba(var(--on), .5); outline-offset: -1px; }
+.obf-go.dry svg { fill: var(--ink); }
+.obf-go.first::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; box-shadow: 0 0 0 1px var(--pearl); opacity: 0; animation: obf-breathe 1.6s ease-out .7s 1 both; }
+@keyframes obf-breathe { 0% { opacity: .9; transform: scale(.8); } 100% { opacity: 0; transform: scale(1.7); } }
+@media (prefers-reduced-motion: reduce) { .obf-go, .obf-go.first::after { animation: none; } }
+.obf-routine .run.dry { background: none; outline: 1px dashed rgba(var(--on), .5); outline-offset: -1px; }
+.obf-routine .run.dry svg { fill: var(--ink); }
+.obf-routine button:focus-visible { outline: 1px solid var(--pearl); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .obf-routine .now, .obf-routine .run, .obf-routine em.made { animation: none; } .obf-routine i.ln.now::after { transition: none; } }
+.obf.you .obf-files .obf-names { display: none; }
+.obf.you .obf-files { flex: none; }
+
+/* Jev's ghost: a thing it half-believes belongs here is a dashed hairline in its piece, until she keeps it */
+.obf-letters i.ghost { background: none; color: var(--dim); outline: 1px dashed rgba(var(--on), .5); outline-offset: -1px; }
+.obf-dots i.ghost { background: none; outline: 1px dashed rgba(var(--on), .6); outline-offset: -1px; }
+.obf-stack > span.ghost { opacity: .45; outline: 1px dashed rgba(var(--on), .5); outline-offset: 1px; border-radius: 5px; }
+.obf-back span.maybe { padding: var(--s1) var(--s2); margin: 0 calc(-1 * var(--s2)); border-radius: 8px; outline: 1px dashed rgba(var(--on), .4); outline-offset: -1px; }
+.obf-back span.maybe em { display: flex; gap: var(--s2); margin-top: var(--s1); font-style: normal; }
+.obf-back span.maybe em i { font-style: normal; height: 22px; line-height: 22px; padding: 0 var(--s2); border-radius: 11px; color: var(--ink); box-shadow: inset 0 0 0 1px rgba(var(--on), .22); cursor: pointer; }
+.obf-back span.maybe em i:first-child { background: var(--pearl); color: #0a0a0b; box-shadow: none; }
+.obf-back span.maybe em i:hover { box-shadow: inset 0 0 0 1px rgba(var(--on), .5); }
+/* her words closed it ("don't read my messages"): the rail's strike, on the thing itself */
+.obf-letters i.shut { position: relative; opacity: .4; animation: none; }
+.obf-letters i.shut::after { content: ""; position: absolute; left: -2px; right: -2px; top: 50%; height: 1px; background: var(--ink); transform: rotate(-38deg); animation: obf-strike .26s var(--pour) both; }
+@keyframes obf-strike { from { transform: rotate(-38deg) scaleX(0); } }
+/* open, the four pieces stand as one row: the same height, their things on one line at the bottom; the row keeps room
+   for a piece turned over (three things and where each was read), so turning one never moves the routines under it */
+.obf.l .obf-pieces { align-items: stretch; min-height: 132px; }
+/* a long name on a routine line is cut before it reaches the button; nothing runs under the ▶ */
+.obf-routine > span:not(.when) { min-width: 0; flex: 0 1 auto; }
+.obf-routine span.made { margin-right: var(--s2); }
+/* a long run: the making segment is longer, fills step by step (one per thing the agent reports), each step a dot */
+.obf-routine i.ln.obf-steps { max-width: 220px; min-width: 64px; }
+.obf-routine i.ln.obf-steps.now::after { width: var(--fill, 0%); transition: width .5s var(--pour); }
+.obf-routine i.ln .obf-tk { position: absolute; top: -2px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--pearl); animation: obf-pop .3s var(--pour) both; z-index: 1; }
+.obf-routine span.secs { color: var(--dim); font-variant-numeric: tabular-nums; flex: none; margin-right: var(--s2); }
+.obf-routine:has(i.ln.obf-steps) i.ln:not(.obf-steps) { max-width: 40px; }
+.obf-routine i.ln.obf-steps { flex: 4; }
+.obf-routine i.ln.now { animation: none; }   /* a line fills; it never swells (the stops and the dot breathe) */

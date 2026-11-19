@@ -1,10 +1,8 @@
 // Cowork v3, slice 2 (fr-30, #555): the face's team.v3.front, team.v3.plan and team.v3.needsme, answered from plan.ts.
 // wire.ts loads this file only with the switch on (settings.ts coworkV3), so with it off nothing here is loaded (F7).
-// Every answer that can change the count also tells the notch the one number (ping.ts needsMeCount).
 import { join } from "node:path";
 import { getTeam } from "../settings.js";
 import { STATE_DIR } from "../../work/state.js";
-import { needsMeCount } from "../../ping.js";
 import * as P from "./plan.js";
 
 const FILE = () => process.env.SOL_COWORK_V3_TRAIL || join(STATE_DIR, "cowork-v3", "plan-trail.jsonl");
@@ -15,14 +13,11 @@ const madeUp = (r: { id: string; repos: string[]; hub?: string; code?: string; m
 export const projectsNow = (): P.Project[] => getTeam().rooms.filter((r) => !madeUp(r)).map((r) => ({ id: r.id, name: r.name || r.id }));
 const meNow = () => getTeam().me.login || "me";
 
-/** the one count, told to the notch; the front and the stage chip read the same fold */
+/** the one count; the front and the stage chip read the same fold */
 async function tell(rec?: P.PlanRecord) {
   const t = await P.trailNow(FILE());
-  const n = P.needsMe(rec ?? await P.readAll(t), meNow());
-  needsMeCount(n);
-  return n;
+  return P.needsMe(rec ?? await P.readAll(t), meNow());
 }
-export const tellNotch = () => tell().catch(() => 0);
 
 export async function handleV3Plan(m: any): Promise<object> {
   const rid = m.rid, me = meNow(), actor: P.Actor = { who: me };

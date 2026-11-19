@@ -1,4 +1,4 @@
-// File it (#119): seeing a bug and filing it is one press, not a session. The press (the notch's card or the line over
+// File it (#119): seeing a bug and filing it is one press, not a session. The press (the line over
 // the composer) takes a shot of the window at once; a line of the person's words follows; then one issue goes on the
 // team's tracker with the label of the mode they were in (life, work, cowork), the screen they were on (the page, the
 // conversation id, this engine's health line and the commit it runs), the words, and the shot, signed "<login>'s
@@ -10,12 +10,11 @@
 // branch (made from main the first time, like `<login>/plan`; nobody's claim, claims.ts), and the issue shows it.
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sign } from "./note.js";
 import { makeGithubRecord } from "./record.js";
-import { HIDDEN, solHidden } from "../eye.js";
 
 export const MODES = ["life", "work", "cowork"] as const;
 export type Mode = (typeof MODES)[number];
@@ -107,7 +106,7 @@ async function putShot(d: FileDeps, repo: string, login: string, img: Buffer, no
     await rec.code.makeBranch(repo, ref, main);
   }
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "").replace("T", "-");
-  const path = `shots/${stamp}-${mode}.${isPng(img) ? "png" : "jpg"}`;   // a held grab is a png (holdShot)
+  const path = `shots/${stamp}-${mode}.jpg`;   // the held shot is takeShot's jpg
   await rec.files.putBody(repo, path, {
     message: `shot: ${mode}, ${stamp} (${sign(login)})`, branch: ref, content: img.toString("base64"),
   });
@@ -131,10 +130,8 @@ for (let i = 0; i < a.count; i++) { const w = a.objectAtIndex(i); const u = (k) 
   if (!best || score > best.score) best = { id: u('kCGWindowNumber'), score }; }
 best ? String(best.id) : '';`;
 
-/** take the window's shot now and hold it; its id, for the file that follows. While the eye is closed (eye.ts) the
- *  window is blank to screencapture: refused with HIDDEN, nothing held */
+/** take the window's shot now and hold it; its id, for the file that follows */
 export async function takeShot(owner = "Sol", title = "Sol"): Promise<string> {
-  if (solHidden()) throw new Error(HIDDEN);
   if (process.platform !== "darwin") throw new Error("a screenshot needs the Mac");
   const id = (await run("osascript", ["-l", "JavaScript", "-e", FIND(owner, title)])).trim();
   if (!/^\d+$/.test(id)) throw new Error("the Sol window was not found");
@@ -146,17 +143,6 @@ export async function takeShot(owner = "Sol", title = "Sol"): Promise<string> {
   held = { id: shot, path, at: Date.now() };
   return shot;
 }
-/** hold these bytes as the shot (a grab, marked up in the sheet: Grab and Shelf); its id, for the file that follows */
-export function holdShot(buf: Buffer): string {
-  if (!buf?.length) throw new Error("no picture to hold");
-  mkdirSync(DIR, { recursive: true, mode: 0o700 });
-  drop();
-  const shot = randomBytes(6).toString("hex"), path = join(DIR, `${shot}.${isPng(buf) ? "png" : "jpg"}`);
-  writeFileSync(path, buf, { mode: 0o600 });
-  held = { id: shot, path, at: Date.now() };
-  return shot;
-}
-const isPng = (b: Buffer) => b.length > 8 && b.readUInt32BE(0) === 0x89504e47;
 /** the held shot, if it is this one and fresh */
 export function heldShot(id: string): Buffer | null {
   if (!held || held.id !== id || Date.now() - held.at > SHOT_MS) return null;

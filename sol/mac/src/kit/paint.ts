@@ -51,7 +51,9 @@ export function useSize(el: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const t = el.current;
     if (!t) return;
-    const take = () => { const r = t.getBoundingClientRect(); setWh((o) => (o[0] === r.width && o[1] === r.height ? o : [r.width, r.height])); };
+    // the size it is laid at, never the size it shows: read while a move scales it (a piece of Build's one space carried to a
+    // new box), the shown size is wrong, and nothing reports again when the move ends
+    const take = (es?: ResizeObserverEntry[]) => { const b = es?.[es.length - 1]?.borderBoxSize?.[0], w = b ? b.inlineSize : t.offsetWidth, h = b ? b.blockSize : t.offsetHeight; setWh((o) => (o[0] === w && o[1] === h ? o : [w, h])); };
     take();
     const ro = new ResizeObserver(take);
     ro.observe(t);

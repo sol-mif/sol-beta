@@ -1,9 +1,9 @@
 // node --test src/*.test.ts (npm test here): the UI system's tokens (#761, #751 slice A1; sol/design/system/ui.md
 // "Tokens", "Order" 1-2). tokens.json holds the seven values the night of 2026-11-09 added (blur-drag, pearl-tint,
 // wash-rest, c-box, the display and code type steps, breath), the nacre bands and feel.md's five springs; the retired
-// ones (t-pill, direction b's file marks, `you` and d-slide) are gone from it, from what
+// ones (t-pill, direction b's file marks, `you`, d-turn 150 and d-slide) are gone from it, from what
 // tokens.mjs writes, and from every use under src; the glow candy stays in the contract until face.css loses its
-// hand-set --glow (rule 2). d-turn stays 150 on main (#993: ui.md's 160 is a separate decision). The kit (kit/tokens.ts) reads the same values; --sheen-nacre is what kit/Pearl.tsx draws.
+// hand-set --glow (rule 2). The kit (kit/tokens.ts) reads the same values; --sheen-nacre is what kit/Pearl.tsx draws.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -36,22 +36,24 @@ test("the nacre bands and feel.md's five springs are in", () => {
 });
 
 test("the retired are gone from tokens.json", () => {
-  assert.equal(p.scale.type.pill, undefined, "t-pill");
+  // t-pill stays (joined 2026-11-10): Marco's window draws the effort pill's word in it (EffortPill.tsx, face.css .epill)
+  assert.deepEqual(p.scale.type.pill, [11.5, 16], "t-pill, the effort pill's step");
   for (const k of ["you", "file-slides", "file-doc", "file-sheet", "file-pdf"]) assert.equal(p.material.colour[k], undefined, k);
   assert.equal(p.motion.duration.slide, undefined, "d-slide");
-  assert.equal(p.motion.duration.turn, 150, "d-turn stays main's 150 (#993); ui.md's 160 is a separate decision");
+  assert.equal(p.motion.duration.turn, 160, "d-turn 150 retired: turn is ui.md's 160");
 });
 
 test("tokens.mjs wrote them: palette.css has the new names and none of the retired", () => {
   for (const n of ["blur-drag", "c-pearl-tint", "wash-rest", "curve-box", "t-display", "t-display-line", "t-code", "t-code-line", "d-breath", "sheen-nacre"])
     assert.ok(declared(palette, n), `--${n} in palette.css`);
-  assert.match(palette, /--d-turn: 150ms;/);
-  for (const n of ["t-pill", "c-you", "c-file-slides", "c-file-doc", "c-file-sheet", "c-file-pdf", "d-slide"]) assert.ok(!declared(palette, n), `--${n} retired`);
+  assert.match(palette, /--d-turn: 160ms;/);
+  for (const n of ["c-you", "c-file-slides", "c-file-doc", "c-file-sheet", "c-file-pdf", "d-slide"]) assert.ok(!declared(palette, n), `--${n} retired`);
 });
 
 test("glow, the candy accent, stays in the contract until face.css loses its hand-set --glow (rule 2), then retires by a bump", () => {
   assert.equal(t.tokens.glow?.value, "var(--candy)");
-  assert.equal(t.tokens.glow?.hand, "face.css", "face.css still sets it by hand for the old UI");
+  // the `hand` marks went with #1183 (face.css imports tokens.css); the seats still set --glow by hand in face.css
+  assert.match(readFileSync(join(src, "face.css"), "utf8"), /\[data-seat="[a-z]+"\][^}]*--glow:/, "face.css still sets it by hand for the old UI");
   assert.match(t.tokens.glow?.note ?? "", /\{ from: 1, to: 2, keys: \{ glow: null \} \}/, "the key says how it retires");
   assert.equal(t.contract, 1, "no bump yet");
   assert.ok(declared(contract, "glow"));
@@ -102,7 +104,7 @@ test("nothing under src uses a retired token", () => {
   const files: string[] = [];
   const walk = (d: string) => { for (const f of readdirSync(d)) { const x = join(d, f); if (statSync(x).isDirectory()) walk(x); else if (/\.(css|tsx?)$/.test(f) && !f.endsWith(".test.ts")) files.push(x); } };
   walk(src);
-  const retired = /--(t-pill|c-you|c-file-(slides|doc|sheet|pdf)|d-slide)\b|\bt-pill\b|MOTION\.slide\b/;
+  const retired = /--(c-you|c-file-(slides|doc|sheet|pdf)|d-slide)\b|MOTION\.slide\b/;   // t-pill kept: see above
   const hits = files.filter((f) => retired.test(readFileSync(f, "utf8"))).map((f) => f.slice(src.length + 1));
   assert.deepEqual(hits, []);
 });

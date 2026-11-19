@@ -29,8 +29,8 @@ const Pic = ({ part, size = 30 }: { part: Part; size?: number }) => (
 );
 
 // ---- words ----
-const PLACE_WORD: Record<string, string> = { talk: "Talk", drive: "Drive", github: "GitHub", notch: "the notch", calendar: "the calendar", email: "email", chat: "the chat", record: "the record" };
-const placeGlyph = (p: string) => (({ record: "file", github: "github", drive: "doc", talk: "decisions", chat: "decisions", calendar: "calendar", notch: "web", email: "web" } as Record<string, string>)[p] ?? "file");
+const PLACE_WORD: Record<string, string> = { talk: "Talk", drive: "Drive", github: "GitHub", calendar: "the calendar", email: "email", chat: "the chat", record: "the record" };
+const placeGlyph = (p: string) => (({ record: "file", github: "github", drive: "doc", talk: "decisions", chat: "decisions", calendar: "calendar", email: "web" } as Record<string, string>)[p] ?? "file");
 const who = (login: string, me: string) => (login && me && login.toLowerCase() === me.toLowerCase() ? "you" : login.split("-")[0]);
 const whose = (login: string, me: string) => (who(login, me) === "you" ? "your" : `${who(login, me)}’s`);
 const money = (n: number) => `$${n < 10 ? n.toFixed(2) : n.toFixed(0)}`;

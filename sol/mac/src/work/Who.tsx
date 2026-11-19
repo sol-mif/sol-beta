@@ -30,7 +30,7 @@ export function WhoPill({ seat, seats, model, onSeat, onModel, onSeatModel }: { 
   return (<>
     <button ref={btn} type="button" className={`wchip who kit${open ? " lifted" : ""}`} aria-haspopup="menu" aria-expanded={!!open} title={`who answers: ${name}${info?.via ? ` (${info.via})` : ""}; the model`}
       onClick={() => setOpen((o) => (o ? null : btn.current!.getBoundingClientRect()))}>
-      <Pill words={[model ? prettyModel(model, seat) : name]} picked={open ? 0 : -1} h={24} start />
+      <Pill words={[model ? prettyModel(model, seat) : name]} picked={-1} up={!!open} h={24} start />
     </button>
     {open && createPortal(<WhoCard r={open} seat={seat} seats={seats} model={model} onModel={(m) => { onModel(m); setOpen(null); }} onSeatModel={(s, m) => { if (onSeatModel) onSeatModel(s, m); else onSeat(s); setOpen(null); }} onClose={() => setOpen(null)} chip={btn.current} />, document.body)}
   </>);

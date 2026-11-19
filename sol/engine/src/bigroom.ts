@@ -5,6 +5,9 @@
 //                 folder, read only; the folders it declares and a scratch folder of its own, read and written; the names
 //                 of the folders above those (metadata only, to walk down to them); one port on this machine, its proxy.
 //                 `(deny process-fork)`: it starts nothing, so nothing it starts can slip out of the engine's hands.
+//                 Only a seat whose record says children (kernel.ts loadSeat) is walled with `children`: fork allowed,
+//                 the files in its own folder and its declared programs the only ones it may start, a signal only
+//                 to what is inside the same wall. What it starts is inside the wall it is in.
 //                 Everything else is unreadable, though a name guessed still tells whether a file is there (RESULT.md 1).
 //   the proxy     one per room, opened when it wakes and closed, with every tunnel through it, when it sleeps. CONNECT to a
 //                 declared host (port 443 unless the record names one) passes; anything else is refused, with the host
@@ -165,17 +168,28 @@ export type Wall = {
   proxy: number;
   /** what else: the screen block, the certificate service */
   more?: string[];
+  /** a seat that starts programs of its own (needs.seat.children, kernel.ts loadSeat): the files that may start besides
+   *  exe, and the folders whose files may (the block's own, which it reads and never writes). Left out, nothing but exe
+   *  starts and the profile is as it was. What it starts is in the same wall: a sandbox is inherited, never left */
+  children?: { exes: string[]; within: string[] };
 };
 /** the sandbox profile for one wall (pure but for the walk of what the program links) */
 export function profileOf(w: Wall): string {
   const start = startFiles(w.exe);
   const reads = [...w.read, ...w.write];
-  const named = [...new Set([...start.files, ...reads, ...start.kegs, ...start.etc])];
+  const kids = (w.children?.exes ?? []).map((e) => startFiles(e));
+  const kidFiles = [...new Set(kids.flatMap((k) => k.files))], kidKegs = [...new Set(kids.flatMap((k) => [...k.kegs, ...k.etc]))];
+  const named = [...new Set([...start.files, ...reads, ...start.kegs, ...start.etc, ...kidFiles, ...kidKegs])];
   return [
     "(version 1)",
     "(deny default)",
-    "(deny process-fork)",
+    w.children ? "(allow process-fork)" : "(deny process-fork)",
     `(allow process-exec (literal ${q(realpathSync(w.exe))}))`,
+    ...(w.children ? [
+      ...(w.children.exes.length || w.children.within.length ? [`(allow process-exec ${[...w.children.exes.map((e) => `(literal ${q(realpathSync(e))})`), ...w.children.within.map((d) => `(subpath ${q(d)})`)].join(" ")})`] : []),
+      ...(kidFiles.length ? [`(allow file-read* ${kidFiles.map((f) => `(literal ${q(f)})`).join(" ")}${kidKegs.length ? ` ${kidKegs.map((k) => `(subpath ${q(k)})`).join(" ")}` : ""})`] : []),
+      "(allow signal (target same-sandbox))",   // it stops what it started; nothing outside its wall
+    ] : []),
     `(allow file-read* ${start.files.map((f) => `(literal ${q(f)})`).join(" ")} ${[...start.kegs, ...start.etc].map((k) => `(subpath ${q(k)})`).join(" ")})`,
     ...(reads.length ? [`(allow file-read* ${reads.map((p) => `(subpath ${q(p)})`).join(" ")})`] : []),
     ...(w.write.length ? [`(allow file-write* ${w.write.map((p) => `(subpath ${q(p)})`).join(" ")})`] : []),
@@ -283,12 +297,14 @@ export function openProxy(domains: string[], refused: (host: string, port: numbe
 // ---- one room ----
 
 /** what a room says over its channel */
-type Said = { t: string; q?: number; call?: number; ok?: boolean; value?: unknown; why?: string; name?: string; description?: string; args?: unknown; what?: string; line?: string; where?: string; program?: string; url?: string; opts?: unknown; tool?: string };
+type Said = { t: string; q?: number; call?: number; ok?: boolean; value?: unknown; why?: string; name?: string; description?: string; args?: unknown; what?: string; line?: string; where?: string; program?: string; url?: string; opts?: unknown; tool?: string; from?: unknown; kinds?: unknown };
 export type Answer = { ok: boolean; value?: unknown; why?: string };
 /** what the kernel does for a room: the gate and the log are the kernel's */
 export type RoomHost = {
   read(what: string): unknown;
   write(what: string, value: unknown): void;
+  /** the log's past (sol.since, step A3): checked against the record by the kernel */
+  since(from: unknown, kinds: unknown): unknown;
   /** a line, trouble, a tool it registered: as the small room's words (kernel.ts hear) */
   said(m: { t: string; line?: string; where?: string; why?: string; name?: string; what?: string }): void;
   run(program: string, args: unknown, opts: unknown, room: { proxy: number }): Promise<unknown>;
@@ -305,6 +321,8 @@ export type RoomHost = {
 export type RoomOptions = {
   id: string; dir: string; file: string; host: string; cols: Columns;
   closeMs: number;
+  /** sol.since is on its sol (the past's switch, step A3) */
+  since?: boolean;
 } & Limits;
 
 /** one big room: asleep until a call, a time or an event; then a process in its wall, put away when idle */
@@ -407,7 +425,7 @@ export class Room {
         void this.put();
         if (!ours && !this.gone) this.broke(why);
       });
-      child.send({ t: "start", id: this.o.id, file: this.o.file, folders });   // sol.folders: where its declared folders are (its HOME is a scratch folder)
+      child.send({ t: "start", id: this.o.id, file: this.o.file, folders, ...(this.o.since ? { since: true } : {}) });   // sol.folders: where its declared folders are (its HOME is a scratch folder)
     });
   }
 
@@ -482,6 +500,7 @@ export class Room {
       case "log": case "trouble": case "tool": this.h.said(m as { t: string }); return;
       case "read": answer(m.q, () => this.h.read(String(m.what))); return;
       case "write": answer(m.q, () => this.h.write(String(m.what), m.value)); return;
+      case "since": answer(m.q, () => this.h.since(m.from, m.kinds)); return;
       case "run": answer(m.q, this.h.run(String(m.program), m.args, m.opts, { proxy: this.proxy?.port ?? 0 })); return;
       case "fetch": answer(m.q, this.h.fetch(String(m.url), m.opts)); return;
       case "call": answer(m.q, this.h.call(String(m.tool), m.args)); return;

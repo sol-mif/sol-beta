@@ -252,7 +252,7 @@ test("F7: the switch off: team.v3.places.* get no answer; on, they answer as wor
   const a = f.by("on-1");
   assert.equal(a?.type, "work.v3.places.read");
   assert.ok(a.view?.places.some((p: P.Place) => p.id === "record"), JSON.stringify(a));
-  await handleTeam(f.w, { type: "team.v3.places.reroute", rid: "on-2", project, kind: "dates", place: "record" });
+  await handleTeam(f.w, { type: "team.v3.places.reroute", fromSol: true, rid: "on-2", project, kind: "dates", place: "record" });
   const b = f.by("on-2");
   assert.ok(b?.error || b?.event, JSON.stringify(b));
   await handleTeam(f.w, { type: "team.v3.places.read", rid: "on-3", project: "no-such-project" });

@@ -1,0 +1,120 @@
+/* The one onboarding (#1088): every value from the scale and the material (palette.css), none typed by eye. */
+.ob1 { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; padding: var(--s8) var(--s12) var(--s6);
+  background: rgb(5, 5, 7); backdrop-filter: blur(48px); -webkit-backdrop-filter: blur(48px); color: rgba(255, 255, 255, .92);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.ob1-say { display: flex; align-items: center; gap: var(--s4); min-height: var(--s12); flex: none; }
+.ob1-say .two { color: rgba(255, 255, 255, .55); }
+.ob1-say > div:last-child { animation: ob1-in var(--d-glass) var(--e-arrive) both; min-width: 0; }
+.ob1-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--s8); margin-top: var(--s6); }
+.ob1-body.one { grid-template-columns: minmax(0, 1fr); }
+.ob1-col { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--s2); }
+.ob1-foot { flex: none; display: flex; align-items: center; gap: var(--s2); margin-top: var(--s4); min-height: var(--h-row); }
+.ob1-foot .ob1-grow { flex: 1; }
+.ob1-lab { font-size: var(--t-label); line-height: var(--t-label-line); color: rgba(255, 255, 255, .32); letter-spacing: .01em; }
+.ob1-dim { color: rgba(255, 255, 255, .55); }
+
+/* the ask */
+.ob1-box { width: 100%; min-height: calc(var(--s12) * 2.5); resize: none; border: 0; outline: 0; border-radius: var(--r-card); padding: var(--s4);
+  background: rgba(255, 255, 255, .06); color: inherit; font: inherit; font-size: var(--t-read); line-height: var(--t-read-line); transition: background var(--d-turn) var(--e-move); }
+.ob1-box:focus { background: rgba(255, 255, 255, .10); }
+.ob1-box::placeholder { color: rgba(255, 255, 255, .32); }
+.ob1-pills { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* buttons: the kit's two forms in css; acts wear the jelly's wash */
+.ob1-btn { height: var(--h-row); padding: 0 var(--s4); border-radius: var(--r-pill); border: 0; font: inherit; font-size: var(--t-body); color: rgba(255, 255, 255, .92);
+  background: rgba(255, 255, 255, .06); cursor: default; white-space: nowrap; transition: transform var(--d-turn) var(--e-move), background var(--d-turn) var(--e-move); }
+.ob1-btn:hover { background: rgba(255, 255, 255, .10); }
+.ob1-btn:active { transform: scale(.96); }
+.ob1-btn.pearl { background: var(--c-pearl); color: var(--c-deep); font-weight: 600; }
+.ob1-btn.jelly { background: linear-gradient(115deg, #ff5fa2, #ff9a3c 22%, #ffd84a 40%, #7be07b 58%, #4fc3ff 78%, #a66bff); color: #111; font-weight: 600; }
+.ob1-btn.off { text-decoration: line-through; color: rgba(255, 255, 255, .32); }
+.ob1-btn.big { height: calc(var(--h-row) + var(--s2)); padding: 0 var(--s6); font-size: var(--t-read); }
+
+/* the route */
+.ob1-stop { display: grid; grid-template-columns: var(--s4) minmax(0, 1fr) auto; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3);
+  border-radius: var(--r-row); color: rgba(255, 255, 255, .32); transition: background var(--d-turn) var(--e-move), color var(--d-turn) var(--e-move); }
+.ob1-stop .dot { width: var(--s3); height: var(--s3); border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .32); }
+.ob1-stop .what { font-size: var(--t-read); line-height: var(--t-read-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob1-stop .got { font-size: var(--t-label); color: rgba(255, 255, 255, .55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ob1-stop.now { background: rgba(255, 255, 255, .06); color: rgba(255, 255, 255, .92); }
+.ob1-stop.now .dot { box-shadow: none; background: linear-gradient(115deg, #ff5fa2, #ffd84a, #4fc3ff); animation: ob1-pulse var(--d-breath) var(--e-breath) infinite; }
+.ob1-stop.done { color: rgba(255, 255, 255, .72); }
+.ob1-stop.done .dot { box-shadow: none; background: var(--c-pearl); }
+.ob1-stop.none .dot, .ob1-stop.skipped .dot { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .32); }
+.ob1-stop.refused .dot { box-shadow: inset 0 0 0 2px #f5c84b; }
+.ob1-stop.refused .got { color: #f5c84b; }
+
+/* where it lives: the record and the folders */
+.ob1-places { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--s12) * 4.5), 1fr)); gap: var(--s3); align-content: start; }
+.ob1-fold { border-radius: var(--r-card); padding: var(--s4); min-height: calc(var(--s12) * 2.5); border: 1.5px dashed rgba(255, 255, 255, .22); background: transparent;
+  transition: background-color var(--d-glass) var(--e-move), border-color var(--d-glass) var(--e-move); text-align: left; color: inherit; font: inherit; cursor: default; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
+.ob1-fold.solid { border: 1px solid rgba(255, 255, 255, .10); background-color: rgba(255, 255, 255, .06); }
+.ob1-fold.you { border: 1px solid rgba(230, 225, 216, .22); background-color: rgba(230, 225, 216, .06); }
+.ob1-fold.wide { grid-column: 1 / -1; }
+.ob1-fold:active { transform: scale(.99); }
+.ob1-fold .nm { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; display: flex; align-items: baseline; gap: var(--s2); }
+.ob1-fold .nm small { font-size: var(--t-label); font-weight: 400; color: rgba(255, 255, 255, .32); }
+.ob1-facts { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: var(--s3); }
+.ob1-fact { font-size: var(--t-label); line-height: var(--t-label-line); padding: var(--s1) var(--s2); border-radius: var(--r-pill); background: rgba(255, 255, 255, .10);
+  animation: ob1-land var(--d-pour) var(--e-arrive) both; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob1-fact.unsure { background: transparent; box-shadow: inset 0 0 0 1px #f5c84b; color: #f5c84b; }
+.ob1-fact.yes { background: rgba(230, 225, 216, .85); color: var(--c-deep); }
+.ob1-fact.no { opacity: .35; text-decoration: line-through; }
+.ob1-fact.src { background: none; padding: 0; color: rgba(255, 255, 255, .55); }
+
+/* the screens, drawn to scale */
+.ob1-screens { position: relative; height: var(--s12); margin-top: var(--s3); }
+.ob1-screen { position: absolute; border-radius: var(--s1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .32); animation: ob1-land var(--d-pour) var(--e-arrive) both; }
+.ob1-screen.ob1-main { box-shadow: none; background: var(--c-pearl); }
+
+/* the unsure */
+.ob1-confirm { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4); border-radius: var(--r-card);
+  background: rgba(255, 255, 255, .06); animation: ob1-in var(--d-glass) var(--e-arrive) both; transition: opacity var(--d-turn) var(--e-move); }
+.ob1-confirm .q { font-size: var(--t-read); line-height: var(--t-read-line); }
+.ob1-confirm .q small { display: block; font-size: var(--t-label); color: rgba(255, 255, 255, .55); }
+.ob1-confirm.ob1-said { opacity: .4; }
+.ob1-confirm .ob1-ring { width: var(--s3); height: var(--s3); border-radius: 50%; box-shadow: inset 0 0 0 2px #f5c84b; display: inline-block; margin-right: var(--s2); }
+
+/* how hands-on */
+.ob1-hands { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); }
+.ob1-hand { border: 0; font: inherit; color: inherit; text-align: left; border-radius: var(--r-card); padding: var(--s4); background: rgba(255, 255, 255, .06); cursor: default; min-height: calc(var(--s12) * 2);
+  transition: background var(--d-turn) var(--e-move), transform var(--d-turn) var(--e-move); }
+.ob1-hand:active { transform: scale(.97); }
+.ob1-hand b { display: block; font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; }
+.ob1-hand span { display: block; margin-top: var(--s1); font-size: var(--t-body); color: rgba(255, 255, 255, .55); }
+.ob1-hand.on { background: var(--c-pearl); color: var(--c-deep); }
+.ob1-hand.on span { color: rgba(20, 17, 12, .65); }
+
+/* a mode's first visit: one card */
+.ob1-visit { position: fixed; z-index: 55; left: 50%; top: var(--s12); transform: translateX(-50%); width: min(calc(var(--s12) * 12), 90vw); padding: var(--s4) var(--s6);
+  border-radius: var(--r-card); background: rgba(14, 14, 18, .96); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 24px 64px rgba(0, 0, 0, .5); color: rgba(255, 255, 255, .92);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; animation: ob1-in var(--d-glass) var(--e-arrive) both; display: flex; flex-direction: column; gap: var(--s3); }
+.ob1-visit .ob1-row { display: flex; align-items: center; gap: var(--s3); }
+
+@keyframes ob1-in { from { opacity: 0; transform: translateY(var(--s3)); } }
+@keyframes ob1-land { from { opacity: 0; transform: translateX(calc(var(--s12) * -1.5)) scale(.6); } }
+@keyframes ob1-pulse { 50% { transform: scale(1.35); } }
+@media (prefers-reduced-motion: reduce) { .ob1 *, .ob1-visit { animation: none !important; } }
+
+/* Home's "+": as tall as a folder's name row, the + in its middle (designer, NOW 02:00) */
+.ob1-plus { height: calc(var(--s12) + var(--s6)); margin-top: var(--s4); border-radius: var(--r-card); border: 1.5px dashed rgba(255, 255, 255, .22); background: none;
+  color: rgba(255, 255, 255, .55); font: inherit; font-size: var(--t-title); cursor: default; display: grid; place-items: center; }
+.ob1-plus:hover { color: rgba(255, 255, 255, .92); border-color: rgba(255, 255, 255, .4); }
+[data-level-small] { margin-left: auto; }
+/* the small level in a folder's head: only the word in use is shown, right-aligned under the bar */
+[data-level-small] .oby-level .words { display: flex; justify-content: flex-end; }
+[data-level-small] .oby-level .words button:not(.on) { display: none; }
+[data-level-small] { flex: none; }
+
+/* Home's one line when something is coming: the thing white, how soon dim; it opens that thing's folder */
+.ob1-next { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: default; }
+.ob1-next em { font-style: normal; color: rgba(255, 255, 255, .55); }
+.ob1-next:hover em { color: rgba(255, 255, 255, .72); }
+/* Home's line while a routine runs: the name, then the newest step in three words, dim; one line, never wrapped */
+.ob1-next.run { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the small level in an open folder's head: its word 8 px under the bar (designer NOW 05:45 item 2) */
+[data-level-small] .oby-level { gap: 0; }
+[data-level-small] .oby-level .oby-track { padding-bottom: 0; }
+[data-level-small] .oby-level .words { margin-top: var(--s2); }
+/* #1223: Home with no record yet: the one press that makes it (the look is another session's) */
+.ob-make { display: inline-block; margin-top: var(--s3); padding: var(--s2) var(--s3); color: var(--ink); font-size: var(--t-body); }

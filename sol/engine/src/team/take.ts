@@ -30,6 +30,7 @@ import type { CloudUsage } from "./record/cloud.js";
 import { recordOf, slug, type Room, type TeamSettings } from "./settings.js";
 import { tag } from "./record/github.js";
 import { MOVED_PATH, GH_LOGIN, ownedRepo } from "./moved.js";
+import { quietPush } from "../quiet.js";
 
 export const TAKE_COMMIT = "the group's record, moved from the cloud (#326)";
 /** the share of a room's quota, or of a person's 50 MB, past which the face says so */
@@ -323,6 +324,7 @@ async function copy(d: TakeDeps, r: Room, m: Manifest, login: string) {
     await git([...who, "commit", "--quiet", ...(again ? ["--amend"] : []), "-m", TAKE_COMMIT]);
     lease = again;
   }
+  quietPush();   // a quiet Sol pushes nothing (#1293)
   await git(["push", "--quiet", ...(lease ? ["--force-with-lease"] : []), "origin", "HEAD"]);
   m.commit = (await git(["rev-parse", "HEAD"])).trim();
 }

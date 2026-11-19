@@ -119,7 +119,8 @@ test("a topic group sits inside a folder, holds sessions only, and says what it 
 });
 
 test("the model's pick: only the folder's topic groups that say what they are for, one number back", () => {
-  const t = workState().groups.find((x) => x.in === SRC)!;
+  // the topic group the test above leaves in SRC, or its own when it runs alone (the eval's check picks it by name)
+  const t = workState().groups.find((x) => x.in === SRC && x.about) ?? { id: groupOp("add", { name: "notes", in: SRC, about: "the notes pane" })! };
   groupOp("add", { name: "bare", in: SRC });   // says nothing: not offered
   groupOp("add", { name: "elsewhere", in: TEST, about: "tests" });
   assert.deepEqual(topicsFor("fresh-1", SRC + "/deeper").length, 0, "a subfolder is its own folder");
@@ -176,4 +177,42 @@ test("a run the list does not know yet shows at once, under its folder, with its
   assert.equal(out.projects.find((p) => p.path === TEST)?.count, 1, "its folder appears with it");
   assert.equal(out.projects.find((p) => p.path === SRC)?.count, 1, "the other folder is untouched");
   assert.equal(filed.projects.find((p) => p.path === TEST), undefined, "the filed list itself is not changed");
+});
+
+test("a folder's last activity counts every session in it (#1179): pinned and in a topic group too, archived ones not", () => {
+  const a = s(SRC), b = s(SRC), c = s(SRC), d = s(SRC);   // no transcript on the disk: each row's time is its lastModified, rising with n
+  const g = groupOp("add", { name: "topic", in: SRC })!;
+  mark(a.sessionId, { pinned: true }); mark(b.sessionId, { group: g }); mark(d.sessionId, { archived: true });
+  const at = () => fileSessions([a, b, c, d]).projects.find((p) => p.path === SRC)?.latest;
+  assert.equal(at(), c.lastModified, "the newest that is not archived; the pinned and the grouped count");
+  mark(c.sessionId, { group: g }); mark(a.sessionId, { pinned: null, group: g });
+  assert.equal(at(), c.lastModified, "every session in a topic group: the folder is as fresh as its newest, not 0");
+  mark(c.sessionId, { archived: true });
+  assert.equal(at(), b.lastModified, "archived: out of the count");
+  for (const x of [a, b, c, d]) mark(x.sessionId, { pinned: null, group: null, archived: null });
+  groupOp("delete", { id: g });
+});
+
+test("a cowork session is in its fold only: marked cowork with its room's id, it does not move its folder's activity, and nothing else is marked", async () => {
+  // The fold is the face's (WorkSidebar draws the rows marked cowork under "cowork", one fold per project by name, and
+  // leaves them out of every folder). This is what the engine sends it: the mark, the room's id, and no part in the folder.
+  const { roomMark, withRoomIds } = await import("../src/team/here.ts");
+  const room = { id: "room-a", provider: "cloud", hub: "wss://cloud.example/relay", code: "ABCDEF", record: "cloud:ABCDEF" };
+  const plain = s(SRC), co = s(SRC), left = s(SRC);   // the cowork ones are newer: lastModified rises with n
+  mark(co.sessionId, { mode: "cowork", room: roomMark(room, room.record), roomId: room.id });
+  mark(left.sessionId, { mode: "cowork", roomId: "room-i-left" });
+  try {
+    const filed = fileSessions([plain, co, left]);
+    const rows = withRoomIds(filed.sessions, [room]);   // what the list message does before it goes to the face
+    const row = (x: { sessionId: string }) => rows.find((r) => r.id === x.sessionId)!;
+    assert.equal(row(co).mode, "cowork", "the row says cowork");
+    assert.equal(row(co).roomId, room.id, "and which project it belongs to, for the fold's name");
+    assert.equal(row(left).mode, "cowork");
+    assert.equal(row(left).roomId, undefined, "a project I left: the fold says so, no folder takes it");
+    assert.equal(row(plain).mode, undefined, "a Work session is not marked");
+    assert.deepEqual(rows.filter((r) => r.mode !== "cowork").map((r) => r.id), [plain.sessionId], "what Home's folders keep");
+    // the folder's last activity is its own sessions', though the cowork ones are newer
+    assert.ok(co.lastModified > plain.lastModified);
+    assert.equal(filed.projects.find((p) => p.path === SRC)?.latest, plain.lastModified, "a cowork session does not freshen the folder");
+  } finally { for (const x of [co, left]) mark(x.sessionId, { mode: null, room: null, roomId: null }); }
 });

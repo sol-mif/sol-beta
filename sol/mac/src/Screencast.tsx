@@ -12,8 +12,12 @@ import type { Frame } from "./useEngine";
 // does not let go either (its "stop" could land after the other pane's "watch" and leave that one frozen).
 export type Box = { x: number; y: number; w: number; h: number };
 
-export function Screencast({ tab, send, subscribe, live = true, hold, marking, onPick, onMark, onInput, onFrame, over, blank }: {
+/** how long a tab on show may stay without a frame before it counts as blank */
+export const BLANK_MS = 5000;
+
+export function Screencast({ tab, send, subscribe, live = true, hold, marking, onPick, onMark, onInput, onFrame, over, blank, counted }: {
   tab?: string;
+  counted?: string;                                     // where it is drawn (the stage's block: "block"): each tab's first frame or its blank is counted
   send: (o: object) => void; subscribe: (fn: (f: Frame) => void) => () => void;
   live?: boolean;                                       // false: only the wheel reaches the page, every press is held
   hold?: (ev: { altKey: boolean }) => boolean;          // which presses are held back while live (default: option)
@@ -41,6 +45,27 @@ export function Screencast({ tab, send, subscribe, live = true, hold, marking, o
   // the tab on show is watched once the stage is seen; a new tab (or none, or the pane going) lets the old one go
   useLayoutEffect(() => { setFrame(null); return () => send({ type: "browser.watch", tab: null }); }, [tab, send]);
   useEffect(() => { if (tab && seen) send({ type: "browser.watch", tab }); }, [tab, seen, send]);
+
+  // counted once a tab (docs/analytics/tracking.md, "build"): its first frame, or a stage still blank BLANK_MS on and
+  // whether it had a size (none: the black block of #1314). A stage hidden by its pane is not blank, so not counted
+  const seenRef = useRef(seen);
+  seenRef.current = seen;
+  useEffect(() => {
+    if (!tab || !counted) return;
+    const t0 = Date.now();
+    let done = false;
+    const off = subscribe((f) => {
+      if (done || f.tab !== tab) return;
+      done = true;
+      send({ type: "browser.shown", where: counted, secs: Math.round((Date.now() - t0) / 100) / 10 });
+    });
+    const t = setTimeout(() => {
+      if (done || !stage.current?.offsetParent) return;
+      done = true;
+      send({ type: "browser.blank", where: counted, seen: seenRef.current });
+    }, BLANK_MS);
+    return () => { off(); clearTimeout(t); };
+  }, [tab, counted, subscribe, send]);
 
   useEffect(() => subscribe((f) => {
     if (f.tab !== tabRef.current || !img.current) return;

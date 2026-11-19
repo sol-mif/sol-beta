@@ -6,9 +6,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { devOnly, ROOT } from "./dev-copy.ts";
+// sol/runner sets up a Linux machine and says no to any other before it does a thing (#1258)
+const linuxOnly = (): string | false => devOnly("sol/runner") || (platform() !== "linux" && "sol/runner sets up a Linux machine; this one is not");
 import { plan, checksOf, onlineFor, type Runner } from "../src/team/runners.ts";
 
 const legion = (status: string): Runner => ({ name: "legion", status, labels: ["self-hosted", "Linux", "X64", "sol", "legion"].map((name) => ({ name })) });
@@ -130,7 +132,7 @@ exit 0
   return { top, dir, units, stub, run, log, sum };
 }
 
-test("sol/runner install --dry-run: says each step, the package checked by its SHA-256; writes nothing", { skip: devOnly("sol/runner") }, () => {
+test("sol/runner install --dry-run: says each step, the package checked by its SHA-256; writes nothing", { skip: linuxOnly() }, () => {
   const s = sandbox();
   const r = s.run("install", "legion", "--dry-run", "--repo", "sol-mif/sol-test");
   assert.equal(r.status, 0, r.stderr);
@@ -143,7 +145,7 @@ test("sol/runner install --dry-run: says each step, the package checked by its S
   assert.equal(existsSync(s.units), false, "no unit");
 });
 
-test("sol/runner refuses: a runner registered already, the unit there already, a bad name; a runner there is left as it is", { skip: devOnly("sol/runner") }, () => {
+test("sol/runner refuses: a runner registered already, the unit there already, a bad name; a runner there is left as it is", { skip: linuxOnly() }, () => {
   const s = sandbox();
   mkdirSync(s.dir, { recursive: true });
   writeFileSync(join(s.dir, ".runner"), '{"agentName":"nucbox"}');
@@ -168,7 +170,7 @@ test("sol/runner refuses: a runner registered already, the unit there already, a
   assert.match(r.stderr, /a name of lower-case letters/);
 });
 
-test("sol/runner refuses a runner running from its folder under any name, user or system, or set up by GitHub's svc.sh; before writing anything (#639)", { skip: devOnly("sol/runner") }, () => {
+test("sol/runner refuses a runner running from its folder under any name, user or system, or set up by GitHub's svc.sh; before writing anything (#639)", { skip: linuxOnly() }, () => {
   // a user unit of another name runs the runner from the folder
   const s = sandbox();
   writeFileSync(join(s.stub, "active-user"), "dbus.service loaded active running D-Bus\nmy-ci.service loaded active running a runner\n");
@@ -206,7 +208,7 @@ test("sol/runner refuses a runner running from its folder under any name, user o
   assert.deepEqual(readdirSync(v.dir), [".service"], "nothing added beside it");
 });
 
-test("sol/runner install: registered, the unit written and started; a unit that will not start unregisters it and takes everything back (#639)", { skip: devOnly("sol/runner") }, () => {
+test("sol/runner install: registered, the unit written and started; a unit that will not start unregisters it and takes everything back (#639)", { skip: linuxOnly() }, () => {
   const s = sandbox();
   let r = s.run("install", "legion", "--repo", "sol-mif/sol-test");
   assert.equal(r.status, 0, r.stderr);
@@ -268,7 +270,7 @@ test("sol/runner install: registered, the unit written and started; a unit that 
   assert.equal(existsSync(h.dir), false);
 });
 
-test("sol/runner install --slot: one more runner on the same machine, its own name, folder and unit (#920)", { skip: devOnly("sol/runner") }, () => {
+test("sol/runner install --slot: one more runner on the same machine, its own name, folder and unit (#920)", { skip: linuxOnly() }, () => {
   const s = sandbox();
   // the first runner's unit is there: a second slot is not refused by it, and never touches it
   mkdirSync(s.units, { recursive: true });

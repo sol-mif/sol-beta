@@ -25,6 +25,7 @@ import { isRepo, type Room } from "./settings.js";
 import type { Gh } from "./record.js";
 import type { Board } from "./board.js";
 import type { FeedKind, FeedLine } from "./feed.js";
+import { quietPush } from "../quiet.js";
 
 export const WORKFLOW_PATH = ".github/workflows/sol-group.yml";
 /** the repository secret the workflow posts with */
@@ -217,6 +218,7 @@ async function commitIn(git: Git, dir: string, index: string, path: string, cont
   if (tree === (await git(["rev-parse", `${base}^{tree}`], dir)).trim()) return "same";
   const who = /^[A-Za-z0-9-]{1,39}$/.test(author) ? author : "sol";
   const commit = (await git(["-c", `user.name=${who}`, "-c", `user.email=${who}@users.noreply.github.com`, "commit-tree", tree, "-p", base, "-m", message], dir)).trim();
+  quietPush();   // a quiet Sol pushes nothing (#1293)
   await git([...ghHelper("-c"), "push", "--quiet", "--no-verify", "origin", `${commit}:refs/heads/${branch}`], dir);
   return "pushed";
 }

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-places-copy"
+description = "Enables the places_copy command without any pre-configured scope."
+commands.allow = ["places_copy"]
+
+[[permission]]
+identifier = "deny-places-copy"
+description = "Denies the places_copy command without any pre-configured scope."
+commands.deny = ["places_copy"]

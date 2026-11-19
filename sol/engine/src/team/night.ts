@@ -8,7 +8,9 @@
 //            holds what
 // and the two rules of the leads (#118, leads.ts), read off origin/main's .github/CODEOWNERS:
 //   routing  an open issue wearing one of the six labels gets its missing leads assigned and pinged
-//   flags    a PR merged since the last digest without its labels' leads' word gets one signed line and a ping
+//   flags    a PR merged since the last digest without its labels' leads' word and whose checks were not green (a
+//            merge around the ruleset) gets one signed line and a ping; a green merge is the flow (#1128), and the
+//            night pass (sol/review/night) reads it instead
 // and done issues (#440): one a PR merged since the last run says it fixes, left open, is closed with a signed line.
 // Run by hand: bash sol/night --dry-run (prints what it would post, posts nothing). The hour and the days are team
 // values, `night` in sol/engine/team.json. GitHub and git are the deps below, so the tests fake them.
@@ -213,14 +215,14 @@ export async function lastRun(d: NightDeps): Promise<{ n: number; since: Date }>
 }
 const isoOf = (since: Date) => since.toISOString().replace(/\.\d+Z$/, "Z");
 
-/** the PRs merged since a moment, with who merged, the reviews, the files and the body (the flag's read; the digest's
- * list; the done issues) */
-export async function mergedSince(d: NightDeps, since: Date): Promise<(MergedPr & { body: string })[]> {
+/** the PRs merged since a moment, with who merged, the reviews, the files, the body and whether its checks were green
+ * (the flag's read; the digest's list; the done issues) */
+export async function mergedSince(d: NightDeps, since: Date): Promise<(MergedPr & { body: string; green: boolean })[]> {
   type P = { number: number; title: string; body?: string; author?: { login?: string }; mergedBy?: { login?: string } | null;
-    reviews?: { author?: { login?: string }; state?: string; submittedAt?: string }[]; files?: { path?: string }[] };
-  const raw = JSON.parse(await rec(d).code.prSearch("merged", `merged:>=${isoOf(since)}`, "number,title,author,mergedBy,reviews,files,body") || "[]") as P[];
+    reviews?: { author?: { login?: string }; state?: string; submittedAt?: string }[]; files?: { path?: string }[]; statusCheckRollup?: Check[] };
+  const raw = JSON.parse(await rec(d).code.prSearch("merged", `merged:>=${isoOf(since)}`, "number,title,author,mergedBy,reviews,files,body,statusCheckRollup") || "[]") as P[];
   return raw.map((p) => ({
-    number: p.number, title: p.title, body: p.body ?? "", author: p.author?.login ?? "?", mergedBy: p.mergedBy?.login ?? "",
+    number: p.number, title: p.title, body: p.body ?? "", author: p.author?.login ?? "?", mergedBy: p.mergedBy?.login ?? "", green: greenChecks(p.statusCheckRollup),
     files: (p.files ?? []).map((f) => String(f.path ?? "")).filter(Boolean),
     reviews: (p.reviews ?? []).map((r) => ({ login: r.author?.login ?? "", state: String(r.state ?? ""), at: r.submittedAt })),
   }));
@@ -265,32 +267,33 @@ export async function routeAll(d: NightDeps, l: Leads): Promise<number> {
   return done.length;
 }
 
-/** the PR body's risk (the risk-rating skill's `**Risk:** <level>` line), "" when it has none */
-export function riskLine(body: string): string {
-  return (/\*\*Risk:\*\*\s*(critical|high|medium|low)\b/i.exec(body ?? "")?.[1] ?? "").toLowerCase();
+type Check = { name?: string; context?: string; status?: string; conclusion?: string; state?: string; startedAt?: string; completedAt?: string };
+/** a merged PR's checks were all done and none red, with at least one green (pure): GitHub's ruleset takes a PR into
+ * main only so (#439), so a merge that was not is one made around it. Only the newest run of each check counts: a run
+ * a later push cancelled is not the check's word (#1548) */
+export function greenChecks(xs: Check[] | undefined): boolean {
+  const word = (x: Check) => String(x.conclusion || x.state || "").toUpperCase();
+  const when = (x: Check) => String(x.startedAt || x.completedAt || "");
+  const newest = new Map<string, Check>();
+  (Array.isArray(xs) ? xs : []).forEach((x, i) => {
+    const key = x.name || x.context || `#${i}`, had = newest.get(key);
+    if (!had || when(x) >= when(had)) newest.set(key, x);
+  });
+  const all = [...newest.values()];
+  return all.length > 0 && all.every((x) => ["SUCCESS", "NEUTRAL", "SKIPPED"].includes(word(x))) && all.some((x) => word(x) === "SUCCESS");
 }
-/** the night press took it in (#544): the press's own comment on the PR (tonight.ts prComment "fold", sentback.ts
- * the re-check), written by the login that merged it, so the same words from anyone else count for nothing */
-export function nightPressed(p: Pick<MergedPr, "mergedBy">, cs: Comment[]): boolean {
-  const by = p.mergedBy.replace(/\[bot\]$/i, "").toLowerCase();
-  return !!by && cs.some((c) => (c.login ?? "").toLowerCase() === by
-    && /^\*\*(?:Into [^*\n]+\*\* in the dev review of |Re-checked\*\*, and into )/.test(c.body ?? ""));
-}
-/** the night press counts as the lead's read on a small PR (Marco 2026-10-31, #544): low or medium risk, or no Risk
- * line at all; a high or critical one is still flagged */
-export const pressCovers = (p: Pick<MergedPr, "mergedBy"> & { body?: string }, cs: Comment[]) =>
-  !["high", "critical"].includes(riskLine(p.body ?? "")) && nightPressed(p, cs);
 
 /** the flags: each PR merged since the last run without its leads' word, one signed line (never twice) and a ping to
- * the leads and the author. A small PR the night press took in is not flagged (#544) */
-export async function flagMerges(d: NightDeps, merged: (MergedPr & { body?: string })[], own: Owners, l: Leads): Promise<number> {
+ * the leads and the author. A merge through a green PR is the flow (#1126, #1128) and not flagged: the night pass reads
+ * what went in. Only one whose checks were not green is */
+export async function flagMerges(d: NightDeps, merged: (MergedPr & { body?: string; green?: boolean })[], own: Owners, l: Leads): Promise<number> {
   let n = 0;
   for (const p of merged) {
+    if (p.green) continue;
     const f = mergeFlag(p, own, l);
     if (!f) continue;
     const cs = await comments(d, p.number);
     if (cs.some((c) => c.body.includes(FLAG))) { d.say(`already flagged #${p.number}`); continue; }
-    if (pressCovers(p, cs)) { d.say(`#${p.number} went in by the night press: the lead's read`); continue; }
     await post(d, p.number, `${flagText(f)}\n\n${nightSign(d.login)}`);
     const line = `#${p.number} ${p.title} was merged without the lead's approval (${f.unmet.map((u) => u.label).join(", ")})`.slice(0, 300);
     const to = [...new Set([...f.unmet.flatMap((u) => u.leads), p.author].filter((x) => x && x !== "?"))];
@@ -393,7 +396,7 @@ async function main(argv: string[]) {
 
 /** one relay connection for a job that runs alone (the night, the release runner #418): signed as `login`'s agent in the
  *  room whose share code is `room` (#157), null when the relay is not in sight within ten seconds */
-export async function relayLink(login: string, room = ""): Promise<{ send: (kind: "ping" | "stable", p: Record<string, unknown>) => boolean; stop: () => void } | null> {
+export async function relayLink(login: string, room = ""): Promise<{ send: (kind: "ping" | "stable" | "drift", p: Record<string, unknown>) => boolean; stop: () => void } | null> {
   const { RelayClient, relayUrl, relayAuth } = await import("./relay.js");
   const c = new RelayClient(() => relayUrl(), () => ({ login, state: "away" as const, room }), "night", () => relayAuth());
   c.start();

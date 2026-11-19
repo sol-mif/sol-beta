@@ -40,6 +40,11 @@ export function pointAt(on: On[], picked = false) {
   const same = on.length === state.on.length && on.every((o, i) => o.id === state.on[i].id && o.part === state.on[i].part);
   if (!same || picked !== state.picked) set({ on, picked });
 }
+/** #1042: a block that left the stage is no longer what the box points at: the "on" entries kept, or null when none
+ *  pointed at a block that left */
+export function keptOn(on: On[], gone: Set<string>): On[] | null {
+  return on.some((o) => gone.has(o.id)) ? on.filter((o) => !gone.has(o.id)) : null;
+}
 /** the stage's size and places, as it lays them out */
 export function setRoom(room: Room) { state = { ...state, room }; }
 /** sent: the chips and the target go with the words, and leave the bar */
@@ -53,3 +58,10 @@ export const wordsIn = (t: EventTarget | null): boolean => {
   if (!field) return false;
   return (typeof field.value === "string" ? field.value : field.textContent ?? "").trim().length > 0;
 };
+
+/** the stage has blocks open (#872 pass 2): in a window under 1180 px the session list yields to it first, folding to its
+ *  edge and soft-opening on hover or its key (Home.tsx). Its own store, so Home redraws on this alone */
+let crowded = false;
+const crowdSubs = new Set<() => void>();
+export function setCrowded(v: boolean) { if (v !== crowded) { crowded = v; crowdSubs.forEach((f) => f()); } }
+export const useCrowded = () => useSyncExternalStore((f) => { crowdSubs.add(f); return () => { crowdSubs.delete(f); }; }, () => crowded);

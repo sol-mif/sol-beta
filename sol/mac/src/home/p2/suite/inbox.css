@@ -1,0 +1,30 @@
+/* The inbox's inside (Inbox.tsx, #692 suite step 2): two piles on the pearl card, needs you · it handled, side by side
+   when there is room, one above the other when not. The scale's values only (the layout skill). */
+.ib-box { container-type: inline-size; min-width: 0; margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ib { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); min-width: 0; }
+.ib-pile { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.ib-pile ul { display: flex; flex-direction: column; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.ib-k { all: unset; display: flex; align-items: center; gap: var(--s2); font-weight: 500; }
+.ib-k span { opacity: 0.6; font-weight: 400; }
+.ib-fold { cursor: pointer; }
+.ib-fold i { margin-left: auto; font-style: normal; opacity: 0.6; }
+.ib-none { margin: 0; opacity: 0.6; }
+.ib-item { display: flex; flex-direction: column; min-width: 0; padding: var(--s2); border: var(--hair) solid var(--c-pearl-line); border-radius: calc(var(--r-row) - var(--s1)); background: color-mix(in srgb, var(--c-pearl) 55%, transparent); cursor: grab; touch-action: pan-y; user-select: none; transition: transform var(--d-turn) var(--e-move), opacity var(--d-turn) var(--e-move); }
+.ib-item.moving { transition: none; cursor: grabbing; }
+.ib-item.go { opacity: 0.5; box-shadow: 0 0 0 var(--hair) var(--green-strong); }
+.ib-head { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.ib-head b { flex: none; max-width: 60%; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-head small { flex: 1; min-width: 0; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-label); }
+.ib-subj { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-line { min-width: 0; opacity: 0.7; overflow-wrap: anywhere; }
+.ib-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s1); margin-top: var(--s1); min-width: 0; }
+.ib-acts .pc-act { flex: none; padding: 0 var(--s3); border-style: solid; border-width: var(--hair); }  /* over pass 2's ".p2-stickies button" reset */
+.ib-ask { flex: 1 1 auto; min-width: 0; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-done { display: flex; flex-direction: column; min-width: 0; padding: var(--s1) 0; border-bottom: var(--hair) solid var(--c-pearl-line); }
+.ib-did { min-width: 0; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-more { opacity: 0.6; }
+.ib-by { margin: 0; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@container (min-width: 560px) {
+  .ib { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  .ib-by { grid-column: 1 / -1; }
+}

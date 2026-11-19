@@ -26,10 +26,12 @@ export function lastSaidIn(text: string): number {
   return 0;
 }
 
-/** the time the session at `file` last said something; `fallback` (the file's own time) when it cannot be read or holds no message */
-export function lastSaid(file: string, fallback: number): number {
-  let st;
-  try { st = statSync(file); } catch { return fallback; }
+/** the time the session at `file` last said something; `fallback` (the file's own time) when it cannot be read or holds no message.
+ *  `size` with `fallback`: the file as the session index last saw it, so the list does not stat every transcript again (#917) */
+export function lastSaid(file: string, fallback: number, size?: number): number {
+  let st: { size: number; mtimeMs: number };
+  if (size !== undefined) st = { size, mtimeMs: fallback };
+  else try { st = statSync(file); } catch { return fallback; }
   const key = `${st.size}:${st.mtimeMs}`;
   const hit = cache.get(file);
   if (hit && hit.key === key) return hit.at;

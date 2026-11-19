@@ -22,7 +22,7 @@
 // over the frames. Only the stage calls it.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import tokens from "../../../design/system/tokens.json";
-import { APART_R, BETWEEN, haloDoing, type BodyState, type Flight, type JellyLook } from "../Body";
+import { APART_R, FULL, FULL_SPRING, haloDoing, type BodyState, type Flight, type JellyLook } from "../Body";
 import { CORNERS, cornersOf, easing, spotIn, type Box, type Pt } from "./jellyPath";
 import { Spring, dur, ease, reducedMotion } from "../motion";
 export type { Box, Pt } from "./jellyPath";
@@ -55,7 +55,7 @@ export const SIZE = SCALE.space.s12;
 /** where it sits by a block: in the frame's title row, its body's half and a step in from the right edge (blockSpot) */
 export const spotBy = (b: Box): Pt => spotIn(b, SIZE, SCALE.height.row, SCALE.space.s1);
 /** the pour: how long the six fly and on what curve (palette.motion), and how long they take to sink in (the slide) */
-export const POUR = { get ms() { return dur("pour"); }, ease: easing(ease("pour")), get sink() { return dur("turn"); } };
+export const POUR = { ms: FULL.moveMs, ease: easing(ease("pour")), get sink() { return dur("turn"); } };
 
 /** the stage's jelly. `stage`: the stage's box, the one JellyLayer is laid in. `rest`: the anchor for home (StageColumn.tsx, the stage's foot) */
 export function useJelly(stage: RefObject<HTMLElement | null>, rest: RefObject<HTMLElement | null>): Jelly {
@@ -87,8 +87,8 @@ export function useJelly(stage: RefObject<HTMLElement | null>, rest: RefObject<H
     m.done();
   }, []);
   const springs = useMemo(() => ({
-    x: new Spring(0, BETWEEN, (v) => { at.current.x = v; put(); near(); }, near),
-    y: new Spring(0, BETWEEN, (v) => { at.current.y = v; put(); near(); }, near),
+    x: new Spring(0, FULL_SPRING, (v) => { at.current.x = v; put(); near(); }, near),
+    y: new Spring(0, FULL_SPRING, (v) => { at.current.y = v; put(); near(); }, near),
   }), [put, near]);
   useEffect(() => () => { springs.x.stop(); springs.y.stop(); move.current?.done(); waits.current.forEach((w) => { w.land(); w.done(); }); }, [springs]);
 

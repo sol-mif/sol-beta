@@ -158,18 +158,28 @@ test("the pass: at the next release hour stable moves to exactly the passed dev 
   assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), was, "nothing moved");
 
   const dry = deps(f.runner, "2026-10-31T13:00:40Z", { comments }, { dryRun: true });
-  assert.deepEqual(await passBeta(dry.d, O), { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, dry: true });
+  assert.deepEqual(await passBeta(dry.d, O), { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, product: "v1", dry: true });
+  assert.match(dry.said.join("\n"), /would move stable to dev-20261030 \(\w+\), passed by \S+, tag it v1,/, "the dry run names the number (#1300)");
+  assert.equal(git(f.origin, "tag", "-l", "v*"), "", "and makes none");
   assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), was, "the dry run moved nothing");
   assert.equal(dry.mirrored.length + dry.told.length, 0);
+  assert.match(dry.said.join("\n"), /, export it to sol-beta and tell every Sol/);
+  const bare = deps(f.runner, "2026-10-31T13:00:40Z", { comments }, { dryRun: true, exports: async () => false });
+  await passBeta(bare.d, O);
+  assert.match(bare.said.join("\n"), /skip the export to sol-beta \(no beta remote\)/, "with no beta remote the dry run says so (#1305)");
 
   const x = deps(f.runner, "2026-10-31T13:00:40Z", { comments });
   const r = await passBeta(x.d, O);
-  assert.deepEqual(r, { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, told: true, beta: "the beta repo runs it too" });
+  assert.deepEqual(r, { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, product: "v1", told: true, beta: "the beta repo runs it too" });
+  assert.equal(git(f.origin, "rev-parse", "refs/tags/v1^{commit}"), d30, "v1 is the same commit as its dev-* tag (#1300)");
+  assert.equal(git(f.origin, "cat-file", "-t", "refs/tags/v1"), "tag", "an annotated tag, as the dev-* ones are");
+  assert.equal(git(f.origin, "rev-parse", "refs/tags/dev-20261030^{commit}"), d30, "the dev-* tag is as it was");
   assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), d30, "stable is the passed release, not main");
   assert.deepEqual(x.mirrored, [[d30, "dev-20261030"]]);
   assert.deepEqual(x.told, [{ sha: d30, tag: "dev-20261030", by: FRANK }], "no channel: a beta release");
 
-  assert.deepEqual(await passBeta(x.d, O), { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, already: true }, "twice changes nothing");
+  assert.deepEqual(await passBeta(x.d, O), { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, product: "v1", already: true }, "twice changes nothing");
+  assert.equal(git(f.origin, "tag", "-l", "v*"), "v1", "and makes no second number");
   assert.equal(x.mirrored.length, 1);
 
   const g = deps(f.runner, "2026-10-31T13:01:00Z", { comments });
@@ -192,6 +202,7 @@ test("a hold leaves stable as it is; the next night's pass carries the held day"
   x.at("2026-11-01T13:00:40Z");
   const r = await passBeta(x.d, O) as any;
   assert.equal(r.tag, "dev-20261031");
+  assert.equal(r.product, "v1", "a held release takes no number: the first pass is v1");
   assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), d31);
   assert.equal(git(f.origin, "show", "refs/heads/stable:sol/a.txt"), "3", "it holds the held day too");
 });
@@ -268,4 +279,41 @@ test("a newer passed release not yet allowed leaves an older passed one free to 
   assert.equal(r.tag, "dev-20261101", "the day's release goes; the urgent one waits for tomorrow");
   assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), d01);
   assert.match((await passBeta(x.d, O) as any).error, /dev-20261101-1442 is not a day old yet/, "once the older one is on stable, the newer refusal is said");
+});
+
+test("the numbers (#1300): one more than the highest v* there is, by number not by name; a number GitHub did not take is made by the next run", async () => {
+  const { nextProduct, productTag } = await import("../src/version.ts");
+  assert.equal(nextProduct([]), "v1");
+  assert.equal(nextProduct(["v1", "v2", "v9", "v10", "dev-20261030", "vendor-1", "v0"]), "v11", "v10 after v9, and only v<N> counts");
+  assert.equal(productTag(["dev-20261030", "v3", "v12"]), "v12");
+  assert.equal(productTag(["dev-20261030"]), "");
+
+  const f = fixture();
+  const d30 = devRelease(f.repo, "2\n", "dev-20261030", "2026-10-30T13:00:30Z");
+  // an earlier number elsewhere (v9, then v10): the next is v11
+  git(f.repo, "tag", "-a", "v9", "-m", "nine", "HEAD~1"); git(f.repo, "tag", "-a", "v10", "-m", "ten", "HEAD~1");
+  git(f.repo, "push", "-q", "origin", "refs/tags/v9", "refs/tags/v10");
+  const comments = [c(FRANK, pass("2026-10-30"), "2026-10-31T01:10:00Z")];
+  // GitHub refuses the number (a v11 there already for another commit): the pass stands, the number waits
+  git(f.repo, "tag", "-a", "v11", "-m", "in the way", "HEAD~1");
+  git(f.repo, "push", "-q", "origin", "refs/tags/v11");
+  git(f.origin, "tag", "-d", "v11");   // gone from what the runner fetches, then back on GitHub before its push
+  const x = deps(f.runner, "2026-10-31T13:00:40Z", { comments }, {});
+  const realGit = x.d.git;
+  let put = false;
+  x.d.git = async (args) => {
+    if (!put && args[0] === "push" && args.at(-1) === "refs/tags/v11:refs/tags/v11") { put = true; git(f.repo, "push", "-q", "origin", "refs/tags/v11"); }
+    return realGit(args);
+  };
+  const r = await passBeta(x.d, O) as any;
+  assert.equal(r.ok, true);
+  assert.equal(r.product, undefined, "no number this time");
+  assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), d30, "the pass stands");
+  assert.match(x.said.join("\n"), /GitHub did not take v11: .*: the next run numbers it/);
+  assert.equal(git(f.runner, "tag", "-l", "v11"), "", "the refused tag is taken back here");
+  // the way cleared, the next run (stable already there) numbers it
+  git(f.origin, "tag", "-d", "v11");
+  const y = deps(f.runner, "2026-10-31T13:30:00Z", { comments });
+  assert.deepEqual(await passBeta(y.d, O), { ok: true, tag: "dev-20261030", sha: d30, by: FRANK, product: "v11", already: true });
+  assert.equal(git(f.origin, "rev-parse", "refs/tags/v11^{commit}"), d30);
 });

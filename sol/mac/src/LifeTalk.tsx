@@ -1,17 +1,17 @@
 import { setRunner } from "./run";
-import { useLanding } from "./land";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { composing } from "./ime";
 import type { useEngine, FileOut } from "./useEngine";
 import { EngineBack } from "./EngineBack";
 import { startRecording, type Recorder } from "./voice";
 import { Trail } from "./Trail";
+import { FindBar } from "./FindBar";
 import { Orb } from "./Orb";
 import { Picker } from "./Picker";
 import { Plus } from "./work/Plus";           // the box's +, the same as a session's (#24)
 import { CallKey } from "./buttons/call";     // the call in the bar, the same as a session's (#24)
 import { Message, Steps } from "./Message";
-import { Mark } from "./Mark";
+import { BodyLive } from "./Body";
 import { useCreature } from "./creature/state";
 import { SceneLayer } from "./creature/Widget";
 import { play as playScene, end as endScene, stop as stopScene, setSceneBox } from "./creature/scenes";
@@ -205,7 +205,6 @@ export function LifeTalk({ e, mark, onSwitch, onMode }: { e: ReturnType<typeof u
     t.addEventListener("scroll", onScroll, { passive: true });
     return () => { t.removeEventListener("scroll", onScroll); f.destroy(); stick.current = null; setFlw(null); };
   }, [hasMsgs, e.sessionId]);
-  useLanding(talk, e.sessionId, e.msgs.length, useCallback((y: number) => stick.current?.goTo(y), []));
   useEffect(() => { if (!e.busy) box.current?.focus(); }, [e.busy, e.sessionId]);
   useEffect(() => { seenSession(e.sessionId); }, [e.sessionId]);
 
@@ -268,9 +267,10 @@ export function LifeTalk({ e, mark, onSwitch, onMode }: { e: ReturnType<typeof u
             {blocks}
             {waiting && <div className="msg you md live"><p /></div>}
           </div>
-        ) : <div className="empty"><Mark size={56} live /></div>}
+        ) : <div className="empty"><BodyLive size={56} six /></div>}
       </div>
       <Trail scroller={talk} version={e.msgs.length} goTo={(y) => stick.current?.goTo(y)} />
+      <FindBar scroller={talk} goTo={(y) => stick.current?.goTo(y)} />
       <Orb f={flw} />
     </div>
     </Site>

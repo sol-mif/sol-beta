@@ -1,6 +1,6 @@
 // The way back (#49): when the engine this window dials is not this Mac's own and has not answered for a while, one
 // line under the composer names it and offers this Mac instead, so a move to a dead or refusing engine never strands
-// the app at "engine is starting". A reconnect to this Mac's own engine shows nothing: the notch's plug handles that.
+// the app at "engine is starting". A reconnect to this Mac's own engine shows nothing.
 // One Sol (#62): under the "one" pick the window falls to this Mac by itself (oneSol.ts); the line says where it is.
 import { useEffect, useState } from "react";
 import { ENGINE, FAR_NAME, LIVE, NEXT, keptMachines, pickEngine, sameEngine } from "./useEngine";

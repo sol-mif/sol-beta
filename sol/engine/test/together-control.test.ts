@@ -16,7 +16,7 @@ const C = await import("../src/team/control.ts");
 test("clean: nothing on disk is the defaults of BUILD.md", () => {
   const s = T.cleanTeam(undefined);
   assert.deepEqual(s.speak, { github: true, cowork: true, discord: "builds", whatsapp: false });
-  assert.deepEqual(s.leaves, { prompts: false, memory: false, transcripts: false, audit: "ask" });
+  assert.deepEqual(s.leaves, { prompts: false, memory: false, transcripts: false, audit: "ask", give: "ask" });   // give (#335): asks me each time
   assert.deepEqual(s.seats, { life: "codex", work: "claude" });
   assert.deepEqual(s.repos, []);                                   // no tracker unless named (#441)
   assert.deepEqual(s.machines.map((m) => m.name), ["this Mac"]);   // no relay: no far machine (#169)
@@ -26,7 +26,7 @@ test("clean: nothing on disk is the defaults of BUILD.md", () => {
 test("clean: bad values fall back, unknown keys go, the three never rows cannot be switched on", () => {
   const s = T.cleanTeam({
     speak: { github: "yes", discord: "everywhere", whatsapp: true, extra: 1 },
-    leaves: { prompts: true, memory: true, transcripts: true, audit: "never" },
+    leaves: { prompts: true, memory: true, transcripts: true, audit: "never", give: "sometimes" },
     seats: { life: "claude", work: "gpt" },
     repos: ["ok/repo", "not a repo", "ok/repo"],
     surprise: { a: 1 },
@@ -35,7 +35,7 @@ test("clean: bad values fall back, unknown keys go, the three never rows cannot 
   assert.equal(s.speak.discord, "builds");       // not one of the three: the default
   assert.equal(s.speak.whatsapp, true);
   assert.equal(s.speak.extra, undefined);
-  assert.deepEqual(s.leaves, { prompts: false, memory: false, transcripts: false, audit: "never" });
+  assert.deepEqual(s.leaves, { prompts: false, memory: false, transcripts: false, audit: "never", give: "ask" });   // not one of the two: ask
   assert.deepEqual(s.seats, { life: "claude", work: "claude" });
   assert.deepEqual(s.repos, ["ok/repo"]);
   assert.equal(s.surprise, undefined);
@@ -98,8 +98,9 @@ test("the system-prompt paragraph, for two settings", () => {
   assert.match(a, /Discord: only the #builds channel\./);
   assert.match(a, /WhatsApp: never\./);
   assert.match(a, /an audit asks marcocyl04-ux first/);
+  assert.match(a, /a past group session leaves only when marcocyl04-ux presses give/);   // #335
 
-  const shut = T.cleanTeam({ me: { login: "fktsai", name: "Frank" }, speak: { github: false, cowork: false, discord: "never", whatsapp: true }, leaves: { audit: "never" } });
+  const shut = T.cleanTeam({ me: { login: "fktsai", name: "Frank" }, speak: { github: false, cowork: false, discord: "never", whatsapp: true }, leaves: { audit: "never", give: "never" } });
   const b = T.speakParagraph(shut);
   assert.match(b, /signed "fktsai's agent"/);
   assert.match(b, /GitHub \(issues, pull requests, comments, reviews\): no\./);
@@ -107,6 +108,7 @@ test("the system-prompt paragraph, for two settings", () => {
   assert.match(b, /Discord: never\./);
   assert.match(b, /WhatsApp: yes\./);
   assert.match(b, /audits are refused/);
+  assert.match(b, /past group sessions are never given/);
   assert.notEqual(a, b);
   // no login yet (gh not signed in): it still says how to sign, never as the person
   assert.match(T.speakParagraph(T.cleanTeam({})), /"<their GitHub login>'s agent"/);

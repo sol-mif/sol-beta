@@ -20,6 +20,11 @@
 // GitHub's other checks: the gate runs no unit tests, and a local file is not something a press trusts.
 // --feature fr-NN runs that feature's evals only (lint, build and e2e always run) and writes no result file. The JSON
 // shape is CONTRACTS.md's, plus `dirty`, `feature`, `known`, `fixed`, `drafts`, `manual`, `base` and `at`.
+// --body-file <path> hands in a PR's body (#837), and only then a fifth step runs, after the evals:
+//   checks  the lines under the body's "**Checks**" (the PR template's three): a line with a command in backticks is
+//           run with bash from the repo root; a line with none is a step in a person's own Sol, listed, never run;
+//           fewer than three lines is red. Ids `check:<n>` (the line's place in the section) and `check:missing`,
+//           never excused. The result then has `checks` too. With no body the run is the four steps it always was.
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -35,12 +40,23 @@ export type GateResult = {
   drafts: string[];     // features whose evals are still a draft: listed, not run
   manual: string[];     // eval lines whose check is manual (the first-timer's): listed, not run
   base: string | null;  // the commit whose specs/baseline.md was read (null: none found, nothing was excused)
+  checks?: { ran: CheckRun[]; manual: number[] };   // only when a PR body was handed in (#837): its check lines, by number
 };
 
 export const RESULT_DIR = ".sol-gate";
 export const resultPath = (root: string, sha: string) => join(root, RESULT_DIR, `${sha}.json`);
 
 const STEPS = ["lint", "build", "e2e", "evals"];
+// a PR's check lines (#837): the names this file picked, in one place. Beside them: the result's key `checks` and
+// runGate's option `body`.
+export const CHECKS = {
+  head: "**Checks**",    // the line of the PR template that opens the section
+  step: "checks",        // the step's name in the result
+  id: "check",           // a failing line is `check:<n>`
+  missing: "missing",    // `check:missing`: fewer lines than `min`, or no section at all
+  min: 3,                // the lines a PR owes
+  flag: "--body-file",   // the program's flag for the file that holds the body
+} as const;
 /** true when this checkout's last full gate run of `sha` was green on a clean tree. For a Sol developer's own "done =
  * green" and the morning run (#485). It is a file anyone on this machine can write, so it is never what a press
  * trusts: the hand-in card (#476) reads CI's "the gate" check on the PR's head instead. */
@@ -174,19 +190,27 @@ export function judge(steps: Step[], baseline: Set<string>): { green: boolean; k
   const judged = steps.map((s) => ({ ...s, ok: s.failed.every(ok) }));
   return { green: judged.every((s) => s.ok), known, fixed, steps: judged };
 }
-const stepOfId = (id: string) => ({ lint: "lint", build: "build", e2e: "e2e", eval: "evals" } as Record<string, string>)[id.split(":")[0]] ?? "";
+const stepOfId = (id: string) => ({ lint: "lint", build: "build", e2e: "e2e", eval: "evals", [CHECKS.id]: CHECKS.step } as Record<string, string>)[id.split(":")[0]] ?? "";
 
 // ---- running things ----
 type Ran = { ok: boolean; out: string; ms: number };
-function sh(cmd: string, args: string[], cwd: string, timeoutMs = 600_000, env: NodeJS.ProcessEnv = process.env): Promise<Ran> {
+// `letGo`: the command runs in a process group of its own, and when the time is up the whole group is stopped and the
+// end does not wait for the pipes (a shell's own child keeps them open), so nothing it started goes on writing into the
+// repo after the gate has moved on
+function sh(cmd: string, args: string[], cwd: string, timeoutMs = 600_000, env: NodeJS.ProcessEnv = process.env, letGo = false): Promise<Ran> {
   const t0 = Date.now();
   return new Promise((ok) => {
     let out = "";
     let p: ReturnType<typeof spawn>;
-    try { p = spawn(cmd, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] }); } catch (e) { ok({ ok: false, out: String(e), ms: 0 }); return; }
+    try { p = spawn(cmd, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"], detached: letGo }); } catch (e) { ok({ ok: false, out: String(e), ms: 0 }); return; }
     const keep = (b: Buffer) => { out += b.toString(); if (out.length > 200_000) out = out.slice(-100_000); };
     p.stdout?.on("data", keep); p.stderr?.on("data", keep);
-    const timer = setTimeout(() => { out += `\n(stopped after ${Math.round(timeoutMs / 1000)} s)`; p.kill("SIGKILL"); }, timeoutMs);
+    const timer = setTimeout(() => {
+      out += `\n(stopped after ${Math.round(timeoutMs / 1000)} s)`;
+      if (!letGo) { p.kill("SIGKILL"); return; }
+      try { process.kill(-p.pid!, "SIGKILL"); } catch { p.kill("SIGKILL"); }   // the command's whole group, its children too
+      p.stdout?.destroy(); p.stderr?.destroy();
+    }, timeoutMs);
     p.on("error", (e) => { clearTimeout(timer); ok({ ok: false, out: out + String(e), ms: Date.now() - t0 }); });
     p.on("close", (code) => { clearTimeout(timer); ok({ ok: code === 0, out, ms: Date.now() - t0 }); });
   });
@@ -356,8 +380,7 @@ export const GOO_LEGACY = [
   "sol/mac/src/SeatScene.tsx", "sol/mac/src/gallery.tsx",
   "sol/mac/src/cowork/CoworkApp.tsx", "sol/mac/src/cowork/Person.tsx", "sol/mac/src/cowork/StableLine.tsx", "sol/mac/src/cowork/bits.tsx", "sol/mac/src/cowork/v3/NeedsMe.tsx",
   "sol/mac/src/creature/Voice.tsx", "sol/mac/src/creature/indicators.tsx",
-  "sol/mac/src/firstrun/FirstRun.tsx", "sol/mac/src/firstrun/goo.tsx",
-  "sol/mac/src/home/Side.tsx", "sol/mac/src/work/LeashWheel.tsx",
+  "sol/mac/src/work/LeashWheel.tsx",
 ];
 const FACE_CODE = /^sol\/mac\/src\/.+\.(?:tsx?|jsx?|mjs)$/;
 const GOO_WORDS = /\b(?:JOBS|Bands|budPath)\b/;
@@ -439,15 +462,27 @@ async function buildStep(root: string, say: (s: string) => void): Promise<Step> 
 
 // ---- e2e ----
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "failed";
+// The e2e step's time cap grows with the suite (#1583): 15 s a path, never under 15 minutes. A path takes 5 to 10 s
+// (107 paths ran in 1064 s on the slowest runner, nucbox, and in 530 to 657 s on the Legions), so 15 s leaves half
+// again for a loaded machine. A count that cannot be read falls back to 25 minutes, the flat cap this replaced.
+export const E2E_MS_PER_PATH = 15_000, E2E_FLOOR_MS = 900_000, E2E_FALLBACK_MS = 1_500_000;
+export const e2eCapMs = (paths: number | null) => paths && paths > 0 ? Math.max(E2E_FLOOR_MS, paths * E2E_MS_PER_PATH) : E2E_FALLBACK_MS;
 async function e2eStep(root: string, say: (s: string) => void): Promise<Step> {
   const t0 = Date.now();
   const dist = join(root, RESULT_DIR, "face");
   if (!existsSync(join(dist, "index.html"))) { say("  e2e: no production build of the face to open (the build step failed)"); return { name: "e2e", ok: false, ms: 0, failed: ["e2e:face-build-missing"] }; }
-  // 15 minutes: the break paths (#603) are 48 of the paths, 6 to 10 s each; the gate's CI runs on GitHub's machines
-  const r = await sh(process.execPath, [join(root, "sol/test/e2e/run.mjs"), "--dist", dist, "--json"], root, 900_000);
+  const run = join(root, "sol/test/e2e/run.mjs");
+  let count: number | null = null;
+  try { count = JSON.parse((await sh(process.execPath, [run, "--count"], root, 60_000)).out.trim().split("\n").filter((l) => l.startsWith("{")).pop() ?? "").count ?? null; } catch { /* the fallback cap */ }
+  const cap = e2eCapMs(count);
+  const r = await sh(process.execPath, [run, "--dist", dist, "--json"], root, cap);
   let paths: { name: string; ok: boolean; ms: number; error?: string }[] = [];
   try { paths = JSON.parse(r.out.trim().split("\n").filter((l) => l.startsWith("{")).pop() ?? "").paths; } catch { /* below */ }
-  if (!Array.isArray(paths) || !paths.length) { say("  e2e: the paths did not run:\n" + tail(r.out).replace(/^/gm, "    ")); return { name: "e2e", ok: false, ms: Date.now() - t0, failed: ["e2e:did-not-run"] }; }
+  if (!Array.isArray(paths) || !paths.length) {
+    const why = r.ms >= cap ? `stopped at the cap, ${Math.round(cap / 1000)} s for ${count ?? "an uncounted number of"} paths` : "the paths did not run";
+    say(`  e2e: ${why}:\n` + tail(r.out).replace(/^/gm, "    "));
+    return { name: "e2e", ok: false, ms: Date.now() - t0, failed: ["e2e:did-not-run"] };
+  }
   for (const p of paths) say(`  e2e: ${p.name} ${p.ok ? "ok" : `FAILED: ${p.error ?? ""}`} (${(p.ms / 1000).toFixed(1)} s)`);
   // a path's failure is keyed by where it failed, so a listed one never hides a new failure of the same path
   const failed = paths.filter((p) => !p.ok).map((p) => `e2e:${p.name}:${slug(p.error ?? "failed")}`);
@@ -456,6 +491,17 @@ async function e2eStep(root: string, say: (s: string) => void): Promise<Step> {
 }
 
 // ---- evals ----
+/** node's test runner ran no test (#1540): a name pattern that matches nothing, or a test renamed since, still exits 0.
+ * Its summary then says "tests 0" (spec "ℹ", tap "#"), or, on the Node we run, counts each test file as the one test it
+ * ran ("✔ test/x.test.ts (40ms)", "ℹ tests 1"). Either way, for any one run in the check's output, the check is red. */
+export function ranNoTest(out: string): boolean {
+  let from = 0;
+  for (let re = /^\s*(?:ℹ|#)\s*tests (\d+)\s*$/gm, m; (m = re.exec(out)); from = re.lastIndex) {
+    const files = out.slice(from, m.index).match(/^✔ \S+\.[cm]?[jt]sx? \(/gm)?.length ?? 0;
+    if (Number(m[1]) <= files) return true;
+  }
+  return false;
+}
 const CHECK_MS = Number(process.env.SOL_GATE_CHECK_TIMEOUT ?? 300) * 1000;
 export async function evalStep(root: string, feature: string | null, say: (s: string) => void): Promise<{ step: Step; evals: EvalRun[]; drafts: string[]; manual: string[] }> {
   const t0 = Date.now(), evals: EvalRun[] = [], drafts: string[] = [], manual: string[] = [], failed: string[] = [];
@@ -476,16 +522,80 @@ export async function evalStep(root: string, feature: string | null, say: (s: st
       if (l.manual) { manual.push(`${f.feature}:${l.id}`); continue; }
       if (!l.check) { evals.push({ feature: f.feature, id: l.id, ok: false }); failed.push(id); say(`  evals: ${f.feature} ${l.id} has no check an agent can run`); continue; }
       const r = await sh("bash", ["-c", l.check], root, CHECK_MS);
-      evals.push({ feature: f.feature, id: l.id, ok: r.ok });
-      say(`  evals: ${f.feature} ${l.id} ${r.ok ? "pass" : "FAIL"}: ${l.what.slice(0, 80)}`);
-      if (!r.ok) { failed.push(id); say(tail(r.out, 6).replace(/^/gm, "    ")); }
+      const empty = r.ok && ranNoTest(r.out), ok = r.ok && !empty;
+      evals.push({ feature: f.feature, id: l.id, ok });
+      say(`  evals: ${f.feature} ${l.id} ${ok ? "pass" : "FAIL"}: ${l.what.slice(0, 80)}`);
+      if (empty) { failed.push(id); say("    the check ran no test"); }
+      else if (!ok) { failed.push(id); say(tail(r.out, 6).replace(/^/gm, "    ")); }
     }
   }
   return { step: { name: "evals", ok: !failed.length, ms: Date.now() - t0, failed }, evals, drafts, manual };
 }
 
+// ---- a PR's check lines (#837) ----
+// The PR template's "Checks" are three lines a reviewer can run to see the change work, one each: a command in
+// backticks, or a step in their own Sol, with what they should see. The gate runs the commands when the body is handed
+// in. They are the PR author's own words and no press approved them, so they run as whoever runs the gate, with all
+// that user can read: the gate under a user with no secrets is #818, and a PR's body is handed in by CI only after it.
+export type CheckLine = { n: number; text: string; cmd: string | null };   // cmd null: a step in a person's own Sol
+export type CheckRun = { n: number; ok: boolean };
+
+/** the first text in backticks (pure), as a markdown reader shows it: ``a `b` `` is "a `b`"; null when there is none */
+const firstCode = (text: string): string | null => {
+  for (let re = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)/g, m; (m = re.exec(text)); ) if (m[2].trim()) return m[2].trim();
+  return null;
+};
+
+/** the Checks section of a PR body (pure): the list lines under the first line that starts with "**Checks**", up to
+ * the next heading (a line that starts with "**" or "#") or the first blank line after its lines. `n` is a line's
+ * place among them, an empty "- " counted and not kept, so the number is the one its author sees. A line indented
+ * under another, or with no list mark, is words. Nothing in a fenced block is read (a body may show the template). */
+export function parseChecks(body: string): { found: boolean; lines: CheckLine[] } {
+  const lines: CheckLine[] = [];
+  let found = false, fence = "", n = 0, indent = -1;
+  for (const raw of body.split(/\r?\n/)) {   // a body written in GitHub's own box has \r\n
+    // a fence is ``` or ~~~, and only one of the same kind, at least as long, ends it
+    const f = /^\s*(`{3,}|~{3,})/.exec(raw)?.[1];
+    if (f && !fence) { fence = f; continue; }
+    if (f && f[0] === fence[0] && f.length >= fence.length) { fence = ""; continue; }
+    if (fence) continue;
+    if (!found) { found = raw.startsWith(CHECKS.head); continue; }
+    if (raw.startsWith("**") || /^#{1,6}\s/.test(raw)) break;
+    if (!raw.trim()) { if (n) break; continue; }
+    const m = /^(\s*)[-*](?:\s+(.*))?$/.exec(raw);
+    if (!m) continue;
+    if (indent < 0) indent = m[1].length;
+    if (m[1].length > indent) continue;
+    n++;
+    const text = (m[2] ?? "").trim();
+    if (text) lines.push({ n, text, cmd: firstCode(text) });
+  }
+  return { found, lines };
+}
+
+/** the checks step: each command line of the body's Checks run with bash from the repo root, one after the other, a
+ * failing one named and the rest still run; a step in a person's own Sol listed, its words never run */
+export async function checksStep(root: string, body: string, say: (s: string) => void): Promise<{ step: Step; ran: CheckRun[]; manual: number[] }> {
+  const t0 = Date.now(), ran: CheckRun[] = [], manual: number[] = [], failed: string[] = [];
+  const doc = parseChecks(body);
+  // three lines are owed: a body with fewer, or with no section, is red, never "nothing to run"
+  if (doc.lines.length < CHECKS.min) {
+    failed.push(`${CHECKS.id}:${CHECKS.missing}`);
+    say(doc.found ? `  checks: the PR body has ${doc.lines.length} of the ${CHECKS.min} check lines (under ${CHECKS.head}, each a line that starts with "- ": a command in backticks, or a step in a person's own Sol)`
+      : `  checks: the PR body has no ${CHECKS.head} section`);
+  }
+  for (const l of doc.lines) {
+    if (!l.cmd) { manual.push(l.n); say(`  checks: ${l.n} is a step in a person's own Sol, not run: ${l.text.slice(0, 80)}`); continue; }
+    const r = await sh("bash", ["-c", l.cmd], root, CHECK_MS, process.env, true);
+    ran.push({ n: l.n, ok: r.ok });
+    say(`  checks: ${l.n} ${r.ok ? "pass" : "FAIL"}: \`${l.cmd.slice(0, 80)}\``);
+    if (!r.ok) { failed.push(`${CHECKS.id}:${l.n}`); say(tail(r.out, 6).replace(/^/gm, "    ")); }
+  }
+  return { step: { name: CHECKS.step, ok: !failed.length, ms: Date.now() - t0, failed }, ran, manual };
+}
+
 // ---- the run ----
-export async function runGate(root: string, opts: { feature?: string | null; say?: (s: string) => void } = {}): Promise<GateResult> {
+export async function runGate(root: string, opts: { feature?: string | null; body?: string | null; say?: (s: string) => void } = {}): Promise<GateResult> {
   const say = opts.say ?? (() => {});
   const sha = git(root, "rev-parse", "HEAD");
   // uncommitted changes, or new files not yet added (ignored ones aside): the run is not the commit's
@@ -499,6 +609,9 @@ export async function runGate(root: string, opts: { feature?: string | null; say
   say("evals…");
   const ev = await evalStep(root, opts.feature ?? null, say);
   steps.push(ev.step);
+  // a PR's check lines, only when its body was handed in (#837): with none, the run is the four steps it always was
+  let ck: Awaited<ReturnType<typeof checksStep>> | null = null;
+  if (typeof opts.body === "string") { say("checks…"); ck = await checksStep(root, opts.body, say); steps.push(ck.step); }
   const listed = base ? baselineIds(baselineAt(root, base)) : new Set<string>();
   for (const id of listed) if (!excusable(id)) say(`  baseline: "${id}" is listed but never excused (only an e2e path's failure point or an eval line can be)`);
   const j = judge(steps, listed);
@@ -507,7 +620,7 @@ export async function runGate(root: string, opts: { feature?: string | null; say
   try { moved = git(root, "rev-parse", "HEAD") !== sha || git(root, "status", "--porcelain") !== status0; } catch { /* moved */ }
   if (moved) say("  the commit or the files changed during the run: this result does not count for the commit");
   const r: GateResult = { sha, green: j.green, steps: j.steps, evals: ev.evals, dirty: status0 !== "" || moved, feature: opts.feature ?? null, at: new Date().toISOString(),
-    known: j.known, fixed: j.fixed, drafts: ev.drafts, manual: ev.manual, base };
+    known: j.known, fixed: j.fixed, drafts: ev.drafts, manual: ev.manual, base, ...(ck ? { checks: { ran: ck.ran, manual: ck.manual } } : {}) };
   // only a full run is the commit's result; a run narrowed to one feature is printed, never written
   if (!r.feature) {
     mkdirSync(join(root, RESULT_DIR), { recursive: true });
@@ -526,6 +639,10 @@ export function summary(r: GateResult): string {
   }
   const ran = r.evals.length, passed = r.evals.filter((e) => e.ok).length;
   out.push(`  evals: ${ran ? `${passed}/${ran} pass` : "none approved yet"}${r.drafts.length ? ` · not run (draft): ${r.drafts.join(", ")}` : ""}${r.manual.length ? ` · manual (the first-timer's): ${r.manual.join(", ")}` : ""}`);
+  if (r.checks) {
+    const n = r.checks.ran.length, ok = r.checks.ran.filter((c) => c.ok).length;
+    out.push(`  checks: ${n ? `${ok}/${n} pass` : "no command to run"}${r.checks.manual.length ? ` · a step in a person's own Sol, not run: ${r.checks.manual.join(", ")}` : ""}`);
+  }
   if (r.known.length) out.push(`  already broken before this change (specs/baseline.md), not counted: ${r.known.join(", ")}`);
   if (r.fixed.length) out.push(`  fixed since the baseline, its line can go from specs/baseline.md: ${r.fixed.join(", ")}`);
   out.push(r.feature ? "  result: not written (a run narrowed to one feature is never the commit's result)" : `  result: ${RESULT_DIR}/${r.sha}.json`);
@@ -535,17 +652,21 @@ export function summary(r: GateResult): string {
 const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
   const a = process.argv.slice(2);
-  let feature: string | null = null, json = false;
+  let feature: string | null = null, json = false, bodyFile: string | null = null;
   for (let i = 0; i < a.length; i++) {
     if (a[i] === "--json") json = true;
     else if (a[i] === "--feature" && /^fr-\d{2,}$/.test(a[i + 1] ?? "")) feature = a[++i];
-    else { console.error("gate: bash sol/gate [--feature fr-NN] [--json]"); process.exit(2); }
+    else if (a[i] === CHECKS.flag && a[i + 1]) bodyFile = a[++i];
+    else { console.error(`gate: bash sol/gate [--feature fr-NN] [${CHECKS.flag} <path>] [--json]`); process.exit(2); }
   }
+  // a body that was meant and cannot be read is "could not run": the run is never the old four steps by accident
+  let body: string | null = null;
+  if (bodyFile !== null) { try { body = readFileSync(resolve(bodyFile), "utf8"); } catch { console.error(`gate: the PR body ${bodyFile} cannot be read`); process.exit(2); } }
   let root: string;
   try { root = git(process.cwd(), "rev-parse", "--show-toplevel"); } catch { console.error("gate: not inside the repository"); process.exit(2); }
   const say = (s: string) => (json ? process.stderr : process.stdout).write(s + "\n");
-  runGate(root, { feature, say }).then((r) => {
-    if (json) process.stdout.write(JSON.stringify({ sha: r.sha, green: r.green, steps: r.steps, evals: r.evals, dirty: r.dirty, feature: r.feature, known: r.known, fixed: r.fixed, drafts: r.drafts, manual: r.manual, base: r.base }) + "\n");
+  runGate(root, { feature, body, say }).then((r) => {
+    if (json) process.stdout.write(JSON.stringify({ sha: r.sha, green: r.green, steps: r.steps, evals: r.evals, dirty: r.dirty, feature: r.feature, known: r.known, fixed: r.fixed, drafts: r.drafts, manual: r.manual, base: r.base, ...(r.checks ? { checks: r.checks } : {}) }) + "\n");
     else console.log("\n" + summary(r));
     process.exit(r.green ? 0 : 1);
   }, (e) => { console.error(`gate: could not run: ${(e as Error)?.stack ?? e}`); process.exit(2); });

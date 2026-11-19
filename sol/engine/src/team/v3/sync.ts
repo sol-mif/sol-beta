@@ -4,6 +4,7 @@
 // makes no duplicate. A pull asks for what the cloud kept after the cursor and merges it (trail.merge checks every
 // signature and chain again: the cloud is never trusted to fold). The cloud away is not an error: the events wait.
 import type { Bad, Trail, TrailEvent } from "./trail.js";
+import { quietFetch } from "../../quiet.js";
 
 /** what Sync needs of the cloud: append and since for a project, nothing else */
 export type Cloud = {
@@ -15,6 +16,16 @@ export type PushResult = { sent: number; waiting: number; refused: { id: string;
 export type PullResult = { added: TrailEvent[]; bad: Bad[]; away?: string };
 
 const BATCH = 200;
+/** the most one push call carries, in bytes of its events: under the cloud's 2 MB a call (cloud/src/trail.ts
+ *  TRAIL_BODY_MAX), with room for the rest of the body. 200 events of 64 KB would be 13 MB: refused, and every event
+ *  after them would wait for good (#987's seventeenth review, F7). One event always goes: it is at most 64 KB */
+export const PUSH_BYTES = 1_500_000;
+/** the oldest of these events that fit in PUSH_BYTES, at least one (pure) */
+export function underBytes<T>(out: T[]): T[] {
+  let n = 0, i = 0;
+  for (; i < out.length; i++) { n += Buffer.byteLength(JSON.stringify(out[i])) + 1; if (n > PUSH_BYTES && i > 0) break; }
+  return out.slice(0, i);
+}
 const line = (e: unknown) => String((e as Error)?.message ?? e).split("\n")[0].slice(0, 160);
 
 /** the cloud's trail over HTTP (sol/cloud/src/trail.ts): base is the cloud's https origin, ticket the hub ticket a
@@ -23,6 +34,7 @@ export function httpCloud(o: { base: string; ticket: () => string | Promise<stri
   const f = o.fetch ?? fetch;
   const url = (project: string, q = "") => `${o.base.replace(/\/+$/, "")}/relay/rooms/${encodeURIComponent(project)}/trail${q}`;
   const call = async (u: string, init: RequestInit = {}) => {
+    if ((init.method ?? "GET").toUpperCase() !== "GET") quietFetch(u);   // a quiet Sol writes nothing to the trail (#1293); reads go
     const r = await f(u, { ...init, headers: { ...(init.headers ?? {}), authorization: `Bearer ${await o.ticket()}` }, signal: AbortSignal.timeout(15_000) });
     const v = await r.json().catch(() => null) as Record<string, unknown> | null;
     if (!r.ok) throw new Error(typeof v?.error === "string" ? v.error : `the cloud answered ${r.status}`);
@@ -57,13 +69,13 @@ export class Sync {
   /** whether one event is still waiting to send (the item's "waiting to send" chip) */
   isWaiting(id: string): boolean { return this.trail.isWaiting(id); }
 
-  /** the project's waiting events to the cloud, oldest first, a batch at a time; kept ones are marked sent, refused ones
+  /** the project's waiting events to the cloud, oldest first, a batch at a time (at most PUSH_BYTES a call); kept ones are marked sent, refused ones
    *  stop waiting with their line, and nothing is lost when the cloud is away */
   async push(project: string): Promise<PushResult> {
     const s = this.s(project), refused: PushResult["refused"] = [];
     let sent = 0;
     for (let round = 0; round < 1000; round++) {
-      const out = this.trail.waiting(project, BATCH);
+      const out = underBytes(this.trail.waiting(project, BATCH));
       if (!out.length) break;
       let r: Awaited<ReturnType<Cloud["append"]>>;
       try { r = await this.cloud.append(project, out); }

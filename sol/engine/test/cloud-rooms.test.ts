@@ -251,3 +251,20 @@ test("forgetting a room on a cloud I have an account on leaves it there, cloud o
     "DELETE https://cloud.example.net/relay/rooms/CCCCCC/members/me Bearer sol1.t",
     "DELETE https://cloud.example.net/relay/rooms/DDDDDD/members/me Bearer sol1.t"]);
 });
+
+test("who sits at each room (#1537): the room in use from the members read, a cloud room from its cloud, any other room me alone", async () => {
+  const { roomPeople } = await import("../src/team/rooms.ts");
+  const calls: string[] = [];
+  const f = (async (url: string, init: RequestInit = {}) => {
+    calls.push(`${init.method ?? "GET"} ${url} ${String((init.headers as Record<string, string>)?.authorization ?? "")}`);
+    if (url.includes("BBBBBB")) return new Response("{}", { status: 404 });
+    return new Response(JSON.stringify({ members: [{ login: "mei", at: 1 }, { login: "Frank", at: 2 }, { login: "arjun", at: 3 }], maker: "mei" }), { status: 200 });
+  }) as typeof fetch;
+  const t = S.cleanTeam({ me: { login: "frank" }, rooms: [
+    { id: "a", name: "A", provider: "cloud", hub: HUB, code: "AAAAAA", joined: true },
+    { id: "b", name: "B", provider: "cloud", hub: HUB, code: "BBBBBB", joined: true },
+    { id: "z", name: "Z", repos: ["o/z"], hub: "" }], room: "z" });
+  const people = await roomPeople({ team: () => t, fetch: f, token: async () => "", ticket: async () => "sol1.t", cloudAt: () => true }, "frank", () => ["isaac", "frank", "marco"]);
+  assert.deepEqual(people, { a: ["frank", "mei", "arjun"], b: ["frank"], z: ["frank", "isaac", "marco"] });
+  assert.deepEqual(calls.sort(), ["GET https://cloud.example.net/relay/rooms/AAAAAA/members Bearer sol1.t", "GET https://cloud.example.net/relay/rooms/BBBBBB/members Bearer sol1.t"]);
+});

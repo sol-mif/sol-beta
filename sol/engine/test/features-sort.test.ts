@@ -60,8 +60,8 @@ test("title and labels: the type as the first word and the one type label, type:
 });
 
 test("proposals: the one feature sharing the deepest folder, else a lead decides; the agent's lines read", () => {
-  const small = featuresIn({ features: [F("fr-10", "notch", "product", ["sol/mac/src/notch/*.tsx"]), F("fr-11", "anticipate", "product", ["sol/engine/src/anticipate.ts"]), F("fr-12", "grab", "product", ["sol/engine/src/grab.ts"])] });
-  assert.equal(proposeFor(small, "sol/mac/src/notch/lib/moon.ts").feature, "fr-10");
+  const small = featuresIn({ features: [F("fr-05", "desk", "product", ["sol/mac/src/desk/*.tsx"]), F("fr-11", "anticipate", "product", ["sol/engine/src/anticipate.ts"]), F("fr-12", "grab", "product", ["sol/engine/src/grab.ts"])] });
+  assert.equal(proposeFor(small, "sol/mac/src/desk/lib/card.ts").feature, "fr-05");
   assert.equal(proposeFor(small, "sol/engine/src/voice.ts").feature, "", "two features share that folder: a lead decides");
   assert.equal(proposeFor(MAP, "sol/phone/x.swift").feature, "", "only sol/ in common: no proposal");
   const said = agentProposals("sol/phone/x.swift -> fr-07\n- `sol/a.ts` -> fr-99\nnoise\nsol/other.ts -> none", ["sol/phone/x.swift", "sol/a.ts"], MAP);

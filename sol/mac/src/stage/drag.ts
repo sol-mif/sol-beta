@@ -31,6 +31,8 @@ export type WholeDrag = {
   onCarry?: (row: string) => void;
   /** the release, committed: called inside flushSync once every spring rests */
   onLand: (r: Release) => void;
+  /** #1001: let go and settling on its springs: onLand follows when they rest (a ⌘Z meanwhile waits for it) */
+  onLanding?: () => void;
   /** let go past the edge after the hold: the block's rect on the screen */
   onPop: (screen: Rect) => void;
   /** B11: where the hand's block shows, each frame it is drawn while held (the drop preview), and once let go */
@@ -125,6 +127,7 @@ export function wholeDrag(d: WholeDrag): void {
     // counted down only once every spring has started (armed), and finished once: under reduced motion a spring rests
     // inside its own .to(), which would otherwise commit before the next one starts (#773 B10-2)
     let left = 0, armed = false, done = false;
+    if (commit) d.onLanding?.();
     const finish = () => {
       if (done) return;
       done = true;

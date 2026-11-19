@@ -1,5 +1,5 @@
 // The one socket a page keeps to an engine (#17, sleep and wake 2026-10-20). Before this, every hook of a page opened
-// its own (useEngine, renovation, useNotch, useDoor) and noticed trouble only when the browser fired `close`; after the
+// its own (useEngine, renovation, useDoor) and noticed trouble only when the browser fired `close`; after the
 // Mac slept, a socket could look open for minutes while nothing came through it, and four of them reconnected at once.
 //
 // One link per engine url per page, shared by whoever asks: messages are parsed once and handed to every listener;
@@ -14,7 +14,25 @@
 //   the connect timeout: a socket still opening after 8 s is given up (a stopped engine accepts the connection and
 //     never answers it).
 // A dropped socket is replaced after 1, 1.5, 2.5, 4, then every 5 s; a wake skips the wait. PROTOCOL.md, round 15.
+// How much one message may carry (#1448, the app half of #1438): the engine closes a socket with 1009 on a message over
+// FACE_MAX_PAYLOAD (100 MiB, engine/src/face-socket.ts; PROTOCOL.md). The boxes ask tooLarge first, under that with
+// room for the words, and send nothing over it; a message over WIRE_MAX is not put on the socket (send says false);
+// and a 1009 close is said to the page as `sol:too-large` before the socket is replaced. Here, not in a file of its
+// own, because the fence imports nothing a seat may edit.
 // Part of the fence: the seat never edits this file (home/CLAUDE.md).
+
+export const SEND_MAX = 96 * 1024 * 1024;        // attachments' base64 in one message, in characters
+export const FILES_MAX = (SEND_MAX / 4) * 3;     // the same as the files' own size, the number a person reads (72 MB)
+export const WIRE_MAX = 99 * 1024 * 1024;        // the whole message as sent
+export const TOO_LARGE = 1009;                   // the close code of a message over the engine's cap
+const mb = (n: number) => `${Math.round(n / 1024 / 1024)} MB`;
+// the files' own size from their base64
+export const filesSize = (fs: readonly { dataBase64: string }[]) => fs.reduce((n, f) => n + Math.floor((f.dataBase64.length * 3) / 4), 0);
+// the line a person reads when the files are too large to send, or null when they go
+export function tooLarge(fs: readonly { dataBase64: string }[]): string | null {
+  const n = fs.reduce((s, f) => s + f.dataBase64.length, 0);
+  return n > SEND_MAX ? `Attachments too large: ${mb(filesSize(fs))}, the limit is ${mb(FILES_MAX)}. Nothing was sent.` : null;
+}
 
 export type Link = {
   send: (o: object) => boolean;                          // false when the socket is not open (nothing is queued)
@@ -39,7 +57,13 @@ export function link(url: string): Link {
   let retry: number | undefined, opening: number | undefined, probe: number | undefined;
   const log = (s: string) => console.info(`[sol link] ${s}`);
   const tell = (up: boolean) => { if (up === isUp) return; isUp = up; for (const f of [...linkSubs]) f(up); };
-  const raw = (o: object) => { if (ws?.readyState !== 1) return false; ws.send(JSON.stringify(o)); return true; };
+  const raw = (o: object) => {
+    if (ws?.readyState !== 1) return false;
+    const s = JSON.stringify(o);
+    if (s.length > WIRE_MAX) { log(`not sent: ${Math.round(s.length / 1048576)} MiB is over ${WIRE_MAX / 1048576} MiB`); return false; }
+    ws.send(s);
+    return true;
+  };
 
   // let go of a socket for good: no handler of it fires again, whatever it does next
   const drop = (why: string) => {
@@ -68,7 +92,11 @@ export function link(url: string): Link {
       tell(true);
       raw({ type: "ping", at: heard });   // learns at once whether this engine answers pings
     };
-    s.onclose = () => { if (ws !== s) return; ws = null; window.clearTimeout(opening); window.clearTimeout(probe); tell(false); later(); };
+    s.onclose = (ev) => {
+      if (ws !== s) return;
+      if (ev?.code === TOO_LARGE) { log("closed by the engine: a message was too large"); window.dispatchEvent(new CustomEvent("sol:too-large", { detail: url })); }
+      ws = null; window.clearTimeout(opening); window.clearTimeout(probe); tell(false); later();
+    };
     s.onmessage = (ev) => {
       if (ws !== s || typeof ev.data !== "string") return;
       heard = Date.now();

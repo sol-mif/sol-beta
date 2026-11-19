@@ -1,5 +1,5 @@
-// The timeline (B1, #424, part of #413): every release drawn, who runs which, what never made it. One answer,
-// team.timeline, for Cowork's drawing (mac/src/cowork/Timeline.tsx) and the small one in Settings.
+// The timeline (B1, #424, part of #413): every release drawn, who runs which, what never made it. Read by the v3 people
+// wire and team.releases (releases.ts); its own wire message and Cowork's drawing went with #1299 and #1376.
 //
 // What it is built from:
 // - the releases: the `dev-*` tags (#418's 9am release). Before the first of them, and while there is none at all, the
@@ -13,8 +13,7 @@
 //
 // buildLine and placePeople are pure (test/timeline.test.ts). Reading is never at engine start: the first ask reads git
 // (and GitHub, each read with a timeout), the answer is kept in memory and on disk (timeline.json beside Work's state),
-// and an ask while the kept one is older than five minutes answers it at once and reads again behind it; the faces are
-// told the new one (onTimeline).
+// and an ask while the kept one is older than five minutes answers it at once and reads again behind it.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -33,12 +32,14 @@ export type MainCommit = { sha: string; at: string; subject: string; body?: stri
 export type PrRead = {
   number: number; title: string; author?: string; url?: string; state: "open" | "closed" | "merged";
   createdAt?: string; closedAt?: string; mergedAt?: string; sentBack?: { at: string; by?: string }; draft?: boolean; broke?: boolean;
+  /** a PR that wears broke: its latest "**This broke**: …" words (the night pass writes file:line and severity there) */
+  brokeSaid?: string;
 };
 /** the review session's beta word on the digest: "the dev release of <release>" passed or held */
 export type BetaWord = { release: string; verdict: "pass" | "hold"; at: string; by?: string };
 
 /** a change folded into a release, and its way: handed in → folded → the release it came out in → beta */
-export type Change = { number: number; title: string; author?: string; url?: string; handedIn?: string; folded: string; broke?: true; release?: string; releaseAt?: string; beta?: string; betaAt?: string };
+export type Change = { number: number; title: string; author?: string; url?: string; handedIn?: string; folded: string; broke?: true; brokeSaid?: string; release?: string; releaseAt?: string; beta?: string; betaAt?: string };
 export type Release = { tag: string; sha: string; at: string; kind: "dev" | "stable" | "next"; beta: boolean; held?: boolean; latest?: true; changes: Change[] };
 /** a side branch: it left the line at `from` (a release's tag) and stopped there. Looked at, never run. */
 export type Side = { kind: "severe" | "closed" | "held"; from: string; at: string; title: string; why: string; number?: number; author?: string; url?: string; by?: string };
@@ -138,7 +139,7 @@ export function buildLine(a: { tags: TagRef[]; commits: MainCommit[]; betaShas?:
     const f = foldOf(c);
     if (!f) return null;
     const p = prOf.get(f.number);
-    return { number: f.number, title: p?.title || f.title, ...(p?.author ? { author: p.author } : {}), ...(p?.url ? { url: p.url } : {}), ...(p?.createdAt ? { handedIn: p.createdAt } : {}), folded: c.at, ...(p?.broke ? { broke: true as const } : {}) };
+    return { number: f.number, title: p?.title || f.title, ...(p?.author ? { author: p.author } : {}), ...(p?.url ? { url: p.url } : {}), ...(p?.createdAt ? { handedIn: p.createdAt } : {}), folded: c.at, ...(p?.broke ? { broke: true as const } : {}), ...(p?.broke && p.brokeSaid ? { brokeSaid: p.brokeSaid } : {}) };
   };
   let prev = bound ? posOf(bound.sha) : undefined;
   for (const r of shown) {
@@ -265,6 +266,15 @@ export function severeOf(comments: { body?: string; createdAt?: string; author?:
 }
 
 /** a PR's label names (pure) */
+/** a PR's latest "**This broke**: …" words, its first line (pure; broke.ts brokeWords, the night pass's brokeWhy) */
+export function brokeSaidOf(comments: { body?: string }[]): string {
+  let w = "";
+  for (const c of comments) {
+    const m = /^\*\*This broke\*\*:\s*(.+)/.exec(String(c?.body ?? "").trim());
+    if (m) w = m[1].split("\n")[0].trim();
+  }
+  return w;
+}
 export const labelsOf = (p: { labels?: { name?: string }[] }) => (Array.isArray(p.labels) ? p.labels : []).map((l) => String(l?.name ?? ""));
 /** sent back severe (pure): #421's label `sent-back:severe` says so (a slight one the morning made severe has no severe
  *  comment), when from the last severe comment, else the PR's last update; without the label, the comments alone */
@@ -317,7 +327,7 @@ export async function readLine(d: TimelineDeps): Promise<Built> {
         state: String(p.state ?? "").toUpperCase() === "MERGED" ? "merged" as const : String(p.state ?? "").toUpperCase() === "CLOSED" ? "closed" as const : "open" as const,
         ...(p.isDraft === true ? { draft: true } : {}), ...(p.createdAt ? { createdAt: String(p.createdAt) } : {}), ...(p.closedAt ? { closedAt: String(p.closedAt) } : {}), ...(p.mergedAt ? { mergedAt: String(p.mergedAt) } : {}),
         ...((s) => (s ? { sentBack: s } : {}))(sentBackOf(Array.isArray(p.comments) ? p.comments : [], labelsOf(p), String(p.updatedAt ?? p.createdAt ?? ""))),
-        ...(labelsOf(p).includes(BROKE) ? { broke: true } : {}),
+        ...(labelsOf(p).includes(BROKE) ? { broke: true, ...((w) => (w ? { brokeSaid: w } : {}))(brokeSaidOf(Array.isArray(p.comments) ? p.comments : [])) } : {}),
       }));
     } catch { prs = []; }
     const found = await within(d.gh(["issue", "list", "--repo", repo, "--state", "all", "--search", `"Night digest" in:title`, "--json", "number,title", "--limit", "5"]), 15_000, "");
@@ -341,9 +351,6 @@ export const TTL = 5 * 60_000;
 let kept: (Built & { t: number }) | null = null;
 let reading: Promise<Built> | null = null;
 let file = "";
-const told = new Set<() => void>();
-/** told each time a read finishes (wire.ts asks timelineNow again and pushes it to the Cowork faces) */
-export const onTimeline = (fn: () => void) => { told.add(fn); return () => told.delete(fn); };
 /** where it is kept on disk (wire.ts: beside Work's state); read at the first ask, never at start */
 export function keepTimelineIn(path: string) { file = path; }
 function readKept() {
@@ -358,32 +365,29 @@ function keep(b: Built) {
   if (!file) return;
   try { mkdirSync(join(file, ".."), { recursive: true }); writeFileSync(file + ".tmp", JSON.stringify(kept)); renameSync(file + ".tmp", file); } catch { /* it stays in memory */ }
 }
-let behind = false;   // a read behind a stale answer is going: the faces are told when it is done
 /** a read that came back worse than the kept one (pure): GitHub or git failed under it. It never replaces a good line:
  *  the kept one stays, says the newer read failed, and is read again on the next ask */
 export function worse(b: Line, had: Line | undefined): boolean {
   if (!had || !had.releases.length) return false;
   return !!b.error || !b.releases.length;
 }
-function readAgain(d: TimelineDeps, tell: boolean): Promise<Built> {
-  behind ||= tell;
+function readAgain(d: TimelineDeps): Promise<Built> {
   reading ??= readLine(d).then((b) => {
     if (kept && worse(b.line, kept.line)) {
       kept = { ...kept, line: { ...kept.line, error: `the last read failed (${b.line.error ?? "git said nothing"}); this is the one before it` } };
       return kept;
     }
     keep(b);
-    if (behind) for (const fn of told) { try { fn(); } catch { /* a listener's own */ } }
     return b;
-  }).finally(() => { reading = null; behind = false; });
+  }).finally(() => { reading = null; });
   return reading;
 }
 
-/** team.timeline: the kept line (read now when there is none, or `fresh`), with everyone placed on it as they are now */
+/** the kept line (read now when there is none, or `fresh`), with everyone placed on it as they are now */
 export async function timelineNow(d: TimelineDeps, a: { me: string; people: { login: string; version?: SolVersion | null }[]; fresh?: boolean }): Promise<Timeline> {
   readKept();
-  if (!kept || a.fresh) await readAgain(d, false);
-  else if (Date.now() - kept.t > TTL) void readAgain(d, true).catch(() => {});
+  if (!kept || a.fresh) await readAgain(d);
+  else if (Date.now() - kept.t > TTL) void readAgain(d).catch(() => {});
   const b = kept!;
   return { ...b.line, me: a.me, people: placePeople(b.line, a.people, a.me, b.spots) };
 }
@@ -391,8 +395,8 @@ export async function timelineNow(d: TimelineDeps, a: { me: string; people: { lo
  *  there is none, behind a stale one as timelineNow does; never anyone placed on it */
 export async function releasesNow(d: TimelineDeps): Promise<{ releases: Release[]; spots: Record<string, string>; error?: string }> {
   readKept();
-  if (!kept) await readAgain(d, false);
-  else if (Date.now() - kept.t > TTL) void readAgain(d, true).catch(() => {});
+  if (!kept) await readAgain(d);
+  else if (Date.now() - kept.t > TTL) void readAgain(d).catch(() => {});
   const b = kept!;
   return { releases: b.line.releases, spots: b.spots, ...(b.line.error ? { error: b.line.error } : {}) };
 }
@@ -406,4 +410,4 @@ export function releaseOfCommit(commit: string, releases: Pick<Release, "tag" | 
   return k ? spots[k] : null;
 }
 /** for the tests: forget what is kept */
-export const forgetTimeline = () => { kept = null; reading = null; behind = false; file = ""; };
+export const forgetTimeline = () => { kept = null; reading = null; file = ""; };

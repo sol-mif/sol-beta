@@ -1,33 +1,60 @@
-import { landOn } from "./land";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useEngine, keptSession } from "./useEngine";
 import { useOneSol } from "./oneSol";
 import { type AppMode } from "./ModeSwitch";
 import { WorkApp } from "./work/WorkApp";
-import { CoworkApp } from "./cowork/CoworkApp";
-import { usePings, useWorkWho } from "./work/pings";
+import { Cowork } from "./cowork/whole/Cowork";
+import { BackToCowork, useAwayFromCowork } from "./cowork/whole/Away";   // a session opened from Cowork, and the chip back (#1416)   // Cowork, whole (#1173): the new shell; the old CoworkApp behind "old Cowork" for one release
 import { setPaper } from "./creature/ring";
 import { startPresence } from "./creature/state";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onOpenAsk, wireSend } from "./renovation";
+import { wireSend } from "./renovation";
 import { migrate } from "./migrate";
 import { applyLook } from "./look";
-import { firstRunWanted } from "./firstrun/FirstRun";
+import { oneWanted } from "./onboard/flag";
+import { homeShown } from "./onboard/which";
+import "./shown/flag";   // show, don't say (#1020): writes data-shown on <html>
+import "./shown/shown.css";
 import { JoinAsk } from "./cowork/JoinAsk";
+import { WakeAskCard } from "./WakeAskCard";   // may my teammates wake my agent (#1313)
 import { CountsCard } from "./CountsCard";
 import { cleanHome, useCleanHome } from "./home/flag";
 import { poppedOf } from "./stage/pop";
 import { Spine } from "./spine/Spine";
+import { afterLeave, settingsPlan, type Leave } from "./spine/settings";   // #911/#1029: Settings asked from Home closes back to Home
+import { looking, openForOf, openPlan } from "./spine/openFor";   // #1521
 import { useFrameVars } from "./kit/Chrome";
-import { HomeView, SocialView } from "./spine/Modes";
-import { isView, useSpine, type View } from "./spine/flag";
-import { afterLeave, settingsPlan, spineAsk, type Leave } from "./spine/settings";
+import { Marks } from "./spine/Marks";
+import { SocialView } from "./spine/Modes";
+import { useCross } from "./cross/flag";   // #1031: Home and Build, one place
+import { onHop } from "./cross/hand";
+import { CrossLayer } from "./cross/CrossLayer";
+import { Seams } from "./screens/Seam";
+import { useRole } from "./screens/store";   // #1090: two windows of one Jelly; draws nothing with screens.two off
+import "./cross/cross.css";
+import { isView, spineOn, useSpine, type View } from "./spine/flag";
+import { FIND_ASK, findHop, windowFinds } from "./spine/find";   // the spine's find and ⌘K, from every view
+import { useBuildRuns } from "./flag";
+import { RunsDoor } from "./runs/Door";
+import { useDoorDot } from "./runs/doorDot";
+import { VersionSwitch } from "./VersionSwitch";   // #1295: concept, complete, product, at the top of the team's window
+
+// the runs view (#889) behind build.runs: loaded only when it opens; `?runs=open` opens it at load (the shots)
+const RunsView = lazy(() => import("./runs/Runs").then((m) => ({ default: m.RunsView })));
+const RUNS0 = new URLSearchParams(location.search).get("runs") === "open";
 
 // the clean Home (#589) behind its switch (home/flag.ts): loaded only when it is on
 const CleanHome = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
+// no view waits on the person yet: the spine draws a view's "waits on you" once something asks from it
+const NO_WAITS = new Set<View>();
 
-// the first run (#134, firstrun/FirstRun.tsx) lies over the app: a new person meets Sol inside the real window
-const FirstRun = lazy(() => import("./firstrun/FirstRun"));
+// the one onboarding (#1088, onboard/One.tsx), the default since #1223: a new person meets Sol inside the real window,
+// and Home is the record it writes (OneHome); the first run, the walk and the folders' Home went with it
+const One = lazy(() => import("./onboard/One"));
+const Visit = lazy(() => import("./onboard/Visit").then((m) => ({ default: m.Visit })));   // Build's and Cowork's first visit, one card each
+const OneHome = lazy(() => import("./onboard/OneHome").then((m) => ({ default: m.OneHome })));
+// #1124: Settings over that Home, on Home's own section (spine/settings.ts settingsPlan's `here`)
+const HomeSettings = lazy(() => import("./onboard/HomeSettings").then((m) => ({ default: m.HomeSettings })));
 
 // The app has its modes, picked on the wheel at the top of the side: Home (#132: sessions in folders and chats, on
 // Work's shell, work/WorkApp.tsx) and Cowork (Home with the team, Together #31: its own side). Social waits off the
@@ -37,11 +64,13 @@ const SOLO = new URLSearchParams(location.search).get("work") || undefined;
 // A window opened with ?block=<id>&session=<sid> is one block popped out of the stage (#701, stage/pop.ts): that block only.
 const POP = poppedOf(location.search);
 const Popped = lazy(() => import("./stage/Popped").then((m) => ({ default: m.Popped })));
+// who meets the one onboarding is read before migrate.ts writes its first marks (a new profile gets sol.mode below)
+const ONE0 = oneWanted();
 // once, before the first draw: what Life and Work kept becomes Home's (migrate.ts)
 const MODE0: AppMode = SOLO ? "home" : migrate(localStorage, keptSession);
-const keep = (open: object) => localStorage.setItem("sol.home.open", JSON.stringify(open));
-// the spine's views (spine/flag.ts, sol.spine, off by default): Build is today's Home, Cowork is Cowork; Home and Social
-// are empty views for now. The mode the trees know (AppMode) follows the view; the view is kept apart in sol.view.
+// the spine's views (spine/flag.ts): Home is Home's folders, Build is today's Home, Cowork is Cowork; Social is an empty
+// view for now.
+// The mode the trees know (AppMode) follows the view; the view is kept apart in sol.view.
 const viewOf = (m: AppMode, kept: string | null): View => (m === "cowork" ? "cowork" : isView(kept) && kept !== "cowork" ? kept : "build");
 const modeOf = (v: View): AppMode => (v === "cowork" ? "cowork" : "home");
 
@@ -50,45 +79,100 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>(MODE0);
   const spine = useSpine() && !SOLO;
   const [view, setView] = useState<View>(() => viewOf(MODE0, localStorage.getItem("sol.view")));
-  const [first, setFirst] = useState(firstRunWanted);
+  const [one, setOne] = useState(ONE0);
+  // the hand-over (onboard/handover.ts): the real Home mounts under the onboarding's stage, then its folders glide onto Home's
+  const [landing, setLanding] = useState(false);
+  const oneHome = homeShown({ onboarding: one, landing });   // one rule for when Home is drawn (onboard/which.ts)
   const clean = useCleanHome();
+  const runsOn = useBuildRuns() && spine;
+  const [runsOpen, setRunsOpen] = useState(RUNS0);
+  const runsShown = runsOn && runsOpen && view === "build";
+  const runsDot = useDoorDot(!!runsOn && !runsShown);   // #906: the board read every 60 s while the view is closed
   const pick = (m: AppMode) => { localStorage.setItem("sol.mode", m); setMode(m); setView((v) => (modeOf(v) === m ? v : m === "cowork" ? "cowork" : "build")); };
   const hop = (v: View) => { localStorage.setItem("sol.view", v); setView(v); const m = modeOf(v); if (m !== mode) { localStorage.setItem("sol.mode", m); setMode(m); } };
-  // Settings from the spine's mark or ⌘, outside Build (#911): Settings is Build's page, so the ask hops to Build with
-  // the page already on Settings; closing it goes back to the view it was asked from (spine/settings.ts)
+  // #911/#1029 (main's App, fitted to yours): Settings asked from Home or Social hops to Build and opens there; a real
+  // close goes back where it was asked from, any other way out forgets the way back (spine/settings.ts afterLeave)
   const back = useRef<View | null>(null);
   const viewNow = useRef(view); viewNow.current = view;
+  const hopRef = useRef(hop); hopRef.current = hop;
+  // #1124: in a Home made by the one onboarding, Settings stays in Home (the drawer it opens on; null: not up)
+  const [homeSet, setHomeSet] = useState<string | null>(null);
+  useEffect(() => { if (view !== "home" || !oneHome) setHomeSet(null); }, [view, oneHome]);
   const openSettings = () => {
-    const p = settingsPlan(viewNow.current);
+    const p = settingsPlan(viewNow.current, oneHome);
     back.current = p.back;
-    if (!p.hop) { window.dispatchEvent(new CustomEvent("sol:settings", { detail: spineAsk() })); return; }
+    if (p.here) { const at = p.here; setHomeSet((o) => (o ? null : at)); return; }   // the mark again closes it, as ⌘, does in Build
+    if (!p.hop) { window.dispatchEvent(new CustomEvent("sol:settings")); return; }
     try { sessionStorage.setItem("sol.work.view", JSON.stringify("settings")); } catch { /* private: the event below still asks */ }
     hop(p.hop);
-    window.setTimeout(() => window.dispatchEvent(new CustomEvent("sol:settings", { detail: spineAsk() })), 60);
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("sol:settings")), 60);
   };
-  const openRef = useRef(openSettings); openRef.current = openSettings;
-  const hopRef = useRef(hop); hopRef.current = hop;
+  // #1521: the seat opens a Settings drawer or a pane for the person (spine/openFor.ts), in the window they look at
+  useEffect(() => {
+    if (SOLO || POP) return;
+    const go = (ev: Event) => {
+      const o = openForOf((ev as CustomEvent).detail);
+      if (!o || !looking(document)) return;
+      const p = openPlan(viewNow.current, o);
+      if (o.what === "settings") back.current = p.back;
+      if (p.hop) {
+        if (o.what === "settings") try { sessionStorage.setItem("sol.work.view", JSON.stringify("settings")); } catch { /* private: the event below still asks */ }
+        hopRef.current(p.hop);
+      }
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent(p.event, { detail: p.detail })), p.hop ? 60 : 0);
+    };
+    window.addEventListener("sol:open-for", go);
+    return () => window.removeEventListener("sol:open-for", go);
+  }, []);
   useEffect(() => {
     if (!spine) return;
-    // leaving Settings: a real close goes back; any other way out forgets the way back (spine/settings.ts afterLeave)
     const left = (ev: Event) => { const r = afterLeave(back.current, viewNow.current, (ev as CustomEvent<Leave>).detail); back.current = r.back; if (r.to) hopRef.current(r.to); };
-    // ⌘, while Home or Social shows (Build's page keeps its own key, WorkApp)
-    const key = (ev: KeyboardEvent) => { if (ev.metaKey && ev.key === "," && (viewNow.current === "home" || viewNow.current === "social")) { ev.preventDefault(); openRef.current(); } };
     window.addEventListener("sol:settings-left", left);
-    window.addEventListener("keydown", key);
-    return () => { window.removeEventListener("sol:settings-left", left); window.removeEventListener("keydown", key); };
+    return () => window.removeEventListener("sol:settings-left", left);
   }, [spine]);
-  useFrameVars(spine);
-  useLayoutEffect(() => { document.documentElement.dataset.spine = spine ? "on" : "off"; document.documentElement.dataset.view = view; }, [spine, view]);
+  // #1031: the hand held over a spine letter turns the window to that view (cross/hand.ts); Home's needs light its letter
+  const cross = useCross() && spine;
+  useEffect(() => (cross ? onHop((v) => { if (isView(v)) { back.current = null; hopRef.current(v); } }) : undefined), [cross]);
+  // the spine's find (2026-11-11, spine/find.ts): find is Build's, so from another view the window hops there first
+  const openFind = () => {
+    const to = findHop(viewNow.current);
+    if (!to) { window.dispatchEvent(new CustomEvent("sol:find")); return; }
+    try { sessionStorage.setItem(FIND_ASK, "1"); } catch { /* private: the event below still asks */ }
+    hop(to);
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("sol:find")), 60);
+  };
+  const findRef = useRef(openFind); findRef.current = openFind;
+  // ⌘K from a view with no ⌘K of its own (Home's folders, Cowork, Social) is the spine's find; Build's clean Home keeps
+  // its own key (the Jump)
+  const ownFind = view === "build";
+  const ownFindRef = useRef(ownFind); ownFindRef.current = ownFind;
+  useEffect(() => {
+    if (!spine) return;
+    const down = (ev: KeyboardEvent) => {
+      if (ev.defaultPrevented || !ev.metaKey || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.key.toLowerCase() !== "k") return;
+      if (!windowFinds(viewNow.current, ownFindRef.current)) return;
+      ev.preventDefault(); findRef.current();
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [spine]);
+  // #1416: a session opened from Cowork opens where sessions open (Build with the spine, Home without), with a chip back
+  const away = useAwayFromCowork(mode === "cowork", () => (spine ? hopRef.current("build") : pick("home")), () => (spine ? hopRef.current("cowork") : pick("cowork")));
+  // #1090: one jelly, one spine: a window of Jelly on another screen that holds no side (a wall, a stage) draws no rail
+  const screenRole = useRole();
+  const railed = spine && screenRole !== "wall" && screenRole !== "stage";
+  useFrameVars(railed);
+  useLayoutEffect(() => { document.documentElement.dataset.spine = railed ? "on" : "off"; document.documentElement.dataset.view = view; }, [railed, view]);
   useLayoutEffect(() => { document.documentElement.dataset.mode = mode; setPaper(mode === "home" ? "home" : "work"); }, [mode]);   // Cowork is on Work's paper
   useLayoutEffect(() => { if (e.settings) applyLook(e.settings.look); }, [e.settings]);   // the look, whenever settings arrive (look.ts)
   // ctrl+cmd+M: pressed, it flips Home and Cowork; held 350 ms, it opens the wheel (ModeWheel.tsx). Not with the clean
-  // Home on (#589, Marco 2026-11-02): there a click on home | cowork is the one way.
+  // Home on (#589, Marco 2026-11-02): there a click on home | cowork is the one way. Nor with the spine on (2026-11-11):
+  // the spine's marks and ⌘1–⌘4 are the way.
   // WebKit sends no keyup for M while cmd is down, so letting go of cmd or ctrl counts as letting go of the keys.
   useEffect(() => {
     let t: number | undefined, wheel = false;
     const down = (ev: KeyboardEvent) => {
-      if (SOLO || cleanHome() || !(ev.metaKey && ev.ctrlKey && ev.key.toLowerCase() === "m")) return;
+      if (SOLO || cleanHome() || spineOn() || !(ev.metaKey && ev.ctrlKey && ev.key.toLowerCase() === "m")) return;
       ev.preventDefault();
       if (ev.repeat || t !== undefined || wheel) return;
       t = window.setTimeout(() => { t = undefined; wheel = true; window.dispatchEvent(new Event("sol:mode-wheel")); }, 350);
@@ -102,44 +186,42 @@ export default function App() {
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.clearTimeout(t); };
   }, []);
-  // a ping clicked in the notch: its talk opens in Home (a session, or a chat), kept first so a Home that mounts now opens it
-  useEffect(() => onOpenAsk((m) => {
-    if (SOLO || !m.sessionId) return;
-    landOn(m);   // Open from the notch lands on the item it showed (land.ts)
-    if (m.seat === "work") {
-      keep({ kind: "session", id: m.sessionId });
-      pick("home"); window.dispatchEvent(new CustomEvent("sol:open-work", { detail: m.sessionId }));
-    } else {
-      const seat = m.seat === "claude" ? "claude" : "codex";
-      keep({ kind: "chat", id: m.sessionId, seat });
-      pick("home"); window.dispatchEvent(new CustomEvent("sol:open-chat", { detail: { seat, sessionId: m.sessionId, title: "", updatedAt: 0 } }));
-    }
-    import("@tauri-apps/api/window").then((w) => w.getCurrentWindow().requestUserAttention(2)).catch(() => {});
-  }), []); // eslint-disable-line react-hooks/exhaustive-deps
   // the creature: this window tells the engine its focus and the Mac's idle (the main window only, not a pop-out)
   useEffect(() => {
     let label = "main";
     try { label = getCurrentWindow().label; } catch { /* a plain browser: report anyway */ }
     return label === "main" ? startPresence(wireSend) : undefined;
   }, []);
-  // the sessions' pings live here, above the mode, so a permission asked while Cowork shows still reaches Marco (#16 blocker 7)
-  usePings(e, useWorkWho(e, mode === "home"), SOLO);
   useOneSol();   // One Sol (#62): the main window watches the NucBox, whatever the mode shows
   if (POP) return <Suspense fallback={null}><Popped e={e} id={POP.id} session={POP.session} /></Suspense>;
   if (SOLO) return <WorkApp e={e} onMode={() => {}} solo={SOLO} />;
   return (
     <>
-      {spine && <Spine view={view} onPick={(v) => { back.current = null; hop(v); }} waits={new Set<View>()} onFind={() => window.dispatchEvent(new CustomEvent("sol:find"))} onSettings={openSettings} onJelly={() => {}} />}
-      {spine && view === "home" ? <HomeView /> : spine && view === "social" ? <SocialView />
-        : mode === "cowork" ? <CoworkApp e={e} onMode={pick} /> : clean ? <Suspense fallback={null}><CleanHome e={e} onMode={pick} /></Suspense> : <WorkApp e={e} onMode={pick} />}
+      {railed && <Spine view={view} onPick={(v) => { back.current = null; hop(v); }} waits={NO_WAITS} onFind={openFind} onSettings={openSettings} onJelly={() => {}}
+        extra={runsOn || away.away ? <>{runsOn && <RunsDoor open={runsShown} dot={runsDot} onPress={() => { if (view !== "build") hop("build"); setRunsOpen((o) => view !== "build" || !o); }} />}
+          {away.away && <BackToCowork inSpine onPress={() => { back.current = null; away.back(); }} />}</> : undefined} />}
+      {!railed && away.away && <BackToCowork inSpine={false} onPress={away.back} />}
+      {runsShown && <Suspense fallback={null}><RunsView e={e} onClose={() => setRunsOpen(false)} /></Suspense>}
+      {railed && <Marks send={e.send} />}
+      {!spine && <div className="f-lights" data-tauri-drag-region aria-hidden />}
+      <VersionSwitch setSettings={e.setSettings} />
+      {spine && view === "home" ? <Suspense fallback={null}>{oneHome && <OneHome e={e} />}</Suspense> : spine && view === "social" ? <SocialView />
+        : mode === "cowork" ? <Cowork e={e} onMode={pick} />
+        : clean ? <Suspense fallback={null}><CleanHome e={e} onMode={pick} /></Suspense> : <WorkApp e={e} onMode={pick} />}
+      {spine && view === "home" && oneHome && homeSet && <Suspense fallback={null}><HomeSettings e={e} first={homeSet} onClose={() => setHomeSet(null)} /></Suspense>}
+      {cross && <CrossLayer e={e} />}
+      {!POP && <Seams />}
       {/* a group's link opened in the app (#327): it asks over either mode, and opens Cowork only once joined; signed out
           (#342), its "sign in" opens Settings in Home on that drawer, once Home has mounted */}
       <JoinAsk onJoined={() => { try { sessionStorage.setItem("sol.cowork.stage", JSON.stringify({ k: "dashboard" })); } catch { /* private */ } pick("cowork"); window.dispatchEvent(new Event("sol:cowork-group")); }}
         onSignIn={(drawer) => { pick("home"); window.setTimeout(() => window.dispatchEvent(new CustomEvent("sol:settings", { detail: drawer })), 60); }} />
-      {/* the one card about counting (#356): once, on the first window after the first run; the press is the whole face of it */}
-      {!first && e.settings?.track && (!e.settings.track.told || (e.settings.errorCounts === true && e.settings.track.toldErrors === false)) &&
+      {/* the one card about counting (#356): once, on the first window after the onboarding; the press is the whole face of it */}
+      {!one && e.settings?.track && (!e.settings.track.told || (e.settings.errorCounts === true && e.settings.track.toldErrors === false)) &&
         <CountsCard errors={e.settings.errorCounts === true} onOk={() => e.setSettings({ track: { told: true, ...(e.settings?.errorCounts ? { toldErrors: true } : {}) } })} />}
-      {first && <Suspense fallback={null}><FirstRun e={e} onDone={() => setFirst(false)} /></Suspense>}
+      {/* the one question about waking (#1313): once, after the onboarding, in the counting card's spot when that one is not up */}
+      {!one && !POP && !(e.settings?.track && (!e.settings.track.told || (e.settings.errorCounts === true && e.settings.track.toldErrors === false))) && <WakeAskCard />}
+      {one ? <Suspense fallback={null}><One e={e} onLanding={() => { setLanding(true); hop("home"); }} onDone={(home) => { setOne(false); setLanding(false); if (!home) return; try { localStorage.setItem("sol.firstrun", "done"); } catch { /* private */ } hop("home"); }} /></Suspense> : null}
+      {!one && <Suspense fallback={null}><Visit e={e} where={mode === "cowork" ? "cowork" : view === "build" ? "build" : null} /></Suspense>}
     </>
   );
 }

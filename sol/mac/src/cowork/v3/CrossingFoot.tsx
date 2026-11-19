@@ -1,7 +1,7 @@
 // The crossing card (fr-30, slice 1): the thing's own lower edge, never a second card. Ready: "→ <project> · <spot>
 // Send  Keep in Home" (no Undo before Send: nothing has happened yet). Send: the card flies into the project's row in
-// the sidebar and this edge becomes a chip, "✓ <title> · in <project>", with Undo and its 8-second ring. The notch's
-// recipe: the black slab, the pearl words, the first answer filled.
+// the sidebar and this edge becomes a chip, "✓ <title> · in <project>", with Undo and its 8-second ring. The black
+// card's recipe: the black slab, the pearl words, the first answer filled.
 import { useEffect, useRef } from "react";
 import type { Thing } from "./store";
 

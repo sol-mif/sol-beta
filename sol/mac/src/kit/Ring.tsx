@@ -22,7 +22,9 @@ function pourOf(look: RingLook, v: number): Pour {
   }
   if (look === "pool") {
     // the six, one pool each, joining from the bottom
-    const n = Math.max(2, Math.round(v * JELLY.six.length)), H = 2 * DISC * v, r = 0.06 + 0.13 * Math.sqrt(v);
+    // a base pool (Marco 2026-11-07, the goo with no disc): empty still shows a small pool at the bottom, so the place is marked
+    const b = 0.12 + 0.88 * v;
+    const n = Math.max(2, Math.round(v * JELLY.six.length)), H = 2 * DISC * b, r = 0.06 + 0.13 * Math.sqrt(b);
     const at = [[0.5, 0.15], [0.26, 0.3], [0.74, 0.3], [0.38, 0.72], [0.62, 0.72], [0.5, 1.0]];
     const pts = at.slice(0, n).map(([x, f]) => ({ x, y: bottom - H * (0.25 + 0.6 * f) }));
     return { blobs: pts.map((p) => ({ ...p, r })), tints: pts.map((p, i) => ({ ...p, c: JELLY.six[i] })), disc: DISC };
@@ -33,18 +35,19 @@ function pourOf(look: RingLook, v: number): Pour {
   return { blobs: [{ x: cx, y: cy, r: s }, { x: cx, y: cy - s * 1.22, r: s * 0.3 }], tints, halo: 0.4 };
 }
 
-export function Ring({ value, size = 80, look = LOOKS.ring.pick }: { value: number; size?: number; look?: RingLook }) {
+export function Ring({ value, size = 80, look = LOOKS.ring.pick, flat }: { value: number; size?: number; look?: RingLook; flat?: boolean }) {
+  // flat (Marco 2026-11-07, the chat bar's row): the disc at the pills' step with no sheen and no rim; the goo alone says how full
   // the goo is poured once per value, so a parent drawn again (each key in the chat box) never pours it again
   const pour = useMemo(() => pourOf(look, value), [look, value]);
   const c = size / 2, rr = DISC * size, id = useUid(), held = look !== "drop";
   return (
     <div style={{ position: "relative", width: size, height: size }} role="meter" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
       <svg width={size} height={size} style={{ position: "absolute", inset: 0 }} aria-hidden>
-        <circle cx={c} cy={c} r={rr} fill={black(held ? SHADE.steps.box : SHADE.steps.card)} />
+        {!flat && <circle cx={c} cy={c} r={rr} fill={black(held ? SHADE.steps.box : SHADE.steps.card)} />}
         {!held && <circle cx={c} cy={c} r={rr - 0.5} fill="none" stroke={on(SHADE.on.edge)} strokeDasharray="2 3" />}
       </svg>
       <div style={{ position: "absolute", inset: 0 }}><Liquid size={size} pour={pour} /></div>
-      {held && (
+      {held && !flat && (
         <svg width={size} height={size} style={{ position: "absolute", inset: 0 }} aria-hidden>
           <defs><radialGradient id={`s${id}`} cx="30%" cy="18%" r="60%"><stop offset="0" stopColor={on(1)} stopOpacity="0.2" /><stop offset="1" stopColor={on(1)} stopOpacity="0" /></radialGradient></defs>
           <circle cx={c} cy={c} r={rr} fill={`url(#s${id})`} />

@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { askStage, beside, ghostAt, isAsk, parse, preview, slotOf, slotRect } from "./stage/ask.ts";
-import { barState, pointAt, sent, setThings, slotThing, wordsIn } from "./stage/bar.ts";
+import { barState, keptOn, pointAt, sent, setThings, slotThing, wordsIn } from "./stage/bar.ts";
 import { partWords } from "./stage/kinds/parts.ts";
 import { SIZES } from "./stage/model.ts";
 
@@ -133,4 +133,12 @@ test("#953: only the reference icon attaches; a hover, a scroll or a click in a 
   const hover = between("const onOver =", "const unlitPages ="), page = between("const hear =", "window.addEventListener(\"message\"");
   for (const f of [hover, page]) assert.doesNotMatch(f, /\btarget\(|pointAt\(|attach\(|store\.point/);
   assert.match(readFileSync(new URL("./stage/kinds/Frame.tsx", import.meta.url), "utf8"), /className="st-ref" onClick=\{onRef\}/);
+});
+
+test("#1042: a block that left the stage leaves the box's \"on\"; one that is still there stays", () => {
+  const on = [{ id: "a", words: "the week" }, { id: "b", part: "Thu", words: "the plan › Thu" }];
+  assert.deepEqual(keptOn(on, new Set(["a"])), [{ id: "b", part: "Thu", words: "the plan › Thu" }]);
+  assert.deepEqual(keptOn(on, new Set(["a", "b"])), []);
+  assert.equal(keptOn(on, new Set(["c"])), null);   // nothing pointed at it: the bar is not written
+  assert.equal(keptOn([], new Set(["a"])), null);
 });

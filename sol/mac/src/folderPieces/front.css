@@ -1,0 +1,182 @@
+/* A piece's front and back (#1092, S/design/design.md): one component at two sizes, the page in the room and the block
+   in a session. Every space, size, corner and colour is the scale's; the two widths are written once, here. */
+.pf { --pf-page: 640px; --pf-block: 340px; position: relative; display: flex; flex-direction: column; min-height: 0; color: var(--ink);
+  font-size: var(--t-body); line-height: var(--t-body-line); outline: none; }
+.pf-page { width: min(var(--pf-page), 100%); height: 100%; container-type: inline-size; }
+.pf-block { width: 100%; container-type: inline-size; }
+
+/* the head: the square (a press turns the piece over), the name, one phrase */
+.pf-head { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); min-width: 0; color: var(--dim); }
+.pf-block .pf-head { cursor: grab; touch-action: none; user-select: none; }
+.pf-turn { flex: none; width: var(--h-chip); height: var(--h-chip); margin-left: calc(-1 * var(--s1)); display: grid; place-items: center; border: 0; padding: 0; background: none;
+  border-radius: var(--r-chip); cursor: pointer; }
+.pf-turn:is(:hover, :focus-visible) { background: var(--c-picked); outline: none; }
+.pf-head b { font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-said { color: var(--mute); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pf-you .pf-said { color: var(--sun); }
+.pf-broken .pf-said { color: var(--dim); }
+/* an agent asked for more than the piece lets it: the ask sits on the piece, dashed (his press; the back's ladder moves) */
+.pf-may { flex: none; margin-left: auto; height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink); font: inherit; cursor: pointer;
+  outline: var(--hair) dashed var(--dim); outline-offset: calc(-1 * var(--hair)); white-space: nowrap; }
+.pf-may:is(:hover, :focus-visible) { background: var(--c-picked); }
+.pf-may + .pf-aside { margin-left: var(--s2); }
+.pf-aside { margin-left: auto; flex: none; }
+
+/* the front: the one thing, its why, its press */
+.pf-front { padding: var(--s6) 0 var(--s8); min-width: 0; }
+.pf-block .pf-front { padding: var(--s3) 0 var(--s4); }
+.pf-front h1 { margin: 0; font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 600; overflow-wrap: anywhere; }
+.pf-block .pf-front h1 { font-size: var(--t-title); line-height: var(--t-title-line); }
+.pf-front p { margin: var(--s2) 0 0; color: var(--dim); font-size: var(--t-read); line-height: var(--t-read-line); }
+.pf-block .pf-front p { font-size: var(--t-body); line-height: var(--t-body-line); }
+/* what the piece did between his visits (the recipe's `tend`): its own line in a wash, its small square before it */
+.pf-wash { display: flex; gap: var(--s3); margin-top: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-row); background: var(--c-track); color: var(--dim);
+  max-width: calc(var(--s12) * 11 + var(--s8)); box-sizing: border-box; animation: pf-wash calc(var(--d-turn) * 2) var(--e-arrive) var(--d-turn) both; }
+.pf-wash i { flex: none; width: var(--s2); height: var(--s2); margin-top: calc(var(--s1) + var(--s1) / 2); border-radius: calc(var(--r-chip) / 3); border: var(--hair) solid var(--dim); box-sizing: border-box; }
+.pf-block .pf-wash { padding: var(--s2) var(--s3); }
+.pf-block .pf-wash span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+@keyframes pf-wash { from { opacity: 0; translate: 0 var(--s1); } }
+.pf-go { display: flex; margin-top: var(--s4); }
+.pf-block .pf-go { margin-top: var(--s3); }
+/* the hand is on the press: the pearl's ring, never the browser's; Enter presses it */
+.pf-go [role=button] { border-radius: var(--r-row); outline: none; }
+.pf-go [role=button]:focus-visible { box-shadow: var(--shadow-focus); }
+.pf-none h1 { color: var(--dim); font-weight: 400; }
+.pf-out { animation: pf-out 240ms var(--e-move) both; }
+.pf-in { animation: pf-in 200ms var(--e-arrive) both; }
+@keyframes pf-out { to { opacity: 0; translate: calc(-1 * var(--s12)) 0; } }
+@keyframes pf-in { from { opacity: 0; translate: 0 var(--s6); } }
+
+/* the rest, by name: one row each, no buttons; the word at the right is what its press would be */
+.pf-names { display: flex; flex-direction: column; min-height: 0; overflow: hidden auto; scrollbar-width: none; margin: 0 calc(-1 * var(--s2)); }
+.pf-names > * { flex: none; }
+.pf-name { display: flex; align-items: center; gap: var(--s2); width: 100%; height: var(--h-row); padding: 0 var(--s2); border: 0; background: none; border-radius: var(--r-row);
+  font: inherit; text-align: left; color: var(--dim); cursor: pointer; min-width: 0; }
+.pf-name:is(:hover, :focus-visible) { background: var(--c-picked); color: var(--ink); outline: none; }
+.pf-name span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-name small { flex: none; max-width: 45%; color: var(--mute); font-size: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-name.pf-was { color: var(--mute); }
+.pf-idle { margin: 0; height: var(--h-row); display: flex; align-items: center; padding: 0 var(--s2); color: var(--mute); }
+.pf-run { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink); animation: fp-breathe var(--d-pour) var(--e-move) infinite alternate; }
+
+/* a piece whose rows name a group (runs: the machines): plates side by side in the room, stacked in a block */
+.pf-plates { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--s12) * 3), 1fr)); gap: var(--s4); margin: var(--s4) calc(-1 * var(--s2)) 0; min-height: 0; overflow: hidden; }
+.pf-block .pf-plates { grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 0; }
+.pf-plates section { display: flex; flex-direction: column; min-width: 0; }
+.pf-plates h3 { margin: 0; height: var(--h-chip); display: flex; align-items: center; padding: 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 400; color: var(--dim); }
+.pf-plates .pf-name { color: var(--ink); }
+.pf-plates .pf-name small { color: var(--dim); }   /* how long a run has been going is read, not decoration */
+
+/* the foot: what he just did, and its undo, for 6 s */
+.pf-foot { margin-top: auto; min-height: var(--h-row); display: flex; align-items: center; gap: var(--s2); color: var(--dim); opacity: 0; transition: opacity var(--d-glass) var(--e-move); min-width: 0; }
+.pf-foot.pf-on { opacity: 1; }
+.pf-foot span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-foot button { flex: none; height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-chip); background: none; font: inherit; color: var(--ink); cursor: pointer; text-decoration: underline; text-decoration-color: var(--mute); text-underline-offset: var(--s1); }
+.pf-foot button:is(:hover, :focus-visible) { background: var(--c-picked); outline: none; }
+.pf-block .pf-foot:not(.pf-on) { display: none; }
+
+/* a narrow room: the names keep one line, the word at the right goes first */
+@container (max-width: 420px) { .pf-name small { display: none; } }
+
+/* the back: the pearl, deep words */
+.pb { position: relative; isolation: isolate; width: min(640px, 100%); padding: var(--s6); box-sizing: border-box; font-size: var(--t-body); line-height: var(--t-body-line); }
+.pb > :first-child { position: absolute; inset: 0; z-index: -1; }
+.pb header { display: flex; align-items: baseline; gap: var(--s2); }
+.pb header b { font-weight: 600; font-size: var(--t-read); }
+.pb header span, .pb dt, .pb li small { opacity: 0.55; }
+.pb dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s1) var(--s4); margin: var(--s4) 0; }
+.pb dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.pb code { font-family: var(--mono); font-size: var(--t-code); }
+.pb ol { list-style: none; margin: 0 0 var(--s4); padding: var(--s3) 0 0; border-top: var(--hair) solid color-mix(in srgb, var(--c-deep) 12%, transparent); display: flex; flex-direction: column; gap: var(--s1); }
+.pb li { display: flex; gap: var(--s3); min-width: 0; }
+.pb li span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb li small { flex: none; font-size: inherit; }
+/* the notches: how often it reads, how far it may go; pressed by hand, each a small click (snap/click.ts "tick") */
+.pb-notch { display: inline-flex; align-items: center; gap: var(--hair); vertical-align: middle; }
+.pb-notch button { height: var(--h-chip); padding: 0 var(--s3); border: 0; background: color-mix(in srgb, var(--c-deep) 8%, transparent); color: color-mix(in srgb, var(--c-deep) 60%, transparent);
+  font: inherit; cursor: pointer; transition: background var(--d-turn) var(--e-move), color var(--d-turn) var(--e-move); }
+.pb-notch button:first-child { border-radius: var(--r-chip) 0 0 var(--r-chip); }
+.pb-notch button:last-of-type { border-radius: 0 var(--r-chip) var(--r-chip) 0; }
+.pb-notch button:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--c-deep) 16%, transparent); color: var(--c-deep); outline: none; }
+.pb-notch button.pb-on { background: var(--c-deep); color: var(--c-pearl); }
+.pb-notch button:active { scale: 0.96; }
+.pb-notch small { margin-left: var(--s3); opacity: 0.55; font-size: inherit; white-space: nowrap; }
+.pb dl:has(.pb-notch) { row-gap: var(--s2); align-items: center; }
+.pb-acts { display: flex; gap: var(--s2); }
+.pb-acts button { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); border: var(--hair) solid color-mix(in srgb, var(--c-deep) 30%, transparent); background: none; color: var(--c-deep); font: inherit; cursor: pointer; }
+.pb-acts .pb-first { background: var(--c-deep); color: var(--c-pearl); border-color: transparent; }
+.pb-acts button:disabled { opacity: 0.5; cursor: default; }
+
+/* turning: the front and the back are the two sides of one card in the room */
+.pf-flip { position: relative; width: min(640px, 100%); height: 100%; transform-style: preserve-3d; transition: rotate 320ms var(--e-move); }
+.pf-flip.pf-turned { rotate: y 180deg; }
+.pf-flip > * { backface-visibility: hidden; }
+.pf-flip > .pb { position: absolute; inset: 0 0 auto 0; rotate: y 180deg; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-out, .pf-in { animation-duration: 120ms; translate: none; }
+  .pf-run { animation: none; opacity: 0.6; }
+  .pf-wash { animation: none; }
+  .pf-flip { transition: none; }
+}
+
+/* Jev's pick for the front, half sure (design JEV 1): a dashed hairline the person can press to bring it forward */
+.pf-name.pf-ghost { outline: var(--hair) dashed var(--mute); outline-offset: calc(-1 * var(--hair)); border-radius: var(--r-row); }
+/* the quiet second word beside the one button (a question's "change it"): never a second button */
+.pf-alt { align-self: center; display: inline-flex; align-items: center; height: var(--h-chip); margin-left: var(--s2); padding: 0 var(--s2); border-radius: var(--r-chip); color: var(--dim); text-decoration: none; }
+.pf-alt:is(:hover, :focus-visible) { color: var(--ink); background: var(--c-picked); outline: none; }
+
+/* making a piece by hand (PieceBench): the back first, on the pearl, and the real front filling beside it */
+/* by the room's own width, never the window's: when the front would get under 336 px it goes under the back */
+.pbench { display: flex; flex-wrap: wrap; align-content: flex-start; gap: var(--s6) var(--s12); width: 100%; height: 100%; min-width: 0; overflow-y: auto; }
+/* it slides, never turns or scales: the kit's glass measures its own box */
+.pbench-back { flex: none; width: calc(var(--s12) * 8 + var(--s4)); align-self: flex-start; animation: pbench-in calc(var(--d-turn) * 2) var(--e-pour) both; }
+.pbench-back .pb-notch { flex-wrap: wrap; row-gap: var(--s1); }
+.pbench-back .pb-notch button { flex: none; }
+.pbench-back .pb-notch small { flex-basis: 100%; margin-left: 0; }
+.pbench-front { flex: 1 1 calc(var(--s12) * 7); min-width: 0; }
+.pbench-kept .pbench-back { animation: pbench-fold calc(var(--d-turn) * 2) var(--e-move) both; }
+.pb-name { width: 100%; min-width: 0; padding: 0 0 var(--s1); border: 0; border-bottom: var(--hair) dashed color-mix(in srgb, var(--c-deep) 30%, transparent); background: none;
+  color: inherit; font: inherit; font-weight: 600; font-size: var(--t-read); line-height: var(--t-read-line); outline: none; }
+.pb-name::placeholder { color: inherit; opacity: 1; }
+.pb-name:placeholder-shown:not(:focus) { border-bottom-color: transparent; }
+.pb-name:focus::placeholder { opacity: 0.4; }
+.pb-line { width: 100%; min-width: 0; height: var(--h-chip); padding: 0 var(--s3); box-sizing: border-box; border: 0; border-radius: var(--r-chip);
+  background: color-mix(in srgb, var(--c-deep) 8%, transparent); color: inherit; font-family: var(--mono); font-size: var(--t-code); outline: none; }
+.pb-pills { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.pb-pills button { height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: color-mix(in srgb, var(--c-deep) 8%, transparent);
+  color: color-mix(in srgb, var(--c-deep) 60%, transparent); font: inherit; cursor: pointer; transition: background var(--d-turn) var(--e-move), scale calc(var(--d-reveal) * 0.75); }
+.pb-pills button:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--c-deep) 16%, transparent); color: var(--c-deep); outline: none; }
+.pb-pills button.pb-on { background: var(--c-deep); color: var(--c-pearl); }
+.pb-pills button.pb-maybe { background: none; outline: var(--hair) dashed color-mix(in srgb, var(--c-deep) 60%, transparent); outline-offset: calc(-1 * var(--hair)); color: var(--c-deep); }
+.pb-pills button:active { scale: 0.96; }
+.pbench-back dt { align-self: start; line-height: var(--h-chip); }
+/* before it reads anything: the shape of a front, dashed, no words */
+.pbench-empty { display: flex; flex-direction: column; gap: var(--s3); width: min(640px, 100%); padding-top: var(--s2); }
+.pbench-empty > * { border: var(--hair) dashed var(--mute); border-radius: var(--r-chip); box-sizing: border-box; }
+.pbench-empty i { width: var(--s3); height: var(--s3); border-radius: calc(var(--r-chip) / 2); margin-bottom: var(--s6); }
+.pbench-empty b { width: 62%; height: var(--t-display-line); margin-bottom: var(--s6); }
+.pbench-empty span { width: 100%; height: var(--h-row); border-width: 0 0 var(--hair); border-radius: 0; }
+@keyframes pbench-in { from { opacity: 0; translate: calc(-1 * var(--s6)) 0; } }
+@keyframes pbench-fold { to { opacity: 0; translate: calc(-1 * var(--s12)) 0; margin-left: calc(-1 * (var(--s12) * 9 + var(--s4))); visibility: hidden; } }
+.pbench-back { max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { .pbench-back { animation: none; } .pbench-kept .pbench-back { display: none; } }
+
+/* the line: a piece inside a talk or at the bottom edge: square, name, figure; one press opens it in place */
+.pl { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); max-width: 100%; padding: 0 var(--s3); box-sizing: border-box; border: var(--hair) solid var(--edge);
+  border-radius: var(--r-pill); background: none; color: var(--ink); font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); cursor: pointer;
+  transition: background var(--d-turn) var(--e-move); }
+.pl:is(:hover, :focus-visible) { background: var(--c-picked); outline: none; }
+.pl:active { scale: 0.96; }
+.pl b { font-weight: 400; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl span { flex: none; color: var(--mute); font-variant-numeric: tabular-nums; }
+.pl-you span { color: var(--sun); }
+.pl-ghost { border-style: dashed; border-color: var(--mute); color: var(--dim); }
+/* the program an asking piece would run, in the code face */
+.pf-code { font-family: var(--mono); font-size: var(--t-code); color: var(--ink); }
+.pb-line.pb-say { font-family: inherit; font-size: inherit; }
+/* the one sentence on the back that is his to rewrite: what the piece does between his visits */
+.pb-does { display: block; width: 100%; min-width: 0; padding: var(--s1) var(--s3); box-sizing: border-box; border: 0; border-radius: var(--r-chip); resize: none;
+  background: color-mix(in srgb, var(--c-deep) 8%, transparent); color: inherit; font: inherit; outline: none; field-sizing: content; }
+.pb-does:focus { background: color-mix(in srgb, var(--c-deep) 14%, transparent); }
+.pb dt:has(+ dd > .pb-does) { align-self: start; line-height: var(--h-chip); }

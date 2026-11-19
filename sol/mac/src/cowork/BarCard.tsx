@@ -1,8 +1,7 @@
 // The bar card (mine/look/COWORK.html, 2026-10-27): what waits on me in the room hangs from the bar as one black goo
-// card, the notch card's recipe, its neck under the for-you pill. A hand to me, a friend who wants in and a ping are
+// card, the black card's recipe, its neck under the for-you pill. A hand to me, a friend who wants in and a ping are
 // each one face of it; with more than one, a count steps to the next. Only the look: every face keeps its own words,
-// buttons and handlers (CoworkApp hands them in), and each stays mounted while it is not the one shown, so a hand
-// taken from the notch still opens its session here.
+// buttons and handlers (CoworkApp hands them in), and each stays mounted while it is not the one shown.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export type Face = { key: string; on: boolean; node: ReactNode };

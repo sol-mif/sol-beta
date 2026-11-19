@@ -29,8 +29,13 @@ test("every page the shell opens a window with (WebviewUrl::App) is a Vite input
   const rs = join(mac, "src-tauri", "src");
   const files = readdirSync(rs).filter((f) => f.endsWith(".rs"));
   const asked = new Set<string>();
-  for (const f of files) for (const m of readFileSync(join(rs, f), "utf8").matchAll(/WebviewUrl::App\("([^"]+\.html)"/g)) asked.add(m[1]);
-  assert.ok(asked.size >= 1, "the notch asks for its page");
+  for (const f of files) {
+    const src = readFileSync(join(rs, f), "utf8");
+    for (const m of src.matchAll(/WebviewUrl::App\("([^"]+\.html)"/g)) asked.add(m[1]);
+    // a window whose url is made first (a popped block, pop.rs; a screen, screens.rs): the page its format! names
+    if (/WebviewUrl::App\(url/.test(src)) for (const m of src.matchAll(/format!\("([^"?]+\.html)[?"]/g)) asked.add(m[1]);
+  }
+  assert.ok(asked.size >= 1, "a popped block and a screen ask for their page");
   for (const p of asked) assert.ok(inputs.includes(p), `${p} is in vite.config.ts build.rollupOptions.input`);
 });
 

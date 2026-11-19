@@ -1,0 +1,48 @@
+/* A later mode's first visit (VisitCard.tsx, #1088). Steps and type are palette.css's. The card stands on the chat
+   box: same left edge, same width, 12px above it; in Cowork it takes the empty state's place in the middle. */
+.obv { position: relative; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4) var(--s6) var(--s4); border-radius: 26px; background: #0c0c0d; box-shadow: inset 0 0 0 1px rgba(var(--on), .1), 0 24px 60px rgba(0,0,0,.5); box-sizing: border-box; color: var(--ink); animation: obv-in .32s var(--pour, cubic-bezier(.3,1.12,.6,1)) both; transform-origin: 50% 100%; }
+.obv.went { transition: opacity .22s ease-in .04s, transform .26s ease-in; opacity: 0; transform: translateY(14px) scale(.96); pointer-events: none; }
+@keyframes obv-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+
+.obv-head { display: flex; align-items: center; gap: var(--s3); min-height: 32px; }
+.obv-head .t-title { flex: 1; min-width: 0; }
+.obv-later { border: 0; background: none; padding: var(--s2); border-radius: 8px; font: inherit; font-size: var(--t-label); color: var(--dim); cursor: pointer; white-space: nowrap; }
+.obv-later:hover { color: var(--ink); }
+
+.obv-things { display: flex; gap: var(--s3); align-items: stretch; }
+.obv-thing { flex: 1 1 0; min-width: 0; max-width: 260px; display: grid; grid-template-columns: 32px 1fr; column-gap: var(--s3); align-items: center; text-align: left; min-height: 60px; padding: var(--s3) var(--s4); border: 0; border-radius: 18px; background: rgba(var(--on), .06); color: var(--ink); font: inherit; cursor: pointer; animation: obv-in .3s var(--pour, cubic-bezier(.3,1.12,.6,1)) both; transition: background .12s, transform .2s var(--pour, ease), opacity .2s; }
+.obv-thing:hover { background: rgba(var(--on), .12); transform: translateY(-2px); }
+.obv-thing:active { transform: translateY(1px); }
+.obv-thing:focus-visible { outline: 1px solid var(--pearl); outline-offset: 2px; }
+.obv-thing .mark { grid-row: span 2; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: rgba(var(--on), .08); font-size: var(--t-label); font-weight: 600; }
+.obv-thing .mark.round { border-radius: 50%; }
+.obv-thing .mark svg { width: 18px; height: 18px; }
+.obv-thing b { font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obv-thing b:only-child, .obv-thing .mark + b:last-child { grid-row: span 2; }
+.obv-thing > span:last-child { grid-column: 2; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Jev's pick: sure, it is the pearl one (↵ starts it); half-sure, a dashed hairline */
+.obv-thing.sure, .obv-thing.on { background: var(--pearl); color: #0a0a0b; }
+.obv-thing.sure > span:last-child, .obv-thing.on > span:last-child { color: rgba(10,10,11,.6); }
+.obv-thing.sure .mark, .obv-thing.on .mark { background: rgba(10,10,11,.1); }
+.obv-thing.sure svg, .obv-thing.on svg { color: #0a0a0b; stroke: #0a0a0b; }
+.obv-thing.ghost { outline: 1px dashed rgba(var(--on), .45); outline-offset: -1px; }
+.obv.went .obv-thing:not(.on) { opacity: .25; }
+.obv-go { grid-template-columns: 1fr; max-width: 200px; min-height: 44px; text-align: center; }
+.obv-more { align-self: center; font-size: var(--t-label); color: var(--dim); }
+
+/* what comes along from Home: pieces, not a sentence */
+.obv-with { display: flex; align-items: center; gap: var(--s4); padding-top: var(--s3); border-top: 1px solid rgba(var(--on), .08); }
+.obv-with > .t-label { color: var(--dim); margin-right: auto; white-space: nowrap; }
+.obv-ai { display: flex; gap: var(--s1); }
+.obv-ai i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(var(--on), .1); font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: -.02em; }
+.obv-ai i.obv-ask { background: none; box-shadow: inset 0 0 0 1px var(--yellow-strong); color: var(--yellow-strong); }
+.obv-with .oby-level { flex: none; flex-direction: row-reverse; align-items: center; gap: var(--s3); width: auto !important; }
+.obv-with .oby-level .oby-track { flex: none; }   /* its width is the meter's (Yours.tsx sets it): it may not shrink in the row */
+.obv-with .oby-level .words { display: block; }
+.obv-with .oby-level .words button { display: none; }
+.obv-with .oby-level .words button.on { display: block; color: var(--dim); }
+/* Cowork's own empty state is not drawn while the card stands in its place (the builder's, Visit.tsx sets the mark) */
+html[data-ob-visit="cowork"] .gp-first { visibility: hidden; }
+/* #1124: never over Settings (it stood in the middle of Settings' list, where Build's chat box is not drawn) */
+html:has([data-site="settings"]) .obv-at { display: none; }
+@media (prefers-reduced-motion: reduce) { .obv, .obv-thing { animation: none; } }

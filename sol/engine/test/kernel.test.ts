@@ -11,6 +11,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gate, GateError, logFile, toolName } from "../src/kernel.ts";
 import { Kernel } from "./kernels.ts";
+import { logFiles } from "../src/log.ts";
 import { bigRoomHere } from "../src/bigroom.ts";
 import { fileTrail } from "../src/team/v3/places-trail.ts";   // the stand-in Cowork v3 reads it with, the same code
 import { readThings } from "../src/things.ts";
@@ -33,7 +34,7 @@ function home(o: { engine?: string | null } = {}) {
   return h;
 }
 const week = (h: string) => join(h, "things", "week");
-/** a test kernel's log and Sol's own folder go beside its home (a kernel is never made without them); the old file in the home stays its mirror */
+/** a test kernel's log and Sol's own folder go beside its home (a kernel is never made without them); the old file in the home, if any, is carried over once */
 const lab = (h: string) => ({ logDir: join(h, "lab-log"), appDir: join(h, "app") });
 const kinds = (k: Kernel, since = 0) => k.since(since).map((e) => `${e.kind}${e.item ? ` ${e.item}` : ""}`);
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -87,10 +88,12 @@ test("the log is the trail's file: one JSON line per step, read again by the nex
   const h = home();
   const k = new Kernel(h, lab(h));
   await k.sync();
-  const lines = readFileSync(logFile(h), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const day = logFiles(join(h, "lab-log"))[0];
+  const lines = readFileSync(day, "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(lines.length, 2);
   assert.equal(lines[0].project, "home");
-  assert.deepEqual(fileTrail(logFile(h)).since("home").map((e) => e.id), k.since().map((e) => e.id), "places-trail.ts reads it as its own");
+  assert.deepEqual(fileTrail(day).since("home").map((e) => e.id), k.since().map((e) => e.id), "places-trail.ts reads a day's file as its own");
+  assert.equal(existsSync(logFile(h)), false, "nothing at the old place in the home");
   await k.stop();
   const again = new Kernel(h, lab(h));
   assert.equal(again.lastSeq(), 3);

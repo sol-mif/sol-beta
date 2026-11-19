@@ -40,7 +40,7 @@ test("E15: the studio draws a flow from words: a trigger, the steps, the outputs
   assert.equal(r.outputs[0].place, "drive");
   assert.equal(nameOf(q.flow), "Friday at 16:00: what changed in Plan");
   assert.match(wordsOf(q.flow), /^Every Friday at 16:00, gather what changed in Plan, summarize in a few lines, send to Talk\.$/);
-  assert.deepEqual(cleanFlow([{ part: "nope", label: "x" }, { part: "send", label: "my notch" }]), [{ part: "send", label: "my notch", place: "notch" }], "a flow from the face is kept to known parts");
+  assert.deepEqual(cleanFlow([{ part: "nope", label: "x" }, { part: "send", label: "my talk" }]), [{ part: "send", label: "my talk", place: "talk" }], "a flow from the face is kept to known parts");
 });
 
 test("E15: stored as words plus flow, on the trail, owned by its maker; a dragged change says its words back", () => {

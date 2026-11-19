@@ -3,6 +3,7 @@
 // face that asked. The session itself, live or not, never sees it.
 import { randomUUID } from "node:crypto";
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { claudeDefault, latest } from "../models.js";
 
 export async function aside(a: { sessionId: string; text: string; cwd?: string; model?: string }, send: (m: object) => void) {
   const id = randomUUID();
@@ -16,7 +17,7 @@ export async function aside(a: { sessionId: string; text: string; cwd?: string; 
       prompt: a.text,
       options: {
         resume: a.sessionId, forkSession: true, persistSession: false, abortController: ac,
-        ...(a.cwd ? { cwd: a.cwd } : {}), model: a.model ?? "claude-opus-5-5",
+        ...(a.cwd ? { cwd: a.cwd } : {}), model: latest(a.model ?? claudeDefault()),
         tools: [], maxTurns: 1, includePartialMessages: true, settingSources: [],
         systemPrompt: { type: "preset", preset: "claude_code", append: "This message is an aside: Marco asks on the side while the session's task goes on. Answer briefly from what you know of this session. You have no tools here; the task itself is not changed by this answer." },
       },

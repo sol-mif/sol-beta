@@ -1,0 +1,4 @@
+/* the chip back to Cowork (#1416): a mark in the spine, or a chip at the window's top with no spine. From the scale */
+.cw-away-m i { color: var(--ink); }
+.cw-away { all: unset; box-sizing: border-box; position: fixed; top: var(--s2); left: var(--s12); z-index: 30; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--c-pearl-line); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); display: flex; align-items: center; cursor: pointer; }
+.cw-away:hover { background: var(--c-lift); }

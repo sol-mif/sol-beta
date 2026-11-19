@@ -507,7 +507,7 @@ export function stageEnv(base: NodeJS.ProcessEnv, run: string, port: number, fac
     ...env, SOL_STAGE: "1", PORT: String(port), SOL_PORT: String(port),
     SOL_HOME: join(run, "home"), SOL_STATE: join(run, "state", "work.json"), SOL_TEAM: join(run, "team.json"), SOL_PROFILE: join(run, "profile"),
     SOL_DIST: dist, SOL_FACE: face, SOL_LOG: join(run, "engine.log"), SOL_ROOMS: join(run, "rooms"),
-    SOL_HUB: "off", SOL_TRACK: "off", SOL_TRACK_URL: "off", SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1",
+    SOL_QUIET: "1", SOL_TEAM_OFFLINE: "1",   // quiet: nothing leaves this Mac (src/quiet.ts, #1293); offline: no `gh api user` in the empty HOME
     GIT_TERMINAL_PROMPT: "0",
   };
 }

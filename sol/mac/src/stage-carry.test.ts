@@ -12,8 +12,8 @@ const blk = (id: string, sessions: string[], state: Block["state"] = "live"): Bl
 
 test("a row's word: this session's blocks, carry here while a head is over it, n carried, else nothing", () => {
   const here = [blk("a", ["s1", "s2"]), blk("b", ["s1"]), blk("c", ["s1", "s2", "s3"]), blk("d", ["s1", "s2"], "dead")];
-  assert.equal(rowWord("s1", "s1", here, null), "3 blocks");
-  assert.equal(rowWord("s1", "s1", [here[0]], null), "1 block");
+  assert.equal(rowWord("s1", "s1", here, null), "3 artifacts");
+  assert.equal(rowWord("s1", "s1", [here[0]], null), "1 artifact");
   assert.equal(rowWord("s2", "s1", here, null), "2 carried", "a closed block is not counted");
   assert.equal(rowWord("s3", "s1", here, null), "1 carried");
   assert.equal(rowWord("s3", "s1", here, "s3"), "carry here");

@@ -112,7 +112,11 @@ test("tamper: a changed byte on the disk is named, the rest still fold", () => {
 });
 
 test("tamper: a bad signature, an uncertified key, a missing link, a fork and another person key are refused and named", () => {
-  const a = sol("macbook"), mallory = sol("macbook");
+  // two clocks, a minute apart (#1622): verify() pins a person's key from the first event in time order, and on a fast
+  // machine a's e1 and mallory's forged event tie on one millisecond, where the key string decides and mallory's
+  // random key is pinned half the time. With mallory a minute later, the pin is always a's.
+  const T = Date.UTC(2026, 10, 19, 10, 0, 0);
+  const a = sol("macbook", () => T), mallory = sol("macbook", () => T + 60_000);
   const e1 = a.trail.append({ project: P, by: marco("macbook"), kind: "item", item: "k", value: { title: "one" } });
   const e2 = a.trail.append({ project: P, by: marco("macbook"), kind: "item", item: "k", field: "title", value: "two" });
   const e3 = a.trail.append({ project: P, by: marco("macbook"), kind: "item", item: "k", field: "title", value: "three" });

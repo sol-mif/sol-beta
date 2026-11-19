@@ -53,7 +53,7 @@ function home() {
   mkdirSync(join(h, "app"));
   return h;
 }
-const opts = (h: string) => ({ logDir: join(h, "lab-log"), appDir: join(h, "app"), mirror: null, big: { idleMs: 60_000 } });
+const opts = (h: string) => ({ logDir: join(h, "lab-log"), appDir: join(h, "app"), old: null, big: { idleMs: 60_000 } });
 const cols = (r: Record<string, unknown>) => (columnsOf(r) as { columns: Columns }).columns;
 /** a block: its record, its engine half, and the mark that a person pressed its card (it asks for a seat, and a big room
  *  asks for a room of its own) */

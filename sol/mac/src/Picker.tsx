@@ -10,6 +10,7 @@ import { Menu, type MenuItem } from "./work/Menu";
 import { EffortPill } from "./EffortPill";
 import { WhoPill } from "./work/Who";
 import { ContextRing, type Usage } from "./work/Context";
+import type { PartId, PartReading } from "./work/contextReading";
 import { useElapsed } from "./work/Listen";
 import { Button } from "./kit";
 
@@ -88,10 +89,10 @@ const Mic = () => (
 );
 
 export function Picker({ seat, info, model, effort, efforts, up, health, context, win, parts, rec, notice, locked,
-  onSeat, onModel, onEffort, onSeatModel, onMicDown, onMicUp, noSeat, noEngine, children, call, lockedWhy, row, seats, usage, turns = 0, busy, onCompact, lead, tail }: {
+  onSeat, onModel, onEffort, onSeatModel, onMicDown, onMicUp, noSeat, noEngine, children, call, lockedWhy, row, seats, usage, turns = 0, busy, compacting, onCompact, ctxKit, ctxPart, lead, tail }: {
   /** #954, stage.whole: the row's first and last (whole.html's box: the + first, the send arrow last) */
   lead?: React.ReactNode; tail?: React.ReactNode;
-  usage?: Usage; turns?: number; busy?: boolean; onCompact?: () => void;   // the row's context circle and its card (work/Context.tsx)
+  usage?: Usage; turns?: number; busy?: boolean; compacting?: boolean; onCompact?: () => void; ctxKit?: { skills: number; commands: number }; ctxPart?: (p: PartId) => Promise<PartReading | null>;   // the row's context circle and its card (work/Context.tsx)
   lockedWhy?: string;
   noEngine?: boolean;       // no engine dots in the bar: the clean Home shows them once, top right (#589)       // the locked switch's own reason, where it is not "this conversation lives on …"
   noSeat?: boolean; children?: React.ReactNode; // the mode lives in the side now; Work puts its own controls in
@@ -126,13 +127,13 @@ export function Picker({ seat, info, model, effort, efforts, up, health, context
         {row && listening && <span className="wlistening">{time}</span>}
         {!row && call}
         {row && listening
-          ? <span className="wdone" title="done: the words stay in the box (enter, or this)"><Button h={24} onClick={onMicDown}>done</Button></span>
-          : row ? <span className="wmic" onPointerDown={onMicDown} onPointerUp={onMicUp} title="dictate (click, or hold)"><Button h={24} label="dictate"><Mic /></Button></span>
+          ? <span className="wdone" title="done: the words stay in the box (enter, or this)"><Button h={24} flat acts onClick={onMicDown}>done</Button></span>
+          : row ? <button type="button" className="wmic bare" onPointerDown={onMicDown} onPointerUp={onMicUp} title="dictate (click, or hold)" aria-label="dictate"><Mic /></button>
           : <button className={`icon ${rec ? "rec" : ""}`} onPointerDown={onMicDown} onPointerUp={onMicUp} title="dictate (click, or hold)" aria-label="dictate">
               {listening && !row ? <VoiceRibbon size={20} /> : <Mic />}
             </button>}
         {!noEngine && up && health && <Dots h={health} />}
-        {row ? <ContextRing context={context} win={win} usage={usage} turns={turns} busy={busy} onCompact={onCompact} /> : <div className="state">
+        {row ? <ContextRing context={context} win={win} usage={usage} turns={turns} busy={busy} compacting={compacting} kit={ctxKit} onPart={ctxPart} onCompact={onCompact} /> : <div className="state">
           <svg className="ring" viewBox="0 0 14 14" aria-hidden="true">
             <circle cx="7" cy="7" r={r} fill="none" stroke="var(--line)" strokeWidth="2" />
             <circle cx="7" cy="7" r={r} fill="none" stroke="var(--ink)" strokeWidth="2"

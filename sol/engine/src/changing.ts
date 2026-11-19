@@ -1,7 +1,7 @@
 // Sol changing its own face, as one wire (issue #15, 2026-10-16). The engine already sees every step a seat takes:
 // an Edit or Write that lands in the face (mac/src, design/: inventory's mutableWrite), and ../mutate and ../undo. Each
 // one goes out to every window, hot or bundled, as { type: "changing" }, so the face can tape the part under work,
-// shimmer it when the change lands and peel the tape when the seat commits it; the notch sends the crew down.
+// shimmer it when the change lands and peel the tape when the seat commits it.
 //
 //   { type: "changing", seat, sessionId, kind: "edit", file, line, done, ok? }     at the start and the end of the edit
 //   { type: "changing", seat, sessionId, kind: "mutate" | "undo", files?, line, done, ok? }   files read from git at the end
@@ -24,7 +24,7 @@
 // the step (home/CLAUDE.md asks it to name the part it changes), the commit's one line at mutate and undo, else "".
 // Nothing here invents a step: no event without a real tool call behind it.
 
-import { execFile } from "node:child_process";
+import { execFile, execFileSync, type ExecFileSyncOptionsWithStringEncoding } from "node:child_process";
 import { promisify } from "node:util";
 import { realpathSync, existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { resolve, relative, isAbsolute, dirname, sep } from "node:path";
@@ -34,6 +34,7 @@ const run = promisify(execFile);
 const EDITS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 const FACE = /^mac\/src\/.+\.(tsx?|css)$/;   // what the hot face compiles: the files a take-back may touch
 const RECENT_MS = 120_000, MEND_MS = 10_000;
+const GIT_NOW: ExecFileSyncOptionsWithStringEncoding = { encoding: "utf8", timeout: 1500, stdio: ["ignore", "pipe", "ignore"] };   // git asked inside tool(), which cannot wait: short, and silent when it fails
 const partWords = (site: string) => (site === "face" ? "the whole face" : site === "settings" ? "settings" : `the ${site}`);
 
 // as the OS sees it, for a file that may not exist yet
@@ -67,7 +68,10 @@ export class Changing {
   private pending = new Map<string, Pending & { seat: string; sessionId?: string }>();
   private edited = new Map<string | undefined, Set<string>>();   // per session: the face files its turn touched
   private recent = new Map<string, { seat: string; sessionId?: string; at: number }>();   // face file -> its last edit
-  private before = new Map<string, string | null>();   // face file -> its content before the seat's first edit (null: did not exist), so a take-back restores Marco's own uncommitted work too (#16 blocker 4)
+  // face file -> its content before the seat's first edit since a commit last kept the file (null: did not exist), so a
+  // take-back restores Marco's own uncommitted work too (#16 blocker 4) and never goes back past a commit (#894); `head`
+  // is what HEAD held for the file when the copy was taken (inHead)
+  private before = new Map<string, { was: string | null; head: string | null }>();
   private broken = new Map<string, { error: string; since: number; timer?: NodeJS.Timeout }>();   // part -> waiting to mend
   constructor(private home: string, private bus: Bus) { this.sol = resolve(real(home), ".."); }
 
@@ -87,7 +91,12 @@ export class Changing {
       this.edited.get(sessionId)!.add(file);
       if (FACE.test(file)) {
         this.recent.set(file, { seat, sessionId, at: Date.now() });
-        if (!this.before.has(file)) { try { this.before.set(file, readFileSync(resolve(this.sol, file), "utf8")); } catch { this.before.set(file, null); } }
+        const head = this.inHead(file);
+        if (!this.before.has(file) || this.keptSince(file, head)) {
+          let was: string | null = null;
+          try { was = readFileSync(resolve(this.sol, file), "utf8"); } catch { /* did not exist */ }
+          this.before.set(file, { was, head });
+        }
       }
       this.bus({ type: "changing", seat, sessionId, kind: "edit", file, line, done: false });
     } else if (name === "Bash") {
@@ -108,7 +117,11 @@ export class Changing {
     this.pending.delete(id);
     if (p.kind === "edit") { this.bus({ type: "changing", seat: p.seat, sessionId: p.sessionId, kind: "edit", file: p.file, line: "", done: true, ok }); return; }
     const hash = new RegExp(`^${p.kind}: ([0-9a-f]{7,40})\\b`, "m").exec(resultText(out))?.[1];
+    const had = new Map(this.before);   // as they are before git is read: a copy taken meanwhile is newer than the commit
     const head = ok ? await this.head(hash ?? "HEAD") : null;
+    // the commit kept these files, so their copies are from before it: dropped, and a later take-back stops at the commit
+    // (#894). Only for a commit the step named itself: with no hash in its words, HEAD may be an older commit of Sol's
+    if (hash) for (const f of head?.files ?? []) if (this.before.get(f) === had.get(f)) this.before.delete(f);   // the same copy, not one taken since
     this.bus({ type: "changing", seat: p.seat, sessionId: p.sessionId, kind: p.kind, files: head?.files ?? [], line: head?.line ?? p.line, done: true, ok: ok && !!head });
   }
 
@@ -119,6 +132,21 @@ export class Changing {
     const files = [...(this.edited.get(sessionId) ?? [])].filter((f) => FACE.test(f));
     this.edited.delete(sessionId);
     if (files.length) void this.compiles(seat, sessionId, files);
+  }
+
+  // ---- the copy a take-back writes is never older than the last commit that kept the file (#894) ----
+  // what HEAD holds for a face file: its blob's name, "" when HEAD has no such file, null when git did not say
+  private inHead(file: string): string | null {
+    try { return execFileSync("git", ["-C", this.sol, "rev-parse", "--verify", "--quiet", `HEAD:./${file}`], GIT_NOW).trim(); }
+    catch (err) { return (err as { status?: number | null }).status === 1 ? "" : null; }
+  }
+  // the copy of a file is from before a commit: HEAD holds something else for the file than when the copy was taken (an
+  // edit was committed since, by ../mutate or by hand). With no commit since, the first copy stays, even when the file is
+  // what HEAD holds again: the engine cannot tell whether Marco or the seat made it so, and a copy thrown away is Marco's
+  // uncommitted work lost for good. So does every file when git does not say.
+  private keptSince(file: string, head: string | null): boolean {
+    const then = this.before.get(file)?.head;
+    return head !== null && then != null && then !== head;
   }
 
   // ---- a part that throws when it draws (the window's boundary, Site.tsx) ----
@@ -190,11 +218,11 @@ export class Changing {
   }
 
   // Take face files back to before the seat touched them. An edit not yet committed: the file goes back to the content
-  // it had before the seat's first edit (kept at that edit, so Marco's own uncommitted work in it survives; a file that
-  // did not exist is removed); with no such copy (the seat edited through a shell), git checkout as a last resort, said
-  // so in the log. An edit already committed by ../mutate: ../undo, only when the newest commit is a mutate that touched
-  // the file; a file the newest mutate did not touch is left alone and named in the log, never undone by proxy. Returns
-  // the files really taken back (#16 blocker 4).
+  // it had before the seat's first edit since the file was last committed (kept at that edit, so Marco's own uncommitted
+  // work in it survives; a file that did not exist is removed); with no such copy (the seat edited through a shell, or
+  // a mutate kept the file since), git checkout as a last resort, said so in the log. An edit already committed by
+  // ../mutate: ../undo, only when the newest commit is a mutate that touched the file; a file the newest mutate did not
+  // touch is left alone and named in the log, never undone by proxy. Returns the files really taken back (#16 blocker 4).
   async takeBack(files: string[]): Promise<string[]> {
     const taken: string[] = [];
     let undid: string[] = [];
@@ -206,7 +234,7 @@ export class Changing {
         const dirty = tracked && await run("git", ["-C", this.sol, "diff", "--quiet", "--", f], { timeout: 5000 }).then(() => false, () => true);
         if (!tracked || dirty) {
           if (this.before.has(f)) {
-            const was = this.before.get(f)!;
+            const was = this.before.get(f)!.was;
             if (was === null) rmSync(abs, { force: true }); else { mkdirSync(dirname(abs), { recursive: true }); writeFileSync(abs, was); }
           } else if (!tracked) rmSync(abs, { force: true });
           else { console.log(`face: no copy of ${f} from before the seat's edit; git checkout (any uncommitted edit of Marco's in it goes too)`); await run("git", ["-C", this.sol, "checkout", "--", f], { timeout: 5000 }); }

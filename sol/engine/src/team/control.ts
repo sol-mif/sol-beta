@@ -24,7 +24,7 @@ const CLAUDE = () => where("claude", [join(homedir(), ".local", "bin", "claude")
 const CODEX = () => where("codex", [join(homedir(), ".local", "bin", "codex"), "/opt/homebrew/bin/codex", "/usr/local/bin/codex", join(ENGINE, "node_modules", ".bin", "codex")]);
 const GH = ghPlaces;   // PATH's, Sol's own (~/.sol/gh), Homebrew's
 
-type Out = { code: number; out: string };
+export type Out = { code: number; out: string };
 async function first(bins: string[], args: string[]): Promise<Out | null> {
   for (const b of bins) {
     try {
@@ -72,6 +72,25 @@ export async function accounts(): Promise<Accounts> {
   ]);
   noteGithub(github);
   return { claude, codex, github };
+}
+
+/** the CLI said plainly that no sign-in is kept on this Mac (#1620): what `claude auth logout` or `codex logout`
+ *  leaves. Tried by hand 2026-11-19 (claude 2.1.236, codex 0.153.4): both statuses read only what is kept here, so a
+ *  sign-in that expired or was revoked still says logged in. A plain "not logged in" is a sign-out, never a lapse;
+ *  an answer that says neither (a timeout, a crash) is not one */
+export function claudeOut(r: Out | null): boolean {
+  if (!r) return false;
+  try { return JSON.parse(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1)).loggedIn === false; } catch { return false; }
+}
+export const codexOut = (r: Out | null): boolean => !!r && r.out.split("\n").some((l) => /^not logged in$/i.test(l.trim()));
+
+/** a seat's Account, and `out` when the CLI said plainly it is signed out (claudeOut, codexOut) */
+export type SeatAccount = Account & { out?: boolean };
+const seatOf = (read: (r: Out | null) => Account, out: (r: Out | null) => boolean) => (r: Out | null): SeatAccount => ({ ...read(r), ...(out(r) ? { out: true } : {}) });
+/** the two AI seats alone (#1620, the Seats list in connections.ts): Claude Code and Codex, without GitHub's call */
+export async function seatAccounts(): Promise<{ claude: SeatAccount; codex: SeatAccount }> {
+  const [claude, codex] = await Promise.all([first(CLAUDE(), ["auth", "status"]).then(seatOf(readClaude, claudeOut)), first(CODEX(), ["login", "status"]).then(seatOf(readCodex, codexOut))]);
+  return { claude, codex };
 }
 
 // ---- GitHub signed in here, as one fact the rest reads (#320) ----

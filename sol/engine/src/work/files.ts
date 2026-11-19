@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
+import { isSealed } from "../agent/seal.js";
 
 const run = promisify(execFile);
 const SKIP = new Set(["node_modules", "dist", "build", "target", "__pycache__", "Library"]);
@@ -30,6 +31,7 @@ function walk(root: string): string[] {
       for (const d of names) {
         if (d.name.startsWith(".") || SKIP.has(d.name)) continue;
         const p = rel ? `${rel}/${d.name}` : d.name;
+        if (d.isDirectory() && isSealed(join(root, p))) continue;   // a folder its own agent keeps (agent/seal.ts)
         if (d.isDirectory()) { out.push(p + "/"); next.push(p); } else out.push(p);
         if (out.length >= 4000) break;
       }
@@ -48,7 +50,10 @@ async function paths(cwd: string): Promise<string[]> {
     const files = stdout.split("\0").filter(Boolean).slice(0, 50_000);
     const dirs = new Set<string>();
     for (const f of files) for (let i = f.indexOf("/"); i > 0; i = f.indexOf("/", i + 1)) dirs.add(f.slice(0, i + 1));
-    list = [...dirs, ...files];
+    // a folder its own agent keeps (agent/seal.ts) is left out, with everything in it, unless it is the session's folder
+    const sealed = [...dirs].filter((d) => isSealed(join(cwd, d)));
+    const out = (p: string) => sealed.some((d) => p.startsWith(d));
+    list = [...dirs, ...files].filter((p) => !out(p));
   } catch { list = walk(cwd); }
   cache.set(cwd, { at: Date.now(), paths: list });
   return list;

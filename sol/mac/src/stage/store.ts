@@ -3,6 +3,7 @@
 // home; until they are joined, LocalStore keeps the same shapes (block.json, stage.json, the ledger's lines) in this
 // window's storage, one key per session. The face never reads a store's insides: a snapshot and a subscription.
 // Joined (#709): the face's store is the engine's (engineStore.ts); LocalStore stays for the dev page and the tests.
+import type { HandMove } from "../pieces/hands";
 import type { Block, Line, Place, Rect, StageJson } from "./model";
 import type { TrayBlock } from "./trayRules";
 import { History } from "./moving.ts";
@@ -25,10 +26,19 @@ export interface StageStore {
   update(session: string, id: string, patch: Partial<Pick<Block, "state" | "body" | "bind" | "title">>, line?: string, by?: string): void;
   /** a version stamped with your yes (freeze) */
   freeze(session: string, id: string, by: string): void;
+  /** the person's press on a block that asks (#1298): answered once; the engine routes it back to who asked */
+  press?(session: string, id: string, choice: string, by: string): void;
   /** closed: off the stage; the ledger keeps it */
   close(session: string, id: string, by: string): void;
   /** what the person points at (a block, a part of it) or picked, so the agent's read names it (#698); empty clears */
   point?(session: string, on: { id: string; part?: string }[]): void;
+  /** what the one space drew, for the agent's eyes (#1435, pieces/seen.ts; the engine's work/eyes.ts) */
+  seen?(session: string, report: object): void;
+  /** the agent's moves for a session (#1437, work.stage.hand): those that came while no space listened are handed over
+   *  as one subscribes */
+  onHand?(session: string, f: (m: HandMove) => void): () => void;
+  /** how the agent's moves went, for the tracker (#1437, pieces/felt.ts) */
+  felt?(session: string, f: object): void;
   /** carried to another session (#700): the same block, one ledger, referenced there too; this stage keeps it */
   carry(session: string, id: string, to: string, by: string): void;
   /** pulled in from the tray (#739): one of the project's blocks carried onto this stage, at the spot it was dropped (none:
@@ -95,6 +105,14 @@ export class LocalStore implements StageStore {
     const s = this.read(session);
     const blocks = s.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b));
     this.write(session, { ...s, blocks, ledger: line ? this.log(s, id, line, by) : s.ledger });
+  }
+  press(session: string, id: string, choice: string, by: string) {
+    const s = this.read(session);
+    const b = s.blocks.find((x) => x.id === id);
+    if (!b?.asks || b.asks.answer || !b.asks.choices.includes(choice)) return;   // answered once
+    const asks = choice === "later" ? { ...b.asks, later: new Date(now()).toLocaleDateString("sv-SE") } : { ...b.asks, later: undefined, answer: { choice, by, at: now() } };
+    const blocks = s.blocks.map((x) => (x.id === id ? { ...x, asks, state: choice === "later" ? x.state : ("live" as const) } : x));
+    this.write(session, { ...s, blocks, ledger: this.log(s, id, `${choice} · ${asks.q}`, by) });
   }
   freeze(session: string, id: string, by: string) {
     const s = this.read(session);

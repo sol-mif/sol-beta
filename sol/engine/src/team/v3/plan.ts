@@ -1,7 +1,7 @@
 // Cowork v3, slice 2 (fr-30, #555): Space and Plan, the front, and the one "needs me" count, all folded from the trail.
 // Nothing here keeps a state of its own: every write is one event appended to the trail, and every read folds the
-// trail again (items and loose things per project, asks, hands and yeses). The front, the plan's four views, the stage
-// chip and the notch all read the same fold, so the numbers cannot disagree.
+// trail again (items and loose things per project, asks, hands and yeses). The front, the plan's four views and the stage
+// chip read the same fold, so the numbers cannot disagree.
 //
 // The trail adapter is the top of this file and the only place that knows slice 0's trail: `trailNow` is slice 0's,
 // through door.ts (doorTrail below); the memory and file trails are the tests'.

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // The seven human checks on the real face, shot and measured (#891; the night brief's "human checks"). Shoots Build with
-// one, three and six blocks open, a block being dragged, a block resized, the tray open, and Home's first screen, its
-// ribbon and Calm (nothing needs you), at 900×700, 1280×800 and 1512×982, with the run's switches (`stage.whole`,
-// `sol.home.whole`) on, off, or both. Then computes what a machine can of the seven, and fails with the place named:
+// one, three and six blocks open, a block being dragged, a block resized and the tray open, at 900×700, 1280×800 and
+// 1512×982, with the run's switch (`stage.whole`) on, off, or both. Then computes what a machine can of the seven, and fails with the place named:
 //   (1) text that reads through to what is behind it, or contrast under 4.5:1: the pixels under and around each line
 //       of text, sampled from the shot itself (the line's top and bottom edge rows are its ground, the pixel farthest
 //       from the ground inside it is its ink); "reads through" is a ground that varies under one line (its darkest and
@@ -17,7 +16,7 @@
 // Played against an engine and a face from this checkout on their own ports (eyes-up.sh up).
 //   bash sol/mac/eyes-up.sh up
 //   node sol/mac/eyes.mjs --face http://127.0.0.1:1453 --engine ws://127.0.0.1:7813 --out <folder> \
-//     [--switch on|off|both] [--size 1280x800,...] [--only build|home] [--tag before]
+//     [--switch on|off|both] [--size 1280x800,...] [--tag before]
 // Writes <out>/<tag>-<switch>-<size>-<scene>.png and <out>/<tag>.json; exits 1 when a computed check fails, each fault
 // printed as "fail  (n) <scene>: <what> at <where>".
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -33,7 +32,7 @@ const opt = (k, d) => { const i = args.indexOf(k); if (i < 0) { if (d !== undefi
 const FACE = opt("--face"), ENGINE = opt("--engine"), OUT = opt("--out"), TAG = opt("--tag", "eyes");
 const DESK = opt("--desk", "on") === "on";
 const JSON_AS = opt("--json", TAG);
-const SWITCH = opt("--switch", "both"), ONLY = opt("--only", "");
+const SWITCH = opt("--switch", "both");
 const SIZES = opt("--size", "900x700,1280x800,1512x982").split(",").map((s) => s.split("x").map(Number));
 const IDS = { 1: "7a1c0a00-0000-4000-8000-0000000891b1", 3: "7a1c0a00-0000-4000-8000-0000000891b3", 6: "7a1c0a00-0000-4000-8000-0000000891b6" };
 const BLOCKS = ["week", "kit-side", "side-diff", "stills", "gate", "legacy"];
@@ -71,7 +70,7 @@ function readPage() {
   const shown = (e) => { const s = getComputedStyle(e); if (s.visibility === "hidden" || s.display === "none") return false; for (let p = e; p; p = p.parentElement) if (+getComputedStyle(p).opacity < 0.05) return false; const r = e.getBoundingClientRect(); return r.width > 1 && r.height > 1; };
   const name = (e) => e.getAttribute("data-block") ? `block "${e.getAttribute("data-block")}"` : e.getAttribute("data-part") ?? e.getAttribute("aria-label") ?? (e.className && String(e.className).split(" ")[0]) ?? e.tagName.toLowerCase();
   const things = [];
-  for (const e of document.querySelectorAll(".st-block:not(.st-ghosted):not(.dying), .st-talk, .st-tray.open .st-trayshelf, .hw-stack, .hw-touch, .hw-receipt, .hw-line, .hwr, [data-ribbon]")) if (shown(e)) things.push({ what: name(e), r: R(e), stage: !!e.closest(".st-stagebox, .st-stage") && e.classList.contains("st-block") });
+  for (const e of document.querySelectorAll(".st-block:not(.st-ghosted):not(.dying), .st-talk, .st-tray.open .st-trayshelf")) if (shown(e)) things.push({ what: name(e), r: R(e), stage: !!e.closest(".st-stagebox, .st-stage") && e.classList.contains("st-block") });
   const stage = document.querySelector(".st-stagebox, .st-stage");
   // lines of text: an element whose own text nodes say something, not inside an svg or a canvas
   const texts = [];
@@ -238,7 +237,7 @@ async function main() {
     for (const sw of switches) for (const [vw, vh] of SIZES) {
       const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2 });
       const v = sw === "on" ? "1" : "0";
-      await ctx.addInitScript((v) => { if (window !== window.top) return; for (const [k, x] of [["sol.home.clean", "1"], ["sol.welcomed", "1"], ["sol.engine", "next"], ["sol.counts.seen", "1"], ["stage.whole", v], ["sol.home.whole", v]]) localStorage.setItem(k, x); }, v);
+      await ctx.addInitScript((v) => { if (window !== window.top) return; for (const [k, x] of [["sol.home.clean", "1"], ["sol.welcomed", "1"], ["sol.engine", "next"], ["sol.counts.seen", "1"], ["stage.whole", v]]) localStorage.setItem(k, x); }, v);
       // the Mac's window is the base at 0.78 over the desktop, blurred (tokens.css --base, face.css body): the desktop
       // picture goes on the page's root, so the body's base and its blur are drawn over it as the window's are
       if (DESK) await ctx.addInitScript((src) => {
@@ -266,12 +265,12 @@ async function main() {
         console.log(`shot  ${file} (${f.length} fault${f.length === 1 ? "" : "s"})`);
         return data;
       };
-      await page.goto(`${FACE}/?stage.whole=${sw}&sol.home.whole=${sw}`);
+      await page.goto(`${FACE}/?stage.whole=${sw}`);
       await page.locator("[data-sid]").first().waitFor({ state: "attached", timeout: 120_000 });
       await sleep(2000);
       if (await page.getByRole("button", { name: "OK" }).count()) await page.getByRole("button", { name: "OK" }).first().click();
 
-      if (ONLY !== "home") for (const n of [1, 3, 6]) {
+      for (const n of [1, 3, 6]) {
         const t0 = Date.now();
         await page.locator(`[data-sid="${IDS[n]}"]`).first().evaluate((e) => e.click());
         await page.locator(".st-room").first().waitFor({ state: "attached", timeout: 60_000 });
@@ -321,23 +320,6 @@ async function main() {
           await sleep(800);
           await shoot("build-3-tray", "the tray open at the stage's foot: the project's other blocks as miniatures");
           await page.locator(".st-trayline").first().click().catch(() => {});
-        }
-      }
-      if (ONLY !== "build") {
-        const home = page.locator('.spine [aria-label^="home"]').first();
-        if (await home.count()) {
-          await home.click();
-          await sleep(4000);
-          await shoot("home-first", "Home's first screen: the line, the week's ribbon, one card in front");
-          const rib = page.locator(".hwr, [data-ribbon]").first();
-          if (await rib.count()) {
-            const file = `${TAG}-${sw}-${size}-home-ribbon.png`;
-            await rib.screenshot({ path: join(OUT, file), timeout: WAIT });
-            scenes.push({ file, switch: sw, size, scene: "home-ribbon", says: "the week's ribbon, close", faults: [], motion: [], things: [], eye: EYE });
-          }
-          // Calm: every card answered, nothing needs you
-          for (let i = 0; i < 5 && await page.locator('[data-answer="warm"]').count(); i++) { await page.locator('[data-answer="warm"]').first().click(); await sleep(900); }
-          await shoot("home-calm", "Calm: everything answered, nothing needs you");
         }
       }
       await ctx.close();

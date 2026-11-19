@@ -1,0 +1,36 @@
+/* The team strip (#1167): black, white and pearl, glass cards on the kit, every space and size the scale's
+   (.claude/skills/layout). It floats over the top of the system view; the lanes start under it. */
+.ts { position: absolute; left: var(--s4); right: var(--s4); top: var(--s12); z-index: 3; cursor: default; display: flex; flex-direction: column; gap: var(--s2); }
+.ts-top { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); white-space: nowrap; min-width: 0; }
+.ts-top b { color: var(--ink); font-weight: 600; }
+.ts-label { font-size: var(--t-label); line-height: var(--t-label-line); letter-spacing: .08em; text-transform: uppercase; color: var(--c-pearl); }
+.ts-quiet { margin-left: auto; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ts-faint { color: var(--mute); }
+.ts-clock { font-size: var(--t-label); line-height: var(--t-label-line); }
+
+.ts-row { display: flex; gap: var(--s2); min-width: 0; }
+.ts-card { all: unset; box-sizing: border-box; position: relative; isolation: isolate; flex: 1 1 0; min-width: 0; max-width: 320px; cursor: pointer;
+           padding: var(--s2) var(--s3); display: flex; flex-direction: column; border-radius: var(--r-card); }
+.ts-card:hover { box-shadow: 0 0 0 1px var(--c-pearl-line); }
+.ts-card.picked { box-shadow: var(--shadow-picked); }
+.ts-head { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); }
+.ts-head b { flex: 1; min-width: 0; color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-mark { font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s2); border-radius: var(--r-pill); }
+.ts-mark.on { background: var(--c-pearl); color: var(--c-deep); font-weight: 600; }
+.ts-mark.off { border: 1px solid var(--c-pearl-line); color: var(--ink); }
+.ts-mark.none { color: var(--mute); }
+.ts-line { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* a person's detail: a part of the view, under the strip */
+.ts-detail { position: relative; isolation: isolate; align-self: flex-start; width: min(480px, 100%); max-height: 50vh; overflow: auto; box-sizing: border-box;
+             padding: var(--s3) var(--s4); border-radius: var(--r-card); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+.ts-dhead { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); }
+.ts-dhead b { color: var(--ink); font-weight: 600; }
+.ts-x { all: unset; cursor: pointer; margin-left: auto; color: var(--mute); padding: 0 var(--s1); }
+.ts-x:hover { color: var(--ink); }
+.ts-sec { margin-top: var(--s2); color: var(--c-pearl); }
+.ts-detail ul { list-style: none; margin: 0; padding: 0; }
+.ts-detail li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ts-detail code { font-family: var(--mono); color: var(--ink); }
+.ts-link { all: unset; cursor: pointer; color: var(--ink); text-decoration: underline; text-decoration-color: var(--c-pearl-line); }
+.ts-link:hover { color: var(--c-pearl); }

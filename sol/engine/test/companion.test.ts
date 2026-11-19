@@ -1,8 +1,7 @@
-// Companion step 1: presence and state derived in the engine, one ping one place.
+// Companion step 1: presence and state derived in the engine (one ping, one place is notify.test.ts since #845).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addCreatureFace, removeCreatureFace, setRole, setPresence, presenceNow, placeNow, derive, sent, AWAY_S, receiptLines } from "../src/creature.js";
-import { addPingFace, pingFaceIs, ping, seenPing, ackPing, _pings, _reset } from "../src/ping.js";
+import { addCreatureFace, removeCreatureFace, setRole, setPresence, presenceNow, derive, sent, AWAY_S, receiptLines } from "../src/creature.js";
 import { join } from "../src/busy.js";
 
 type Msg = { type: string; [k: string]: any };
@@ -12,9 +11,9 @@ test("presence: here, elsewhere, away; no idle source never away; a call pins he
   const w = face();
   addCreatureFace(w, w); setRole(w, "window");
   assert.equal(w.got[0].type, "engine");
-  setPresence(w, true, 3); assert.equal(presenceNow(), "here"); assert.equal(placeNow(), "window");
-  setPresence(w, false, 30); assert.equal(presenceNow(), "elsewhere"); assert.equal(placeNow(), "notch");
-  setPresence(w, false, AWAY_S); assert.equal(presenceNow(), "away"); assert.equal(placeNow(), "phone");
+  setPresence(w, true, 3); assert.equal(presenceNow(), "here");
+  setPresence(w, false, 30); assert.equal(presenceNow(), "elsewhere");
+  setPresence(w, false, AWAY_S); assert.equal(presenceNow(), "away");
   setPresence(w, false, null); assert.equal(presenceNow(), "elsewhere");
   setPresence(w, false, AWAY_S + 5);
   sent(w, { type: "call", state: "live" });
@@ -27,39 +26,6 @@ test("presence: here, elsewhere, away; no idle source never away; a call pins he
   sent(w, { type: "done", ok: false });
   assert.ok(w.got.some((m) => m.type === "creature.flash" && m.kind === "wrong"));
   assert.ok(w.got.some((m) => m.type === "creature.state"));
-  removeCreatureFace(w);
-});
-
-test("pings: one destination, seen only there, dedupe, phone falls back to the notch", async (t) => {
-  _reset();
-  const w = face(), n = face(), ph = face();
-  addCreatureFace(w, w); setRole(w, "window");
-  for (const [f, r] of [[w, "window"], [n, "notch"], [ph, "phone"]] as const) { addPingFace(f); pingFaceIs(f, r); }
-  setPresence(w, true, 0);
-  const a = ping("one", "codex");
-  assert.equal(a.dest, "window");
-  assert.ok(w.got.some((m) => m.type === "notify" && m.id === a.id));
-  assert.ok(!n.got.some((m) => m.type === "notify"));
-  assert.equal(ping("one", "codex").id, a.id, "same (seat, line) within 30 s is one ping");
-  assert.equal(seenPing(a.id, n), false, "the notch cannot clear a window ping");
-  assert.equal(seenPing(a.id, w), true);
-
-  setPresence(w, false, AWAY_S);
-  t.mock.timers.enable({ apis: ["setTimeout"] });
-  const b = ping("two", "claude");
-  assert.equal(b.dest, "phone");
-  assert.ok(n.got.some((m) => m.type === "notify.mark" && m.count === 1));
-  assert.equal(seenPing(b.id, n), false, "a notch click cannot clear a phone-bound ping");
-  t.mock.timers.tick(20_000);
-  assert.equal(b.dest, "notch");
-  assert.ok(n.got.some((m) => m.type === "notify" && m.id === b.id));
-  const c = ping("three", "claude");
-  ackPing(c.id, ph);
-  t.mock.timers.tick(20_000);
-  assert.equal(c.dest, "phone", "acked: it stays on the phone");
-  t.mock.timers.reset();
-  for (let i = 0; i < 15; i++) ping(`p${i}`, "codex");
-  assert.equal(_pings().length, 12);
   removeCreatureFace(w);
 });
 

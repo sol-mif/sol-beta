@@ -16,11 +16,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import { door, byOf, type Door } from "./door.js";
 import type { TrailEvent } from "./trail.js";
+import { counts, dateAfter, inOrder, seatWrite } from "./standing.js";
 
 // ---------------------------------------------------------------- the trail port (slice 0's API, as plan.html names it)
 export type Actor = { who: string; agent?: boolean; machine?: string };
-export type Draft = { project: string; actor: Actor; kind: string; item?: string; where?: string; data?: Record<string, unknown> };
-export type Event = Draft & { id: string; seq: number; at: string; hash: string; prev: string };
+export type Draft = { project: string; actor: Actor; kind: string; item?: string; where?: string; data?: Record<string, unknown>; at?: number };
+export type Event = Omit<Draft, "at"> & { id: string; seq: number; at: string; hash: string; prev: string; key?: string };
 export type TrailPort = {
   append(e: Draft): Event;
   since(project: string, seq?: number): Event[];
@@ -37,7 +38,8 @@ export function memoryTrail(now: () => Date = () => new Date()): TrailPort & { a
     all,
     append(d) {
       const writer = `${d.actor.who}${d.actor.agent ? "'s agent" : ""}@${d.actor.machine ?? ""}`;
-      const base = { ...d, id: randomUUID(), seq: all.length + 1, at: now().toISOString(), prev: heads.get(writer) ?? "" };
+      const { at: when, ...rest } = d;
+      const base = { ...rest, id: randomUUID(), seq: all.length + 1, at: new Date(when ?? now().getTime()).toISOString(), prev: heads.get(writer) ?? "" };
       const e: Event = { ...base, hash: digest(base) };
       heads.set(writer, e.hash);
       all.push(e);
@@ -59,16 +61,19 @@ export function memoryTrail(now: () => Date = () => new Date()): TrailPort & { a
 export function doorPort(d: Pick<Door, "append" | "since" | "check">): TrailPort {
   const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? { ...(v as Record<string, unknown>) } : {});
   const back = (e: TrailEvent): Event[] => {
+    if (Number.isNaN(new Date(e.at).getTime())) return [];   // a time no date can hold reads as nothing, never stops the fold
     const v = obj(e.value);
     const where = typeof v.where === "string" ? v.where : undefined;
     delete v.where;
     const ev = (kind: string, data: Record<string, unknown>, item = e.item): Event => ({ project: e.project,
       actor: { who: e.by.person, ...(e.by.agent ? { agent: true } : {}), ...(e.by.machine ? { machine: e.by.machine } : {}) }, kind,
-      ...(item ? { item } : {}), ...(where ? { where } : {}), data, id: e.id, seq: e.seq, at: new Date(e.at).toISOString(), hash: e.hash, prev: e.prev });
+      ...(item ? { item } : {}), ...(where ? { where } : {}), data, id: e.id, seq: e.seq, at: new Date(e.at).toISOString(), hash: e.hash, prev: e.prev, key: e.key });
     if (e.kind === "member" && e.item) {
       const f = e.field !== undefined ? { [e.field]: e.value } : v;
-      if (f.in === false) return [ev("member.out", { who: e.item }, undefined)];
-      return typeof f.role === "string" ? [ev("member.in", { who: e.item, role: f.role }, undefined)] : [];
+      const seat = seatWrite(f);   // the one shape both folds read (standing.ts): a member event that does not say it counts nothing
+      if (!seat) return [];
+      if (seat.in === false) return [ev("member.out", { who: e.item }, undefined)];
+      return [ev(seat.in ? "member.in" : "member.role", { who: e.item, role: seat.role, ...(seat.in ? {} : { only: true }) }, undefined)];
     }
     if (e.kind === "setting" && e.item) {
       const layer = e.item.startsWith("me:") ? "me" : e.item;
@@ -78,9 +83,9 @@ export function doorPort(d: Pick<Door, "append" | "since" | "check">): TrailPort
     return [ev(e.kind, v)];
   };
   const draft = (x: Draft) => {
-    const by = byOf(x.actor.who, x.actor.agent), dd = x.data ?? {};
-    if ((x.kind === "member.in" || x.kind === "member.role") && typeof dd.who === "string") return { project: x.project, by, kind: "member", item: dd.who, value: { role: dd.role, in: true } };
-    if (x.kind === "member.out" && typeof dd.who === "string") return { project: x.project, by, kind: "member", item: dd.who, value: { in: false } };
+    const by = byOf(x.actor.who, x.actor.agent), dd = x.data ?? {}, at = x.at !== undefined ? { at: x.at } : {};
+    if ((x.kind === "member.in" || x.kind === "member.role") && typeof dd.who === "string") return { project: x.project, by, kind: "member", item: dd.who, value: { role: dd.role, in: true }, ...at };
+    if (x.kind === "member.out" && typeof dd.who === "string") return { project: x.project, by, kind: "member", item: dd.who, value: { in: false }, ...at };
     if (x.kind === "setting.set" && typeof dd.layer === "string" && typeof dd.key === "string")
       return { project: x.project, by, kind: "setting", item: dd.layer === "me" ? `me:${x.actor.who.toLowerCase()}` : dd.layer, field: dd.key, value: dd.value ?? null };
     return { project: x.project, by, kind: x.kind, ...(x.item ? { item: x.item } : {}), value: { ...dd, ...(x.where ? { where: x.where } : {}) } };
@@ -155,8 +160,8 @@ export const passOf = (ring: Ring): "yes" | "ask" | "never" => (ring === "workFa
 // ---------------------------------------------------------------- the fold of slice 3's own kinds
 export type Hand = { id: string; item: string; title: string; from: string; to: string; at: string; undone?: true };
 export type People = {
-  members: Map<string, Member>;
-  left: Map<string, { at: string; by: string }>;
+  members: Map<string, Member>;   // by login, lower case
+  left: Map<string, { at: string; by: string; who: string }>;   // by login, lower case
   layers: { team: Record<string, string>; project: Record<string, string>; me: Map<string, Record<string, string>> };
   windows: Map<string, Record<Ring, string[]>>;
   moves: Map<string, { who: string; chip: string; from: Ring; to: Ring; undone?: true }>;   // by undo token
@@ -165,25 +170,35 @@ export type People = {
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
+/** a project's people from its events, in the order every Sol agrees on; a member event counts only when its writer
+ *  could make it then (standing.ts, #1049), and a member is one whatever the case of their login */
 export function foldPeople(events: Event[]): People {
   const p: People = { members: new Map(), left: new Map(), layers: { team: {}, project: {}, me: new Map() }, windows: new Map(), moves: new Map(), hands: new Map() };
   const win = (who: string) => { let w = p.windows.get(who); if (!w) { w = defaultWindow(); p.windows.set(who, w); } return w; };
   const ringOf = (w: Record<Ring, string[]>, chip: string) => RINGS.find((r) => w[r].includes(chip));
   const put = (who: string, chip: string, to: Ring) => { const w = win(who); for (const r of RINGS) w[r] = w[r].filter((c) => c !== chip); w[to].push(chip); };
-  for (const e of events) {
+  const writer = (e: Event) => e.key ?? `${e.actor.who}${e.actor.agent ? "'s agent" : ""}@${e.actor.machine ?? ""}`;
+  const owners = new Set<string>();   // in lower case, kept as the fold goes
+  const may = (e: Event, who: string, after: Role | null) =>
+    counts({ owners, writer: e.actor.who, agent: !!e.actor.agent, who, before: p.members.get(who.toLowerCase())?.role ?? null, after });
+  for (const e of inOrder(events, (x) => Date.parse(x.at), writer)) {
     const d = e.data ?? {};
     switch (e.kind) {
       case "member.in": case "member.role": {
         const who = str(d.who), role = str(d.role) as Role;
-        if (!who || !ROLES.includes(role)) break;
-        p.left.delete(who);
-        const had = p.members.get(who);
-        p.members.set(who, { who, role, agent: role === "guest" ? null : { whose: who }, since: had?.since ?? e.at });
+        // `only`: slice 0's event named a role and not `in`, which changes the role of someone in and lets nobody in
+        if (!who || !ROLES.includes(role) || (d.only === true && !p.members.has(who.toLowerCase())) || !may(e, who, role)) break;
+        p.left.delete(who.toLowerCase());
+        if (role === "owner") owners.add(who.toLowerCase()); else owners.delete(who.toLowerCase());
+        const had = p.members.get(who.toLowerCase()), name = had?.who ?? who;
+        p.members.set(who.toLowerCase(), { who: name, role, agent: role === "guest" ? null : { whose: name }, since: had?.since ?? e.at });
         break;
       }
       case "member.out": {
-        const who = str(d.who); if (!who) break;
-        p.members.delete(who); p.left.set(who, { at: e.at, by: e.actor.who });
+        const who = str(d.who); if (!who || !may(e, who, null)) break;
+        const name = p.members.get(who.toLowerCase())?.who ?? who;
+        owners.delete(who.toLowerCase());
+        p.members.delete(who.toLowerCase()); p.left.set(who.toLowerCase(), { at: e.at, by: e.actor.who, who: name });
         break;
       }
       case "setting.set": {
@@ -229,15 +244,19 @@ export function foldPeople(events: Event[]): People {
 export function peopleOf(project: string, seed?: { owners: string[]; editors: string[]; by: string }): People {
   const t = trail();
   let evs = t.since(project, 0);
-  if (seed && !evs.some((e) => e.kind === "member.in")) {
+  // only one of the room's owners seeds, themself first: while nobody is in, only the first owner's own event counts
+  if (seed && seed.owners.some((w) => same(w, seed.by)) && !foldPeople(evs).members.size) {
     const seen = new Set<string>();
-    for (const [list, role] of [[seed.owners, "owner"], [seed.editors, "editor"]] as const)
-      for (const who of list) { if (!who || seen.has(who.toLowerCase())) continue; seen.add(who.toLowerCase()); t.append({ project, actor: { who: seed.by }, kind: "member.in", where: "record", data: { who, role } }); }
+    for (const [list, role] of [[[seed.by], "owner"], [seed.owners, "owner"], [seed.editors, "editor"]] as const)
+      for (const who of list) { if (!who || seen.has(who.toLowerCase())) continue; seen.add(who.toLowerCase()); t.append({ project, actor: { who: seed.by }, kind: "member.in", where: "record", data: { who, role }, ...dateAfter(lastMemberAt(t.since(project, 0))) }); }
     evs = t.since(project, 0);
   }
   return foldPeople(evs);
 }
-export const roleOf = (p: People, who: string): Role | null => [...p.members.values()].find((m) => same(m.who, who))?.role ?? null;
+const MEMBER = new Set(["member.in", "member.role", "member.out"]);
+/** the time of the latest member event a trail has (ms), 0 when none */
+const lastMemberAt = (evs: Event[]) => evs.reduce((n, e) => (MEMBER.has(e.kind) ? Math.max(n, Date.parse(e.at) || 0) : n), 0);
+export const roleOf = (p: People, who: string): Role | null => p.members.get(who.toLowerCase())?.role ?? null;
 
 /** the three layers as one picture: per setting, each layer's own value and the one in effect, and where it came from */
 export function layersOf(p: People, me: string): LayerRow[] {
@@ -370,7 +389,7 @@ export function setRole(project: string, actor: Actor, who: string, role: Role):
   if (!ROLES.includes(role)) return { error: "no such role" };
   const owners = [...p.members.values()].filter((m) => m.role === "owner");
   if (role !== "owner" && owners.length === 1 && same(owners[0].who, who)) return { error: "a project keeps at least one owner" };
-  trail().append({ project, actor: { who: actor.who }, kind: roleOf(p, who) ? "member.role" : "member.in", where: "record", data: { who, role } });
+  trail().append({ project, actor: { who: actor.who }, kind: roleOf(p, who) ? "member.role" : "member.in", where: "record", data: { who, role }, ...dateAfter(lastMemberAt(trail().since(project, 0))) });
   return { ok: true };
 }
 
@@ -418,6 +437,6 @@ export function leave(project: string, actor: Actor, who: string): { ok: true } 
   if (!roleOf(p, who)) return { error: `${who} is not in this project` };
   const owners = [...p.members.values()].filter((m) => m.role === "owner");
   if (owners.length === 1 && same(owners[0].who, who)) return { error: "the last owner names another before leaving" };
-  trail().append({ project, actor: { who: actor.who }, kind: "member.out", where: "record", data: { who } });
+  trail().append({ project, actor: { who: actor.who }, kind: "member.out", where: "record", data: { who }, ...dateAfter(lastMemberAt(trail().since(project, 0))) });
   return { ok: true };
 }

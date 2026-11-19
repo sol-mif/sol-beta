@@ -6,6 +6,7 @@ export { Pill } from "./Pill";
 export { Field } from "./Field";
 export { Ring, type RingLook } from "./Ring";
 export { Card } from "./Card";
+export { ActionCard, type Said, type Press as CardPress, type Asks } from "./ActionCard";   // the card family: a face and one press or one question (#1299)
 export { Row } from "./Row";
 export { List, type Item } from "./List";
 export { Meter, partColour } from "./Meter";
@@ -18,3 +19,14 @@ export { jellyBands, textW, useSize } from "./paint";
 export { LOOKS, type Look } from "./tokens";
 export { Frame, Head, SideKey, dragRow, useFrameVars } from "./Chrome";
 export { FRAME, MAC, headPad } from "./geometry";
+// pass 2's hand moves (#692, tactile.html): ink in four states, the back card, nudge, pinch, circle; slice F draws them
+export { Ink, InkField, DoubtCard, FINISH_STOP_MS, type InkState, type InkDoubt } from "./Ink";
+export { BackCard, Peel, type BackFacts } from "./BackCard";
+export { Nudge, PUSHES, type Push, type Example } from "./Nudge";
+export { Pinch } from "./Pinch";
+export { Circle, wordsIn, type CircleAct } from "./Circle";
+export { Block, BLOCK_STATES, type BlockState, type BlockTake } from "./Block";
+// the press at the foot of any artifact that asks (#1298)
+export { Press, type PressAnswer } from "./Press";
+export { Sticky, FolderCard, type StickyState } from "./Folder";
+export { SETS, DEFAULT_SET, litOf, Pure, CUTS, CutSet, useCut, cutStyle, Display, BigNum, GROUNDS, type PaletteSet, type Cut, type CutId, type GroundId } from "./Yours";

@@ -15,6 +15,7 @@ import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "n
 import { dirname, join } from "node:path";
 import { platform } from "node:os";
 import type { AddressInfo } from "node:net";
+import { isQuiet } from "../quiet.js";
 
 export const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 export const SIGN_IN_FOR = 10 * 60_000;
@@ -83,7 +84,7 @@ export const dropTicket = (hub: string) => { held.delete(hub); };
 const held = new Map<string, { ticket: string; until: number }>();
 const renewing = new Map<string, Promise<string>>();
 
-const post = (d: CloudDeps, url: string, body: object) => (d.fetch ?? fetch)(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(WAIT) }).catch(() => null);
+const post = (d: CloudDeps, url: string, body: object) => isQuiet() ? Promise.resolve(null) : (d.fetch ?? fetch)(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(WAIT) }).catch(() => null);
 
 /** my ticket for a hub I have an account on: the one held while it lasts another minute, else a renewal. "" when there
  *  is none (no account, the cloud did not answer). A renewal the cloud refuses (the token ran out, the account was

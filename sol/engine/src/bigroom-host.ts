@@ -5,6 +5,7 @@
 //              Sol's tools are asked and awaited: each returns a promise (in the small room read and write return at once;
 //              `await` works in both). A tool's run, a listener and a schedule run here when the engine hands them over:
 //              the engine counts the times (needs.every) and keeps the events (hears) while the room is put away.
+//              sol.since(from, kinds), the log's past, is there only when the engine's start says so (its switch, step A3).
 // Only node: builtins and erasable TypeScript, as kernel-worker.ts.
 import { pathToFileURL } from "node:url";
 
@@ -35,8 +36,8 @@ const hears: ((e: unknown) => unknown)[] = [];
 const times = new Map<number, (() => unknown)[]>();
 const offs: (() => unknown)[] = [];
 
-function makeSol(id: string, folders: string[]) {
-  return Object.freeze({
+function makeSol(id: string, folders: string[], past: boolean) {
+  const door = {
     id,
     room: "big" as const,
     folders: Object.freeze([...folders]),   // the folders its record declares, as they are on this Mac ("~/" made the person's home)
@@ -63,12 +64,14 @@ function makeSol(id: string, folders: string[]) {
     run(program: unknown, args: unknown = [], opts: unknown = {}) { return ask({ t: "run", program: String(program), args, opts }); },
     fetch(url: unknown, opts: unknown = {}) { return ask({ t: "fetch", url: String(url), opts }); },
     call(tool: unknown, args: unknown = {}) { return ask({ t: "call", tool: String(tool), args }); },
-  });
+  };
+  const since = (from: unknown, kinds?: unknown) => ask({ t: "since", from: from === undefined ? 0 : Number(from), kinds: kinds === undefined ? undefined : Array.isArray(kinds) ? kinds.map(String) : String(kinds) });
+  return Object.freeze(past ? { ...door, since } : door);
 }
 
-process.on("message", (m: { t: string; q?: number; ok?: boolean; value?: unknown; why?: string; e?: unknown; call?: number; name?: string; args?: Record<string, unknown>; ms?: number; id?: string; file?: string; folders?: unknown[] }) => {
+process.on("message", (m: { t: string; q?: number; ok?: boolean; value?: unknown; why?: string; e?: unknown; call?: number; name?: string; args?: Record<string, unknown>; ms?: number; id?: string; file?: string; folders?: unknown[]; since?: boolean }) => {
   switch (m?.t) {
-    case "start": void start(String(m.id), String(m.file), Array.isArray(m.folders) ? m.folders.filter((f): f is string => typeof f === "string") : []); return;
+    case "start": void start(String(m.id), String(m.file), Array.isArray(m.folders) ? m.folders.filter((f): f is string => typeof f === "string") : [], m.since === true); return;
     case "answer": { const w = waiting.get(Number(m.q)); waiting.delete(Number(m.q)); if (w) (m.ok ? w.ok(m.value) : w.no(new Error(m.why))); return; }
     case "ev": for (const f of hears) void guard("a listener", () => f(m.e)); return;
     case "every": {
@@ -92,13 +95,13 @@ process.on("disconnect", () => process.exit(0));   // the engine is gone (killed
 process.on("uncaughtException", (e) => trouble("the room", e));
 process.on("unhandledRejection", (e) => trouble("the room", e));
 
-async function start(id: string, file: string, folders: string[]) {
+async function start(id: string, file: string, folders: string[], past: boolean) {
   try {
     const mod = (await import(pathToFileURL(file).href)) as { default?: unknown; load?: unknown };
     const inner = isObj(mod.default) ? (mod.default as { default?: unknown; load?: unknown }) : null;
     const f = [mod.default, mod.load, inner?.default, inner?.load].find((x) => typeof x === "function") as ((s: unknown) => unknown) | undefined;
     if (!f) throw new Error(`${file.split("/").at(-1)} exports no function (export default function (sol) { … })`);
-    const off = await f(makeSol(id, folders));
+    const off = await f(makeSol(id, folders, past));
     if (typeof off === "function") offs.push(off as () => unknown);
     send({ t: "ready" });
   } catch (e) {

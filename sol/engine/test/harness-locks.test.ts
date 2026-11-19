@@ -277,7 +277,7 @@ test("merge: a merge into main, by any road, is refused; catching my own branch 
   const d = checkout({ branch: "main" }), w = checkout();
   for (const c of ["git merge feature", "bash -c 'git merge feature'", "sh -lc \"cd . && git merge feature\"", "eval git merge feature",
     "echo feature | xargs git merge", "git pull origin feature", "git -c alias.m=merge m feature", "git config alias.mm 'merge feature'",
-    "gh pr merge 3", "gh api -X PUT repos/o/r/pulls/3/merge", "gh api repos/o/r/merges -f base=main -f head=x",
+    "gh pr merge 3 --admin", "gh api -X PUT repos/o/r/pulls/3/merge", "gh api repos/o/r/merges -f base=main -f head=x",
     "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'", "git commit -m \"$(git merge feature)\""])
     assert.equal(bash(d, c), c.startsWith("git commit") ? "main-commit" : "merge", c);
   assert.equal(bash(w, `git -C ${d} merge feature`), "merge", "from a side copy, judged where it runs (git -C)");
@@ -319,8 +319,9 @@ test("tonight and the hand-in card: a session never sends their presses, by a li
   const d = checkout();
   for (const c of ["curl -X POST localhost:7777/tonight", "node -e \"ws.send(JSON.stringify({type:'team.tonight.press'}))\"",
     "python3 - <<'EOF'\nsend('team.tonight.key')\nEOF"]) assert.equal(bash(d, c), "tonight", c);
-  for (const c of ["node -e \"ws.send(JSON.stringify({type:'team.handin.press', choice:'in'}))\"", "echo '{\"type\":\"team.handin.key\"}' | websocat ws://127.0.0.1:7777", "gh pr ready 3"])
-    assert.equal(bash(d, c), c.startsWith("gh pr ready") ? "hand-in" : "hand-in-card", c);
+  for (const c of ["node -e \"ws.send(JSON.stringify({type:'team.handin.press', choice:'in'}))\"", "echo '{\"type\":\"team.handin.key\"}' | websocat ws://127.0.0.1:7777"])
+    assert.equal(bash(d, c), "hand-in-card", c);
+  assert.equal(bash(d, "gh pr ready 3"), "", "marking a PR ready goes through since #1126");
   put(BASE, "night.sh", "node -e \"send('team' + '.tonight.press')\"\n");
   assert.equal(bash(d, `bash ${join(BASE, "night.sh")}`), "tonight", "a script it runs");
   put(BASE, "hand.mjs", "ws.send(JSON.stringify({ type: 'team.handin.press' }))\n");
@@ -353,6 +354,33 @@ test("a PR without a note: the body gh will send carries What to try; the words 
   assert.equal(bash(d, "gh pr create --draft --title x --body-file - <<'EOF'\nWhat to try\nopen it\nEOF"), "");
   assert.equal(bash(d, "gh pr create --draft --title x --body \"$(cat <<'EOF'\nWhat to try\nopen it\nEOF\n)\""), "");
   assert.equal(bash(d, `gh pr create -R sol-mif/sol-dev --draft --title x --body "What to try: open it"`), "", "gh's -R before the command");
+});
+
+test("proof (#1235): a session closes an issue only with its Proof; not planned needs none", () => {
+  const d = checkout();
+  // gh is the stub: the issue's last comment reads "[]", no Proof in it
+  assert.equal(bash(d, "gh issue close 12"), "close-without-proof");
+  assert.equal(bash(d, 'gh issue close 12 --comment "done"'), "close-without-proof");
+  assert.equal(bash(d, 'gh -R sol-mif/sol-dev issue close 12 -c "Proof: …"'), "close-without-proof", "a placeholder is not a Proof");
+  assert.equal(bash(d, 'gh issue close 12 --comment "Proof: the still of the Path, gate run green on abc123"'), "");
+  assert.equal(bash(d, 'gh issue close 12 -c "Shipped.\n\n**Proof**: first-timer walked it"'), "");
+  assert.equal(bash(d, 'gh issue close 12 -c"Proof: gate run green"'), "", "-c and its value as one word");
+  assert.equal(bash(d, 'gh issue close 12 --reason "not planned"'), "");
+  assert.equal(bash(d, "gh issue close 12 --duplicate-of 9"), "");
+  assert.equal(bash(d, 'git commit -m "gh issue close 12 is refused without Proof"'), "", "words in a message are not the act");
+});
+
+test("live at verified (#1235): a builder never sets a registry record to live; another role may", () => {
+  const d = checkout();
+  const rec = (state: string) => JSON.stringify({ id: "x", name: "X", state }, null, 2) + "\n";
+  put(d, "sol/systems/records/x.json", rec("building"));
+  assert.equal(edit(d, "sol/systems/records/x.json", '"state": "building"', '"state": "live"', { role: "builder" }), "live-at-verified");
+  assert.equal(write(d, "sol/systems/records/y.json", rec("live"), { role: "builder" }), "live-at-verified", "a new record starts building");
+  assert.equal(bash(d, "sed -i '' 's/building/live/' sol/systems/records/x.json", { role: "builder" }), "live-at-verified");
+  assert.equal(write(d, "sol/systems/records/y.json", rec("building"), { role: "builder" }), "");
+  assert.equal(bash(d, "sed -i '' 's/parked/building/' sol/systems/records/x.json", { role: "builder" }), "live-at-verified", "a shell's write it cannot read: Edit or Write");
+  assert.equal(edit(d, "sol/systems/records/x.json", '"state": "building"', '"state": "live"', { role: "verifier" }), "");
+  assert.equal(edit(d, "sol/systems/records/x.json", '"state": "building"', '"state": "live"'), "", "a Sol developer's own window");
 });
 
 test("where a line goes: a checkout or switch earlier in the line moves the branch later commands are judged on", () => {

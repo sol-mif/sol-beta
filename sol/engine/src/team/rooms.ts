@@ -11,6 +11,7 @@ import { asGitHub, hubHttp, safeForToken, thisMachine } from "./relay.js";
 import { normalCode, type Entry, type RoomIn } from "../hub/index.js";
 import type { RoomRecord } from "./record.js";
 import { driveFolderId } from "./record/drive.js";
+import { isQuiet, quietFetch } from "../quiet.js";
 
 export type RoomsDeps = {
   team: () => TeamSettings;
@@ -138,7 +139,7 @@ async function register(d: RoomsDeps, r: Room, me: string): Promise<{ code: stri
     const { url, headers, clear } = await call(d, r, "/rooms");
     if (!url.startsWith("http")) return { error: "where the room meets is not an address" };
     let res: Response;
-    try { res = await d.fetch(url, { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(WAIT) }); }
+    try { quietFetch(url); res = await d.fetch(url, { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(WAIT) }); }
     catch { return { error: NO_ANSWER }; }
     if (res.status === 403) return { error: clear ? CLEAR : await refusedLine(res) };
     if (!res.ok) return { error: `the hub said: ${await firstLine(res)}` };
@@ -195,7 +196,7 @@ export async function joinRoom(d: RoomsDeps, typed: unknown, peeked?: { hub: unk
     const { url, headers, clear } = await call(d, { hub, key: like.key, org: like.org, gate: like.gate }, `/rooms/${code}`);
     if (!url.startsWith("http")) continue;
     let res: Response;
-    try { res = await d.fetch(url, { headers, signal: AbortSignal.timeout(WAIT) }); } catch { continue; }
+    try { quietFetch(url); res = await d.fetch(url, { headers, signal: AbortSignal.timeout(WAIT) }); } catch { continue; }
     if (res.status === 403) { if (clear) inClear = true; else refused ||= unsigned(d, hub) ? SIGN_IN : await refusedLine(res); continue; }
     if (res.status === 404) { missed = true; continue; }
     if (!res.ok) continue;
@@ -246,7 +247,7 @@ export async function peekRoom(d: Pick<RoomsDeps, "team" | "fetch" | "cloudAt">,
   const base = hub ? hubHttp(hub) : "";
   if (!base) return { error: "Sol has no cloud to ask; type the code in join a group" };
   let res: Response;
-  try { res = await d.fetch(`${base}/peek/${code}`, { signal: AbortSignal.timeout(WAIT) }); } catch { return { error: "the cloud did not answer; try again" }; }
+  try { quietFetch(base); res = await d.fetch(`${base}/peek/${code}`, { signal: AbortSignal.timeout(WAIT) }); } catch { return { error: "the cloud did not answer; try again" }; }
   if (res.status === 404) return { error: "no group has this code" };
   if (res.status === 429) return { error: "too many codes tried; wait ten minutes" };
   const v = res.ok ? await res.json().catch(() => null) as { name?: unknown } | null : null;
@@ -271,10 +272,34 @@ export async function forgetGone(d: RoomsDeps, before: TeamSettings, after: Team
     if (!r.hub) { if (d.local?.forget?.(r.code, me)) sent.push(r.code); continue; }
     const { url, headers, clear } = await call(d, r, member(r) ? `/rooms/${r.code}/members/me` : `/rooms/${r.code}`);
     if (clear || !url.startsWith("http") || !headers.authorization) continue;   // only GitHub's word forgets a room
+    if (isQuiet()) continue;
     const res = await d.fetch(url, { method: "DELETE", headers, signal: AbortSignal.timeout(WAIT) }).catch(() => null);
     if (res?.ok) sent.push(r.code);
   }
   return sent;
+}
+
+/** who sits at each of my rooms (#1537, the groups home), me first (`me` as team.state says me): the room in use, the members the engine already reads; a room
+ *  on a cloud I have an account on, its members as that cloud says them (GET /rooms/<code>/members, members only); any
+ *  other room, me alone, since nothing here knows more. Each room asked at once, none waited on past WAIT; a room
+ *  that did not answer is me alone, never made up */
+export async function roomPeople(d: Pick<RoomsDeps, "team" | "fetch" | "token" | "ticket" | "cloudAt">, me: string, inUse: () => string[]): Promise<Record<string, string[]>> {
+  const t = d.team();
+  const mine = (l: string[]) => [me, ...l.filter((x) => x && x.toLowerCase() !== me.toLowerCase())];
+  const member = (r: Room) => !!r.code && !!r.hub && (r.provider === "cloud" || !!d.cloudAt?.(hubHttp(r.hub)));
+  const one = async (r: Room): Promise<string[]> => {
+    if (r.id === t.room) return mine(inUse());
+    if (!member(r) || isQuiet()) return [me];
+    const { url, headers, clear } = await call(d as RoomsDeps, r, `/rooms/${r.code}/members`);
+    if (clear || !url.startsWith("http") || !headers.authorization) return [me];
+    const res = await d.fetch(url, { headers, signal: AbortSignal.timeout(WAIT) }).catch(() => null);
+    const v = res?.ok ? await res.json().catch(() => null) : null;
+    const list = Array.isArray(v?.members) ? v.members.map((m: unknown) => (typeof m === "string" ? m : typeof (m as { login?: unknown })?.login === "string" ? (m as { login: string }).login : "")) : [];
+    return mine(list);
+  };
+  const out: Record<string, string[]> = {};
+  await Promise.all(t.rooms.map(async (r) => { out[r.id] = await one(r).catch(() => [me]); }));
+  return out;
 }
 
 /** a room made from its name alone (#160): the hub says the name is free, the record makes its repository under my
@@ -307,7 +332,7 @@ export async function makeRoom(d: RoomsDeps, typed: { name?: unknown; hub?: unkn
     const { url, headers, clear } = await call(d, { hub, key, org: "", gate }, `/names/${encodeURIComponent(name)}`);
     if (!url.startsWith("http")) return { error: "where it meets is not an address" };
     let res: Response;
-    try { res = await d.fetch(url, { headers, signal: AbortSignal.timeout(WAIT) }); } catch { return { error: "the hub did not answer" }; }
+    try { quietFetch(url); res = await d.fetch(url, { headers, signal: AbortSignal.timeout(WAIT) }); } catch { return { error: "the hub did not answer" }; }
     if (res.status === 403) return { error: clear ? CLEAR : unsigned(d, hub) ? SIGN_IN : await refusedLine(res) };
     if (res.status === 404) return { error: "that hub is an older Sol: it cannot make a room from a name yet" };
     if (!res.ok) return { error: `the hub said: ${await firstLine(res)}` };

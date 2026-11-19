@@ -7,6 +7,11 @@
 // inside the pill to the right of the track in --dim, changing through the dither. The level commits once, on
 // release (a click on the open track commits at the clicked stop). Keyboard: left and right on the focused pill step
 // the level. SVG and CSS; the word is the one canvas, on the creature's shared loop (creature/Widget.tsx).
+// It stands on the kit's Pill (#647 round 5's pins, Marco 2026-11-07: "is the effort pill standardized against the rest
+// of the UI"): the pill's height (24), its corner (half the height, the continuous curve), its type step (TYPE.pill) and
+// its padding (half the height each side; the droplet is a mark inside it), and its glass is the kit's PillBack, so it
+// follows the one rest pick (kit/Pill.tsx REST) and lifts under the pointer as every pill. Its heat stays: in black and
+// tint the heat is its glass, as the Bypass pill's; in words there is no glass at rest, and the word wears the heat.
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { reducedMotion } from "./motion";
 import { anyWhole } from "./flag";
@@ -15,13 +20,15 @@ import { Swap } from "./MotionKit";
 import { Creature } from "./creature/Widget";
 import { bayer } from "./creature/ring";
 import { jellyBands } from "./kit/paint";
-import { JELLY } from "./kit/tokens";
+import { PillBack, REST, heatWord } from "./kit/Pill";
+import { JELLY, TYPE } from "./kit/tokens";
 
 const OPEN_MS = 180, HOVER_MS = 300, SWEEP_MS = 220, POUR_MS = 520;
-const KNOB = 9;                         // the knob's slot (the droplet is a touch larger, it is round)
+const H = 24;                           // the kit Pill's height in the row (Composer, Who, Plus: h 24)
+const KNOB = 12;                        // the knob's slot: the droplet's own size, a mark
 const STEP = 14;                        // px between stops
-const PADL = 11, PADR = 11;             // the pill's own padding
-const GAP_REST = 8, GAP_OPEN = 10;      // between the knob (the track) and the word
+const PADL = H / 2, PADR = H / 2;       // the kit Pill's padding: half its height
+const GAP_REST = 8, GAP_OPEN = 10;      // between the knob (the track) and the word (12 + 12 + 8 = the row's --s8)
 
 // the heat of level k of n, by its name when it has a known one, else by where it sits
 const LOW = /^(low|minimal|min|none|off)$/, HIGH = /^(high|xhigh|max|ultra)/;
@@ -71,7 +78,7 @@ function Word({ text }: { text: string }) {
   return (
     <Creature className="eword-c" dustCell={2} setup={(l) => { l.maxDust = 0; }} draw={(l, x, w, h) => {
       const s = st.current, k = reducedMotion() ? 1 : Math.min(1, (l.now - s.at) / SWEEP_MS);
-      x.font = `11.5px ui-monospace, "SF Mono", Menlo, monospace`;
+      x.font = `500 ${TYPE.pill[0]}px ${TYPE.family}`;   // the ghosts (face.css .eghost) measure in the same font
       x.textAlign = "left"; x.textBaseline = "middle"; x.fillStyle = getComputedStyle(x.canvas).color;
       if (k >= 1) { x.fillText(s.now, 0, h / 2 + 0.5); return; }
       const cell = 3, cols = Math.ceil(w / cell), rows = Math.ceil(h / cell);
@@ -93,6 +100,7 @@ export function EffortPill({ options, value, onChange, label = "effort" }: { opt
   const [land, setLand] = useState(0);          // bumps when the knob settles on a stop, so it squashes once
   const root = useRef<HTMLDivElement>(null), ghosts = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState<number | undefined>(undefined);   // the pill's width while it animates; unset = auto
+  const [hov, setHov] = useState(false);      // under the pointer: it lifts, as every kit pill
   const trackW = KNOB + STEP * (n - 1);
   const armed = useRef(false);                 // a press that opened the pill picks nothing on release; a drag, or a press on the open track, does
   const prev = useRef(i);
@@ -159,8 +167,8 @@ export function EffortPill({ options, value, onChange, label = "effort" }: { opt
     later(hide, OPEN_MS);
   };
   // back inside before the close ran: it stays open
-  const enter = () => { window.clearTimeout(closeTimer.current); if (!open) hoverTimer.current = window.setTimeout(show, HOVER_MS); };
-  const leave = () => { window.clearTimeout(hoverTimer.current); if (open && !drag) later(hide, OPEN_MS); };
+  const enter = () => { setHov(true); window.clearTimeout(closeTimer.current); if (!open) hoverTimer.current = window.setTimeout(show, HOVER_MS); };
+  const leave = () => { setHov(false); window.clearTimeout(hoverTimer.current); if (open && !drag) later(hide, OPEN_MS); };
   const key = (ev: React.KeyboardEvent<HTMLDivElement>) => {
     if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
     ev.preventDefault();
@@ -182,17 +190,26 @@ export function EffortPill({ options, value, onChange, label = "effort" }: { opt
   }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = options[hot] ?? value ?? "–";
+  const bare = REST === "words";   // no glass at rest: the word wears the level's heat
+  const lvl = heatOf(options, i);
+  const heatLayers = !bare && (
+    <span className="eheat" aria-hidden="true">
+      {heat.key > 0 && heat.was !== heat.now && <HeatLayer key={`w${heat.key}`} h={heatOf(options, heat.was)} />}
+      <HeatLayer key={`n${heat.key}`} h={heatOf(options, heat.now)} pour={heat.key > 0} />
+    </span>
+  );
   return (
-    <div ref={root} className={`slider epill${open ? " open" : ""}${drag ? " drag" : ""}${swell ? " swell" : ""}`} title={value ? `${label}: ${value}` : label}
+    <div ref={root} className={`slider epill${open ? " open" : ""}${drag ? " drag" : ""}${swell ? " swell" : ""}${bare ? " bare" : ""}`} title={value ? `${label}: ${value}` : label}
       role="slider" tabIndex={0} aria-valuemin={0} aria-valuemax={n - 1} aria-valuenow={i} aria-valuetext={value} data-hot={hot}
-      style={{ width: w, transition: reducedMotion() ? "none" : `width ${OPEN_MS}ms cubic-bezier(.2,.7,.2,1)` }}
+      style={{ width: w, height: H, padding: `0 ${PADR}px 0 ${PADL + KNOB + GAP_REST}px`, fontSize: TYPE.pill[0], lineHeight: `${TYPE.pill[1]}px`, transition: reducedMotion() ? "none" : `width ${OPEN_MS}ms cubic-bezier(.2,.7,.2,1)` }}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel} onPointerEnter={enter} onPointerLeave={leave} onKeyDown={key}>
-      <span className="name"><Swap k={value ?? "–"} className="val" dist={14} dir={prev.current >= i ? 1 : -1}><span>{value ?? "–"}</span></Swap></span>
-      <span ref={ghosts} className="eghost" aria-hidden="true">{options.map((o) => <span key={o}>{o}</span>)}</span>
-      <span className="eheat" aria-hidden="true">
-        {heat.key > 0 && heat.was !== heat.now && <HeatLayer key={`w${heat.key}`} h={heatOf(options, heat.was)} />}
-        <HeatLayer key={`n${heat.key}`} h={heatOf(options, heat.now)} pour={heat.key > 0} />
+      <PillBack h={H} up={hov || open || drag} over={heatLayers || undefined} />
+      <span className="name" style={bare ? { textShadow: "none" } : undefined}>
+        <Swap k={value ?? "–"} className="val" dist={14} dir={prev.current >= i ? 1 : -1}>
+          <span className={bare && lvl.dur && !reducedMotion() ? "kheat" : undefined} style={bare ? { ...heatWord(lvl.cols), animationDuration: lvl.dur ? `${lvl.dur}s` : undefined } : undefined}>{value ?? "–"}</span>
+        </Swap>
       </span>
+      <span ref={ghosts} className="eghost" aria-hidden="true">{options.map((o) => <span key={o}>{o}</span>)}</span>
       {open && <span className="etrack" aria-hidden="true">{options.map((o, k) => <i key={o} className={k === hot ? "on" : undefined} style={{ left: PADL + KNOB / 2 + k * STEP }} />)}</span>}
       <span className={`eknob${drag && open && hot === n - 1 && n > 1 ? " top" : ""}`} aria-hidden="true" style={{ left: PADL + KNOB / 2 + (open ? (px ?? hot * STEP) : 0) }}>
         <span key={land} className="eknob-d"><Drop h={heatOf(options, open ? hot : i)} /></span>

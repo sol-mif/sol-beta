@@ -1,0 +1,168 @@
+/* Show, don't say (#1020): every rule here waits for look.shown (shown/flag.ts writes data-shown on <html>). A word
+   taken off the screen is never deleted: it is folded (.sh-fold's way: clipped to nothing, still read by a screen
+   reader) and comes back on hover and on focus, over the row, without moving anything. The scale: palette.css. */
+
+/* the fold: out of sight, in the reading order */
+:root[data-shown="on"] .settings-shell .lab small,
+:root[data-shown="on"] .settings-shell .sp-head p,
+:root[data-shown="on"] .settings-shell .sgroup,
+:root[data-shown="on"] .settings-shell .ssearch kbd,
+:root[data-shown="on"] .vcard span,
+:root[data-shown="on"] .st-step small[data-words],
+:root[data-shown="on"] .st-listfoot [data-words],
+:root[data-shown="on"] .st-table .st-is {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---- Settings: one loud thing per page (the title), the second lines asked for, the rail drawn ---- */
+/* a row's second line comes back over the row below it, on hover or focus, and moves nothing */
+:root[data-shown="on"] .settings-shell .field-r { position: relative; }
+:root[data-shown="on"] .settings-shell .field-r:hover .lab small,
+:root[data-shown="on"] .settings-shell .field-r:focus-within .lab small {
+  width: auto; height: auto; clip-path: none; white-space: normal; z-index: 3;
+  top: calc(100% - var(--s2)); left: 0; max-width: 360px; padding: var(--s2) var(--s3);
+  background: var(--pop); border: 1px solid var(--line); border-radius: var(--r-row);
+  font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); pointer-events: none;
+}
+/* the page's line under its title: on hover of the title */
+:root[data-shown="on"] .settings-shell .sp-head { position: relative; }
+:root[data-shown="on"] .settings-shell .sp-head:hover p {
+  width: auto; height: auto; clip-path: none; white-space: nowrap; z-index: 3; top: 100%; left: calc(44px + var(--s4));
+  padding: var(--s1) var(--s2); background: var(--pop); border-radius: var(--r-chip); font-size: var(--t-label); color: var(--dim);
+}
+/* the rail's groups are kept as space, not as words */
+:root[data-shown="on"] .settings-shell .sitems .sgroup + .sitem { margin-top: var(--s3); }
+/* a peek that says "off" is drawn as an empty ring; "on" as a filled one */
+:root[data-shown="on"] .speek[data-v="off"], :root[data-shown="on"] .speek[data-v="on"] {
+  width: var(--s2); height: var(--s2); border-radius: 50%; font-size: 0; box-shadow: inset 0 0 0 1px var(--mute);
+}
+:root[data-shown="on"] .speek[data-v="on"] { background: var(--c-pearl); box-shadow: none; }
+/* the hint paragraphs stay, a step quieter, so the controls are the loud thing */
+:root[data-shown="on"] .settings-shell .sp-body .hint-line { color: var(--mute); }
+
+/* ---- Settings › voice: each voice a small jelly drop, its name under it, its word on hover ---- */
+:root[data-shown="on"] .voices { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: var(--s3) var(--s2); }
+:root[data-shown="on"] .vcard {
+  align-items: center; gap: var(--s1); min-height: 0; padding: var(--s2) 0; background: none; border: 0; text-align: center;
+}
+:root[data-shown="on"] .vcard::before {
+  content: ""; width: var(--s8); height: var(--s8); border-radius: 46% 54% 52% 48% / 52% 46% 54% 48%;
+  background: radial-gradient(circle at 36% 30%, rgb(255 255 255 / 0.28), transparent 46%), var(--sh-hue, var(--c-pearl));
+  opacity: 0.86; transition: transform var(--d-turn) var(--e-arrive), opacity var(--d-turn) var(--e-arrive);
+}
+:root[data-shown="on"] .vcard:first-child::before { background: none; box-shadow: inset 0 0 0 1px var(--mute); }
+:root[data-shown="on"] .vcard:hover { background: none; }
+:root[data-shown="on"] .vcard:hover::before, :root[data-shown="on"] .vcard:focus-visible::before { transform: scale(1.1); opacity: 1; }
+:root[data-shown="on"] .vcard.on::before { opacity: 1; }
+:root[data-shown="on"] .vcard.on::before { box-shadow: 0 0 0 2px var(--base-color, #000), 0 0 0 3.5px var(--c-pearl); }
+:root[data-shown="on"] .vcard b { font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 400; color: var(--dim); }
+:root[data-shown="on"] .vcard.on b { color: var(--ink); }
+:root[data-shown="on"] .vcard:hover span, :root[data-shown="on"] .vcard:focus-visible span {
+  width: auto; height: auto; clip-path: none; z-index: 3; top: calc(100% - var(--s1)); left: 50%; transform: translateX(-50%);
+  padding: var(--s1) var(--s2); background: var(--pop); border-radius: var(--r-chip); font-size: var(--t-label); color: var(--dim);
+}
+:root[data-shown="on"] .vcard .hear { margin-top: var(--s1); }
+/* the jelly's colours, in its order, across the voices */
+:root[data-shown="on"] .vcard:nth-child(6n + 2) { --sh-hue: #ff4888; }
+:root[data-shown="on"] .vcard:nth-child(6n + 3) { --sh-hue: #fb7129; }
+:root[data-shown="on"] .vcard:nth-child(6n + 4) { --sh-hue: #f4c82a; }
+:root[data-shown="on"] .vcard:nth-child(6n + 5) { --sh-hue: #70df45; }
+:root[data-shown="on"] .vcard:nth-child(6n + 6) { --sh-hue: #ff2e4e; }
+:root[data-shown="on"] .vcard:nth-child(6n + 7) { --sh-hue: #f89b2a; }
+
+/* ---- Build: state drawn on the blocks ---- */
+/* a list's step: the dot says it (green done, the jelly turning now, the sun waits); the word on hover */
+:root[data-shown="on"] .st-step { position: relative; }
+:root[data-shown="on"] .st-step:hover small[data-words] {
+  width: auto; height: auto; clip-path: none; right: var(--s1); top: 50%; transform: translateY(-50%);
+}
+:root[data-shown="on"] .st-step.done i { background: var(--green); }
+/* the meter alone says how far; its label is the screen reader's */
+:root[data-shown="on"] .st-listfoot { min-height: var(--s2); }
+/* a table's state cell: its dot alone, the word on the row's hover */
+:root[data-shown="on"] .st-table td:has(> .st-is)::before {
+  content: ""; display: inline-block; vertical-align: middle; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--mute);
+}
+:root[data-shown="on"] .st-table td:has(> .st-is.live)::before { background: var(--jelly); }
+:root[data-shown="on"] .st-table td:has(> .st-is.done)::before { background: var(--live); }
+:root[data-shown="on"] .st-table td:has(> .st-is.wrong)::before { background: var(--error); }
+:root[data-shown="on"] .st-table tr:hover .st-is { position: static; width: auto; height: auto; clip-path: none; margin-left: var(--s2); color: var(--dim); }
+:root[data-shown="on"] .st-table tr:hover .st-is::before { content: none; }
+
+/* the chat box's mode: a mark in the pill's place */
+.sh-mode { display: inline-grid; place-items: center; width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); color: var(--dim); box-shadow: inset 0 0 0 1px var(--line); }
+.sh-mode:hover, .sh-mode.lit { color: var(--ink); box-shadow: inset 0 0 0 1px var(--mute); }
+.sh-mode.bypassPermissions { color: var(--ink); background: var(--jelly); box-shadow: none; }
+.sh-mode.bypassPermissions svg { opacity: 0; }
+
+/* a three-way choice (always · when it matters · never): the one picked keeps its word, the others are dots in their
+   place, their word on hover (title) and still read by a screen reader */
+:root[data-shown="on"] .settings-shell .wseg button:not(.on) { font-size: 0; min-width: var(--h-chip); padding: 0; }
+:root[data-shown="on"] .settings-shell .wseg button:not(.on)::before {
+  content: ""; display: inline-block; width: var(--s2); height: var(--s2); border-radius: 50%; box-shadow: inset 0 0 0 1px var(--mute);
+}
+:root[data-shown="on"] .settings-shell .wseg button:not(.on):hover::before { background: var(--dim); box-shadow: none; }
+
+/* a shortcut printed beside a button: there when the pointer or the focus is on the button */
+:root[data-shown="on"] button:not(:hover):not(:focus-visible) > kbd { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+/* the table's "waits" dot: the sun, as the list's waiting step (the meaning channel's --write drew nothing here) */
+:root[data-shown="on"] .st-table td:has(> .st-is.waits)::before { background: var(--yellow-strong); box-shadow: 0 0 6px var(--yellow-strong); }
+
+/* a voice's name is a word nobody knows (zephyr, sulafat): the picked one keeps it, the others say it on hover and focus */
+:root[data-shown="on"] .vcard:not(.on):not(:hover):not(:focus-visible) b { color: transparent; }
+
+/* ---- Settings › look: the skin and the bubble picked from pictures of themselves; a slider's number on hover ---- */
+:root[data-shown="on"] .settings-shell .bubbles .bpill:has(.sh-bub, .sh-skin) { display: inline-grid; place-items: center; min-width: var(--s12); padding: 0 var(--s2); }
+.sh-bub { display: inline-flex; align-items: center; }
+.sh-bub .msg.me { display: block; width: var(--s8); height: var(--s4); min-height: 0; padding: 0; margin: 0; border-radius: var(--r-chip); }
+.sh-bub[data-bubble="bare"] .msg.me { width: var(--s6); height: 2px; background: var(--glow); border-radius: var(--r-pill); }
+.sh-skin { display: inline-block; width: var(--s4); height: var(--s4); border-radius: 50%; }
+.sh-skin.pearl { background: radial-gradient(circle at 35% 30%, #fff, var(--c-pearl) 60%); }
+.sh-skin.ink { box-shadow: inset 0 0 0 1.5px var(--ink); }
+:root[data-shown="on"] .settings-shell .range .val { opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+:root[data-shown="on"] .settings-shell .field-r:hover .range .val, :root[data-shown="on"] .settings-shell .field-r:focus-within .range .val { opacity: 1; }
+
+/* ---- Build, empty: where you left off as pictures of the stages it left ---- */
+:root[data-shown="on"] .st-room.whole .st-leftoff.sh-leftoff { flex-direction: row; gap: var(--s2); align-items: flex-end; }
+:root[data-shown="on"] .st-room.whole .sh-leftoff button { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; flex: 1 1 0; max-width: 112px; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+:root[data-shown="on"] .st-room.whole .sh-leftoff button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-shown="on"] .st-room.whole .sh-leftoff button:hover { color: var(--ink); }
+.sh-map { display: block; width: 100%; aspect-ratio: 112 / 68; border-radius: var(--r-row); background: var(--c-pearl-tint); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow var(--d-turn) var(--e-arrive); }
+.sh-leftoff button:hover .sh-map { box-shadow: inset 0 0 0 1px var(--mute); }
+.sh-map rect { fill: var(--c-pearl); opacity: 0.55; }
+.sh-map rect[data-kind="page"] { fill: #f4c82a; }
+.sh-map rect[data-kind="list"] { fill: #70df45; }
+.sh-map rect[data-kind="table"] { fill: #ff4888; }
+.sh-map rect[data-kind="diff"] { fill: #fb7129; }
+.sh-map-none { stroke: var(--mute); stroke-width: 1; }
+:root[data-shown="on"] .settings-shell .bubbles .bpill.on:has(.sh-bub, .sh-skin) { background: none; box-shadow: inset 0 0 0 1.5px var(--c-pearl); }
+
+/* ---- one loud thing per screen: the sizes in between snap to the scale (11 label · 13 body · 15 reading · 20 title) ---- */
+:root[data-shown="on"] .st-head .st-t, :root[data-shown="on"] .st-acts button { font-size: var(--t-body); line-height: var(--t-body-line); }
+:root[data-shown="on"] .settings-shell .wseg button { font-size: var(--t-body); }
+:root[data-shown="on"] .settings-shell .hint-line { font-size: var(--t-label); line-height: var(--t-label-line); }
+:root[data-shown="on"] .settings-shell .ssearch input { font-size: var(--t-body); }
+:root[data-shown="on"] .settings-shell .sp-head h2 { font-size: var(--t-title); line-height: var(--t-title-line); }
+:root[data-shown="on"] .settings-shell .ctl-sub { font-variant-caps: normal; letter-spacing: 0; font-size: var(--t-body); color: var(--ink); }
+
+/* ---- the dial's middle stop, marks (#1036): state stays drawn (dots, rings, drops, the mode's mark, a shortcut on its
+   button), and the second lines, section names and sentences are written again, in their place ---- */
+:root[data-shown="on"][data-shown-deg="1"] .settings-shell .lab small,
+:root[data-shown="on"][data-shown-deg="1"] .settings-shell .sp-head p,
+:root[data-shown="on"][data-shown-deg="1"] .settings-shell .sgroup {
+  position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; background: none; border: 0; padding: 0; transform: none;
+}
+
+/* the dial in Settings › look: the slider, and the three stops drawn as a row looks at each */
+.sh-dial { gap: var(--s3); }
+.sh-stops { display: inline-flex; gap: var(--s1); }
+.sh-stop { display: grid; place-items: center; padding: var(--s1); border: 0; border-radius: var(--r-row); background: none; color: var(--mute); cursor: pointer; transition: color var(--d-turn) var(--e-arrive), background-color var(--d-turn) var(--e-arrive); }
+.sh-stop:hover { color: var(--dim); }
+.sh-stop.on { color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+/* at marks a row's second line is in its place, so the hand brings no box over the row */
+:root[data-shown="on"][data-shown-deg="1"] .settings-shell .field-r:hover .lab small,
+:root[data-shown="on"][data-shown-deg="1"] .settings-shell .field-r:focus-within .lab small,
+:root[data-shown="on"][data-shown-deg="1"] .settings-shell .sp-head:hover p {
+  position: static; background: none; border: 0; padding: 0; max-width: none; white-space: normal; color: var(--mute);
+}

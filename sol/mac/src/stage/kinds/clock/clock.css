@@ -1,0 +1,51 @@
+/* The clock block (#1177): black, white and pearl; the meaning colours only where a state says something (green done
+   or green CI, yellow building, pearl CI running, red red or late). Every colour is a token; sizes are the scale's. */
+.ck { display: flex; flex-direction: column; gap: var(--s3); height: 100%; min-height: 0; padding: var(--s2) var(--s3) var(--s3); overflow: hidden; }
+
+.ck-head { display: flex; align-items: baseline; gap: var(--s4); flex: none; }
+.ck-now { font-size: 44px; line-height: 48px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ck-sum { flex: 1; min-width: 0; color: var(--dim); font-size: var(--t-body); display: flex; align-items: baseline; gap: var(--s3); }
+.ck-sum b { color: var(--ink); font-weight: 600; }
+.ck-sum b.ck-late-w { color: var(--error); }
+.ck-checked { color: var(--mute); font-size: var(--t-label); }
+.ck-act { flex: none; align-self: center; }
+
+/* the next hours: half-hour ticks, the now line in pearl, a pin per item at its ETA */
+.ck-line { position: relative; flex: none; height: 92px; border-radius: var(--r-card); background: rgb(255 255 255 / .03); border: 1px solid var(--line); overflow: hidden; }
+.ck-tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgb(255 255 255 / .06); }
+.ck-tick span { position: absolute; top: var(--s1); left: var(--s1); font-size: var(--t-label); color: var(--mute); font-variant-numeric: tabular-nums; }
+.ck-nowl { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--c-pearl); z-index: 2; transition: left 1s linear; }
+.ck-nowl span { position: absolute; top: var(--s1); left: var(--s1); font-size: var(--t-label); color: var(--c-pearl); }
+.ck-pin { position: absolute; top: 32px; transform: translateX(-50%); width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 2px solid var(--c-deep, #000);
+          background: var(--mute); cursor: default; z-index: 3; }
+.ck-pin.opens { cursor: pointer; }
+.ck-pin.opens:hover { box-shadow: 0 0 0 3px rgb(233 228 218 / .25); }
+.ck-pin i { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--t-label); font-style: normal; color: var(--dim); pointer-events: none; }
+.ck-pin.building { background: var(--write); }
+.ck-pin.ci { background: var(--c-pearl); }
+.ck-pin.green, .ck-pin.done { background: var(--green); }
+.ck-pin.red, .ck-pin.late { background: var(--error); }
+.ck-pin.late i { color: var(--error); }
+.ck-pin.low i { top: 32px; }
+
+/* a row per item: not dense, one line of words under the title */
+.ck-rows { display: flex; flex-direction: column; gap: var(--s2); min-height: 0; overflow-y: auto; }
+.ck-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 180px 96px; gap: var(--s3); align-items: center; padding: var(--s2) var(--s3);
+          border-radius: var(--r-row); background: rgb(255 255 255 / .035); border: 1px solid transparent; }
+.ck-row.opens { cursor: pointer; }
+.ck-row.opens:hover { background: rgb(255 255 255 / .06); }
+.ck-row.done { opacity: .55; }
+.ck-row.late { border-color: var(--error); background: rgb(255 90 80 / .07); }
+.ck-eta b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ck-eta span { font-size: var(--t-label); color: var(--dim); }
+.ck-row.late .ck-eta span { color: var(--error); font-weight: 600; }
+.ck-what { min-width: 0; }
+.ck-title { display: block; color: var(--ink); font-weight: 500; font-size: var(--t-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-detail { display: block; color: var(--dim); font-size: var(--t-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-who { color: var(--dim); font-size: var(--t-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-st { display: flex; align-items: center; justify-content: flex-end; gap: var(--s1); font-size: var(--t-label); letter-spacing: .07em; text-transform: uppercase; color: var(--mute); }
+.ck-st i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.ck-st.building { color: var(--write); }
+.ck-st.ci { color: var(--c-pearl); }
+.ck-st.green, .ck-st.done { color: var(--green); }
+.ck-st.red, .ck-st.late { color: var(--error); }

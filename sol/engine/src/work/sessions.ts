@@ -1,4 +1,4 @@
-// Every Claude Code session on this machine, read through the SDK (listSessions reads ~/.claude/projects; nothing
+// Every Claude Code session on this machine, read through the SDK (listed.ts keeps ~/.claude/projects as an index; nothing
 // here writes it), grouped by the folder it works in. A side copy (a git worktree Sol made, copies.ts)
 // files under its repo with a worktree tag. Syncthing brings the other machine's sessions too: a folder under another
 // home (/Users/<x>/… on the Mac, /home/<x>/… on the NucBox) files under the same folder in this home, and the session
@@ -8,10 +8,11 @@
 // disk (#181: renaming it in the side renames the folder, rename.ts), or parent/name when two listed share one.
 // A GPT talk in a folder (a Codex thread whose cwd is not Sol's home, threads.ts codexTalks, #182) files the same way,
 // beside Claude's, with seat "codex": the face tags it gpt and opens it as a talk with the GPT seat.
-import { closeSync, existsSync, openSync, readdirSync, readSync, watch, type FSWatcher } from "node:fs";
+import { existsSync, readdirSync, watch, type FSWatcher } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
-import { listSessions, getSessionMessages, type SDKSessionInfo } from "@anthropic-ai/claude-agent-sdk";
+import { getSessionMessages, type SDKSessionInfo } from "@anthropic-ai/claude-agent-sdk";
+import { listed, stale, projectsDir } from "./listed.js";
 import { workState, prefs, moved, type Marks } from "./state.js";
 import { Items, type Item } from "./items.js";
 import { copyOf, worktreeOf, forgetWorktrees } from "./copies.js";
@@ -20,6 +21,7 @@ import { lastSaid } from "./said.js";
 import { inHome, machineOf, twinIn, type Machine } from "../home.js";
 import { codexTalks } from "../threads.js";
 import { getTitles } from "../titles.js";
+import { titleOf } from "../cross.js";   // #1031: a title is the person's words, never the Home line
 
 export type WorkSession = {
   id: string; title: string; cwd: string; project: string; worktree?: string; branch?: string; machine?: Machine;
@@ -28,7 +30,9 @@ export type WorkSession = {
   seat?: "codex";  // a GPT talk (#182); a Claude session has none
   running?: boolean;   // a GPT talk with a turn going (busy.ts; Claude's say so through runs)
 } & Marks;
-export type Project = { path: string; name: string; count: number; added?: boolean; group?: string };   // group: the group the folder sits in
+export type Project = { path: string; name: string; count: number; added?: boolean; group?: string; latest?: number };   // group: the group the folder sits in
+// latest: its last activity, the newest last-said time over its sessions that are not archived, pinned and grouped ones too
+// (#1179: the face sorted folders by their loose sessions only, so a folder whose sessions all sat in topic groups sank)
 export type { Machine };
 export { twinIn };
 
@@ -80,52 +84,9 @@ export function transcriptFiles(id: string, cwd: string): string[] {
   return [f, ...agents];
 }
 
-// the SDK's list, kept until a transcript changes (the watcher below) or a write here invalidates; 10 s is the net under both
-let cache: { at: number; list: SDKSessionInfo[] } | null = null;
-async function all(): Promise<SDKSessionInfo[]> {
-  if (cache && Date.now() - cache.at < 10_000) return cache.list;
-  const list = (await listSessions()).map(withCwd);
-  cache = { at: Date.now(), list };
-  return list;
-}
-
-// The SDK reads a session's folder off its transcript's first line. A transcript that opens with queue bookkeeping
-// ("queue-operation" lines, written when the first prompt was queued) gives it no folder, and a session with no folder
-// fell out of the side (2026-10-25: a pinned session gone). The folder is on the first message line instead: read the
-// head of the file, found by its id under ~/.claude/projects, once per transcript
-const cwdOf = new Map<string, string>();
-function withCwd(s: SDKSessionInfo): SDKSessionInfo {
-  if (s.cwd) return s;
-  const hit = cwdOf.get(s.sessionId);
-  if (hit !== undefined) return hit ? { ...s, cwd: hit } : s;
-  let cwd = "";
-  try {
-    const root = join(homedir(), ".claude", "projects");
-    for (const dir of readdirSync(root)) {
-      const f = join(root, dir, `${s.sessionId}.jsonl`);
-      if (!existsSync(f)) continue;
-      // the first message line can run to megabytes (pasted screenshots come before its cwd field): scan the head in
-      // chunks for the field itself rather than parse a line, up to a few MB
-      const fd = openSync(f, "r");
-      try {
-        const buf = Buffer.alloc(256 * 1024);
-        let at = 0, tail = "";
-        while (at < 8 * 1024 * 1024) {
-          const n = readSync(fd, buf, 0, buf.length, at);
-          if (n <= 0) break;
-          const text = tail + buf.toString("utf8", 0, n);
-          const m = /"cwd":"((?:[^"\\]|\\.)+)"/.exec(text);
-          if (m) { cwd = JSON.parse(`"${m[1]}"`); break; }
-          tail = text.slice(-64);   // a field cut by the chunk edge
-          at += n;
-        }
-      } finally { closeSync(fd); }
-      break;
-    }
-  } catch { /* no projects folder: nothing to recover */ }
-  cwdOf.set(s.sessionId, cwd);
-  return cwd ? { ...s, cwd } : s;
-}
+// the index of transcripts (listed.ts): read again only where a transcript changed (the watcher below) or a write here
+// marked it stale; 10 s is the net under both
+const all = () => listed();
 
 // GPT talks in folders (#182): Sol's home (its own chats stay Life's) and the threads that are not talks (`skip`, the
 // review seat's) are set once by the engine
@@ -145,14 +106,14 @@ export async function workSessions(): Promise<{ sessions: WorkSession[]; project
 
 // the SDK's list filed by folder, with Sol's marks and groups on it (no reading of ~/.claude here: tests feed it),
 // and the GPT talks beside it, filed by the same rules
-export function fileSessions(list: SDKSessionInfo[], gpt: GptInfo[] = []): { sessions: WorkSession[]; projects: Project[] } {
+export function fileSessions(list: (SDKSessionInfo & { file?: string })[], gpt: GptInfo[] = []): { sessions: WorkSession[]; projects: Project[] } {
   const st = workState(), stale = prefs().stale;
   const hidden = new Set(st.hidden), byHand = new Set(st.folders);
   let out: WorkSession[] = [];
   const counts = new Map<string, number>();
   const here = new Set<string>();   // folders with at least one session whose folder is still there
   const at = movedTo(st.moved ?? {});
-  const both: (SDKSessionInfo & { gpt?: true })[] = [...list, ...gpt.map((g) => ({ ...g, gpt: true as const }))];
+  const both: (SDKSessionInfo & { file?: string; gpt?: true })[] = [...list, ...gpt.map((g) => ({ ...g, gpt: true as const }))];
   for (const s of both) {
     if (!s.cwd) continue;
     const cwd = at(s.cwd);   // a folder that moved: the session is in its new place (its transcript still says the old one)
@@ -165,12 +126,12 @@ export function fileSessions(list: SDKSessionInfo[], gpt: GptInfo[] = []): { ses
     if (!gone) here.add(project);
     counts.set(project, (counts.get(project) ?? 0) + 1);
     out.push({
-      id: s.sessionId, title: s.customTitle || s.summary || s.firstPrompt || "untitled", cwd, project,
+      id: s.sessionId, title: s.customTitle || titleOf(s.summary || s.firstPrompt || "") || "untitled", cwd, project,   // #1031 the person's words
       ...(machineOf(cwd) ? { machine: machineOf(cwd) } : {}),
       ...(w ? { worktree: w.name } : {}), ...(gone ? { gone: true } : {}), ...(s.gitBranch ? { branch: s.gitBranch } : {}),
       // the row's time is the last message, not the file: the Claude app writes bookkeeping into idle transcripts (#45).
       // A Codex rollout is only written by its talk: its time is the file's
-      updatedAt: s.gpt ? s.lastModified : lastSaid(transcript(s.sessionId, cwd, s.cwd), s.lastModified), createdAt: s.createdAt, size: s.fileSize, ...(s.tag ? { tag: s.tag } : {}),
+      updatedAt: s.gpt ? s.lastModified : lastSaid(s.file ?? transcript(s.sessionId, cwd, s.cwd), s.lastModified, s.file ? s.fileSize : undefined), createdAt: s.createdAt, size: s.fileSize, ...(s.tag ? { tag: s.tag } : {}),
       ...(s.gpt ? { seat: "codex" as const } : {}),
       ...(st.marks[s.sessionId] ?? {}),
     });
@@ -182,13 +143,17 @@ export function fileSessions(list: SDKSessionInfo[], gpt: GptInfo[] = []): { ses
   if (!stale) for (const p of [...counts.keys()]) if (!here.has(p) && !byHand.has(p) && !exists(p)) counts.delete(p);
   if (!stale) out = out.filter((s) => counts.has(s.project));
   for (const f of st.folders) if (!counts.has(f) && exists(f)) counts.set(f, 0);
+  // a folder's last activity (#1179): every session shown in it, archived ones apart (the side lists those on their own)
+  // and Cowork's (they sit in their own fold, never under a folder)
+  const latest = new Map<string, number>();
+  for (const s of out) if (!s.archived && s.mode !== "cowork") latest.set(s.project, Math.max(latest.get(s.project) ?? 0, s.updatedAt));
   const added = new Set(st.folders);
   const groupOf = new Map<string, string>();
   for (const g of st.groups) for (const f of g.folders ?? []) groupOf.set(f, g.id);
   const names = new Map<string, number>();
   for (const p of counts.keys()) names.set(basename(p), (names.get(basename(p)) ?? 0) + 1);
   const nameOf = (p: string) => (names.get(basename(p))! > 1 ? `${basename(dirname(p))}/${basename(p)}` : basename(p) || p);
-  const projects = [...counts].map(([path, count]) => ({ path, name: nameOf(path), count, ...(added.has(path) ? { added: true } : {}), ...(groupOf.has(path) ? { group: groupOf.get(path) } : {}) }));
+  const projects = [...counts].map(([path, count]) => ({ path, name: nameOf(path), count, ...(added.has(path) ? { added: true } : {}), ...(groupOf.has(path) ? { group: groupOf.get(path) } : {}), ...(latest.has(path) ? { latest: latest.get(path) } : {}) }));
   return { sessions: out, projects };
 }
 
@@ -205,8 +170,8 @@ export function withRuns(filed: { sessions: WorkSession[]; projects: Project[] }
     const at = r.since ?? Date.now();
     sessions.push({ id: r.sessionId, title: "new session", cwd: r.cwd, project, ...(w ? { worktree: w.name } : {}), updatedAt: at, createdAt: at, ...(st.marks[r.sessionId] ?? {}) });
     const i = projects.findIndex((x) => x.path === project);
-    if (i >= 0) projects[i] = { ...projects[i], count: projects[i].count + 1 };
-    else projects.push({ path: project, name: basename(project) || project, count: 1 });
+    if (i >= 0) projects[i] = { ...projects[i], count: projects[i].count + 1, latest: Math.max(projects[i].latest ?? 0, at) };
+    else projects.push({ path: project, name: basename(project) || project, count: 1, latest: at });
   }
   return { sessions, projects };
 }
@@ -219,7 +184,7 @@ export function topicsFor(sessionId: string, cwd: string): { id: string; about: 
   return st.groups.filter((g) => g.in === project && g.about).map((g) => ({ id: g.id, about: g.about! }));
 }
 
-export function invalidate() { cache = null; there.clear(); forgetWorktrees(); }
+export function invalidate() { stale(); there.clear(); forgetWorktrees(); }
 
 // A session's transcript as items. Subagents' own steps are read on demand (the subagent pane).
 export async function sessionItems(id: string): Promise<Items> {
@@ -237,6 +202,17 @@ export async function sessionInfo(id: string) {
   return s?.cwd ? { ...s, cwd: relocated(s.cwd) } : s;
 }
 
+// one session's row as the side draws it (its title, folder, branch and the person's marks), read alone: the orchestration
+// stage refreshes a block per child per change, never a scan of every session for it (children.ts)
+export async function oneSession(id: string): Promise<{ id: string; title: string; cwd?: string; branch?: string } & Marks | undefined> {
+  const s = await sessionInfo(id);
+  if (!s) return undefined;
+  return {
+    id, title: s.customTitle || titleOf(s.summary || s.firstPrompt || "") || "untitled",
+    ...(s.cwd ? { cwd: s.cwd } : {}), ...(s.gitBranch ? { branch: s.gitBranch } : {}), ...(workState().marks[id] ?? {}),
+  };
+}
+
 // ~/.claude/projects changes when any Claude Code session writes (Sol's, the desktop app's, a terminal's): the side
 // list follows it, at most every 800 ms.
 let watcher: FSWatcher | null = null;
@@ -244,10 +220,10 @@ export function watchSessions(changed: () => void) {
   if (watcher) return;
   let t: NodeJS.Timeout | undefined;
   try {
-    watcher = watch(join(homedir(), ".claude", "projects"), { recursive: true }, (_e, name) => {
-      if (name && !String(name).endsWith(".jsonl")) return;
+    watcher = watch(projectsDir(), { recursive: true }, (_e, name) => {
+      if (name && !/\.jsonl$|custom-title\.json$/.test(String(name))) return;
       clearTimeout(t);
-      t = setTimeout(() => { cache = null; changed(); }, 800);
+      t = setTimeout(() => { stale(); changed(); }, 800);
     });
   } catch { /* no folder yet */ }
 }

@@ -61,11 +61,11 @@ export function Browser({ b, body, session, moving }: KindProps<BrowserBody>) {
 function SolHand({ tab }: { tab?: string }) {
   const link = store.link();
   if (!tab || !link?.frames) return <p className="st-note">sol drives; the page shows once it acts on it</p>;
-  return <Screencast tab={tab} send={link.send} subscribe={link.frames} live={false} blank={<p className="st-note">sol drives…</p>} />;
+  return <Screencast tab={tab} send={link.send} subscribe={link.frames} live={false} counted="block" blank={<p className="st-note">sol drives…</p>} />;
 }
 
 /** your hand, in the app: the child web view kept on this box every frame, hidden when the face must show over it */
-function ChildView({ id, url, session, moving }: { id: string; url: string; session?: string; moving: boolean }) {
+export function ChildView({ id, url, session, moving }: { id: string; url: string; session?: string; moving: boolean }) {
   const el = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState("");
   const opened = useRef(false);

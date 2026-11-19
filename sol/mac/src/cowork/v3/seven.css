@@ -1,6 +1,6 @@
 /* Cowork v3, slice 7 (fr-30, #560): artifacts, search and the floor. Scoped under .s7 / .s7-*; only face tokens
    (face.css, palette.css). Sol's flavour: the candy and amber glow, the gradient tab line, the creature marks, the dark
-   notch slab, ember only for what needs you. */
+   black slab, ember only for what needs you. */
 .s7 { --s7-bands: linear-gradient(95deg, #fb5ad0 0 14%, #f8478e 26% 40%, #ef3a2a 52% 64%, #fb7111 76% 100%); --s7-slab: #000; --s7-pearl: #e9e6df; color: var(--ink); }
 .s7-room { padding: 22px 26px 40px; max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .s7-head { position: relative; padding-bottom: 12px; }

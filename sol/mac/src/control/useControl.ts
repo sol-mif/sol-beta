@@ -16,11 +16,17 @@ export type Team = {
   relay: { url: string; key: string; host: boolean };
   rooms: Room[]; room: string;
   speak: Speak;
-  leaves: { prompts: boolean; memory: boolean; transcripts: boolean; audit: "ask" | "never" };
+  leaves: { prompts: boolean; memory: boolean; transcripts: boolean; audit: "ask" | "never"; give: "ask" | "never" };   // give (#335): my past group sessions, when asked
   seats: { life: "codex" | "claude"; work: "codex" | "claude" };
   machines: Machine[];
   dials: Dials;   // per ping kind (#100): always bring to me, when it matters, never
+  wake?: Record<string, WakeRule>;   // who may wake my agent, per repository (#1151); none by default
+  wakeAsk?: { answer: "" | "yes" | "no" | "later"; at: string; room: string; off?: ("wake" | "asks")[] };   // may my group's members wake it, their agents ask it (#1313): asked once a group, "yes" both on, `off` a line turned off since
+  channel?: "" | "dev" | "beta";   // the releases this Sol follows (#418, #1150): "" = dev for a developer, beta for a tester
 };
+/** one repository's wake rule (#1151, the engine's team/settings.ts WakeRule): mine, others (on only with `from` and
+ *  `read`, the day the terms line was shown), wakes a thread a day */
+export type WakeRule = { mine: boolean; others: boolean; from: string[]; read: string; perDay: number };
 export type PingKind = "clash" | "contract" | "claim" | "decision" | "chat" | "alert";   // alert: the cloud's on-call, its admins only (#225)
 export type Dial = "always" | "matters" | "never";
 export type Dials = Record<PingKind, Dial>;
@@ -40,7 +46,7 @@ const FAKE_TEAM: Team = {
   ],
   room: "team",
   speak: { github: true, cowork: true, discord: "builds", whatsapp: false },
-  leaves: { prompts: false, memory: false, transcripts: false, audit: "ask" },
+  leaves: { prompts: false, memory: false, transcripts: false, audit: "ask", give: "ask" },
   seats: { life: "codex", work: "claude" },
   machines: [
     { name: "this Mac", url: NEXT },
@@ -48,6 +54,7 @@ const FAKE_TEAM: Team = {
     { name: "the Legion", url: "wss://legion.example.ts.net/" },
   ],
   dials: { ...DIAL_DEFAULTS, chat: "always" },
+  wake: { "sol-mif/sol-dev": { mine: true, others: false, from: [], read: "", perDay: 3 } },
 };
 const FAKE_ACCOUNTS: Accounts = { claude: { in: true, who: "marco@example.com, max" }, codex: { in: true, who: "ChatGPT" }, github: { in: true, who: "marcocyl04-ux" }, sol: { in: true, who: "marco", hub: "wss://cloud.example.net/relay" } };
 const FAKE_TOOLS: Tools = {

@@ -6,8 +6,10 @@
 
 import { chromium, type BrowserContext, type Page, type CDPSession, type Frame } from "playwright";
 import { z } from "zod";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 export type ToolResult = {
   content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[];
@@ -25,15 +27,29 @@ const text = (t: string): ToolResult => ({ content: [{ type: "text", text: t }] 
 // One step of a seat's work as the face shows it (sol/PROTOCOL.md, round 3). The browser reports "browse" steps, the desk "desk" steps.
 export type Step = { id: string; kind: "browse" | "desk"; text: string; done: boolean; ok?: boolean; detail?: string };
 // Who is calling a tool: the conversation it belongs to, and where its "what I'm doing" steps go.
-export type TurnCtx = { sessionId?: string; seat?: string; sink?: (step: Step) => void };   // seat: who pings (ping.ts)
+export type TurnCtx = { sessionId?: string; seat?: string; sink?: (step: Step) => void;   // seat: who pings (ping.ts)
+  /** a Home turn's own words, as the person said them (index.ts handleSay): set_setting changes a setting only on them (#1521) */
+  said?: string;
+  /** a folder's agent (agent/run.ts): its tabs open in the folder's own browser profile, never the default one */
+  profile?: string;
+  /** a folder's agent in watch mode: the tools that would reach past the folder are refused, with this reason (tools.ts) */
+  refuse?: (tool: string) => string | null };
 
 // view: the page's size in CSS px, what the face maps its clicks through; a frame is view × SCALE pixels.
-type Tab = { id: string; sessionId?: string; page: Page; title: string; url: string; cdp?: CDPSession; view: { width: number; height: number } };
+type Tab = { id: string; sessionId?: string; profile: string; page: Page; title: string; url: string; cdp?: CDPSession; view: { width: number; height: number } };
 export type Face = { send: (msg: object) => void };
 
+// One Chromium context per profile folder: the default (home/browser-profile) for everything, and one per folder whose
+// agent browses (<folder>/.agent/browser-profile, profileFor), so a folder's sign-ins are its own and sealed with it.
 let profileDir = "";
-let ctx: BrowserContext | null = null;
-let launching: Promise<BrowserContext> | null = null;
+const contexts = new Map<string, BrowserContext>();
+const launching = new Map<string, Promise<BrowserContext>>();
+// a conversation id that belongs to a folder's agent (agent:<name>) opens its tabs in that folder's profile: the face's
+// browser.open with that id is how the person signs in "in the LA245 browser" (agent/index.ts sets it)
+let profileOfSession: ((sessionId: string) => string | undefined) | null = null;
+export const setSessionProfiles = (f: ((sessionId: string) => string | undefined) | null) => { profileOfSession = f; };
+/** the browser profile of a folder's agent */
+export const profileFor = (folder: string) => join(folder, ".agent", "browser-profile");
 let queue: Promise<unknown> = Promise.resolve(); // one browser action at a time
 let nextId = 1;
 const tabs = new Map<string, Tab>();
@@ -69,12 +85,12 @@ function broadcast() {
   for (const f of faces) f.send(m);
 }
 
-function register(p: Page, sessionId?: string): Tab {
+function register(p: Page, sessionId?: string, profile = profileDir): Tab {
   const have = byPage.get(p);
   if (have) return have;
   const opener = byPage.get(p.opener() as any);
   const sid = sessionId ?? pendingSession ?? opener?.sessionId;
-  const tab: Tab = { id: "t" + nextId++, sessionId: sid, page: p, title: "", url: p.url() === "about:blank" ? "" : p.url(), view: { ...VIEW } };
+  const tab: Tab = { id: "t" + nextId++, sessionId: sid, profile: opener?.profile ?? profile, page: p, title: "", url: p.url() === "about:blank" ? "" : p.url(), view: { ...VIEW } };
   tabs.set(tab.id, tab);
   byPage.set(p, tab);
   activeOf.set(key(sid), tab.id);
@@ -108,33 +124,66 @@ function register(p: Page, sessionId?: string): Tab {
   return tab;
 }
 
-async function context(): Promise<BrowserContext> {
-  if (ctx) return ctx;
-  launching ??= chromium
-    .launchPersistentContext(profileDir, { headless: true, viewport: VIEW, deviceScaleFactor: SCALE, args: ["--no-first-run", `--force-device-scale-factor=${SCALE}`] })
-    .then((c) => {
-      ctx = c;
-      c.on("page", (p) => register(p)); // popups join their opener's conversation
-      c.on("close", () => {
-        ctx = null;
-        launching = null;
-        tabs.clear();
-        byPage.clear();
-        activeOf.clear();
-        watching.clear();
-        broadcast();
+// The tab's name for itself (#1071). Headless Chromium says "HeadlessChrome/<version>" in its user agent, and WhatsApp
+// and others refuse it ("works with Google Chrome 100+"). So the context says what a Chrome of the same version on this
+// system says: the version playwright installed (playwright-core's browsers.json), reduced as Chrome reduces it
+// (Chrome/156.0.0.0), "Headless" left out. Unreadable: undefined, and the tab says what it says today.
+function chromeAgent(): string | undefined {
+  try {
+    const req = createRequire(import.meta.url);
+    const core = dirname(req.resolve("playwright-core/package.json", { paths: [dirname(req.resolve("playwright"))] }));
+    const list = JSON.parse(readFileSync(join(core, "browsers.json"), "utf8")).browsers as { name: string; browserVersion?: string }[];
+    const major = list.find((b) => b.name === "chromium")?.browserVersion?.split(".")[0];
+    if (!major || !/^\d+$/.test(major)) return undefined;
+    const os = process.platform === "darwin" ? "Macintosh; Intel Mac OS X 10_15_7"
+      : process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : "X11; Linux x86_64";
+    return `Mozilla/5.0 (${os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
+  } catch { return undefined; }
+}
+const AGENT = chromeAgent();
+
+// launchPersistentContext once per profile folder, reused after; a context that closes takes only its own tabs with it
+async function context(dir = profileDir): Promise<BrowserContext> {
+  if (heldProfiles.has(dir)) throw new Error("this browser is open in its sign-in window; it comes back when that window closes");
+  const have = contexts.get(dir);
+  if (have) return have;
+  let l = launching.get(dir);
+  if (!l) {
+    l = chromium
+      .launchPersistentContext(dir, { headless: true, viewport: VIEW, deviceScaleFactor: SCALE, ...(AGENT ? { userAgent: AGENT } : {}), args: ["--no-first-run", `--force-device-scale-factor=${SCALE}`] })
+      .then((c) => {
+        contexts.set(dir, c);
+        c.on("page", (p) => register(p, undefined, dir)); // popups join their opener's conversation
+        c.on("close", () => {
+          contexts.delete(dir);
+          launching.delete(dir);
+          for (const t of [...tabs.values()]) {
+            if (t.profile !== dir) continue;
+            tabs.delete(t.id);
+            byPage.delete(t.page);
+            for (const [f, id] of watching) if (id === t.id) watching.delete(f);
+            if (activeOf.get(key(t.sessionId)) === t.id) activeOf.delete(key(t.sessionId));
+          }
+          broadcast();
+        });
+        return c;
       });
-      return c;
-    });
-  return launching;
+    l.catch(() => launching.delete(dir));
+    launching.set(dir, l);
+  }
+  return l;
 }
 
-async function newTab(sessionId?: string): Promise<Tab> {
-  const c = await context();
+/** the profile a new tab of this conversation opens in: the one asked for, a folder agent's by its id, else the default */
+const profileOf = (sessionId?: string, profile?: string) => profile ?? (sessionId ? profileOfSession?.(sessionId) : undefined) ?? profileDir;
+
+async function newTab(sessionId?: string, profile?: string): Promise<Tab> {
+  const dir = profileOf(sessionId, profile);
+  const c = await context(dir);
   pendingSession = sessionId;
   try {
     const p = await c.newPage();
-    return register(p, sessionId);
+    return register(p, sessionId, dir);
   } finally {
     pendingSession = undefined;
   }
@@ -157,7 +206,7 @@ async function stopScreencast(tab: Tab) {
 
 async function startScreencast(tab: Tab) {
   if (tab.cdp || tab.page.isClosed()) return;
-  const cdp = await (await context()).newCDPSession(tab.page);
+  const cdp = await tab.page.context().newCDPSession(tab.page);
   tab.cdp = cdp;
   cdp.on("Page.screencastFrame", (ev: any) => {
     emitFrame(tab, ev.data);
@@ -259,11 +308,36 @@ const VK: Record<string, number> = {
   Backspace: 8, Tab: 9, Enter: 13, Escape: 27, " ": 32, PageUp: 33, PageDown: 34, End: 35, Home: 36,
   ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Delete: 46,
 };
+// punctuation has its own Windows key codes; its character code is another key's (a "." as 46 is Delete, #401)
+const PUNCT: Record<string, number> = {
+  Semicolon: 186, Equal: 187, Comma: 188, Minus: 189, Period: 190, Slash: 191, Backquote: 192,
+  BracketLeft: 219, Backslash: 220, BracketRight: 221, Quote: 222,
+  NumpadMultiply: 106, NumpadAdd: 107, NumpadSubtract: 109, NumpadDecimal: 110, NumpadDivide: 111,
+};
+// the same keys by character, for an event without a code; a shifted character takes its key's code
+const PUNCT_CHAR: Record<string, number> = {
+  ";": 186, ":": 186, "=": 187, "+": 187, ",": 188, "<": 188, "-": 189, "_": 189, ".": 190, ">": 190,
+  "/": 191, "?": 191, "`": 192, "~": 192, "[": 219, "{": 219, "\\": 220, "|": 220, "]": 221, "}": 221,
+  "'": 222, '"': 222, ")": 48, "!": 49, "@": 50, "#": 51, "$": 52, "%": 53, "^": 54, "&": 55, "*": 56, "(": 57,
+};
+
+// The Windows key code a page reads off a key: named keys, then the key the face says was pressed (its code),
+// then the character; a character with no known key gets 0.
+export function keyCode(key: string, code?: string): number {
+  if (VK[key] !== undefined) return VK[key];
+  const c = String(code ?? "");
+  if (/^Key[A-Z]$/.test(c)) return c.charCodeAt(3);
+  if (/^Digit[0-9]$/.test(c)) return c.charCodeAt(5);
+  if (/^Numpad[0-9]$/.test(c)) return 96 + Number(c[6]);
+  if (PUNCT[c] !== undefined) return PUNCT[c];
+  if (/^[a-z0-9]$/i.test(key)) return key.toUpperCase().charCodeAt(0);
+  return PUNCT_CHAR[key] ?? 0;
+}
 
 export async function inputTab(id: string, ev: any) {
   const tab = tabs.get(id);
   if (!tab || !ev) return;
-  const cdp = tab.cdp ?? (await (await context()).newCDPSession(tab.page));
+  const cdp = tab.cdp ?? (await tab.page.context().newCDPSession(tab.page));
   const own = !tab.cdp;
   try {
     if (ev.kind === "mouse") {
@@ -275,7 +349,7 @@ export async function inputTab(id: string, ev: any) {
       await cdp.send("Input.dispatchMouseEvent", p);
     } else if (ev.kind === "key") {
       const k = String(ev.key ?? "");
-      const vk = VK[k] ?? (k.length === 1 ? k.toUpperCase().charCodeAt(0) : 0);
+      const vk = keyCode(k, ev.code);
       const p: any = { type: ev.type, key: k, code: ev.code, modifiers: ev.modifiers ?? 0, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
       const t = ev.text ?? (k === "Enter" ? "\r" : undefined);
       if (t && ev.type !== "keyUp") p.text = t;
@@ -621,7 +695,7 @@ export function runBrowserTool(name: string, args: unknown, turn: TurnCtx = {}):
     turn.sink?.({ id, kind: "browse", text: line, done: false });
     let r: ToolResult;
     try {
-      const to = router ? await router.route(turn.sessionId, name, a) : null;
+      const to = router && !turn.profile ? await router.route(turn.sessionId, name, a) : null;   // a folder's agent drives its own tabs, never a stage block
       if (to && "refuse" in to) r = { ...text(to.refuse), isError: true };
       else if (to) {
         const tab = await blockTab(to.block, turn.sessionId, name === "browser_open" ? undefined : to.url);
@@ -630,7 +704,11 @@ export function runBrowserTool(name: string, args: unknown, turn: TurnCtx = {}):
       } else {
         let tab = activeTab(turn.sessionId);
         if (!tab && name !== "browser_open") r = { ...text("No page is open in this conversation. Use browser_open first."), isError: true };
-        else r = await tool.run((tab ?? (await newTab(turn.sessionId))).page, a);
+        else {
+          const page = (tab ?? (await newTab(turn.sessionId, turn.profile))).page;
+          const no = turn.profile && agentGuard ? await agentGuard(page, name, a) : null;   // a folder agent's tab: agent/guard.ts
+          r = no ? { ...text(no), isError: true } : await tool.run(page, a);
+        }
       }
     } catch (err) {
       r = { ...text(`Browser error: ${err instanceof Error ? err.message.split("\n")[0] : String(err)}`), isError: true };
@@ -644,7 +722,48 @@ export function runBrowserTool(name: string, args: unknown, turn: TurnCtx = {}):
 }
 
 export async function closeBrowser() {
-  await ctx?.close().catch(() => {});
+  for (const c of [...contexts.values()]) await c.close().catch(() => {});
+}
+
+export type PageRead = { url: string; title: string; text: string; links: { text: string; href: string }[] };
+/** open a page in a conversation's tab and read it whole: its text and its links (a source's look, agent/sources/
+ *  blackboard.ts). Serialized with the tools; the tab is the conversation's, in the profile asked for. An app that draws
+ *  after its load (Blackboard Ultra) is given until the network is quiet, at most `settleMs` */
+export function readPage(url: string, turn: TurnCtx = {}, settleMs = 8000): Promise<PageRead> {
+  const job = queue.then(async (): Promise<PageRead> => {
+    const tab = activeTab(turn.sessionId) ?? (await newTab(turn.sessionId, turn.profile));
+    const p = tab.page;
+    await p.goto(normUrl(url), { waitUntil: "domcontentloaded", timeout: 30000 });
+    await p.waitForLoadState("networkidle", { timeout: settleMs }).catch(() => {});
+    const got = await p.evaluate(() => ({
+      text: document.body?.innerText ?? "",
+      links: Array.from(document.querySelectorAll("a[href]")).map((a) => ({ text: ((a as HTMLElement).innerText || a.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim().slice(0, 120), href: (a as HTMLAnchorElement).href })),
+    }));
+    return { url: p.url(), title: await p.title().catch(() => ""), text: got.text.slice(0, READ_CAP), links: got.links.slice(0, 400) };
+  });
+  queue = job.catch(() => {});
+  return job;
 }
 
 export const browserProfileDir = (home: string) => join(home, "browser-profile");
+
+// ---- a folder's agent, step 2 (agent/signin.ts, agent/guard.ts, agent/sources/*) ----
+// held: a profile open in its visible sign-in window; nothing opens it headless until the window closes
+const heldProfiles = new Set<string>();
+/** hold a profile for the sign-in window; the function returned lets it go */
+export function holdProfile(dir: string): () => void { heldProfiles.add(dir); return () => { heldProfiles.delete(dir); }; }
+export const isHeld = (dir: string) => heldProfiles.has(dir);
+/** close a profile's (headless) context, if it is open, and its tabs with it */
+export async function closeProfile(dir: string) {
+  const c = contexts.get(dir) ?? (await launching.get(dir)?.catch(() => null));
+  await c?.close().catch(() => {});
+}
+/** what an agent tab may not do on a page (agent/guard.ts): a reason to refuse, or null */
+let agentGuard: ((p: Page, tool: string, a: any) => Promise<string | null>) | null = null;
+export const setAgentGuard = (g: typeof agentGuard) => { agentGuard = g; };
+/** work on a conversation's page (its active tab, or a new one in the profile asked for), serialized with the tools */
+export function withPage<T>(turn: TurnCtx, f: (p: Page) => Promise<T>): Promise<T> {
+  const job = queue.then(async () => f((activeTab(turn.sessionId) ?? (await newTab(turn.sessionId, turn.profile))).page));
+  queue = job.catch(() => {});
+  return job;
+}

@@ -1,8 +1,6 @@
-// The shelf (Grab and Shelf, #200): a tray of things in passing. Every grab that is not sent, and
-// anything dropped on the notch, lands here as one file in home/shelf/ and one row in home/shelf/index.json. Nothing
-// to manage: what is not kept leaves after seven days (the sweep, at engine start and every hour); Keep makes a thing
-// stay, Delete takes it now. After every change every face is told the whole list (`shelf.items`), so the notch's
-// thumbs and the sheet's tray follow without asking.
+// The shelf (#200): things in passing. A talk's export (talks.ts) lands here as one file in home/shelf/ and one row in
+// home/shelf/index.json. Nothing to manage: what is not kept leaves after seven days (the sweep, at engine start and
+// every hour); a row kept from before (the Grab tray's Keep, gone with the notch in #1584) stays.
 //
 // The row on disk is the item without its url, plus `file` (its name inside home/shelf/). The item on the wire has
 // `url` instead: http://<host>:<port>/file?path=<abs>, which files.ts serveFile already answers for anything inside
@@ -10,7 +8,6 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
-import type { FileIn } from "./files.js";
 
 export const KINDS = ["shot", "sol", "page", "file"] as const;
 export type ShelfKind = (typeof KINDS)[number];
@@ -76,13 +73,12 @@ export function pngSize(b: Buffer): { w: number; h: number } | null {
 // ---- the folder ----
 let home = "";
 let urlOf = (abs: string) => `/file?path=${encodeURIComponent(abs)}`;
-let told: (items: Item[]) => void = () => {};
 const dir = () => { if (!home) throw new Error("the shelf has no home yet"); return join(home, "shelf"); };
 const indexPath = () => join(dir(), "index.json");
 
-/** where the shelf lives, how its urls are made, and who hears every change (index.ts) */
-export function setShelfHome(h: string, url: (abs: string) => string, onChange: (items: Item[]) => void) {
-  home = h; urlOf = url; told = onChange;
+/** where the shelf lives and how its urls are made (index.ts) */
+export function setShelfHome(h: string, url: (abs: string) => string) {
+  home = h; urlOf = url;
 }
 
 function read(): Row[] {
@@ -95,17 +91,8 @@ function write(rows: Row[]) {
   renameSync(tmp, indexPath());   // whole or not at all
 }
 const itemOf = (r: Row): Item => { const { file, ...rest } = r; return { ...rest, url: urlOf(join(dir(), file)) }; };
-const changed = (rows: Row[]) => { const items = newestFirst(rows).map(itemOf); told(items); return items; };
 
-/** every item, newest first */
-export const listShelf = (): Item[] => read().map(itemOf);
-
-/** a buffer onto the shelf as one new row; the new item */
-export function putOnShelf(buf: Buffer, name: string, mime: string, kind: ShelfKind, now = new Date()): Item {
-  return addToShelf([{ buf, name, mime }], kind, now).fresh[0];
-}
-
-/** files onto the shelf (one write, one telling); the new items, and the whole list with them first */
+/** files onto the shelf (one write); the new items, and the whole list with them first */
 export function addToShelf(files: { buf: Buffer; name: string; mime?: string }[], kind: ShelfKind = "file", now = new Date()): { fresh: Item[]; items: Item[] } {
   mkdirSync(dir(), { recursive: true, mode: 0o700 });
   const rows = read(), fresh: Row[] = [];
@@ -118,39 +105,7 @@ export function addToShelf(files: { buf: Buffer; name: string; mime?: string }[]
   }
   if (!fresh.length) throw new Error("nothing to put on the shelf");
   write([...fresh, ...rows]);
-  return { fresh: fresh.map(itemOf), items: changed([...fresh, ...rows]) };
-}
-
-/** the wire's FileIn (files.ts) made buffers for addToShelf */
-export const fromFileIn = (files: FileIn[]) => (Array.isArray(files) ? files : []).filter((f) => f && typeof f.dataBase64 === "string")
-  .map((f) => ({ buf: Buffer.from(f.dataBase64, "base64"), name: String(f.name || "file"), mime: String(f.mime || "") }));
-
-const find = (rows: Row[], id: unknown) => { const r = rows.find((x) => x.id === id); if (!r) throw new Error("that is not on the shelf"); return r; };
-
-/** keep (never leaves) or let go; the whole list */
-export function keepOnShelf(id: string, kept: boolean): Item[] {
-  const rows = read(); find(rows, id).kept = !!kept;
-  write(rows);
-  return changed(rows);
-}
-
-/** delete now (file and row); the whole list */
-export function deleteFromShelf(id: string): Item[] {
-  const rows = read(), r = find(rows, id), rest = rows.filter((x) => x !== r);
-  rmSync(join(dir(), r.file), { force: true });
-  write(rest);
-  return changed(rest);
-}
-
-/** the item's file replaced with these bytes (an annotated grab); its new item */
-export function replaceOnShelf(id: string, buf: Buffer, mime = "image/png"): Item {
-  const rows = read(), r = find(rows, id);
-  writeFileSync(join(dir(), r.file), buf, { mode: 0o600 });
-  const size = pngSize(buf);
-  r.mime = mime; delete r.w; delete r.h; if (size) Object.assign(r, size);
-  write(rows);
-  changed(rows);
-  return itemOf(r);
+  return { fresh: fresh.map(itemOf), items: newestFirst([...fresh, ...rows]).map(itemOf) };
 }
 
 /** the sweep: what is not kept and older than a week goes, file and row; how many went */
@@ -160,7 +115,6 @@ export function sweepShelf(now = new Date()): number {
   if (!go.length) return 0;
   for (const r of go) rmSync(join(dir(), r.file), { force: true });
   write(stay);
-  changed(stay);
   return go.length;
 }
 

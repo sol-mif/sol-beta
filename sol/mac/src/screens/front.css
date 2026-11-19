@@ -1,0 +1,22 @@
+/* The front (#1090): layout and motion only; glass, type and colour come from the kit through Front.tsx. It stands in
+   the room right of the side, centred, its top a third of the way down, so the window at rest is mostly empty. */
+.sf { margin: 0 auto; padding-top: 18vh; display: flex; flex-direction: column; gap: var(--s6); }
+.sf-stack { position: relative; transition: transform var(--d-glass) var(--e-reveal), opacity var(--d-glass) var(--e-reveal); }
+/* answered: the card in front lifts off; the next comes forward when the rows change */
+.sf-stack.gone .sf-card { transform: translateY(-24px); opacity: 0; }
+.sf-card { position: relative; cursor: pointer; transition: transform var(--d-glass) var(--e-reveal), opacity var(--d-glass) var(--e-reveal); animation: sf-in var(--d-pour) var(--e-pour) both; }
+@keyframes sf-in { from { transform: translateY(8px) scale(0.985); opacity: 0; } }
+.sf-behind { position: absolute; height: 28px; pointer-events: none; }
+.sf-in { padding: var(--s4) var(--s6) var(--s6); display: flex; flex-direction: column; gap: var(--s2); }
+.sf-ask { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sf-answers { display: flex; gap: var(--s2); margin-top: var(--s3); cursor: default; }
+/* the line to write in: the kit's Field draws the glass; the input is bare inside it */
+.sf-say { margin-top: var(--s3); cursor: text; }
+.sf-line { display: block; align-self: stretch; width: 100%; height: 100%; min-height: 0; box-sizing: border-box; margin: 0; padding: 0; border: 0; outline: 0; appearance: none; background: none; color: inherit; font: inherit; line-height: normal; }
+.sf-line::placeholder { color: inherit; opacity: 1; }
+/* design NOW 06:19 #2c: typed words keep the ink with the keyboard elsewhere; "say it here" stays dim with it in */
+.sf-line { color: var(--ink); }
+.sf-line::placeholder, .sf-line:focus::placeholder { color: var(--dim); }
+.sf-more { position: absolute; right: var(--s3); bottom: calc(-1 * var(--s6)); }
+.sf-runs { display: flex; flex-direction: column; gap: 2px; }
+@media (prefers-reduced-motion: reduce) { .sf-card { animation: none; } .sf-stack, .sf-card { transition: none; } }

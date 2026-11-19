@@ -11,7 +11,7 @@ function OnStage({ session }: { session?: string }) {
     if (seen.blocks.some((b) => b.kind === "browser" && b.state !== "dead")) return;
     void store.link()?.ask("work.stage.compose", { sessionId: session, block: { kind: "browser", title: "browser", body: JSON.stringify({ url: "", hand: "you" }) } });
   }, [session]);
-  return <p className="st-note">{session ? "the browser is a block on the stage" : "a new session has no stage yet"}</p>;
+  return <p className="st-note">{session ? "the browser is an artifact on the stage" : "a new session has no stage yet"}</p>;
 }
 const Choose = (p: ButtonCtx) => <OnStage session={p.session} />;
 

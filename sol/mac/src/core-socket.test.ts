@@ -11,7 +11,7 @@ class FakeSocket {
   readyState = 0;
   sent: { type?: string }[] = [];
   onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((e?: { code: number }) => void) | null = null;
   onmessage: ((e: { data: string }) => void) | null = null;
   onerror: (() => void) | null = null;
   url: string;
@@ -105,6 +105,30 @@ test("pin: a clock set back never drops a socket that still answers", () => {
     c.back(3_600_000);
     c.tick(70_000);
     assert.equal(FakeSocket.all.length, 1, "a live socket was replaced because the clock went back");
+    (l as unknown as { close: () => void }).close();
+  } finally { mock.timers.reset(); }
+});
+
+test("pin: a message over the cap is not sent, and the engine's 1009 is told to the page before the socket is replaced (#1448)", async () => {
+  const c = clock();
+  const { WIRE_MAX } = await import("./socket.ts");
+  try {
+    FakeSocket.all = [];
+    const l = link("ws://too-large");
+    const s = FakeSocket.all[0];
+    s.open();
+    assert.equal(l.send({ type: "work.say", files: [{ dataBase64: "A".repeat(WIRE_MAX) }] }), false, "an oversized message went on the wire");
+    assert.equal(s.sent.some((m) => m.type === "work.say"), false);
+    assert.equal(l.send({ type: "work.say", text: "small" }), true);
+    let told = 0;
+    const f = () => { told++; };
+    (window as unknown as EventTarget).addEventListener("sol:too-large", f);
+    s.readyState = 3;
+    s.onclose?.({ code: 1009 });
+    (window as unknown as EventTarget).removeEventListener("sol:too-large", f);
+    assert.equal(told, 1, "a 1009 close went unsaid");
+    c.tick(1_000);
+    assert.equal(FakeSocket.all.length, 2, "the socket was not replaced after a 1009");
     (l as unknown as { close: () => void }).close();
   } finally { mock.timers.reset(); }
 });

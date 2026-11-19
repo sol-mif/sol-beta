@@ -48,7 +48,7 @@ import { rowAction, inOf, repoOf, type Connectors as Conn, type RepoRow, type Me
 import { bannerOf, keepNotNow, type UsageNow } from "./quota";   // the nearly-full banner (#326)
 import type { MovedAway } from "./useRoom";
 import { DEV_TEAM } from "./useTeam";
-import { TimelinePage } from "./Timeline";   // the timeline (#424): every release, who runs which, the night's rhythm
+import { Releases } from "./Releases";   // Releases (#1299, it replaced the timeline page of #424): each release, who ran it, what joined, who is behind
 import { openUrl as openOut, mayBreak } from "./util";   // mayBreak: "this broke" on a folded change's line (#421)
 import { useUsed } from "./Used";   // who used what (#431)
 import { stripLine } from "./usedWords";
@@ -166,13 +166,13 @@ export function Group({ team, room, flash, onPerson, onGoal, onThing, onRepo, on
             )}
           </Fragment>);
         })}
-        <button className={`gp-tl ${line ? "on" : ""}`} onClick={() => { if (sub) onBack(); setLine((x) => !x); }} title="every release, who runs which, what never made it, and tonight's rhythm">timeline ›</button>
+        <button className={`gp-tl ${line ? "on" : ""}`} onClick={() => { if (sub) onBack(); setLine((x) => !x); }} title="each release, who ran it, what joined and its knots, who is behind">releases ›</button>
       </div>
 
       {walk.show && walk.view ? (
         <div className="gp-sub"><Walk key={roomId} team={team} view={walk.view} name={name} flash={flash} onDone={(v) => walk.set(v ?? { ...walk.view!, due: false })} /></div>
       ) : line && !sub ? (
-        <div className="gp-sub"><TimelinePage ask={team.ask} onBack={() => setLine(false)} /></div>
+        <div className="gp-sub"><Releases ask={team.ask} onBack={() => setLine(false)} /></div>
       ) : person ? (
         <div className="gp-two">
           <div className="gp-sub"><PersonMain team={team} room={room} login={person} entry={personOf(roster, person)} roomName={name} onBack={onBack}

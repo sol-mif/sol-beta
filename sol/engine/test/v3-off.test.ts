@@ -41,8 +41,9 @@ async function up(name: string, v3: "on" | "off") {
 }
 
 type Msg = { type: string; [k: string]: any };
-async function face(port: number) {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+const WINDOW = "http://localhost:1420";   // Sol's own window (door.ts appPage): no Origin is a program on this Mac
+async function face(port: number, origin?: string) {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}`, origin ? { headers: { origin } } : {});
   const got: Msg[] = [];
   ws.on("message", (raw) => { got.push(JSON.parse(raw.toString()) as Msg); });
   await new Promise((r, no) => { ws.once("open", r); ws.once("error", no); });
@@ -84,7 +85,14 @@ test("the switch off in the code: nothing outside team/v3 imports it but wire.ts
 
 test("the switch on: append, since and record answer; the event is signed and folds", { timeout: 90_000 }, async () => {
   const { port, state } = await up("on", "on");
-  const f = await face(port);
+  // a program on this Mac (no Origin, #1074): it may read the trail, and it writes nothing as me, however it asks
+  const p = await face(port);
+  p.say({ type: "team.v3.append", rid: "p1", fromSol: true, project: "sol", kind: "item", item: "forged", value: { title: "not mine" } });
+  assert.deepEqual(await p.wait((m) => m.rid === "p1", 10_000), { type: "team.error", rid: "p1", message: "only Sol's own window" });
+  p.say({ type: "team.v3.since", rid: "p2", project: "sol", seq: 0 });
+  assert.deepEqual((await p.wait((m) => m.rid === "p2", 10_000))?.events, [], "a read answers, and nothing was written");
+  p.ws.close();
+  const f = await face(port, WINDOW);
   f.say({ type: "team.v3.append", rid: 1, project: "sol", kind: "item", item: "logo", value: { title: "Logo review", due: "2026-11-05" } });
   const a = await f.wait((m) => m.rid === 1, 10_000);
   assert.ok(a && a.type === "team.v3.append" && a.event, JSON.stringify(a));
@@ -128,7 +136,7 @@ test("the switch off in this process: the team wire and the agent's tools answer
 
 test("the switch on: the slice 8 cases answer in a real engine; the import's dry run first", { timeout: 90_000 }, async () => {
   const { port } = await up("on8", "on");
-  const f = await face(port);
+  const f = await face(port, WINDOW);
   f.say({ type: "team.v3.migrate.dry", rid: "d" });
   const d = await f.wait((m) => m.rid === "d", 15_000);
   assert.ok(d && d.type === "team.v3.migrate.dry" && Array.isArray(d.report?.groups), JSON.stringify(d));

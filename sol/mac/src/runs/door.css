@@ -1,0 +1,4 @@
+/* the door's dot (#906, runs/Door.tsx): one still dot on the runs door when "Needs you" is not empty and the view is
+   closed. The classes exist only with build.runs on: with the switch off nothing here is drawn. */
+.runs-door { position: relative; }
+.runs-dot { position: absolute; top: var(--s1); right: var(--s1); width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--sun); border: 1px solid var(--c-deep); }

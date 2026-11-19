@@ -138,6 +138,33 @@ test("a clash a session resolves: shown in plain words, carried in a side copy, 
   assert.equal(x.told.at(-1).stage, null);
 });
 
+test("a release that came by itself (#1150): once the session carried it, the Sol moves over with no Use it", async () => {
+  const f = fixture();
+  put(f.mine, "sol/engine/src/index.ts", "export const a = 41;\n", "mine: the engine answers 41");
+  put(f.team, "sol/engine/src/index.ts", "export const a = 50;\n", "the engine counts to 50");
+  const rel = f.release();
+  const was = git(f.mine, "rev-parse", "HEAD");
+  const x = start(f, (copy) => {
+    writeFileSync(join(copy, "sol/engine/src/index.ts"), "export const a = 50 + 41;\n");
+    git(copy, "add", "-A");
+    git(copy, "-c", "core.hooksPath=/dev/null", "rebase", "--continue");
+  });
+  await x.ready;
+  const r = await update({ ...x.ship, carry: (release, tag, follow, auto) => carry.carryOver({ kind: "update", onto: release, source: "HEAD", tag, follow, auto }) }, undefined, true) as any;
+  assert.equal(r.carry.stage, "session");
+  assert.equal(r.carry.auto, true);
+  assert.equal(git(f.mine, "rev-parse", "HEAD"), was, "nothing moved while the session works");
+  const c = await carry.check();
+  assert.equal(c?.stage, "ready");
+  assert.match(c!.said, /moves over to it as soon as nothing is at work in it$/, "the words ask nothing of the person");
+  for (let i = 0; i < 200 && git(f.mine, "rev-parse", "HEAD") === was; i++) await new Promise((ok) => setTimeout(ok, 25));
+  await carry.moveSettled();
+  assert.equal(git(f.mine, "rev-parse", "HEAD~1"), rel, "his change sits on the release, and nobody pressed Use it");
+  assert.equal(readFileSync(join(f.mine, "sol/engine/src/index.ts"), "utf8"), "export const a = 50 + 41;\n");
+  assert.deepEqual(x.updated, [rel]);
+  assert.equal(carry.carryNow(), null);
+});
+
 test("a change the release already has is left out, and the rest goes on with no session", async () => {
   const f = fixture();
   put(f.mine, "sol/engine/src/index.ts", "export const a = 7;\n", "mine: seven");

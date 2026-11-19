@@ -84,6 +84,9 @@ const cloudOfRoom: CloudOf = (room) => {
 };
 let cloudOf: CloudOf = cloudOfRoom;
 const syncs = new Map<string, Sync>();
+/** who hears that a pull brought events (the ways' runner loop, #987): each once, never throwing into the tick */
+const pulled = new Set<() => void>();
+export const onPulled = (f: () => void): void => { pulled.add(f); };
 export type Tick = { project: string; sent: number; added: number; away?: string }[];
 
 /** one round: with the switch off, nothing; else each cloud room's project pushed, then pulled */
@@ -105,6 +108,7 @@ export async function syncTick(): Promise<Tick> {
     }
   } catch { /* a tick never throws: the events wait for the next */ }
   finally { ticking = false; }
+  if (done.some((x) => x.added > 0)) for (const f of pulled) { try { f(); } catch { /* a listener never breaks the sync */ } }
   return done;
 }
 /** the timer, started once (by the first v3 message, or at start with the switch on); a tick checks the switch itself */

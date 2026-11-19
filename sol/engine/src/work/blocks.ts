@@ -3,13 +3,16 @@
 // with a ledger; a session holds references to blocks and a layout for them.
 //
 //   <home>/<project>/blocks/<id>/block.json    { id, kind, title, bind: { source, watch } | null, state, parent,
-//                                                versions: [{ n, at, by }], sessions: [ids], at }
+//                                                versions: [{ n, at, by }], sessions: [ids], at,
+//                                                making?: { file?, command?, machine? } }  (while working, #822)
 //   <home>/<project>/blocks/<id>/body/          the thing itself: index.html, index.md, index.json, a png, pty.json, view.json
 //   <home>/<project>/blocks/<id>/versions/<n>/  a frozen body, never changed again
 //   <home>/<project>/blocks/<id>/ledger.jsonl   one signed line per event, append only
-//   <home>/<project>/sessions/<id>/stage.json   { lens, blocks: [{ id, x, y, w, h, z, folded, slot?, pinned? }], tiled,
+//   <home>/<project>/sessions/<id>/stage.json   { lens, blocks: [{ id, x, y, w, h, z, folded, slot? }], tiled,
 //                                                start?: { from?, at, lines },   (a new session's opening, #700)
-//                                                talk?: { dock, width?, was? } }  (the talk's dock and width, #734)
+//                                                talk?: { dock, width?, was? },  (the talk's dock and width, #734)
+//                                                left?: [ids],                   (taken off this stage alone, #870)
+//                                                room?: { w, h } }               (the stage's real size, #821)
 //
 // The six verbs (the agent's tools, tools.ts) are compose, update, bind, freeze, place and read; each change goes to
 // every Work face as one work.stage.changed (wire.ts gives the bus). A bound source that changes (a file, a URL, a PR,
@@ -22,8 +25,16 @@ import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readRun, runBody, runMoves, runState, runWords, whereOf, RUN_POLL_MS, type RunBody } from "./background.js";
 import { PANE_KEY } from "./page.js";
+import { stageWhole, userLens, setUserLens, LENSES, type Lens } from "../settings.js";
+import { hasSystems, systemBodyError } from "./systems.js";   // #1091; a lens naming what the area does not draw is refused (#1220)
+import { clockOn, CLOCK_OFF } from "./clock.js";   // #1274
+import { localDay } from "../day.js";   // #1298
 
-export const KINDS = ["page", "list", "shots", "browser", "terminal", "diff", "table", "card"] as const;
+// system (#1091): an area of the systems registry drawn in five lanes, read live; its body names the area, { "area": "design" }
+// systems (#1193): the whole of Jelly, every cluster and the wires between them; a press opens a cluster; its body is {}
+// clock (#1177): the person's clock, everything coming in with its ETA (work/clock.ts); its body is {}, the engine feeds it
+// session (orchestration step 4, children.ts): a session under an orchestrator, kept current by the engine; { "sessionId": "…" }
+export const KINDS = ["page", "list", "shots", "browser", "terminal", "diff", "table", "card", "system", "session", "clock", "systems"] as const;
 export type Kind = (typeof KINDS)[number];
 export const STATES = ["live", "working", "waits", "frozen", "dead"] as const;
 export type State = (typeof STATES)[number];
@@ -33,8 +44,7 @@ export const WATCHES = ["file", "url", "pr", "test", "run"] as const;
 export type Watch = (typeof WATCHES)[number];
 export const SLOTS = ["full", "left", "right", "top", "bottom", "cell"] as const;
 export type Slot = (typeof SLOTS)[number];
-export const LENSES = ["app", "tui", "cli", "ide"] as const;
-export type Lens = (typeof LENSES)[number];
+export { LENSES, type Lens };   // kept in settings.ts, the person's one lens (#824)
 
 export type Bind = { source: string; watch: Watch | false };
 export type Version = { n: number; at: number; by: string };
@@ -44,11 +54,33 @@ export type Block = {
   /** the project's, not one session's (#703): it shows in every session of the project, folded until opened there (a
    *  run's list is; a diff or a terminal stays in its session until carried) */
   scope?: "project";
+  /** what the block is being made by, for the making line at its foot (#822, stage.whole on): kept only while it is
+   *  working, gone as it settles (saveBlock) */
+  making?: Making;
+  /** it asks the person (#1298): the press at its foot; waits until answered */
+  asks?: Asks;
 };
+/** the making line's fields (#822): the file being written or the command running, and the machine it happens on. The
+ *  names are our pick (no face PR named them yet); this list is their one home, the agent's tools are built from it */
+export const MAKING_KEYS = ["file", "command", "machine"] as const;
+export type Making = Partial<Record<(typeof MAKING_KEYS)[number], string>>;
+/** a making as asked: its three fields when they are words, nothing else; none = undefined (pure) */
+const INVISIBLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Co}\p{Cn}\p{Default_Ignorable_Code_Point}]/gu;
+export function makingOf(v: unknown): Making | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const out: Making = {};
+  for (const k of MAKING_KEYS) {
+    const x = (v as Record<string, unknown>)[k];
+    // one plain line: control, format and invisible characters (newlines, a right-to-left override) become a space
+    const t = typeof x === "string" ? x.replace(INVISIBLE, " ").replace(/ {2,}/g, " ").trim() : "";
+    if (t) out[k] = t.slice(0, 200);
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 export type Line = { n: number; at: number; ev: Event; by: string; block: string; note?: string; prev: string; sig: string };
 /** `auto`: the engine picked the spot on its nominal stage (no slot, no place asked); the face lays it out again on its own
  *  width, and its layout drops the mark (stage: joins sitting 2, #709) */
-export type Placed = { id: string; x: number; y: number; w: number; h: number; z: number; folded: boolean; slot?: Slot; pinned?: boolean; auto?: boolean;
+export type Placed = { id: string; x: number; y: number; w: number; h: number; z: number; folded: boolean; slot?: Slot; auto?: boolean;
   /** a ghost (#737, pain point 6): the agent offered it and nobody took it yet; the face draws the frame alone, dashed, its
    *  title in the head, no body. A press or the agent's first body makes it solid (the mark goes). Set in one place,
    *  `ghostly` below; later a judge sets it with a probability, and the mark's shape stays this one boolean */
@@ -57,7 +89,10 @@ export type Placed = { id: string; x: number; y: number; w: number; h: number; z
    *  a borrowed one sat before it went full. Layout only: kept as the face writes them, never a ledger line */
   popped?: boolean; lensed?: boolean; tui?: boolean;
   /** moved or resized by the person's hand (#739): never folded to the tray to make room */
-  hand?: boolean; was?: { x: number; y: number; w: number; h: number } };
+  hand?: boolean; was?: { x: number; y: number; w: number; h: number };
+  /** the block's band (#821, stage.whole on): read at the measure, or the stage wide. Set where the engine places it
+   *  (bornIn below), kept across the face's layout writes; the face sizes the block by it (sol/mac stage/born.ts) */
+  band?: Band };
 /** a ledger line as a new session opens on it: which block it is of, by its title */
 export type StartLine = Line & { title: string };
 /** how a session opened (#700): the session it came from (start_session, hand_off), when, and the project's last ledger
@@ -69,7 +104,12 @@ export type Opening = { from?: string; at: number; lines: StartLine[] };
 export const DOCKS = ["left", "right", "bottom", "full"] as const;
 export type Dock = (typeof DOCKS)[number];
 export type Talk = { dock: Dock; width?: number; was?: Dock };
-export type Stage = { lens: Lens; blocks: Placed[]; tiled: boolean; start?: Opening; talk?: Talk };
+export type Stage = { lens: Lens; blocks: Placed[]; tiled: boolean; start?: Opening; talk?: Talk;
+  /** the blocks taken off this stage alone (#870 item 5, place's leave): alive, in the tray, and a project's own block
+   *  is not brought back by withProject. Absent unless something was left; an id goes as the block is put here again */
+  left?: string[];
+  /** the stage's real size as the face last wrote it with a layout (#821, stage.whole on); absent until then */
+  room?: Room };
 export type Format = "html" | "md" | "json" | "text" | "diff";
 
 // ---- where ----
@@ -132,11 +172,22 @@ const tell = (m: Omit<Change, "type">) => { try { bus?.({ type: "work.stage.chan
 // ---- the ledger: one line per event, each signed over the one before it ----
 const sign = (prev: string, l: Omit<Line, "sig" | "prev">) => createHash("sha256").update(prev + "\n" + JSON.stringify([l.n, l.at, l.ev, l.by, l.block, l.note ?? ""])).digest("hex").slice(0, 16);
 
-export function ledger(project: string, id: string): Line[] {
-  try {
-    return readFileSync(join(blockDir(project, id), "ledger.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Line);
-  } catch { return []; }
+/** a ledger's file as it reads: its whole lines, and whether the file ends in the middle of a line. A line that does not
+ *  read (the engine killed mid-append, a full disk) costs that line only, never the lines around it (#898) */
+function readLedger(project: string, id: string): { lines: Line[]; torn: boolean } {
+  let text = "";
+  try { text = readFileSync(join(blockDir(project, id), "ledger.jsonl"), "utf8"); } catch { return { lines: [], torn: false }; }
+  const lines: Line[] = [];
+  for (const l of text.split("\n")) {
+    if (!l) continue;
+    try {
+      const v = JSON.parse(l);
+      if (v && typeof v === "object" && !Array.isArray(v)) lines.push(v as Line);
+    } catch { /* a torn line: skipped, and left in the file */ }
+  }
+  return { lines, torn: text !== "" && !text.endsWith("\n") };
 }
+export function ledger(project: string, id: string): Line[] { return readLedger(project, id).lines; }
 /** whether a ledger is whole: every line signed over the one before it, numbered in order (pure) */
 export function ledgerWhole(lines: Line[]): boolean {
   let prev = "";
@@ -148,12 +199,14 @@ export function ledgerWhole(lines: Line[]): boolean {
   return true;
 }
 function append(project: string, id: string, ev: Event, by: string, note?: string): Line {
-  const old = ledger(project, id);
+  const { lines: old, torn } = readLedger(project, id);
   const prev = old.length ? old[old.length - 1].sig : "";
   const base = { n: old.length + 1, at: Date.now(), ev, by, block: id, ...(note ? { note: note.slice(0, 300) } : {}) };
   const line: Line = { ...base, prev, sig: sign(prev, base) };
   mkdirSync(blockDir(project, id), { recursive: true });
-  appendFileSync(join(blockDir(project, id), "ledger.jsonl"), JSON.stringify(line) + "\n");
+  // after a torn end the new line starts on a line of its own, or the two would read as one broken line; the torn bytes
+  // stay where they are (a ledger is never cut)
+  appendFileSync(join(blockDir(project, id), "ledger.jsonl"), (torn ? "\n" : "") + JSON.stringify(line) + "\n");
   return line;
 }
 
@@ -166,7 +219,10 @@ function must(project: string, id: string): Block {
   if (!b) throw new Error(`no block "${id}" in ${projectName(project)}; read lists the stage`);
   return b;
 }
-const saveBlock = (project: string, b: Block) => writeJson(join(blockDir(project, b.id), "block.json"), b);
+const saveBlock = (project: string, b: Block) => {
+  if (b.making && b.state !== "working") delete b.making;   // the making line is only for a block being made (#822)
+  writeJson(join(blockDir(project, b.id), "block.json"), b);
+};
 /** every block of a project, newest first; with dead ones only when asked */
 export function allBlocks(project: string, dead = false): Block[] {
   let ids: string[] = [];
@@ -180,7 +236,7 @@ export function projects(): string[] {
 
 // a body: one file under body/, its name by format; a png or a file named by path is copied in
 const EXT: Record<Format, string> = { html: "index.html", md: "index.md", json: "index.json", text: "index.txt", diff: "index.diff" };
-const DEFAULT_FORMAT: Record<Kind, Format> = { page: "html", list: "json", shots: "json", browser: "json", terminal: "json", diff: "diff", table: "json", card: "md" };
+const DEFAULT_FORMAT: Record<Kind, Format> = { page: "html", list: "json", shots: "json", browser: "json", terminal: "json", diff: "diff", table: "json", card: "md", system: "json", session: "json" , clock: "json", systems: "json" };
 /** the format a body is kept in: the one asked for, else the kind's, a page in markdown when it is not html (pure) */
 export function formatOf(kind: Kind, body: string, asked?: unknown): Format {
   if (typeof asked === "string" && asked in EXT) return asked as Format;
@@ -207,27 +263,76 @@ export function bodyOf(project: string, id: string, version?: number): { file: s
 // ---- stage.json: a session's layout ----
 // the sizes a kind is born at and the stage's margins (play.html SIZES, PAD, GAP); the face lays out by them again on
 // its real width, so these place a block sensibly for a stage the engine never sees
-export const SIZES: Record<Kind, [number, number]> = { page: [440, 300], list: [340, 232], shots: [460, 300], browser: [480, 340], terminal: [440, 250], diff: [440, 290], table: [400, 230], card: [260, 140] };
+export const SIZES: Record<Kind, [number, number]> = { page: [440, 300], list: [340, 232], shots: [460, 300], browser: [480, 340], terminal: [440, 250], diff: [440, 290], table: [400, 230], card: [260, 140], system: [876, 496], session: [340, 232], clock: [876, 420], systems: [876, 496] };
 export const STAGE_W = 900, STAGE_H = 520, PAD = 12, GAP = 12;
+
+// ── born at the content's size (#821; whole.md "Engine changes"), only with stage.whole on: no size per kind. A block is
+// placed on the stage the face reported (`room`, 900×520 until it has) in its band, one starting height for every kind,
+// and marked auto, so the face lays it out at its content's size (sol/mac stage/born.ts) and writes it back with its
+// layout. The band is the judge's (#755); until it is in, a rule by kind that is the face's own (born.ts WIDE), so the
+// switch changes nothing the person sees until then. Our picks, all here: the name `room` and its limits, the starting
+// height. `band` and its two values are the face's (PR #885).
+export const BANDS = ["measure", "wide"] as const;
+export type Band = (typeof BANDS)[number];
+export type Room = { w: number; h: number };
+const WIDE: Kind[] = ["terminal", "browser", "shots"];
+/** a measure block's width as the face is born: the measure, 412, and its two sides of 12 (born.ts, feel.ts BORN) */
+export const MEASURE_W = 412 + 2 * 12;
+/** the one height every kind starts at, the face's least block (geometry.ts BLOCK_MIN.h); the face fits it to its content */
+export const BORN_H = 120;
+const ROOM_MIN = 100, ROOM_MAX = 10_000;
+/** the band a kind is born in until the judge gives one (pure) */
+export const bandOf = (kind: Kind): Band => (WIDE.includes(kind) ? "wide" : "measure");
+/** a room as the face wrote it: two sizes in whole pixels between ROOM_MIN and ROOM_MAX; anything else is none (pure) */
+export function roomOf(v: unknown): Room | null {
+  const r = v as Partial<Room> | null;
+  if (!r || typeof r !== "object") return null;
+  const ok = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n >= ROOM_MIN && n <= ROOM_MAX;
+  return ok(r.w) && ok(r.h) ? { w: Math.round(r.w!), h: Math.round(r.h!) } : null;
+}
+const NOMINAL: Room = { w: STAGE_W, h: STAGE_H };
+/** the stage a block is placed on: the room the face reported, with the switch on; else the nominal one */
+const roomFor = (s: Stage): Room => (stageWhole() && s.room ? s.room : NOMINAL);
+/** a new block's band and size in a room: the measure's width or the room's, never past it; the one starting height */
+function bornIn(kind: Kind, room: Room): { band: Band; w: number; h: number } {
+  const band = bandOf(kind), inner = { w: room.w - 2 * PAD, h: room.h - 2 * PAD };
+  return { band, w: band === "wide" ? inner.w : Math.min(MEASURE_W, inner.w), h: Math.min(BORN_H, inner.h) };
+}
+
 const emptyStage = (): Stage => ({ lens: "app", blocks: [], tiled: false });
 
+/** a session's stage as it answers: with stage.whole on, in the person's one lens (the setting, #824), whatever its
+ *  stage.json says; off, in its own */
 export function getStage(project: string, sid: string): Stage {
+  const s = ownStage(project, sid);
+  if (stageWhole()) s.lens = userLens();
+  return s;
+}
+/** a session's stage as its stage.json holds it, its own lens and all */
+function ownStage(project: string, sid: string): Stage {
   try {
     const v = JSON.parse(readFileSync(stageFile(project, sid), "utf8"));
     return {
       lens: LENSES.includes(v?.lens) ? v.lens : "app", blocks: Array.isArray(v?.blocks) ? v.blocks.filter((p: any) => validId(p?.id)) : [], tiled: v?.tiled === true,
       ...(v?.start && typeof v.start === "object" && Array.isArray(v.start.lines) ? { start: v.start as Opening } : {}),
       ...(talkOf(v?.talk) ? { talk: talkOf(v.talk)! } : {}),
+      ...(Array.isArray(v?.left) && v.left.some(validId) ? { left: [...new Set<string>(v.left.filter(validId))] } : {}),
+      ...(roomOf(v?.room) ? { room: roomOf(v.room)! } : {}),
     };
   } catch { return emptyStage(); }
 }
 function saveStage(project: string, sid: string, s: Stage) {
-  writeJson(stageFile(project, sid), s);
+  // left names only what is not on the stage: a block put here again, by any way, is no longer left
+  if (s.left) { const here = new Set(s.blocks.map((p) => p.id)), left = s.left.filter((id) => !here.has(id)); if (left.length) s.left = left; else delete s.left; }
+  // with stage.whole on the lens is the setting's (#824): stage.json keeps the session's own, so the switch turned off
+  // again gives it back
+  writeJson(stageFile(project, sid), stageWhole() ? { ...s, lens: ownStage(project, sid).lens } : s);
   tell({ project: projectName(project), sessionId: sid, stage: s });
 }
-/** a slot's rectangle on the nominal stage (play.html zoneRect; a cell is the next free grid cell) (pure) */
-export function slotRect(slot: Slot, others: Placed[] = []): { x: number; y: number; w: number; h: number } {
-  const W = STAGE_W - 2 * PAD, H = STAGE_H - 2 * PAD, half = (W - GAP) / 2, halfH = (H - GAP) / 2;
+/** a slot's rectangle on the nominal stage, or on the room given (#821) (play.html zoneRect; a cell is the next free grid
+ *  cell) (pure) */
+export function slotRect(slot: Slot, others: Placed[] = [], room: Room = NOMINAL): { x: number; y: number; w: number; h: number } {
+  const W = room.w - 2 * PAD, H = room.h - 2 * PAD, half = (W - GAP) / 2, halfH = (H - GAP) / 2;
   if (slot === "left") return { x: PAD, y: PAD, w: half, h: H };
   if (slot === "right") return { x: PAD + half + GAP, y: PAD, w: half, h: H };
   if (slot === "top") return { x: PAD, y: PAD, w: W, h: halfH };
@@ -244,16 +349,23 @@ export function slotRect(slot: Slot, others: Placed[] = []): { x: number; y: num
 }
 const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
   a.x < b.x + b.w + GAP && b.x < a.x + a.w + GAP && a.y < b.y + b.h + GAP && b.y < a.y + a.h + GAP;
-/** where a block of this size goes when no slot is asked: the first free spot, top-left first (play.html free); none = the
- *  stage is full, and it is tiled (pure) */
-export function freeSpot(w: number, h: number, others: Placed[]): { x: number; y: number } | null {
+/** where a block of this size goes when no slot is asked: the first free spot, top-left first (play.html free), on the
+ *  nominal stage or the room given (#821); none = the stage is full, and it is tiled (pure) */
+export function freeSpot(w: number, h: number, others: Placed[], room: Room = NOMINAL): { x: number; y: number } | null {
   const live = others.filter((o) => !o.folded);
-  for (let y = PAD; y + h <= STAGE_H - PAD; y += 24) for (let x = PAD; x + w <= STAGE_W - PAD; x += 24) if (!live.some((o) => overlaps({ x, y, w, h }, o))) return { x, y };
+  for (let y = PAD; y + h <= room.h - PAD; y += 24) for (let x = PAD; x + w <= room.w - PAD; x += 24) if (!live.some((o) => overlaps({ x, y, w, h }, o))) return { x, y };
   return null;
 }
 function placeIn(s: Stage, b: Block, slot?: Slot): Placed {
   const others = s.blocks.filter((p) => p.id !== b.id);
   const z = Math.max(0, ...s.blocks.map((p) => p.z)) + 1;
+  if (stageWhole()) {   // born at the content's size (#821): in its band, on the room the face reported
+    const room = roomFor(s), { band, w, h } = bornIn(b.kind, room);
+    if (slot) return { id: b.id, ...slotRect(slot, others, room), z, folded: false, slot, band };
+    const at = freeSpot(w, h, others, room);
+    if (!at) { s.tiled = true; return { id: b.id, x: PAD, y: PAD, w, h, z, folded: false, auto: true, band }; }
+    return { id: b.id, ...at, w, h, z, folded: false, auto: true, band };
+  }
   if (slot) return { id: b.id, ...slotRect(slot, others), z, folded: false, slot };
   const [w, h] = SIZES[b.kind];
   const at = freeSpot(w, h, others);
@@ -272,13 +384,59 @@ function onStage(project: string, sid: string, b: Block, slot?: Slot, at?: At, g
   return p;
 }
 
+// ---- the press (#1298): any block may ask the person something; the press at its foot is the one constant ----
+// The agent makes the block the ask needs (a card, a table, a diff, stills) and names the question and its choices; the
+// person's press is answered once, in place, and goes back to whoever asked (work/asks.ts routes it).
+export const ASK_CHOICES = ["yes", "no", "later"] as const;
+/** what the press answers: a block of this session's own agent (self), a hand-over or an offer from a teammate's agent
+ *  (hand, offer: the reply travels back by the relay), a late answer to an ask of mine (answer); a wait the morning
+ *  brought (#1128): an issue or a PR waiting on me (issue, its id "<review|decision>-<n>"), an ask to me (ask) */
+export const REFS = ["self", "hand", "offer", "answer", "issue", "ask"] as const;
+export type Ref = { kind: (typeof REFS)[number]; id: string };
+export type Pressed = { choice: string; by: string; at: number };
+export type Asks = {
+  /** the question, in a few words */ q: string;
+  choices: string[];
+  /** the session that composed it: a self press comes back there as a turn */ by: string;
+  /** a teammate's agent asking (hand, offer); the login is the hub's word */ from?: { login: string; agent: boolean };
+  /** the issue it is about */ about?: number;
+  ref: Ref;
+  /** pressed later, on this day (YYYY-MM-DD, local): it stays on top of the Room and comes back on a later day's first
+   *  session, which marks it again with that day */ later?: string;
+  answer?: Pressed;
+};
+export type AsksArgs = { q?: unknown; choices?: unknown; from?: unknown; about?: unknown; ref?: unknown };
+const askWords = (v: unknown, max: number) => (typeof v === "string" ? v.replace(INVISIBLE, "").replace(/\s+/g, " ").trim().slice(0, max) : "");
+/** an ask as kept, or why not (pure). `by` the composing session, `id` the block's (a self ref names it) */
+export function asksOf(a: AsksArgs, by: string, id: string): Asks | string {
+  const q = askWords(a?.q, 140);
+  if (!q) return "asks needs q: the question in a few words";
+  const raw = a.choices === undefined ? [...ASK_CHOICES] : Array.isArray(a.choices) ? a.choices : null;
+  const choices = raw ? [...new Set(raw.map((c) => askWords(c, 24)).filter(Boolean))] : [];
+  if (choices.length < 2 || choices.length > 4) return "asks.choices: two to four short words (yes · no · later when left out)";
+  const r = a.ref as Partial<Ref> | undefined;
+  const ref: Ref = r && REFS.includes(r.kind as Ref["kind"]) && typeof r.id === "string" && /^[A-Za-z0-9-]{1,64}$/.test(r.id) ? { kind: r.kind as Ref["kind"], id: r.id } : { kind: "self", id };
+  const f = a.from as { login?: unknown; agent?: unknown } | undefined;
+  const from = f && typeof f.login === "string" && /^[A-Za-z0-9-]{1,39}$/.test(f.login) ? { login: f.login, agent: f.agent !== false } : undefined;
+  const n = typeof a.about === "number" ? a.about : typeof a.about === "string" && /^#?\d{1,7}$/.test(a.about.trim()) ? Number(a.about.trim().replace("#", "")) : 0;
+  return { q, choices, by, ...(from ? { from } : {}), ...(Number.isInteger(n) && n > 0 && n < 1e7 ? { about: n } : {}), ref };
+}
+/** a block that waits on a press: it asks and nobody answered yet (pure) */
+export const asking = (b: Pick<Block, "asks" | "state">) => !!b.asks && !b.asks.answer && b.state !== "dead";
+
 // ---- the six verbs ----
 export type Who = { project: string; sessionId: string; by: string; cwd?: string };
 /** `at`: a place the face asked (the person's own compose: a chip dropped, the fixture), kept as it is */
 export type At = { x: number; y: number; w: number; h: number; z?: number; folded?: boolean; hand?: boolean };
 export type ComposeArgs = { kind: Kind; title?: string; body?: string; slot?: Slot; format?: Format; parent?: string; waits?: boolean; id?: string; bind?: { source: string; watch?: unknown }; at?: At;
   /** the person's own compose (the face's: a chip dropped, the fixture), never the agent's */
-  person?: boolean };
+  person?: boolean;
+  /** the making line (#822, stage.whole on), kept while the block works */
+  making?: Making;
+  /** the project's from the start (#1166: the Agents' room), in every session of it */
+  scope?: "project";
+  /** it asks the person (#1298): the press at its foot; it waits until answered */
+  asks?: AsksArgs };
 
 // ── ghosts (#737, pain point 6): the one place a block is born a ghost. The agent's compose lands as one unless it waits on
 // the person (the block forward with its press inside), the person dropped its chip (`at`), or the person asked for that
@@ -291,12 +449,13 @@ export function asked(sid: string, text: string, things?: { kind?: unknown }[]) 
   const kinds = ASKING.test(text) ? (things ?? []).map((t) => t?.kind).filter((k): k is Kind => KINDS.includes(k as Kind)) : [];
   if (kinds.length) named.set(sid, kinds); else named.delete(sid);
 }
-/** whether this compose lands as a ghost; a kind the person named is taken off the list as it lands (pure but for it) */
-export function ghostly(sid: string, a: Pick<ComposeArgs, "kind" | "waits" | "at" | "person">): boolean {
+/** whether this compose lands as a ghost; a kind the person named is taken off the list as it lands (pure but for it).
+ *  `take: false` only looks: the list is left as it was (the frame's question, asked before the block is written) */
+export function ghostly(sid: string, a: Pick<ComposeArgs, "kind" | "waits" | "at" | "person">, take = true): boolean {
   if (a.person || a.waits || a.at) return false;
   const k = named.get(sid), i = k ? k.indexOf(a.kind) : -1;
   if (i < 0) return true;
-  k!.splice(i, 1);
+  if (take) k!.splice(i, 1);
   return false;
 }
 /** the ghost taken: by the agent's first body (update), or a press on the face (its layout drops the mark) */
@@ -309,22 +468,40 @@ function solid(project: string, id: string, sessions: string[]) {
   }
 }
 
+// the blocks the agent is still making (#822, stage.whole on): composed as a frame, or updated with more; no settle ends
+// them until an update without more comes. In memory: an engine that restarts leaves such a block working
+const held = new Set<string>();
+const heldKey = (project: string, id: string) => `${project}\n${id}`;
+
 export function compose(w: Who, a: ComposeArgs): Block {
   if (!KINDS.includes(a.kind)) throw new Error(`kind is one of ${KINDS.join(", ")}`);
+  if (a.kind === "clock" && !clockOn()) throw new Error(CLOCK_OFF);   // #1274
+  if ((a.kind === "system" || a.kind === "systems") && !hasSystems()) throw new Error("a system block needs the systems registry (sol/systems/records), which this checkout has not");
   if (a.slot !== undefined && !SLOTS.includes(a.slot)) throw new Error(`slot is one of ${SLOTS.join(", ")}`);
   if (a.parent !== undefined && !getBlock(w.project, a.parent)) throw new Error(`no parent block "${a.parent}"`);
   const id = a.id && validId(a.id) ? a.id : newId();
   if (getBlock(w.project, id)) throw new Error(`a block "${id}" is there already`);
+  const asks = a.asks ? asksOf(a.asks, w.sessionId, id) : undefined;
+  if (typeof asks === "string") throw new Error(asks);
+  if (asks) a = { ...a, waits: true };   // a block that asks waits on the press
   const body = String(a.body ?? "");
+  if (a.kind === "system" && body) { const e = systemBodyError(body); if (e) throw new Error(e); }
+  // the frame first (#822, stage.whole on): the agent's compose with no body opens the frame at once, working until its
+  // last update; a ghost stays a ghost, the person's own compose is never left open, and a bound block's source fills it.
+  // Ghostly only looks here: the named kind is taken where it always was, once the block is written and told
+  const frame = !body && !a.waits && !a.person && !a.bind && stageWhole() && !ghostly(w.sessionId, a, false);
+  const making = frame ? makingOf(a.making) : undefined;
   const b: Block = {
-    id, kind: a.kind, title: String(a.title ?? "").trim().slice(0, 80) || a.kind, bind: null, state: a.waits ? "waits" : "live",
-    parent: a.parent ?? null, versions: [], sessions: [w.sessionId], at: Date.now(),
+    id, kind: a.kind, title: String(a.title ?? "").trim().slice(0, 80) || a.kind, bind: null, state: a.waits ? "waits" : frame ? "working" : "live",
+    parent: a.parent ?? null, versions: [], sessions: [w.sessionId], at: Date.now(), ...(making ? { making } : {}), ...(a.scope === "project" ? { scope: "project" as const } : {}),
+    ...(asks ? { asks } : {}),
   };
   writeBody(w.project, id, body, formatOf(a.kind, body, a.format));
   saveBlock(w.project, b);
+  if (frame) held.add(heldKey(w.project, id));
   const line = append(w.project, id, "composed", w.by, `${a.kind} "${b.title}"`);
   tell({ project: projectName(w.project), sessionId: w.sessionId, block: b, line });
-  onStage(w.project, w.sessionId, b, a.slot, a.at, ghostly(w.sessionId, a));
+  onStage(w.project, w.sessionId, b, a.kind === "clock" ? "full" : a.slot, a.at, ghostly(w.sessionId, a));   // a clock is always full width (#1177)
   if (a.waits) waitsOn(w, b);
   return a.bind ? bind(w, { id, source: a.bind.source, watch: a.bind.watch }) : b;
 }
@@ -333,23 +510,40 @@ function waitsOn(w: Who, b: Block) {
   tell({ project: projectName(w.project), sessionId: w.sessionId, block: b, line });
 }
 
-export function update(w: Who, a: { id: string; body?: string; format?: Format; title?: string; waits?: boolean }): Block {
+export function update(w: Who, a: { id: string; body?: string; format?: Format; title?: string; waits?: boolean;
+  /** more follows (#822, stage.whole on): the block stays working, no settle */
+  more?: boolean;
+  /** the making line (#822, stage.whole on): replaces the one before while the block works */
+  making?: Making;
+  /** it asks now (#1298): a new question, any answer before it cleared */
+  asks?: AsksArgs }): Block {
   const b = must(w.project, a.id);
   if (b.state === "dead") throw new Error(`"${b.title}" is closed`);
+  if (a.asks) {
+    const asks = asksOf(a.asks, w.sessionId, b.id);
+    if (typeof asks === "string") throw new Error(asks);
+    b.asks = asks;
+  }
+  if (asking(b)) a = { ...a, waits: true };   // a block that asks waits until it is pressed, whatever else changes
+  if (b.kind === "system" && a.body) { const e = systemBodyError(String(a.body)); if (e) throw new Error(e); }
   if (a.body !== undefined) writeBody(w.project, b.id, String(a.body), formatOf(b.kind, String(a.body), a.format));
   if (typeof a.title === "string" && a.title.trim()) b.title = a.title.trim().slice(0, 80);
   // a frozen block refined is live again: its versions stay as they were, what changes now is the next one. A body that
   // changes is working for a moment first, as a watched source's change is (the frame's rim drifts, the jelly travels to
-  // it: #709), then live
-  const working = a.body !== undefined && !a.waits;
+  // it: #709), then live; with stage.whole on, working as long as more follows (#822)
+  const whole = stageWhole(), more = whole && a.more === true && !a.waits;
+  const working = (a.body !== undefined || more) && !a.waits;
   b.state = a.waits ? "waits" : working ? "working" : "live";
+  if (more) held.add(heldKey(w.project, b.id)); else held.delete(heldKey(w.project, b.id));
+  const making = whole ? makingOf(a.making) : undefined;
+  if (making) b.making = making;
   saveBlock(w.project, b);
   if (a.body !== undefined || a.waits) solid(w.project, b.id, b.sessions);   // a ghost's first body (or its ask) makes it solid
   const line = append(w.project, b.id, a.waits ? "waits" : "ran", w.by, a.waits ? "waits on your word" : a.body !== undefined ? "the body changed" : "changed");
   tell({ project: projectName(w.project), sessionId: w.sessionId, block: b, line });
-  if (working) setTimeout(() => {
+  if (working && !more) setTimeout(() => {
     const now = getBlock(w.project, b.id);
-    if (!now || now.state !== "working") return;
+    if (!now || now.state !== "working" || held.has(heldKey(w.project, b.id))) return;   // more came since: not done yet
     now.state = "live";
     saveBlock(w.project, now);
     tell({ project: projectName(w.project), sessionId: w.sessionId, block: now });
@@ -409,20 +603,81 @@ export function yes(w: Who, a: { id: string; note?: string }): Block {
   return b;
 }
 
-export type PlaceArgs = { id: string; slot?: Slot; fold?: boolean; carry?: string; close?: boolean; pin?: boolean;
+/** the person's press on a block that asks (#1298), keyed by the block: the first answer is kept with a ledger line; a
+ *  press after it returns that first answer and changes nothing (`first` false). `later` is not an answer: the block
+ *  stays waiting, marked later, and may still be answered */
+export function press(w: Who, a: { id: string; choice: string }): { block: Block; answer?: Pressed; first: boolean; later?: boolean } {
+  const b = must(w.project, a.id);
+  if (!b.asks) throw new Error(`"${b.title}" asks nothing`);
+  if (b.asks.answer) return { block: b, answer: b.asks.answer, first: false };
+  if (b.state === "dead") throw new Error(`"${b.title}" is closed`);
+  const choice = askWords(a.choice, 24);
+  if (!b.asks.choices.includes(choice)) throw new Error(`the choices are ${b.asks.choices.join(" · ")}`);
+  const by = w.by.split(" · ")[0].replace(/'s agent$/, "");
+  if (choice === "later" && !b.asks.later) {
+    b.asks = { ...b.asks, later: localDay(Date.now()) };
+    saveBlock(w.project, b);
+    const line = append(w.project, b.id, "waits", by, "later");
+    tell({ project: projectName(w.project), sessionId: w.sessionId, block: b, line });
+    return { block: b, first: true, later: true };
+  }
+  if (choice === "later") return { block: b, first: false, later: true };
+  const answer: Pressed = { choice, by, at: Date.now() };
+  const { later: _l, ...rest } = b.asks;
+  b.asks = { ...rest, answer };
+  b.state = "live";
+  saveBlock(w.project, b);
+  const line = append(w.project, b.id, "yes", by, `${choice}: ${b.asks.q}`);
+  tell({ project: projectName(w.project), sessionId: w.sessionId, block: b, line });
+  return { block: b, answer, first: true };
+}
+
+/** a later brought back to a session (#1298): marked with the day it came back, so it comes once a day at most */
+export function laterBack(project: string, id: string, day: string): void {
+  const b = getBlock(project, id);
+  if (!b?.asks?.later || b.asks.answer) return;
+  b.asks = { ...b.asks, later: day };
+  saveBlock(project, b);
+}
+
+export type PlaceArgs = { id: string; slot?: Slot; fold?: boolean; carry?: string; close?: boolean;
   /** where a carried block lands (a tray's miniature dropped on the stage, #739) */
-  at?: At };
+  at?: At;
+  /** off this session's stage alone (#870 item 5): the block stays alive, in its sessions' list and on their stages, and
+   *  waits in this one's tray. A layout change, like a fold: no ledger line */
+  leave?: boolean;
+  /** with carry: the carry is a move, off the asking session's stage as it lands on the other (#826). Only the person's
+   *  drag sets it (carryByHand); the agent's carry and start()'s stay copies */
+  move?: boolean;
+  /** the making line (#822, stage.whole on), taken only by a block that is working */
+  making?: Making };
+/** a block off one session's stage, and kept off it (left): its block.json is not touched */
+function leaveStage(project: string, sid: string, id: string) {
+  const s = getStage(project, sid);
+  s.blocks = s.blocks.filter((p) => p.id !== id);
+  s.left = [...(s.left ?? []).filter((x) => x !== id), id];
+  saveStage(project, sid, s);
+}
 export function place(w: Who, a: PlaceArgs): { block: Block; placed?: Placed; to?: string } {
   const b = must(w.project, a.id);
   if (a.slot !== undefined && !SLOTS.includes(a.slot)) throw new Error(`slot is one of ${SLOTS.join(", ")}`);
+  const making = b.state === "working" && stageWhole() ? makingOf(a.making) : undefined;
+  // the making line is written only once the rest of the call holds: a refused place changes nothing
+  if (making && a.carry !== undefined && !a.close && !a.leave && !SID.test(String(a.carry))) throw new Error("carry names a session id");
+  if (making && !a.close) { b.making = making; saveBlock(w.project, b); tell({ project: projectName(w.project), sessionId: w.sessionId, block: b }); }
   if (a.close) {
     b.state = "dead";
     saveBlock(w.project, b);
+    held.delete(heldKey(w.project, b.id));
     disarm(b.id);
     for (const f of closers) { try { f(w.project, b); } catch { /* a program's end is never the close's trouble */ } }
     const line = append(w.project, b.id, "closed", w.by);
     for (const sid of b.sessions) { const s = getStage(w.project, sid); if (s.blocks.some((p) => p.id === b.id)) { s.blocks = s.blocks.filter((p) => p.id !== b.id); saveStage(w.project, sid, s); } }
     tell({ project: projectName(w.project), sessionId: w.sessionId, block: b, line });
+    return { block: b };
+  }
+  if (a.leave) {
+    leaveStage(w.project, w.sessionId, b.id);
     return { block: b };
   }
   if (b.state === "dead") throw new Error(`"${b.title}" is closed`);
@@ -433,22 +688,27 @@ export function place(w: Who, a: PlaceArgs): { block: Block; placed?: Placed; to
     if (!b.sessions.includes(to)) b.sessions.push(to);
     saveBlock(w.project, b);
     const placed = onStage(w.project, to, b, a.slot, a.at);
+    if (a.move && to !== w.sessionId) leaveStage(w.project, w.sessionId, b.id);
     const line = append(w.project, b.id, "carried", w.by, `to ${to}`);
     tell({ project: projectName(w.project), sessionId: to, block: b, line });
     return { block: b, placed, to };
   }
   if (!b.sessions.includes(w.sessionId)) { b.sessions.push(w.sessionId); saveBlock(w.project, b); }
   let placed = onStage(w.project, w.sessionId, b, a.slot);
-  if (a.fold !== undefined || a.pin !== undefined) {
+  if (a.fold !== undefined) {
     const s = getStage(w.project, w.sessionId);
-    s.blocks = s.blocks.map((p) => {
-      if (p.id === b.id) return { ...p, folded: a.pin ? true : a.fold ?? p.folded, ...(a.pin !== undefined ? { pinned: a.pin } : {}) };
-      return a.pin ? { ...p, pinned: false } : p;   // one block pinned to the notch at a time
-    });
+    s.blocks = s.blocks.map((p) => (p.id === b.id ? { ...p, folded: a.fold ?? p.folded } : p));
     placed = s.blocks.find((p) => p.id === b.id)!;
     saveStage(w.project, w.sessionId, s);
   }
   return { block: b, placed };
+}
+
+/** the person's carry from the face (work.stage.carry): a tray's miniature pulled onto this stage (to is the asking
+ *  session), or a block dropped on another session's row. With the engine's switch stage.whole on, the drop is a move
+ *  (#826: gone here, waiting there); off, it is today's copy */
+export function carryByHand(w: Who, a: { id: string; to: string; at?: At }): Block {
+  return place(w, { id: a.id, carry: a.to, ...(a.at ? { at: a.at } : {}), ...(stageWhole() && a.to !== w.sessionId ? { move: true } : {}) }).block;
 }
 
 /** a close taken back (#737, ⌘Z on the face): the block is live again, back on this session's stage where it sat; its
@@ -478,6 +738,13 @@ export function setBody(project: string, id: string, body: string, format: Forma
   if (b.state === "dead") throw new Error(`"${b.title}" is closed`);
   writeBody(project, id, body, format);
   tell({ project: projectName(project), block: b });
+  return b;
+}
+/** a block's name set quietly (a session block's tab follows its session's title, children.ts): no ledger line */
+export function retitle(project: string, id: string, title: string): Block {
+  const b = must(project, id);
+  const t = title.trim().slice(0, 80);
+  if (t && t !== b.title) { b.title = t; saveBlock(project, b); tell({ project: projectName(project), block: b }); }
   return b;
 }
 /** one ledger line on a block with no change of its body or state (the wheel changed hands, the shell ended) */
@@ -547,12 +814,13 @@ export function targetWords(project: string, t: Target): string | null {
 }
 
 /** the stage as a short list, the agent's eyes on it: title, kind, state, slot, and what the person points at */
-export function read(w: Who): string {
+export function read(w: Who, seen?: (id: string) => string | undefined): string {
   const s = withProject(w.project, w.sessionId);
   const lines = s.blocks.map((p) => {
     const b = getBlock(w.project, p.id);
     if (!b || b.state === "dead") return "";
-    const where = p.pinned ? "pinned to the notch" : p.folded ? "folded" : p.slot ?? `at ${Math.round(p.x)},${Math.round(p.y)} ${Math.round(p.w)}×${Math.round(p.h)}`;
+    // what the person's window drew, when it reports (#1435, eyes.ts); else the engine's own place for it
+    const where = (!p.folded ? seen?.(p.id) : undefined) ?? (p.folded ? "folded" : p.slot ?? `at ${Math.round(p.x)},${Math.round(p.y)} ${Math.round(p.w)}×${Math.round(p.h)}`);
     const v = b.versions.length ? ` v${b.versions.length}` : "";
     const run = isRun(b) ? runOf(w.project, b.id) : null;   // a run's list says its sessions (#703)
     const runs = run ? ` · ${run.where}: ${runWords(run)}${run.steps.filter((x) => x.run.state === "waits").map((x) => ` · ${x.run.name} needs the person: ${x.run.said}`).join("")}` : "";
@@ -579,12 +847,13 @@ export const ASK = "[the stage]";
 const ON = "on: ", SEP = " | ";
 const where = (s: Thing["slot"]) => (!s ? "" : typeof s === "string" ? `, slot ${s}` : `, at {x:${Math.round(s.x)},y:${Math.round(s.y)},w:${Math.round(s.w)},h:${Math.round(s.h)}}`);
 /** the paragraph the agent reads under the person's words; empty when the ask carries nothing (pure but for the blocks) */
-export function askLine(project: string, a?: AskStage | null): string {
-  if (!a) return "";
+export function askLine(project: string, a?: AskStage | null, since = ""): string {
+  if (!a) return since ? [ASK, since].join("\n") : "";
   const on = (a.on ?? []).map((t) => { const words = targetWords(project, t); return words ? `${words} (block ${t.id})` : ""; }).filter(Boolean);
   const things = (a.things ?? []).filter((t) => t && KINDS.includes(t.kind)).slice(0, 12);
-  if (!on.length && things.length < 2) return "";
+  if (!on.length && things.length < 2 && !since) return "";
   return [ASK,
+    ...(since ? [since] : []),
     ...(on.length ? [`${ON}${on.join(SEP)}`] : []),
     ...(things.length > 1 ? [`things (hints for your compose calls, one each; merge or add as fits): ${things.map((t, i) => `${i + 1}. ${t.kind} "${String(t.title).slice(0, 80)}"${where(t.slot)}`).join("; ")}`] : []),
   ].join("\n");
@@ -621,6 +890,33 @@ export function pageBase(b: Pick<Block, "kind" | "bind">): string | undefined {
   return `/pane-asset/k.${PANE_KEY}/${encodeURIComponent(dirname(b.bind.source))}/`;
 }
 
+// ---- the stage's read (work.stage.get), whole or lighter (#870) ----
+/** the words the lighter reads go by on the wire: the ask's `light` (the answer's mark too) and `id`, and the one
+ *  block's place in its answer. Our pick (#870: "whatever shape you pick, say it here"), read and written through this
+ *  one line, so a rename is one edit here (and the test's and PROTOCOL.md's words) */
+export const STAGE_READ = { light: "light", id: "id", block: "block" } as const;
+export type StageAsk = { light?: boolean; id?: string };
+export type StageList = { project: string; sessionId: string; stage: Stage; blocks: (Seen | Block)[]; tray: Trayed[]; [STAGE_READ.light]?: true };
+export type StageOne = { project: string; sessionId: string; [STAGE_READ.block]: Seen | null };
+/** what a face asked of work.stage.get beyond its session, read off its message (pure): light only when it is exactly
+ *  true, so a face that never says it is answered as ever; one block whenever an id is named (one that is no block's is
+ *  still one block asked, and answers null, never the whole stage) */
+export function stageAsk(m: Record<string, unknown>): StageAsk {
+  const id = m[STAGE_READ.id];
+  return { ...(m[STAGE_READ.light] === true ? { light: true } : {}), ...(id !== undefined && id !== null ? { id: String(id) } : {}) };
+}
+/** what work.stage.get answers. Asked nothing more: the stage, every block on it as `seen` gives it, and the tray, as
+ *  ever. Asked light: the same, but a block folded on this stage comes as its block.json alone (its body and ledger
+ *  lines were most of what crossed), and the answer says it is the light one. Asked one id: that block as `seen` gives
+ *  it, or null; no other block is read and no stage is written, so a change costs the face the block that changed, not
+ *  the stage. A body is never put in work.stage.changed: that goes to every face, and a body can be 2 MB */
+export function stageAnswer(project: string, sid: string, ask: StageAsk = {}): StageList | StageOne {
+  if (ask.id !== undefined) return { project, sessionId: sid, [STAGE_READ.block]: validId(ask.id) ? seen(project, ask.id) : null };
+  const st = withProject(project, sid);   // the project's own blocks are on every session's stage (#703)
+  const blocks = st.blocks.map((p) => (ask.light && p.folded ? getBlock(project, p.id) : seen(project, p.id))).filter((b): b is Seen | Block => !!b);
+  return { project, sessionId: sid, stage: st, blocks, tray: trayOf(project, sid, st), ...(ask.light ? { [STAGE_READ.light]: true as const } : {}) };
+}
+
 /** a face's own layout change (a drag, a snap, tile, fold, the lens): written as it is, no ledger line (layout is not an event) */
 /** a talk as kept: a known dock, a width a share between 0 and 1, the dock before full; anything else is no talk (pure) */
 export function talkOf(v: unknown): Talk | null {
@@ -633,42 +929,37 @@ export function talkOf(v: unknown): Talk | null {
 
 export function layout(project: string, sid: string, patch: Partial<Stage>): Stage {
   const s = getStage(project, sid);
-  if (patch.lens && LENSES.includes(patch.lens)) s.lens = patch.lens;
+  // a lens named here is the session's own, or with stage.whole on the person's one lens, every stage's (#824). A
+  // settings file the disk refuses loses only the lens: the rest of the layout is still saved, in the lens on disk
+  if (patch.lens && LENSES.includes(patch.lens)) {
+    if (!stageWhole()) s.lens = patch.lens;
+    else {
+      try { setUserLens(patch.lens); } catch (e) { console.error(`the lens was not saved: ${(e as Error)?.message ?? e}`); }
+      s.lens = userLens();
+    }
+  }
   const talk = talkOf(patch.talk);
   if (talk) s.talk = talk;
   if (typeof patch.tiled === "boolean") s.tiled = patch.tiled;
+  // with stage.whole on (#821): the room the face reports is kept, and a place's band goes on from the patch when it
+  // names one, else from the place before, since the face writes its places back without it
+  const whole = stageWhole();
+  const room = whole ? roomOf(patch.room) : null;
+  if (room) s.room = room;
+  const bandWas = new Map(s.blocks.map((p) => [p.id, p.band]));
+  const bandIn = (p: Placed): Band | undefined => (!whole ? undefined : BANDS.includes(p.band as Band) ? p.band : bandWas.get(p.id));
   if (Array.isArray(patch.blocks)) {
     const n = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
     s.blocks = patch.blocks.filter((p) => validId(p?.id) && getBlock(project, p.id)).map((p) => ({
       id: p.id, x: n(p.x, PAD), y: n(p.y, PAD), w: Math.max(40, n(p.w, 300)), h: Math.max(40, n(p.h, 200)), z: n(p.z, 1), folded: p.folded === true,
-      ...(p.slot && SLOTS.includes(p.slot) ? { slot: p.slot } : {}), ...(p.pinned ? { pinned: true } : {}), ...(p.ghost === true ? { ghost: true } : {}),
+      ...(p.slot && SLOTS.includes(p.slot) ? { slot: p.slot } : {}), ...(p.ghost === true ? { ghost: true } : {}),
       ...(p.popped ? { popped: true } : {}), ...(p.hand ? { hand: true } : {}), ...(p.lensed ? { lensed: true } : {}), ...(p.tui ? { tui: true } : {}),
       ...(p.was && [p.was.x, p.was.y, p.was.w, p.was.h].every((v) => typeof v === "number" && Number.isFinite(v)) ? { was: { x: p.was.x, y: p.was.y, w: p.was.w, h: p.was.h } } : {}),
+      ...(bandIn(p) ? { band: bandIn(p) } : {}),
     }));
   }
   saveStage(project, sid, s);
   return s;
-}
-
-/** the blocks pinned to the notch (#701, desk_pin's successor), every project's, newest stage first: what the notch
- *  draws as chips with their state dots; a click opens the session it is pinned in */
-export type Pinned = { project: string; sessionId: string; id: string; title: string; kind: Kind; state: State };
-export function pinnedAll(): Pinned[] {
-  const out: (Pinned & { t: number })[] = [];
-  for (const project of projects()) {
-    let sids: string[] = [];
-    try { sids = readdirSync(join(projectDir(project), "sessions")).filter((x) => SID.test(x)); } catch { continue; }
-    for (const sid of sids) {
-      let t = 0;
-      try { t = statSync(stageFile(project, sid)).mtimeMs; } catch { continue; }
-      for (const p of getStage(project, sid).blocks) {
-        if (!p.pinned) continue;
-        const b = getBlock(project, p.id);
-        if (b && b.state !== "dead") out.push({ project, sessionId: sid, id: b.id, title: b.title, kind: b.kind, state: b.state, t });
-      }
-    }
-  }
-  return out.sort((a, b) => b.t - a.t).map(({ t: _t, ...p }) => p);
 }
 
 // ---- the watch on a bound source ----
@@ -808,15 +1099,17 @@ export async function takeRunFrom(project: string, id: string): Promise<Block | 
 }
 
 /** a session's stage with the project's own blocks on it (#703): a block that is the project's and open, not on this
- *  stage yet, comes folded (its chip), and the session is one of its sessions. Written only when something came */
+ *  stage yet and not left by it (#870), comes folded (its chip), and the session is one of its sessions. Written only
+ *  when something came */
 export function withProject(project: string, sid: string): Stage {
   const s = getStage(project, sid);
-  const come = allBlocks(project).filter((b) => b.scope === "project" && opensOn(b) && !s.blocks.some((p) => p.id === b.id));
+  const come = allBlocks(project).filter((b) => b.scope === "project" && opensOn(b) && !s.blocks.some((p) => p.id === b.id) && !s.left?.includes(b.id));
   if (!come.length) return s;
   let z = Math.max(0, ...s.blocks.map((p) => p.z));
+  const whole = stageWhole();
   for (const b of come.reverse()) {
-    const [bw, bh] = SIZES[b.kind];
-    s.blocks.push({ id: b.id, x: PAD, y: PAD, w: bw, h: bh, z: ++z, folded: true, auto: true });
+    if (whole) { const { band, w, h } = bornIn(b.kind, roomFor(s)); s.blocks.push({ id: b.id, x: PAD, y: PAD, w, h, z: ++z, folded: true, auto: true, band }); }   // #821
+    else { const [bw, bh] = SIZES[b.kind]; s.blocks.push({ id: b.id, x: PAD, y: PAD, w: bw, h: bh, z: ++z, folded: true, auto: true }); }
     if (!b.sessions.includes(sid)) { b.sessions.push(sid); saveBlock(project, b); }
   }
   saveStage(project, sid, s);
@@ -885,5 +1178,34 @@ export async function pageWritten(sessionId: string, path: string): Promise<Bloc
   if (!b) return compose(w, { kind: "page", title: basename(path), bind: { source: path, watch: "file" } });
   if (!b.sessions.includes(sessionId) || !getStage(w.project, sessionId).blocks.some((p) => p.id === b.id)) place(w, { id: b.id });
   if (!armed.has(b.id)) { arm(w.project, b); sourceChanged(w.project, b.id); }   // the watch was not on (an engine start): this write is the change
+  return b;
+}
+
+// ---- pieces (#1092, pieces.ts): a block the project keeps before any session holds it ----
+/** a piece's block, made with no session (it sits in the project's folder until it is dropped into one), else found;
+ *  its body written quietly each time. Its ledger says it was made once */
+export function keepStanding(project: string, id: string, a: { kind: Kind; title: string; body: string; format?: Format; by: string }): Block {
+  let b = getBlock(project, id);
+  if (!b) {
+    b = { id, kind: a.kind, title: a.title.trim().slice(0, 80) || a.kind, bind: null, state: "live", parent: null, versions: [], sessions: [], at: Date.now() };
+    writeBody(project, id, a.body, a.format ?? DEFAULT_FORMAT[a.kind]);
+    saveBlock(project, b);
+    const line = append(project, id, "composed", a.by, `${a.kind} "${b.title}", a piece`);
+    tell({ project: projectName(project), block: b, line });
+    return b;
+  }
+  if (b.title !== a.title.trim().slice(0, 80) && a.title.trim()) { b.title = a.title.trim().slice(0, 80); saveBlock(project, b); }
+  writeBody(project, id, a.body, a.format ?? DEFAULT_FORMAT[b.kind]);
+  tell({ project: projectName(project), block: b });
+  return b;
+}
+/** a block's state set with no ledger line (a piece working, waiting, live again), its sessions kept or cut; the face is told */
+export function setState(project: string, id: string, state: State, sessions?: string[]): Block | null {
+  const b = getBlock(project, id);
+  if (!b) return null;
+  b.state = state;
+  if (sessions) b.sessions = sessions;
+  saveBlock(project, b);
+  tell({ project: projectName(project), block: b });
   return b;
 }

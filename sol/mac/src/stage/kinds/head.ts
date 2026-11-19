@@ -8,6 +8,8 @@ export const hhmm = (t: number) => { const d = new Date(t); return `${String(d.g
 export function metaWords(b: Block, made?: number): string {
   if (b.state === "waits") return "waits on you";
   if (isRunBody(b.body)) return chipWords(b.body);
+  // #1089: a kept tool (block id yours-<hex>) says whose it is and the day it was kept: "yours · 13 Nov"
+  if (/^yours-[0-9a-f]{8}$/.test(b.id) && made) return `yours · ${new Date(made).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
   const src = b.bind?.source?.split("/").pop();
   return [b.kind, made ? `made ${hhmm(made)}` : "", src ?? ""].filter(Boolean).join(" · ");
 }

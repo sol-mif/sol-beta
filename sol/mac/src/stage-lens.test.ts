@@ -2,7 +2,7 @@
 // (stage/pop.ts), with no DOM: play.html's setLens and lensFolded, ported.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adopt, cliAsks, leave, switchLens, tuiLines, tuiTerminal } from "./stage/lens.ts";
+import { adopt, backFromLens, cliAsks, leave, switchLens, tuiLines, tuiTerminal } from "./stage/lens.ts";
 import { outside, popLabel, popUrl, poppedOf } from "./stage/pop.ts";
 import type { Block, Place, StageJson } from "./stage/model.ts";
 
@@ -92,4 +92,15 @@ test("pop out: off the window, a block's window bound to its id, the page that d
   assert.deepEqual(poppedOf("?block=week&session=sess-1"), { id: "week", session: "sess-1" });
   assert.equal(poppedOf("?block=../x&session=s"), null);
   assert.equal(poppedOf("?work=abc"), null);
+});
+
+// #1001: app → IDE → app shrank every block for good (the IDE's file column narrows the stage; the stage fits the blocks
+// in; nothing gave the sizes back). Leaving the IDE puts back what the narrowing changed, never what the hand did
+test("leaving the IDE lens gives the blocks back their places and sizes, except what the hand moved (#1001)", () => {
+  const Q = (id: string, x: number, y: number, w: number, h: number, more: Partial<Place> = {}): Place => ({ id, x, y, w, h, z: 1, ...more });
+  const was = [Q("a", 12, 12, 436, 252), Q("b", 16, 276, 436, 200), Q("c", 460, 12, 300, 200), Q("d", 12, 500, 200, 120)];
+  const now = [Q("a", 12, 12, 310, 252), Q("b", 12, 276, 310, 200), Q("c", 12, 490, 280, 150), Q("d", 12, 500, 200, 120, { folded: true }), Q("e", 12, 12, 200, 120)];
+  const back = backFromLens(now, was, new Set(["c"]));
+  assert.deepEqual(back.map((p) => [p.id, p.x, p.y, p.w, p.h]), [["a", 12, 12, 436, 252], ["b", 16, 276, 436, 200], ["c", 12, 490, 280, 150], ["d", 12, 500, 200, 120], ["e", 12, 12, 200, 120]]);
+  assert.equal(back[3].folded, true);
 });

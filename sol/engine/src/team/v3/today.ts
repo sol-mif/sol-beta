@@ -138,7 +138,8 @@ export async function readGroup(g: Group, room: Room, deps: ThingsDeps | null, o
     who(l.from);
     t.talk.push({ kind: "talk", item: importId("imp-", room.id, th.thread, l.id), value: { thread: th.thread, from: l.from, text: l.text, said: l.at, source: l.source ?? "relay", ...(l.agent ? { agent: true } : {}), imported: { from: `talk:${room.id}/${th.thread}`, at: l.at } } });
   }
-  for (const p of [...people].sort()) t.members.push({ kind: "member", item: p, value: { login: p, role: p === o.me.toLowerCase() ? "owner" : "editor", imported: imp(`team.json:${room.id}`, 0) } });
+  // the importer first: while nobody is in, only the first owner's own event counts (standing.ts)
+  for (const p of [...people].sort((a, b) => Number(b === o.me.toLowerCase()) - Number(a === o.me.toLowerCase()) || (a < b ? -1 : a > b ? 1 : 0))) t.members.push({ kind: "member", item: p, value: { login: p, role: p === o.me.toLowerCase() ? "owner" : "editor", in: true, imported: imp(`team.json:${room.id}`, 0) } });
   return t;
 }
 

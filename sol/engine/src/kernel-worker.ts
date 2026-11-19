@@ -8,7 +8,8 @@
 //   the door   `sol`, carried over the worker's port: a read or a write is asked of the engine and waited for (a shared
 //              flag, then the answer taken off a port of its own), so it stays a plain call that returns or throws, and
 //              every one passes the engine's gate(). A tool's run, a listener and a schedule run here; the engine asks
-//              for a tool's answer and hands over each step on the log.
+//              for a tool's answer and hands over each step on the log. With the past's switch on (kernel.ts `since`),
+//              sol.since(from, kinds) is on it too, asked and waited for as a read; without it, it is not there at all.
 // Only node: builtins are imported here, and only erasable TypeScript is used: the engine runs it as written (Node strips
 // the types) under tsx, and as tsc's kernel-worker.js in dist.
 import { parentPort, workerData, receiveMessageOnPort, type MessagePort } from "node:worker_threads";
@@ -18,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { sep } from "node:path";
 
 type Arg = "string" | "number" | "boolean";
-type Data = { id: string; file: string; dir: string; flag: SharedArrayBuffer; reply: MessagePort; askMs: number };
+type Data = { id: string; file: string; dir: string; flag: SharedArrayBuffer; reply: MessagePort; askMs: number; since?: boolean };
 const port = parentPort as NonNullable<typeof parentPort>;
 const d = workerData as Data;
 const flag = new Int32Array(d.flag);
@@ -71,7 +72,7 @@ const tools = new Map<string, (args: Record<string, unknown>) => unknown>();
 const hears: ((e: unknown) => unknown)[] = [];
 const offs: (() => unknown)[] = [];
 
-const sol = Object.freeze({
+const door = {
   id: d.id,
   tool(def: { name?: unknown; description?: unknown; args?: unknown; run?: unknown }) {
     if (!isObj(def) || typeof def.name !== "string" || !TOOL.test(def.name)) throw new Error("a tool's name is lowercase letters, digits and _, starting with a letter");
@@ -99,7 +100,10 @@ const sol = Object.freeze({
     const plain = JSON.parse(JSON.stringify(value ?? null)) as unknown;   // what is written is JSON, as the file will be
     ask({ t: "write", what: String(what), value: plain });
   },
-});
+};
+/** the log's past, a batch at a time (step A3): the kernel checks the kinds against the record, never the room */
+const since = (from: unknown, kinds?: unknown) => ask({ t: "since", from: from === undefined ? 0 : Number(from), kinds: kinds === undefined ? undefined : Array.isArray(kinds) ? kinds.map(String) : String(kinds) });
+const sol = Object.freeze(d.since ? { ...door, since } : door);
 
 port.on("message", (m: { t: string; e?: unknown; call?: number; name?: string; args?: Record<string, unknown> }) => {
   if (m.t === "ev") for (const f of hears) void guard("a listener", () => f(m.e));

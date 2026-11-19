@@ -1,0 +1,140 @@
+/* Home's suite (#692 step 1, sticky.html and suite.html): the frame every block renders inside (Piece.tsx), its tools
+   (Tools.tsx), a block lifted to the stage (Lifted.tsx) and the maker's recipe card (Maker.tsx). The scale's values only
+   (the layout skill); the pearl card on black, the small ring, the shelf's pills, the fan of pills. */
+
+/* ---- the frame ---- */
+.pc { position: relative; flex: none; min-width: 0; transition: padding var(--d-turn) var(--e-move); }
+.pc.previewing { outline: var(--hair) dashed var(--c-pearl-line); outline-offset: var(--s1); border-radius: var(--r-row); }
+.pc .sk-card, .pc-card { padding-bottom: var(--s3); }
+
+/* the corner: grow and fold */
+.pc-grip { position: absolute; right: var(--s1); bottom: var(--s1); z-index: 2; width: var(--s4); height: var(--s4); cursor: nwse-resize; touch-action: none; opacity: 0.55; color: var(--c-deep); outline: none;
+  background: linear-gradient(135deg, transparent 50%, currentColor 50%, currentColor 58%, transparent 58%, transparent 70%, currentColor 70%, currentColor 78%, transparent 78%); }
+.pc-grip:hover, .pc-grip:focus-visible { opacity: 1; }
+.pc-line .pc-grip, .pc-block .pc-grip { color: var(--dim); }
+
+/* the ring: the run's state, pressed for done */
+.pc-ring { all: unset; flex: none; box-sizing: border-box; width: var(--s4); height: var(--s4); display: grid; place-items: center; border-radius: var(--r-pill); overflow: hidden; cursor: pointer; }
+.pc-ring.fresh { border: var(--hair) dashed currentColor; }
+.pc-ring.you { background: var(--yellow-strong); }
+.pc-ring.fail { background: var(--red-strong); }
+.pc-ring.done { background: var(--green-strong); }
+.pc-ring.dim { border: var(--hair) solid currentColor; }
+.sk-ring[data-pc-ring] { cursor: pointer; }
+
+/* the frame's own card: a suite or made block on the pearl */
+.pc-card { position: relative; isolation: isolate; padding: var(--s2) var(--s3) var(--s3); color: var(--c-deep); font-size: var(--t-body); line-height: var(--t-body-line); }
+.pc-pearl { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.pc-card.t-you { box-shadow: 0 0 0 var(--hair) var(--yellow-strong); border-radius: var(--r-row); }
+.pc-card.t-done { box-shadow: 0 0 0 var(--hair) var(--green-strong); border-radius: var(--r-row); }
+.pc-head { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.pc-words { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-kind { flex: none; padding: 0 var(--s2); border: var(--hair) solid var(--c-pearl-line); border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.8; }
+.pc-x { all: unset; flex: none; width: var(--s4); text-align: center; cursor: pointer; opacity: 0.55; font-size: var(--t-body); line-height: var(--t-body-line); }
+.pc-x:hover { opacity: 1; }
+.pc-crumb { all: unset; display: block; max-width: 100%; padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; box-sizing: border-box; }
+.pc-crumb:hover { text-decoration: underline; }
+.pc-step { margin: var(--s1) 0 0; padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.8; }
+.pc-words-edit { width: 100%; min-width: 0; box-sizing: border-box; border: 0; border-bottom: var(--hair) solid currentColor; background: none; color: inherit; font: inherit; font-weight: 500; outline: none; padding: 0; }
+
+/* the first form: a line in the notes */
+.pc-line-row { display: flex; align-items: center; gap: var(--s2); min-width: 0; height: var(--h-row); padding: 0 var(--s6) 0 var(--s1); border-bottom: var(--hair) solid var(--edge); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.pc-line-words { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-line-where { all: unset; flex: none; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; }
+.pc-line-where:hover { color: var(--ink); }
+
+/* lifted: Home keeps a chip pointing at it */
+.pc-chip { display: flex; align-items: center; gap: var(--s2); min-width: 0; min-height: var(--h-row); padding: 0 var(--s3); border: var(--hair) solid var(--c-pearl-line); border-radius: var(--r-pill); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.pc-chip-words { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-chip-where { flex: none; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* the shelf: the folder's · its own · kept */
+.pc-shelf { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: var(--s2); padding: 0 var(--s4) 0 calc(var(--s4) + var(--s2)); }
+.pc-sh { font-style: normal; padding: 0 var(--s2); border: var(--hair) solid currentColor; border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.5; white-space: nowrap; }
+.pc-sh.own { opacity: 0.9; }
+.pc-sh.kept { opacity: 0.9; border-style: dashed; }
+
+/* moves: the small pills a block's offers and cards use */
+.pc-act { height: var(--h-chip); padding: 0 var(--s3); border: var(--hair) solid currentColor; border-radius: var(--r-pill); background: none; color: inherit; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; white-space: nowrap; }
+.pc-act.lit { background: var(--c-deep); border-color: var(--c-deep); color: var(--c-pearl); }
+.pc-act.quiet { border-color: transparent; opacity: 0.7; }
+.pc-act:hover { opacity: 1; }
+.pc-act:disabled { opacity: 0.45; cursor: default; }
+.pc-chip .pc-act.lit, .mk-card .pc-act.lit, .pc-lifted .pc-act.lit { background: var(--c-pearl); border-color: var(--c-pearl); color: var(--c-deep); }
+
+/* the offer: past a sticky's bounds, it offers the next form */
+.pc-offer { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); padding: var(--s2) var(--s2) var(--s2) calc(var(--s4) + var(--s2)); border-top: var(--hair) dashed var(--c-pearl-line); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-offer-acts { display: flex; flex-wrap: wrap; gap: var(--s1); }
+
+/* the fan: five tools on an arc over the card */
+.pc-fan { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.pc-fan-one { position: absolute; display: flex; padding: var(--s1); border-radius: var(--r-pill); background: var(--c-deep); box-shadow: 0 0 0 var(--hair) var(--c-pearl), var(--shadow-rest); color: var(--ink);
+  transform: translate(-50%, -50%) scale(0.6); opacity: 0; pointer-events: auto; animation: pc-fan-in var(--d-turn) var(--e-arrive) forwards; }
+.pc-fan-one:nth-child(2) { animation-delay: calc(var(--d-turn) / 8); }
+.pc-fan-one:nth-child(3) { animation-delay: calc(var(--d-turn) / 4); }
+.pc-fan-one:nth-child(4) { animation-delay: calc(var(--d-turn) * 3 / 8); }
+.pc-fan-one:nth-child(5) { animation-delay: calc(var(--d-turn) / 2); }
+@keyframes pc-fan-in { to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pc-fan-one { animation: none; transform: translate(-50%, -50%); opacity: 1; } }
+
+/* the say line: what the last move did */
+.pc-said { margin: 0; min-height: var(--t-label-line); color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color var(--d-turn) var(--e-move); }
+.pc-said.now { color: var(--ink); }
+
+/* ---- the one tool inside (Tools.tsx) ---- */
+.pc-tool { margin: var(--s2) 0 0; border: var(--hair) solid var(--c-pearl-line); border-radius: calc(var(--r-row) - var(--s1)); overflow: hidden; background: color-mix(in srgb, var(--c-pearl), var(--ink) 55%); color: var(--c-deep); cursor: default; }
+.pc-bar { display: flex; align-items: center; gap: var(--s2); min-width: 0; min-height: var(--h-chip); padding: 0 var(--s2); border-bottom: var(--hair) solid var(--c-pearl-line); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-bar b { flex: none; font-weight: 500; opacity: 0.55; }
+.pc-bar-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-hand { flex: none; display: flex; }
+.pc-pane { padding: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-frame { display: block; width: 100%; height: calc(var(--s12) * 2); border: 0; border-radius: var(--r-chip); background: var(--c-pearl); }
+.pc-frame[data-wide] { height: calc(var(--s12) * 4); }
+.pc-write { display: block; width: 100%; min-height: calc(var(--s12) * 2); box-sizing: border-box; border: 0; resize: vertical; background: none; color: inherit; font: inherit; outline: none; }
+.pc-list { margin: 0; padding-left: var(--s4); }
+.pc-cal, .pc-ask { margin: 0; }
+
+/* ---- a block lifted to the stage (Lifted.tsx): dark, two tools side by side ---- */
+.pc-lifted { container-type: inline-size; display: flex; flex-direction: column; gap: var(--s3); min-width: 0; height: 100%; overflow: auto; color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.pc-lifted-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); min-width: 0; padding-bottom: var(--s2); border-bottom: var(--hair) solid var(--edge); }
+.pc-lifted-head b { min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-lifted-what { color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-lifted-head .pc-act { margin-left: auto; }
+.pc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); min-width: 0; }
+@container (max-width: 480px) { .pc-cols { grid-template-columns: 1fr; } }
+.pc-lifted .pc-tool { margin: 0; background: var(--c-lift); border-color: var(--edge); color: var(--ink); }
+.pc-lifted .pc-bar { border-color: var(--edge); }
+.pc-lifted .pc-shelf { padding-left: 0; color: var(--ink); }
+
+/* ---- a recipe's inside (Piece.tsx Inside) ---- */
+.pc-table { margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-tr { display: grid; grid-template-columns: 1.4fr 1fr 1.4fr 0.8fr; gap: var(--s2); padding: var(--s1) 0; border-bottom: var(--hair) solid var(--c-pearl-line); }
+.pc-tr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-tr.head { opacity: 0.6; }
+.pc-deck { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); }
+.pc-deck-card { all: unset; box-sizing: border-box; padding: var(--s3); border: var(--hair) solid var(--c-pearl-line); border-radius: calc(var(--r-row) - var(--s1)); font-size: var(--t-read); line-height: var(--t-read-line); cursor: pointer; }
+.pc-deck-acts { display: flex; align-items: center; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-deck-acts small { margin-left: auto; opacity: 0.6; }
+.pc-watch { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-watch b { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; }
+.pc-lines { margin: var(--s2) 0 0; padding-left: calc(var(--s4) + var(--s2) + var(--s4)); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* ---- the maker's card (Maker.tsx), as the suite page shows it ---- */
+.hb-made { flex: none; min-width: 0; }
+.mk-card { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; padding: var(--s3) var(--s4); border: var(--hair) solid var(--c-pearl); border-radius: var(--r-card); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.mk-card.build { border-color: var(--yellow-strong); }
+.mk-rh { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.mk-rh b { flex: none; font-size: var(--t-read); line-height: var(--t-read-line); }
+.mk-rh span { flex: 1; min-width: 0; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-card dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--s1) var(--s3); margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.mk-card dt { color: var(--dim); }
+.mk-card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.mk-gauge { display: flex; flex-direction: column; gap: var(--s1); }
+.mk-gauge [role="meter"] { width: 100% !important; }
+.mk-marks { display: flex; justify-content: space-between; gap: var(--s2); color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.mk-marks i { font-style: normal; }
+.mk-marks i.b { color: var(--yellow-strong); }
+.mk-said { margin: 0; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.mk-card.build .mk-said, .mk-card.build dd[data-mk-why] { color: var(--yellow-strong); }
+.mk-go { display: flex; flex-wrap: wrap; gap: var(--s1); color: var(--ink); }
+.mk-block { margin-top: var(--s1); }

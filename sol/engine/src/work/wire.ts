@@ -3,22 +3,30 @@ import { randomUUID } from "node:crypto";
 import { PANE_KEY } from "./page.js";
 import { homedir } from "node:os";
 import { renameSession, deleteSession, forkSession } from "@anthropic-ai/claude-agent-sdk";
-import { workSessions, withRuns, sessionItems, sessionInfo, invalidate, watchSessions, topicsFor, relocated, workFolderIn } from "./sessions.js";
+import { workSessions, withRuns, sessionItems, sessionInfo, oneSession, invalidate, watchSessions, topicsFor, relocated, workFolderIn, transcriptFiles } from "./sessions.js";
 import { gist, saidOf, type Said } from "./gist.js";
 import { openThread, codexCwd } from "../threads.js";
-import { statSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import { pickTopic } from "../titles.js";
 import { workSay, getRun, allRuns, lastInit, setChanging, workDefaults, type WorkSay } from "./runs.js";
 export { setChanging as setWorkChanging };
-import { workState, mark, forget, groupOp, folderOp, folderMoved, setOrder, prefs, setPrefs, stricter } from "./state.js";
+import { workState, mark, forget, groupOp, folderOp, folderMoved, setOrder, prefs, setPrefs, stricter, STATE_DIR } from "./state.js";
 import { renameFolder, ENGINE_ROOT, SOL_HOME, windowRoot } from "./rename.js";
 import { listCopies, removeCopy, stale } from "./copies.js";
-import { keepAwake, about, banner, styles } from "./machine.js";
-import { setWorkHooks, setUsedHook, type Start } from "./tools.js";
+import { keepAwake, about, styles } from "./machine.js";
+import { setWorkHooks, setUsedHook, giveTool, takeTool, type Start } from "./tools.js";
+import * as eyes from "./eyes.js";   // the agent's eyes on its stage (#1435)
+import { setHandBus } from "./hands.js";   // and its hands (#1437)
 import * as stage from "./blocks.js";   // the stage's blocks (#695)
+import * as asks from "./asks.js";   // the press on any block, routed back to who asked (#1298)
+import { homeStage } from "../home/hooks.js";   // Home's ear on the stage (#825)
+import { piecesMsg, setPiecesBus } from "./pieces.js";   // a folder's pieces (#1092)
+import { systemsMsg, dropFace as dropSystemsFace } from "./systems.js";   // the system stage block (#1091)
+import { LiveWork, liveMsg, dropLiveFace, heardRun, wireLive } from "./systemsLive.js";   // the work under way, by system (#1156)
+import { wholeMsg } from "./systemsWhole.js";   // the whole of Jelly, clusters and the wires between them (#1193)
 import * as live from "./live.js";   // the browser and terminal blocks (#699)
 import { noteUse, releaseWord } from "../team/used.js";   // the used-Cowork mark (#431)
-import { track } from "../track.js";
+import { track, isPrivate, setPrivate, privateIds } from "../track.js";
 import { versionNow } from "../version.js";
 import { aside } from "./aside.js";
 import { askWork } from "../call/work.js";
@@ -32,21 +40,22 @@ import { withTonight } from "../team/tonight.js";   // the review session's card
 import { withHandIn } from "../team/handin.js";   // the hand-in card (#476)
 import { withCheckpoints, askPress, featuresRoot, PRESSES } from "../team/checkpoint.js";   // Scoped and Approve (#482)
 import { changes, pathIn, readText, writeText, pullRequest, openTerm, getTerm, closeTerm, allTerms, termInfo } from "./panes.js";
-import { remote, changesSummary, createPr } from "./overview.js";
+import { remote, changesSummary, createPr, CARD_PARTS } from "./overview.js";
 import { withMine } from "./mine.js";
+import { withPlace } from "./place.js";   // where each folder belongs, Build or Home (#1016)
 import { brief, teamNote, runGit } from "../team/note.js";
-import { runGh, record } from "../team/record.js";   // the room's record (#152)
+import { runGh, runGhStdin, record } from "../team/record.js";   // the room's record (#152)
 import { getTeam, myLogin, mayAgentSpeak, activeRoom, recordOf } from "../team/settings.js";
 import { getThings, agentAdd, agentFolder, agentMove, thingsText } from "../team/things.js";   // the room's things (#194)
 import { agentIn } from "../team/here.js";   // in_thing (#230)
 import { feedText } from "../team/feed.js";   // room_feed (#232)
-import { goalForAgent, setGoal, addGoalFile } from "../team/goal.js";   // the room's goal (#216)
+import { goalForAgent, goalForRenewal, setGoal, addGoalFile } from "../team/goal.js";   // the room's goal (#216)
 import { calendar, calendarText, agentEventAdd } from "../team/calendar.js";   // the room's own tools (#245)
 import { decisions, decisionsText, agentDecisionAdd } from "../team/decisions.js";
 import { pages, pagesText, pageTile, agentPageRead, agentPageWrite } from "../team/pages.js";   // pages (#433)
 import { tables, tablesText, agentTableRead, agentTableWrite } from "../team/tables.js";   // tables (#434)
 import { templates, templatesText, agentFromTemplate, agentTemplateSave } from "../team/templates.js";   // templates (#435)
-import { memberRefusal } from "../team/agents.js";   // agents as members (#435): an agent writes only as a member's
+import { memberRefusal, membersNow } from "../team/agents.js";   // agents as members (#435): an agent writes only as a member's
 import { polls, pollsText, agentPollAdd } from "../team/polls.js";
 import { blocksHere, blocksWaiting, proposeBlockHere, projectRhythm } from "../team/project.js";   // team blocks (#429)
 import { blocksText, toolRefusal, shipped as shippedBlocks } from "../team/blocks.js";
@@ -59,14 +68,28 @@ import { onCall, onCallText } from "../team/oncall.js";   // on-call (#225)
 import { shows, issueAt, repoOf } from "../team/show.js";   // Show to team (#101)
 import { withRoomIds, roomMark } from "../team/here.js";   // a cowork session's group (#314), its room's mark (#316)
 import { noteFrom, roomMemory, type NoteRoom } from "../team/memory.js";   // a group's memory (#316)
-import { accountOn } from "../team/cloud.js";
-import { hubHttp, CLOUD_FILE } from "../team/relay.js";
+import { identity } from "../seams/identity.js";   // sign-in and the Sol ID (#1320)
+import { wakeUp } from "../seams/wake.js";   // waking a teammate's Sol (#1320)
+import { hubHttp } from "../team/relay.js";
+import { listAsked, tellList, type Lean } from "./lean.js";   // the lean list (#870)
+import * as one from "./one.js";   // orchestration sessions: promote, demote, renewal, reports, tickets behind build.tickets
+import * as children from "./children.js";   // the orchestration stage: one session block per session under an orchestrator (step 4)
+import * as group from "./group.js";   // grouping on hard evidence (#1336): a start, a card, a root's send or read
+import * as executor from "./executor.js";   // tickets (the superagent model): one executor session per ticket, the Door
+import { store as tickets } from "./tickets.js";   // the tickets' files
+import { execFileSync } from "node:child_process";
+import { join as joinPath } from "node:path";
+import { startWake } from "../team/wake.js";   // a comment on GitHub wakes my agent, where I allowed it (#1151)
+import { setRoomStart } from "../team/room-start.js";   // a way's room: my AI woken for the moves I put in "AI decides" (#1311)
+import * as snap from "./snap.js";   // pieces that snap (#1024, build.snap): the table, and a built row run
+import * as yours from "./yoursKeep.js";   // Build becomes yours (#1089, build.yours): offers, versions, kept things
 
 type Wire = { send: (m: object) => void };
-const faces = new Map<Wire, { viewing?: string }>();
+const faces = new Map<Wire, { viewing?: string } & Lean>();
 const everyone = (m: object) => { for (const f of faces.keys()) f.send(m); };
 /** every Work face (#416: the review card's changes, from team/wire.ts) */
-export const workBus = (m: object) => everyone(m);
+let told: (m: any) => void = () => {};   // one notification (#845): the engine hears what the bus says (notify.ts)
+export const workBus = (m: object) => { everyone(m); told(m); };
 
 let pending: NodeJS.Timeout | undefined;
 async function sessionsMsg() {
@@ -80,19 +103,25 @@ async function sessionsMsg() {
   const st = workState();
   // each of my rooms' names by id (#314): Home lists a cowork session under its group's name, with no team link of its own
   const roomNames = Object.fromEntries(rooms.map((r) => [r.id, r.name]));
-  return { type: "work.sessions", sessions, projects: await withMine(projects), groups: st.groups, order: st.order, runs, roomNames };
+  return { type: "work.sessions", sessions, projects: withPlace(await withMine(projects)), groups: st.groups, order: st.order, runs, roomNames };
 }
-// the list goes out at most every 300 ms, however many things changed
+// the list goes out at most every 300 ms, however many things changed; a lean face gets it only when it changed (#870)
 export function broadcastSessions() {
   clearTimeout(pending);
-  pending = setTimeout(async () => { if (faces.size) everyone(await sessionsMsg().catch(() => ({ type: "work.sessions.error" }))); }, 300);
+  pending = setTimeout(async () => { if (faces.size) tellList(faces, await sessionsMsg().catch(() => ({ type: "work.sessions.error" }))); }, 300);
 }
 
 // a run's events go to every face; a turn that ends while nobody looks at it leaves the row unread
 const ears = new Set<(m: any) => void>();   // the engine's own listeners: a call in a session (call/work.ts)
 const bus = (m: any) => {
   everyone(m);
+  told(m);
   for (const f of ears) f(m);
+  one.hears(m);   // a session under an orchestration session: its reports; an orchestrator's own fill and renewal
+  children.hears(m);   // a session under an orchestrator: its block on the orchestrator's stage kept current (step 4)
+  executor.hears(m);   // a ticket's executor: its state, its fill, its report to whoever follows the ticket
+  snap.hears(m);   // a session a built row waits on (#1024)
+  heardRun(m);   // the system view: a tool call that ended may have changed a system (#1156)
   if (m.type === "work.item") shows.item(m.sessionId, m.item);   // a shown session's new line (#101); the rest ignore it
   else if (m.type === "work.closed" && shows.showing(m.sessionId)) void shows.stop(m.sessionId).catch(() => {});
   if (m.type === "work.run") {
@@ -109,6 +138,12 @@ const bus = (m: any) => {
 // auto-archive (the work drawer): sessions untouched N days, and a side copy's sessions once its PR is merged or
 // closed. Pinned sessions and running ones stay. Every half hour while a face is connected, and soon after one is.
 let sweeping: NodeJS.Timeout | undefined;
+/** a session archived, wherever from (the side, the sweep, an agent's tool, a block's press): under nothing, its block
+ *  on its orchestrator's stage closed (children.ts archived) */
+function archive(id: string, archived = true) {
+  mark(id, { archived });
+  if (archived) void children.archived(id).catch(() => {});
+}
 async function sweep() {
   const p = prefs();
   if (!p.archiveDays && !p.archivePr) return;
@@ -120,14 +155,14 @@ async function sweep() {
     return !!(mk.archived || mk.pinned) || allRuns().some((r) => r.id === s.id && (r.working || r.perms.size));
   };
   let n = 0;
-  if (p.archiveDays) for (const s of sessions) if (!keep(s) && now - s.updatedAt > p.archiveDays * 86_400_000) { mark(s.id, { archived: true }); n++; }
+  if (p.archiveDays) for (const s of sessions) if (!keep(s) && now - s.updatedAt > p.archiveDays * 86_400_000) { archive(s.id); n++; }
   if (p.archivePr) {
     const byCopy = new Map<string, typeof sessions>();
     for (const s of sessions) if (s.worktree && !s.gone && !keep(s) && now - s.updatedAt < 30 * 86_400_000) byCopy.set(s.cwd, [...(byCopy.get(s.cwd) ?? []), s]);
     for (const [cwd, list] of byCopy) {
       const r = await pullRequest(cwd).catch(() => null);
       const st = (r as any)?.pr?.state;
-      if ((st === "MERGED" || st === "CLOSED") && prefs().archivePr) for (const s of list) if (!keep(s)) { mark(s.id, { archived: true }); n++; }
+      if ((st === "MERGED" || st === "CLOSED") && prefs().archivePr) for (const s of list) if (!keep(s)) { archive(s.id); n++; }
     }
   }
   if (n) broadcastSessions();
@@ -180,22 +215,52 @@ export function askInSession(sessionId: string, text: string, abort: AbortSignal
   }, { sessionId, text }, abort, onDelta);
 }
 
+// a message to a session from a part (#1166, parts/reach.ts): as a face's, on the same bus
+export const sayWork = (s: WorkSay) => workSay(s, bus).then(() => { invalidate(); broadcastSessions(); });
+
+// one notification (#845, notify.ts): the engine hears every run event, and whether a face shows a session now
+export function hearWork(f: (m: any) => void) { told = f; }
+export const viewed = (sessionId: string) => [...faces.values()].some((f) => f.viewing === sessionId);
+
+// the system view's live reader (#1156): the sessions as the list gives them, and the open PRs against main from GitHub
+wireLive(() => new LiveWork({
+  sessions: async () => (await workSessions()).sessions.map((s) => ({
+    id: s.id, title: s.title, cwd: s.cwd, updatedAt: s.updatedAt, gone: s.gone, ...(s.machine ? { machine: String(s.machine) } : {}),
+    get transcript() { return transcriptFiles(s.id, s.cwd)[0]; },   // read only for a recent session (systemsLive.ts placesOf)
+  })),
+  openPrs: async () => {
+    const out = await runGh(["pr", "list", "--base", "main", "--state", "open", "--limit", "80", "--json", "number,files"], ENGINE_ROOT);
+    return (JSON.parse(out) as { number: number; files?: { path: string }[] }[]).map((p) => ({ number: p.number, files: (p.files ?? []).map((f) => f.path) }));
+  },
+  keep: [ENGINE_ROOT],   // the window's own checkout: no proposal is ever written into it (Update and stamp want it clean)
+  write: false,   // proposals are shown ("no system yet"), not written: a write dirties a checkout nobody touched; Marco can turn it on
+}));
+
 export function addWorkFace(w: Wire) {
   faces.set(w, {});
   watchSessions(broadcastSessions);
   watchHolders(broadcastSessions);
   startSweep();
 }
-export function removeWorkFace(w: Wire) { faces.delete(w); }
+export function removeWorkFace(w: Wire) { faces.delete(w); dropSystemsFace(w); dropLiveFace(w); }   // the areas it showed, let go (#1091, #1156)
 
 const ID = /^[A-Za-z0-9_-]{8,80}$/;
+// a session never runs under itself, nor under one that runs under it: `under` walked up from the target, 16 steps at most
+export function underCycle(id: string, to: string, marks: Record<string, { under?: string } | undefined> = workState().marks): boolean {
+  let at: string | undefined = to;
+  for (let i = 0; at && i <= 16; i++) { if (at === id) return true; at = marks[at]?.under; }
+  return false;
+}
 const sid = (v: unknown) => { const s = String(v ?? ""); if (!ID.test(s)) throw new Error("bad session id"); return s; };
 
 export async function handleWork(w: Wire, m: any) {
   const me = faces.get(w) ?? {};
   switch (m.type) {
-    case "work.list":
-      return w.send(await sessionsMsg());
+    case "work.list": {   // always answered whole; `lean: true` asks for no list after it that says the same (#870)
+      const list = await sessionsMsg();
+      listAsked(me, m, list);
+      return w.send(list);
+    }
     case "work.open": {
       const id = sid(m.sessionId);
       me.viewing = id;
@@ -213,6 +278,7 @@ export async function handleWork(w: Wire, m: any) {
     case "work.say": {
       const s = m as WorkSay;
       s.sessionId = sid(s.sessionId);
+      s.person = true;   // #1521: the window's own message is the person's words
       me.viewing = s.sessionId;
       await workSay(s, bus);
       if (s.fresh) invalidate();
@@ -221,11 +287,27 @@ export async function handleWork(w: Wire, m: any) {
     }
     case "work.stop":
       return getRun(sid(m.sessionId))?.stop();
+    // a press on a session block of an orchestrator's stage (step 4): steer, answer, stop, archive; one message, one act
+    case "work.stage.session": {
+      const reply = (o: object) => w.send({ type: "work.stage.session", rid: m.rid, ...o });
+      try { reply({ ok: await children.press(sid(m.sessionId), { id: String(m.id ?? ""), press: String(m.press ?? ""), ...(typeof m.text === "string" ? { text: m.text } : {}), ...(Number.isInteger(m.i) ? { i: m.i } : {}), ...(typeof m.label === "string" ? { label: m.label } : {}) }) }); }
+      catch (e) { reply({ error: e instanceof Error ? e.message : String(e) }); }
+      return broadcastSessions();
+    }
     case "work.show": {   // the switch "show to team" (#101): on or off, answered with where it stands
       const id = sid(m.sessionId);
       try { return w.send({ type: "work.show", rid: m.rid, sessionId: id, ...(await showSession(id, !!m.on)) }); }
       catch (e) { return w.send({ type: "work.show", rid: m.rid, sessionId: id, shown: shows.showing(id), error: e instanceof Error ? e.message : String(e) }); }
     }
+    case "work.private": {   // turn private (#1242): nothing from this session is counted from now on (src/track.ts), or back
+      const id = String(m.sessionId ?? ""), on = !!m.on;
+      if (!setPrivate(id, on)) return w.send({ type: "work.private", rid: m.rid, sessionId: id, private: isPrivate(id), error: "could not keep that on this Mac; nothing changed" });
+      if (on && shows.showing(id)) await showSession(id, false).catch(() => {});   // a private session is not shown to the team
+      everyone({ type: "work.privates", ids: privateIds() });
+      return w.send({ type: "work.private", rid: m.rid, sessionId: id, private: on });
+    }
+    case "work.privates":
+      return w.send({ type: "work.privates", rid: m.rid, ids: privateIds() });
     case "work.readnow":   // a queued message joins the running turn now (#51)
       return getRun(sid(m.sessionId))?.readNow(String(m.id));
     case "work.drop":      // a queued message is forgotten before it is read (#51)
@@ -238,6 +320,11 @@ export async function handleWork(w: Wire, m: any) {
       const cwd = run?.cwd ?? (await sessionInfo(id))?.cwd;
       void aside({ sessionId: id, text: String(m.text ?? "").slice(0, 8000), cwd, model: run?.model }, (x) => w.send(x));
       return;
+    }
+    case "work.context.part": {   // one part of the context card, hovered (#683, #1519): what fills it, to this face only
+      const part = CARD_PARTS.find((x) => x === m.part);
+      const r = part ? await getRun(sid(m.sessionId))?.part(part) : null;
+      return w.send({ type: "work.context.part", rid: m.rid, sessionId: m.sessionId, part: m.part, ...(r ? { reading: r } : { none: true }) });
     }
     case "work.files": {   // the box's @ list (or a folder check, with q ""): to this face only
       const cwd = folderOf(m.cwd);
@@ -302,12 +389,17 @@ export async function handleWork(w: Wire, m: any) {
     }
     case "work.review.mark":   // a remark sent to Claude, or dismissed
       return markReview(sid(m.sessionId), String(m.id), m.state === "sent" || m.state === "dismissed" ? m.state : "open", everyone);
-    case "work.stage.pinned":   // the notch's chips (#701): every block pinned to it, with its session and state dot
-      return w.send({ type: m.type, rid: m.rid, pinned: stage.pinnedAll() });
+    case "work.pieces.list": case "work.pieces.make": case "work.pieces.open": case "work.pieces.now": case "work.pieces.seen": case "work.pieces.tick": case "work.pieces.drop": case "work.pieces.trust": case "work.pieces.sources": case "work.pieces.try": case "work.pieces.set": return piecesMsg(w, m);   // #1092
     case "work.stage.get": case "work.stage.ledger": case "work.stage.layout": case "work.stage.point":
     case "work.stage.yes": case "work.stage.freeze": case "work.stage.close": case "work.stage.carry": case "work.stage.reopen":
-    case "work.stage.compose": case "work.stage.update": case "work.stage.wheel": case "work.stage.at": case "work.stage.shot":
+    case "work.stage.leave": case "work.stage.press": case "work.stage.compose": case "work.stage.update": case "work.stage.wheel": case "work.stage.at": case "work.stage.shot": case "work.stage.seen": case "work.stage.felt":
       return stageMsg(w, m);
+    case "work.systems.area": case "work.systems.history":   // the system block: an area of the registry, read live (#1091)
+      return systemsMsg(w, m);
+    case "work.systems.live":   // the work under way now, by system: which sessions change what (#1156)
+      return liveMsg(w, m);
+    case "work.systems.whole":   // the whole: clusters, the wires between them, who is where (#1193)
+      return wholeMsg(w, m);
     case "work.term.open": {   // a new terminal in a folder; its output goes to every face
       const cwd = folderOf(m.cwd);
       if (!cwd) return w.send({ type: "work.term.opened", rid: m.rid, error: "that folder is not there" });
@@ -376,7 +468,44 @@ export async function handleWork(w: Wire, m: any) {
       return getRun(sid(m.sessionId))?.adjust(m);
     case "work.mark": {
       const ids: string[] = Array.isArray(m.sessionIds) ? m.sessionIds.map(sid) : [sid(m.sessionId)];
-      for (const id of ids) mark(id, m.patch ?? {});
+      for (const id of ids) { mark(id, m.patch ?? {}); if (m.patch?.archived === true) void children.archived(id).catch(() => {}); }
+      return broadcastSessions();
+    }
+    // two kinds of session: `under` is the orchestration session that runs this one, set here by a drop onto that row or
+    // cleared by "release" (and, since #1336 decided 2026-11-16, by a start or a root's send or read: group.ts). A session
+    // put under one with a transcript arrives there as one summary turn (one.ts joined; not for an executor)
+    case "work.under": {
+      const id = sid(m.sessionId), to = typeof m.under === "string" && m.under ? sid(m.under) : null;
+      // every answer, a refusal too, goes back by its rid so the face hears it; a refusal changes and broadcasts nothing
+      const no = (error: string) => w.send({ type: "work.under", rid: m.rid, error });
+      if (to && !one.isOrchestrator(to)) return no("only an orchestration session runs others");
+      if (to && underCycle(id, to)) return no("that would run it under itself");
+      const was = workState().marks[id]?.under;
+      const undone = was !== to && group.left(id, was);   // out of a grouping the engine made: that pair stays apart (#1336)
+      mark(id, { under: to });
+      // a move taken back (⌘Z, `undo`) returns it to an orchestrator that already heard its summary: not sent again.
+      // Its block is composed again all the same (compose kind session binds the same block)
+      if (to && was !== to) void one.joined(id, to, { undo: m.undo === true }).catch(() => {});
+      w.send({ type: "work.under", rid: m.rid, ok: true, under: to });
+      if (was !== to) void children.moved(id, to, was, undone ? "undo" : "hand").catch(() => {});   // its block closes there, is composed here
+      return broadcastSessions();
+    }
+    // grouping on hard evidence (#1336, group.ts): what it is (on or off and why, its moves, how many were taken back),
+    // and the switch in Build's own settings that turns it on again once it turned itself off
+    case "work.grouping": {   // grouping on evidence (#1336): read, or switched in Build's settings ("work.group" is a folder's topic groups)
+      if (m.on === true) group.turnOn();
+      else if (m.on === false) group.turnOff();
+      return w.send({ type: "work.grouping", rid: m.rid, ...group.state() });
+    }
+    // promote (a session that runs others: one_sessions and stop_session, its renewal, one turn) or demote (null: those taken
+    // back, the sessions under it let loose, one turn); one.ts promote, demote
+    case "work.kind": {
+      const id = sid(m.sessionId);
+      try {
+        if (m.kind === "orchestration") { const r = await one.promote(id); w.send({ type: "work.kind", rid: m.rid, ...r }); void children.promoted(id, r.adopted ?? []).catch(() => {}); }
+        else { const r = await one.demote(id); w.send({ type: "work.kind", rid: m.rid, ...r }); void children.demoted(id, r.loose).catch(() => {}); }
+      }
+      catch (e) { w.send({ type: "work.kind", rid: m.rid, error: e instanceof Error ? e.message : String(e) }); }
       return broadcastSessions();
     }
     case "work.rename":
@@ -411,7 +540,7 @@ export async function handleWork(w: Wire, m: any) {
       everyone({ type: "work.deleted", sessionId: id });
       return broadcastSessions();
     }
-    case "work.start": {   // a proposal card's start: the session it proposed, nested under the one that proposed it
+    case "work.start": {   // a proposal card's start: the session it proposed, marked as started from the one that proposed it
       const reply = (o: object) => w.send({ type: "work.start", rid: m.rid, ...o });
       try {
         const a = { title: String(m.title ?? "").slice(0, 200), prompt: String(m.prompt ?? ""), cwd: m.cwd ? String(m.cwd) : undefined, fork: !!m.fork, worktree: !!m.worktree, card: m.card ? String(m.card).slice(0, 120) : undefined };
@@ -460,9 +589,6 @@ export async function handleWork(w: Wire, m: any) {
       return w.send({ type: "work.about", rid: m.rid, ...(await about()), styles: styles(),
         tools: i ? { skills: i.skills ?? [], plugins: (i.plugins ?? []).map((x: any) => x.name ?? String(x)), mcp: i.mcp_servers ?? [], agents: i.agents ?? [], style: i.output_style, cwd: i.cwd } : null });
     }
-    case "work.notify":   // a banner on the engine's machine (macOS), for a face that was asked to ping
-      void banner(String(m.title ?? "Sol"), String(m.body ?? ""));
-      return;
     case "work.fork": {
       const id = sid(m.sessionId);
       const r = await forkSession(id, { ...(m.upTo ? { upToMessageId: String(m.upTo) } : {}), ...(m.title ? { title: String(m.title) } : {}) });
@@ -487,6 +613,45 @@ export async function handleWork(w: Wire, m: any) {
       try { return reply(m.type === "work.pr.create" ? await createPr(cwd) : await changesSummary(cwd)); }
       catch (err) { return reply({ error: err instanceof Error ? err.message.split("\n")[0] : String(err) }); }
     }
+    // orchestration sessions as kept (the side: sideKept.ts), a renewal on the person's ask, and build.tickets as the
+    // face says it (an orchestration session then routes to tickets; one.ts setTickets)
+    case "work.one.kept": case "work.one.renew": case "work.tickets.on": {
+      const reply = (o: object) => w.send({ type: m.type, rid: m.rid, ...o });
+      try {
+        if (m.type === "work.one.kept") return reply(one.kept());
+        if (m.type === "work.tickets.on") return reply({ ...one.setTickets(m.on === true), on: one.ticketsOn() });
+        return reply(await one.renew("asked", typeof m.sessionId === "string" && m.sessionId ? sid(m.sessionId) : undefined));
+      } catch (err) { return reply({ error: err instanceof Error ? err.message : String(err) }); }
+    }
+    // tickets (the face and the walk): the summary an orchestration session holds and the list, or one ticket whole; the
+    // person asking for a fresh executor; the person's words straight to a ticket (nobody between, so nobody else is subscribed)
+    case "work.tickets.list": case "work.tickets.get": case "work.tickets.replace": case "work.tickets.send": {
+      const reply = (o: object) => w.send({ type: m.type, rid: m.rid, ...o });
+      try {
+        if (m.type === "work.tickets.list") return reply({ summary: executor.door.summary(), tickets: executor.door.list() });
+        if (typeof m.ticket !== "string" && typeof m.ticket !== "number") return reply({ error: "which ticket?" });
+        if (m.type === "work.tickets.replace") return reply({ ticket: await executor.door.replace(String(m.ticket)) });
+        if (m.type === "work.tickets.send") {
+          if (typeof m.words !== "string" || !m.words.trim()) return reply({ error: "no words to send" });
+          return reply({ ticket: await executor.door.send("person", String(m.ticket), m.words, m.reopen === true ? { reopen: true } : undefined) });
+        }
+        return reply({ text: executor.door.read(String(m.ticket)) });
+      } catch (err) { return reply({ error: err instanceof Error ? err.message : String(err) }); }
+    }
+    // pieces that snap (#1024, build.snap): the face asks only with the switch on; nothing runs before a row is pressed
+    case "work.snap.get": case "work.snap.put": case "work.snap.run": case "work.snap.hand": case "work.snap.stop": {
+      const reply = (o: object) => w.send({ type: m.type, rid: m.rid, ...o });
+      try {
+        if (m.type === "work.snap.get") { snap.startClock(); const rs = snap.sections().map((s) => snap.runOf(s.id)).filter(Boolean); return reply({ sections: snap.sections(), runs: rs }); }
+        if (m.type === "work.snap.put") return reply({ sections: snap.putTable(m.sections) });
+        if (m.type === "work.snap.run") return reply({ run: await snap.runSection(String(m.id)) });
+        if (m.type === "work.snap.hand") return reply({ run: await snap.hand(String(m.run), String(m.brick), m.go !== false) });
+        return reply({ run: snap.stop(String(m.run)) });
+      } catch (err) { return reply({ error: err instanceof Error ? err.message : String(err) }); }
+    }
+    // Build becomes yours (#1089, build.yours): the face asks only with the switch on; nothing is sent for the person
+    case "work.yours.offer": case "work.yours.seen": case "work.yours.adjust": case "work.yours.page": case "work.yours.keep": case "work.yours.undo": case "work.yours.list": case "work.yours.again": case "work.yours.shelf": case "work.yours.lay": case "work.yours.change": case "work.yours.unchange": case "work.yours.forget": case "work.yours.sent": case "work.yours.learn":
+      return void yours.hear(m, (o) => w.send({ type: m.type, rid: m.rid, ...o }));
     default:   // a type this engine does not know (a newer face): answered by its rid, so the face's ask does not wait 20 s
       return w.send({ type: m.type, rid: m.rid, error: `this engine does not know ${String(m.type)}` });
   }
@@ -501,6 +666,7 @@ export async function showSession(id: string, on: boolean): Promise<{ shown: boo
     if (run) { run.shown = false; run.tell(); }
     return { shown: false, note };
   }
+  if (isPrivate(id)) throw new Error("this session is private: turn private off first, then show it");   // #1242
   if (!run) throw new Error("this session is not running: send it a message, then show it");
   // a room session streaming to its room (#238) is shown on its issue instead: the room show ends first
   if (shows.roomShows().includes(id)) await shows.stop(id);
@@ -518,12 +684,22 @@ export async function showSession(id: string, on: boolean): Promise<{ shown: boo
 
 // the stage (#695, blocks.ts): every change goes to every Work face as work.stage.changed; a session's project is its
 // folder's repo; a line is signed as the person's agent
-stage.setStageBus((m) => everyone(m));
+stage.setStageBus((m) => { everyone(m); homeStage(m); children.hears(m); });   // and Home (#825): a block that waits is a Thing on Today; nothing while Home is off; and a child's stage change refreshes its block (step 4)
+setHandBus(everyone);   // the agent's moves (#1437) to every Work face; the one showing the session makes them
+setPiecesBus((m) => everyone(m));   // #1092
 live.setLiveOut((m) => everyone(m));   // a terminal block's output, to every face (#699)
 stage.setStageFinder(async (id) => {
   const cwd = getRun(id)?.cwd ?? (await sessionInfo(id).catch(() => undefined))?.cwd;
   const login = await myLogin().catch(() => "");
   return { ...(cwd ? { cwd } : {}), by: `${login || "my"}'s agent · ${id.slice(0, 8)}` };
+});
+// a press comes back to the session that asked as a turn (#1298), the path send_message takes
+asks.setPressDeps({
+  turn: async (sessionId, text) => {
+    if (!(await sessionInfo(sessionId)) && !getRun(sessionId)) throw new Error("no such session");
+    await workSay({ sessionId, text }, bus);
+    broadcastSessions();
+  },
 });
 // the person's own hand on the stage, from the face (stage: joins sitting 2): the stage asked for, a drag or a fold
 // (layout), what the pointer is on (point), a yes, a freeze, a close. Answered to the asking face by rid
@@ -534,21 +710,28 @@ async function stageMsg(w: Wire, m: any) {
     const who = await stage.whoFor(id);
     const me = { ...who, by: who.by.replace(/'s agent/, "") };   // the person's own press, signed as them
     switch (m.type) {
-      case "work.stage.get": {
-        const st = stage.withProject(who.project, id);   // the project's own blocks are on every session's stage (#703)
-        return reply({ project: who.project, sessionId: id, stage: st, blocks: st.blocks.map((p) => stage.seen(who.project, p.id)).filter(Boolean), tray: stage.trayOf(who.project, id, st) });
-      }
+      // the whole stage as ever; the list without folded bodies, or one block, to a face that asks for it (#870)
+      case "work.stage.get": return reply(stage.stageAnswer(who.project, id, stage.stageAsk(m)));
       case "work.stage.ledger": return reply({ project: who.project, id: String(m.id), lines: stage.ledger(who.project, String(m.id)) });
       case "work.stage.layout": return reply({ stage: stage.layout(who.project, id, m.stage ?? {}) });
       case "work.stage.point": stage.point(id, m.at ?? null); return reply({ ok: true });
+      // the face's report of what it drew (#1435, eyes.ts): where each piece stands, how it fits, what the hand did
+      // how the agent's moves went (#1437): counted by track.ts as it came in; nothing else to do
+      case "work.stage.felt": return reply({ ok: true });
+      case "work.stage.seen": eyes.setSeen({ ...(m.report ?? {}), sessionId: id }, (b) => stage.getBlock(who.project, b)?.title ?? b); return reply({ ok: true });
+      // the press at the foot of a block that asks (#1298): answered once, keyed by the block; routed back to who asked
+      case "work.stage.press": return reply(await asks.pressed(me, { id: String(m.id), choice: String(m.choice ?? "") }));
       case "work.stage.yes": return reply({ block: stage.yes(me, { id: String(m.id), ...(typeof m.note === "string" ? { note: m.note.slice(0, 200) } : {}) }) });
       case "work.stage.freeze": return reply({ block: stage.freeze(me, { id: String(m.id) }) });
       case "work.stage.close": return reply({ block: stage.place(me, { id: String(m.id), close: true }).block });
       case "work.stage.carry": {
-        // a tray's miniature dropped on this stage (#739): carried here from the session that made it, at the spot asked
+        // a tray's miniature dropped on this stage (#739): carried here from the session that made it, at the spot asked;
+        // a block dropped on another session's row: with stage.whole on, moved there (#826)
         const at = m.at && typeof m.at === "object" && ["x", "y", "w", "h"].every((k) => Number.isFinite(m.at[k])) ? { at: { x: m.at.x, y: m.at.y, w: m.at.w, h: m.at.h, ...(m.at.hand === true ? { hand: true } : {}) } } : {};
-        return reply({ block: stage.place(me, { id: String(m.id), carry: sid(m.to), ...at }).block });
+        return reply({ block: stage.carryByHand(me, { id: String(m.id), to: sid(m.to), ...at }) });
       }
+      // off this stage alone (#870 item 5): alive for the sessions that still use it, in this one's tray
+      case "work.stage.leave": return reply({ block: stage.place(me, { id: String(m.id), leave: true }).block });
       // a close undone (⌘Z, #737): live again where it sat
       case "work.stage.reopen": { const at = m.at && typeof m.at === "object" && [m.at.x, m.at.y, m.at.w, m.at.h].every(Number.isFinite) ? { at: { x: m.at.x, y: m.at.y, w: m.at.w, h: m.at.h, ...(Number.isFinite(m.at.z) ? { z: m.at.z } : {}) } } : {}; return reply({ block: stage.reopen(me, { id: String(m.id), ...at }) }); }
       // the person's own block (a chip dropped on the stage, the fixture poured by ?stage=fixture): composed as theirs, at
@@ -583,6 +766,141 @@ async function stageMsg(w: Wire, m: any) {
   } catch (e) { return reply({ error: e instanceof Error ? e.message : String(e) }); }
 }
 
+// the orchestration stage's hands (step 4, children.ts): what a session block reads, and what its presses do
+children.setChildDeps({
+  session: async (id) => { const s = await oneSession(id).catch(() => undefined); return s ?? (getRun(id) ? { id, cwd: getRun(id)!.cwd } : undefined); },
+  run: (id) => { const r = getRun(id); if (!r) return undefined; const i = r.info(); return { busy: i.busy, waiting: i.waiting, tasks: i.tasks ?? [], failed: i.failed, cwd: i.cwd }; },
+  items: async (id) => getRun(id)?.items.list ?? (await sessionItems(id).catch(() => null))?.list ?? [],
+  // the send_message path: one turn in the child, signed as the person's press from the orchestrator's stage
+  say: async (id, text) => { await workSay({ sessionId: id, text }, bus); broadcastSessions(); },
+  stop: async (id) => { await getRun(id)?.stop(); },
+  archive: (id) => { archive(id); broadcastSessions(); },
+});
+// the orchestration sessions' hands: the engine's own say, runs and list, given so one.ts never imports this file
+one.setOneDeps({
+  say: async (sessionId, text, fresh, how) => { await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd } : {}), ...(how?.free ? { mode: how.free === "edits" ? "acceptEdits" as const : "default" as const } : {}) }, bus); if (fresh) invalidate(); broadcastSessions(); },
+  run: (id) => getRun(id),
+  sessions: async () => (await workSessions()).sessions as never,
+  lastWords: async (id) => {
+    const run = getRun(id);
+    const list = run ? run.items.list : (await sessionItems(id)).list;
+    const you = list.filter((i) => i.kind === "you" && String(i.text ?? "").trim());
+    return String(you[you.length - 1]?.text ?? "");
+  },
+  tell: (m) => everyone(m),
+  name: (id, title) => nameWhenWritten(id, title),   // #1044
+  tickets: executor.door,   // the ticket tools (given only with build.tickets on) and the renewal's summary and repoint
+  isExecutor: (id) => !!tickets.ofSession(id),   // its turns reach its followers through its ticket, never as a child's report
+  goal: () => goalForRenewal(thingsDeps(), recordOf(activeRoom(getTeam()))),   // the renewal carries the room's goal, read fresh (#1371)
+  items: async (id) => getRun(id)?.items.list ?? (await sessionItems(id).catch(() => null))?.list ?? [],   // a joined session's summary (one.ts joined)
+  carry: async (from, to) => {
+    const who = await stage.whoFor(from);
+    stage.start({ ...who, sessionId: to }, { from, carry: stage.getStage(who.project, from).blocks.filter((p) => !p.folded).map((p) => p.id) });
+  },
+});
+one.wakeOrchestrators();   // after a restart, the promoted sessions have their tools again (2026-11-14)
+// grouping on hard evidence's hands (#1336, group.ts): a session's project as the side files it (a side copy is its
+// repo's), the promote with its blocks, a placed session's block and joined turn, the off line to every face
+group.setGroupDeps({
+  projectOf: async (id) => (await workSessions()).sessions.find((s) => s.id === id)?.project,
+  promote: async (id) => { const r = await one.promote(id); if (r.promoted) void children.promoted(id, r.adopted ?? []).catch(() => {}); return r; },
+  placed: async (child, root, rule) => { await children.moved(child, root, undefined, rule); await one.joined(child, root).catch(() => {}); },
+  tell: (m) => everyone(m),
+});
+
+// the bench's hands (#1024): say to a session (or a new one in a folder), whether one exists, its last words, its allow
+snap.setSnapDeps({
+  say: async (sessionId, text, fresh) => { await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd } : {}) }, bus); if (fresh) invalidate(); broadcastSessions(); },
+  exists: async (id) => !!getRun(id) || (await workSessions()).sessions.some((s) => s.id === id),
+  lastWords: async (id) => {
+    const run = getRun(id);
+    const list = run ? run.items.list : (await sessionItems(id)).list;
+    const you = list.filter((i) => i.kind === "you" && String(i.text ?? "").trim());
+    return String(you[you.length - 1]?.text ?? "");
+  },
+  perm: (id) => {
+    const run = getRun(id); const p = run?.items.list.slice().reverse().find((i) => i.kind === "perm" && i.state === "ask");
+    return run && p?.id && run.answer ? { answer: (allow: boolean) => run.answer!(String(p.id), { allow }) } : null;
+  },
+  tell: (m) => everyone(m),
+});
+
+// the executors' hands (tickets): say (a fresh one in a folder, or a side copy of a repo there, on the mode its ticket's
+// mandate gives), whether a session is still there, its last words, its folder, and every face told of the tickets.
+// No parent is marked: an executor is its ticket's, never a child of an orchestration session (no report twice, nothing
+// done to it by a renewal). After an engine restart, wake() gives the executors their tools again; with no tickets it
+// touches nothing.
+const lastWordsOf = async (id: string) => {
+  const run = getRun(id);
+  const list = run ? run.items.list : (await sessionItems(id)).list;
+  const you = list.filter((i) => i.kind === "you" && String(i.text ?? "").trim());
+  return String(you[you.length - 1]?.text ?? "");
+};
+executor.setExecDeps({
+  store: tickets,
+  say: async (sessionId, text, fresh, how) => {
+    await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd, worktree: !!fresh.worktree } : {}), ...(how?.free ? { mode: how.free === "edits" ? "acceptEdits" as const : "default" as const } : {}) }, bus);
+    if (fresh) invalidate(); broadcastSessions();
+  },
+  run: (id) => getRun(id),
+  exists: async (id) => !!getRun(id) || !!(await sessionInfo(id).catch(() => undefined)),
+  lastWords: lastWordsOf,
+  isRepo: (dir) => { try { return execFileSync("git", ["-C", dir, "rev-parse", "--is-inside-work-tree"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 3000 }).trim() === "true"; } catch { return false; } },
+  cwdOf: async (id) => getRun(id)?.cwd ?? (await sessionInfo(id).catch(() => undefined))?.cwd,
+  tell: (m) => everyone(m),
+  name: (id, title) => nameWhenWritten(id, title),
+  holding: (id) => one.renewing(id),   // an orchestration session writing its handover: reports wait for its fresh copy
+});
+try { executor.wake(); } catch (e) { console.error("tickets: wake failed", e); }
+
+// wake (#1151, team/wake.ts): a comment on GitHub wakes my agent where my rules allow. A woken session carries the
+// `woken` mark, so runs.ts holds it bare (no settings of mine, none of Sol's tools, ask first, never bypass) on every run;
+// it is nobody's child; one woken by another person is narrow too (its three tools only, given before it starts). Started a tick after load, as index.ts reads sol/engine/.env after the imports
+// (SOL_WAKE=off there stops it)
+setTimeout(() => {
+  const home = joinPath(STATE_DIR, "wake", "work");
+  startWake({
+    team: getTeam,
+    // my group's members (#1313), as the members check reads them: a minute old at most, null on a failed read (nobody);
+    // a project with no list has none
+    members: async () => { const r = await membersNow(true); return r.source ? r.list : []; },
+    gh: (args) => runGh(args),
+    ghIn: (args, input) => runGhStdin(args, input),
+    say: async (sessionId, text, cwd, who) => {
+      mkdirSync(home, { recursive: true });
+      mark(sessionId, { woken: who });   // before its first run: runs.ts holds every run of it bare
+      const here = (() => { try { return statSync(cwd).isDirectory(); } catch { return false; } })();   // never the home folder a missing one falls back to
+      await workSay({ sessionId, text, fresh: true, cwd: here ? cwd : home, mode: "default" }, bus);
+      invalidate(); broadcastSessions();
+    },
+    // 👀 as me: GitHub answers 201 when it is new, 200 when it was there (another Sol of mine put it)
+    claim: async (repo, id) => /^HTTP\/[\d.]+ 201\b/.test(await runGh(["api", "-i", "-X", "POST", `repos/${repo}/issues/comments/${id}/reactions`, "-f", "content=eyes"])),
+    give: (sessionId, tools) => { for (const t of tools) giveTool(sessionId, t); },
+    name: (id, title) => { void nameWhenWritten(id, title); },
+    home,
+    file: joinPath(STATE_DIR, "wake.json"),
+  });
+}, 0).unref?.();
+
+// a way's room (#1311, team/v3/way-room.ts): started as a session other people woke, so runs.ts holds it bare and narrow
+// (its tools only, given before it starts) in an empty folder of its own; never in the team room, its title fixed by
+// the engine, its last words sent nowhere
+{
+  const home = joinPath(STATE_DIR, "way-room", "work");
+  setRoomStart({
+    say: async (sessionId, text) => {
+      mkdirSync(home, { recursive: true });
+      mark(sessionId, { woken: "others" });   // before its first run
+      await workSay({ sessionId, text, fresh: true, cwd: home, mode: "default" }, bus);
+      invalidate(); broadcastSessions();
+    },
+    give: (sessionId, tools) => { for (const t of tools) giveTool(sessionId, t); },
+    name: (id, title) => { void nameWhenWritten(id, title); },
+    working: (id) => !!getRun(id)?.working,
+    stop: async (id, tools) => { for (const t of tools) takeTool(id, t); await getRun(id)?.stop(); },
+  });
+}
+
 // the doors between sessions, for the model (tools.ts)
 const line = (s: { id: string; title: string; cwd: string; updatedAt: number }) => `${s.id}  ${new Date(s.updatedAt).toISOString().slice(0, 16)}  ${s.title}  (${s.cwd})`;
 setWorkHooks({
@@ -593,23 +911,32 @@ setWorkHooks({
       .sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 40);
     return hit.map(line).join("\n") || "no sessions";
   },
-  async read(id, last = 20) {
+  async read(id, last = 20, from) {
+    if (from) void group.contacted(from, id, "read").then((m) => m && broadcastSessions()).catch(() => {});   // #1336: a root's read groups
     const run = getRun(id);
     const list = run ? run.items.list : (await sessionItems(id)).list;
     return list.filter((i) => i.kind === "me" || i.kind === "you").slice(-last)
       .map((i) => `${i.kind === "me" ? "Marco" : "Claude"}: ${String(i.text).slice(0, 4000)}`).join("\n\n") || "nothing said yet";
   },
-  async message(from, to, text) {
+  async message(from, asked, text) {
+    if (one.isRouter(from)) return "refused: with tickets on you do not talk to sessions yourself: give the words to their ticket (ticket_send), or open a ticket for new work (ticket_open)";
+    const to = one.currentOf(asked);   // a renewed orchestration session's old id: its fresh copy hears it
     if (!(await sessionInfo(to)) && !getRun(to)) throw new Error("no such session");
     await workSay({ sessionId: to, text: `<message from session ${from}>\n${text}` }, bus);
-    return "sent; it runs as a turn there";
+    // counted (docs/analytics/tracking.md, "build"): who to whom by kind, and whether an old id was carried to its fresh copy
+    if (!isPrivate(from) && !isPrivate(to)) track("build.message.send", { from_orch: one.isOrchestrator(from), to_orch: one.isOrchestrator(to), renewed: to !== asked }, { mode: "work" });
+    void group.contacted(from, to, "send").then((m) => m && broadcastSessions()).catch(() => {});   // #1336: a root's send groups
+    return to === asked ? "sent; it runs as a turn there" : `sent to ${to}, the renewed copy of ${asked}; write to ${to} from now on`;
   },
   async start(from, a) {
+    if (one.isRouter(from)) return "refused: with tickets on you do not start sessions yourself: open a ticket (ticket_open) and its own session does the work";
     if (a.initiation === "proposal") return "proposed: a card waits in the talk and Marco starts it when he wants. Carry on.";
-    const id = await startFrom(from, a);
-    return `started ${id}; it reports in its own row under this session`;
+    // an orchestration session runs what it starts (step 4): under it as well as parent, its block on this stage
+    const id = await startFrom(from, { ...a, ...(one.isOrchestrator(from) ? { under: from } : {}) });
+    return one.isOrchestrator(from) ? `started ${id}; it runs under you: its block is on your stage and it reports back here` : `started ${id}; it appears beside this one in the person's side, marked as started from here`;
   },
   async handoff(from, title, plan, blocks) {
+    if (one.isRouter(from)) return "refused: with tickets on you do not hand your work to a session yourself: open a ticket (ticket_open) and its own session does the work";
     // the "what is left" prose stays; the blocks named go with it (#700)
     const id = await startFrom(from, {
       title, fork: true, blocks: blocks ?? [],
@@ -628,7 +955,7 @@ setWorkHooks({
     return askPress({ bus: workBus }, { sessionId: from, cwd, feature, press, ...(last ? { after: last } : {}) });
   },
   async archive(id, archived) {
-    mark(id, { archived });
+    archive(id, archived);
     broadcastSessions();
     return archived ? "archived" : "back in the side";
   },
@@ -652,7 +979,7 @@ setWorkHooks({
     const cwd = getRun(from)?.cwd ?? (await sessionInfo(from))?.cwd;
     if (!cwd) throw new Error("no folder for this session");
     return teamNote({ cwd, gh: runGh, git: runGit, login: myLogin, mayGitHub: () => mayAgentSpeak(getTeam(), "github"),
-      ping: ({ kind, ...p }) => sendRelay("ping", { ...p, pingKind: kind }, true) }, n);
+      ping: ({ kind, ...p }) => wakeUp().send({ ...p, pingKind: kind }, true) }, n);
   },
   // "this broke" (#421): the change's PR in the session's repository unless named; signed as my agent, when it may
   // write on GitHub (Control)
@@ -666,7 +993,8 @@ setWorkHooks({
     }
     const { brokeNow } = await import("../team/wire.js");   // late: team/wire.ts imports this file
     const r = await brokeNow({ repo, number: a.number, why: a.why, agent: true });
-    return `said: #${a.number} in ${repo} wears broke now${r.told.length ? `; ${r.told.join(" and ")} got a card` : ""}`;
+    const rev = !r.revert ? "" : "error" in r.revert ? `; no revert opened (${r.revert.error})` : `; revert PR #${r.revert.number} ${r.revert.already ? "was open already" : "opened, for its author to merge"}`;
+    return `said: #${a.number} in ${repo} wears broke now${r.told.length ? `; ${r.told.join(" and ")} got a card` : ""}${rev}`;
   },
   // the pings to my human (#100), kept by team/wire.ts as they arrive: the unseen ones, marked seen
   async pings(_from, issue) {
@@ -751,7 +1079,12 @@ setWorkHooks({
     const repo = recordOf(activeRoom(getTeam())), onCloud = repo.startsWith(CLOUD_RECORD) || repo.startsWith(DRIVE_RECORD);
     if (repo && !mayAgentSpeak(getTeam(), onCloud ? "cowork" : "github")) return `not set: my agent may not speak ${onCloud ? "in Cowork" : "on GitHub"} (Settings, my agent)`;
     const r = await setGoal(thingsDeps(), repo, { title, lines, by: `${(onCloud ? hubLogin() : "") || getTeam().me.login || (await myLogin().catch(() => ""))}'s agent` });
-    return "error" in r ? `not set: ${r.error}` : `the room's goal is now: ${r.goal.title}`;
+    if ("error" in r) return `not set: ${r.error}`;
+    // a goal set over another that loses lines of it is said, never refused (#1371): the person hears what dropped out
+    const lost = r.dropped.length ? `\nIt no longer holds ${r.dropped.length === 1 ? "this line" : `these ${r.dropped.length} lines`} of the goal before it` +
+      `${r.was?.setBy ? ` (set by ${r.was.setBy}${r.was.at ? ` on ${r.was.at.slice(0, 10)}` : ""})` : ""}:\n${r.dropped.map((l) => `- ${l}`).join("\n")}\n` +
+      "Tell your person which lines dropped out, in their words, unless they asked for exactly that; goal_set again puts them back." : "";
+    return `the room's goal is now: ${r.goal.title}${lost}`;
   },
   // the room's own tools (#245): read as the room's words; written only when the human asks (the tools say so), signed
   // as the agent, and only where my agent may speak (Cowork for a cloud room, GitHub for a GitHub room)
@@ -814,6 +1147,13 @@ setWorkHooks({
   // never marks one ready (#476, the person's press on the card does);
   // team/handin.ts pick checks the session, the person, the PR and the project's word (loaded late: team/wire.ts loads this file)
   async handIn(from, number, ready) { return (await import("../team/wire.js")).handInMark(from, number, ready); },
+  // room_session_request (#335): ask a teammate for one of their group sessions, or read it once given. Only from a
+  // session of the group, so what is given lands in a group session, never in Work or Life
+  async sessionAsk(from, id) {
+    const { asks, inGroup } = await import("../team/wire.js");   // loaded first by index.ts: no load-order cycle
+    if (!inGroup(from)) return "not asked: ask from a session of the group (one started in Cowork under the group in use); this one is not";
+    return asks.request(id, from, true);
+  },
   async goalFile(_from, name, text) {
     const no = await memberNo("add a file beside the goal"); if (no) return `not added: ${no}`;
     const repo = recordOf(activeRoom(getTeam())), onCloud = repo.startsWith(CLOUD_RECORD) || repo.startsWith(DRIVE_RECORD);
@@ -833,7 +1173,7 @@ async function noteRoom(mark: string): Promise<NoteRoom | null> {
   const r = roomOfMark(mark);
   if (!r) return null;
   const repo = recordOf(r), onCloud = repo.startsWith(CLOUD_RECORD) || repo.startsWith(DRIVE_RECORD);
-  const login = repo.startsWith(CLOUD_RECORD) ? accountOn(hubHttp(r.hub || "ws://127.0.0.1/relay"), CLOUD_FILE)?.login ?? "" : await myLogin().catch(() => "");
+  const login = repo.startsWith(CLOUD_RECORD) ? identity().on(hubHttp(r.hub || "ws://127.0.0.1/relay"))?.login ?? "" : await myLogin().catch(() => "");
   return { repo, login, may: mayAgentSpeak(getTeam(), onCloud ? "cowork" : "github") };
 }
 // the used-Cowork mark (#431, team/used.ts): a tool that read the project in use counts `cowork.used` and marks it in the
@@ -861,15 +1201,15 @@ const agentWho = async () => {
 
 const carding = new Map<string, Promise<string>>();   // proposal cards being started, by proposer and card
 
-// a session started from another (a tool, a hand-off, a proposal card): nested under it, on the Work defaults from the
+// a session started from another (a tool, a hand-off, a proposal card): marked as started from it, on the Work defaults from the
 // settings file for its model and effort (#94), and on its parent's permission mode while the parent is live: a session
 // left to run unasked starts its sub-sessions unasked too, instead of dropping them to the default and asking (Frank,
 // 2026-10-26). Plan is not handed down: a sub-session is started to do the work. The face no longer follows a run's mode,
 // so the #94 face bug cannot come back through this.
-async function startFrom(from: string, a: Start & { card?: string }): Promise<string> {
+async function startFrom(from: string, a: Start & { card?: string; under?: string }): Promise<string> {
   const parent = getRun(from);
   const d = workDefaults();
-  const mode = parent && parent.mode !== "plan" ? parent.mode : d.mode;
+  const mode = a.free === "edits" ? "acceptEdits" : a.free === "ask" ? "default" : parent && parent.mode !== "plan" ? parent.mode : d.mode;
   // its part in the dev cycle (#484): the one asked for, never less held than the session that starts it
   const role = stricter(workState().marks[from]?.role, a.role);
   const like = { parent: from, ...d, mode, ...(role ? { role } : {}) };
@@ -879,6 +1219,7 @@ async function startFrom(from: string, a: Start & { card?: string }): Promise<st
     mark(id, { parent: from, card: a.card ?? null, ...(role ? { role } : {}) });
     await workSay({ sessionId: id, text: a.prompt, ...like }, bus);
     await startStage(from, id, a.blocks);
+    if (a.under === from) await children.started(from, id);
     return id;
   }
   const id = randomUUID();
@@ -886,6 +1227,8 @@ async function startFrom(from: string, a: Start & { card?: string }): Promise<st
   await workSay({ sessionId: id, fresh: true, cwd, worktree: !!a.worktree, text: a.prompt, ...like }, bus);
   if (a.card) mark(id, { card: a.card });
   await startStage(from, id, a.blocks);
+  if (a.under === from) await children.started(from, id);
+  else if (await group.started(from, id, a.card ? "card" : "start").catch(() => false)) void broadcastSessions();   // #1336: it nests under its starter
   void nameWhenWritten(id, a.title);
   return id;
 }

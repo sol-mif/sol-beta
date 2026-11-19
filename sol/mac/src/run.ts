@@ -16,14 +16,17 @@ export function setRunner(s: Sender | null) { sender = s; }
 export const ranOf = (rid: string) => runs.get(rid);
 export function onRan(fn: () => void): () => void { subs.add(fn); return () => { subs.delete(fn); }; }
 
-export function request(rid: string, cmd: string) {
-  if (!sender?.sessionId) return;
+/** `sessionId`: the session the pressed block belongs to when it is not the page's own, as in Home's pane beside (#1500) */
+export function request(rid: string, cmd: string, sessionId?: string) {
   const cur = runs.get(rid);
   if (cur && !cur.done) return;
+  const sid = sessionId || sender?.sessionId;
+  // no session to send for (the page showing the talk set no runner, #1361): nothing runs, and the block says so
+  if (!sender || !sid) { runs.set(rid, { cmd, out: "", done: true, code: null, why: "no session to run this in" }); tell(); return; }
   const run: Ran = { cmd, out: "", done: false, code: null };
   runs.set(rid, run);
   // nothing went out (the socket is down): say so now, not after the wait
-  if (!sender.send({ type: "run", rid, seat: sender.seat, sessionId: sender.sessionId, work: !!sender.work, cmd })) Object.assign(run, { done: true, why: "not connected" });
+  if (!sender.send({ type: "run", rid, seat: sender.seat, sessionId: sid, work: !!sender.work, cmd })) Object.assign(run, { done: true, why: "not connected" });
   tell();
   // an engine older than the run button never answers: say so instead of "running" forever. This run's own wait: a
   // run of the same block started since has its own (#892)

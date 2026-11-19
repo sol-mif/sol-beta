@@ -23,6 +23,9 @@ export type Health = {
 let reverted: Health["reverted"] = null;
 let now: Health | null = null;   // the last gathered, for whoever asks between changes (File it, #119)
 export const healthNow = () => now;
+const heard = new Set<(h: Health) => void>();
+/** told each new state, after the window (runs.ts: a Sol whose build holds errors says "build", #1150) */
+export const onHealth = (fn: (h: Health) => void) => { heard.add(fn); return () => heard.delete(fn); };
 export function noteRevert(what: "engine" | "face", at = new Date().toISOString(), line?: string) { reverted = { what, at, ...(line ? { line } : {}) }; }
 
 // the keeper is the parent: bash running .../keep (launchd's plist on the Mac, the systemd unit on the NucBox)
@@ -74,7 +77,7 @@ export function watchHealth(engineDir: string, changed: (h: Health) => void): ()
     last = { kept: k, build: b, face: f, reverted };
     now = last;
     const s = JSON.stringify(last);
-    if (s !== said) { said = s; changed(last); }
+    if (s !== said) { said = s; changed(last); for (const fn of heard) { try { fn(last); } catch { /* a listener's own trouble */ } } }
   };
   void gather();
   setInterval(() => void gather().catch(() => {}), 5000).unref();

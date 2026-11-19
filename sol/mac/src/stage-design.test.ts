@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fitWhole, inside, overlaps, type Room } from "./stage/geometry.ts";
-import { TALK, TALK_WHOLE, talkWidth } from "./stage/model.ts";
+import { TALK, TALK_WHOLE, talkWidth, talkWholeWidth } from "./stage/model.ts";
 
 const P = (id: string, x: number, y: number, w: number, h: number, z: number, more = {}) => ({ id, x, y, w, h, z, ...more });
 
@@ -35,7 +35,7 @@ test("everything already fits: nothing to do", () => {
 
 test("the talk in stage.whole keeps one width, blocks or none", () => {
   const ch = 8;
-  for (const open of [0, 1, 2, 3, 5]) assert.equal(talkWidth(1200, ch, undefined, open), TALK_WHOLE);
+  assert.equal(talkWholeWidth(1200, ch), TALK_WHOLE, "one width, blocks or none (StageColumn asks it whatever is open)");
   assert.equal(talkWidth(1200, ch), TALK.read * ch, "with the switch off: reading width as on main");
 });
 

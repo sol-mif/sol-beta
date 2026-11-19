@@ -96,34 +96,57 @@ test("overlap: the claims that touch where mine does, with their shared paths na
   assert.deepEqual(fresh.map((x) => x.pr), [42]);
 });
 
-// The harness rule base-second-branch, run as Claude Code runs it: a call on stdin, in a throwaway repo on a base
-// branch, with a fake gh on PATH that answers the open PRs (and counts how often it is asked).
-test("the harness: a push from a base branch stops while another person's base branch is open; mine go through", async () => {
-  const { mkdtempSync, writeFileSync, chmodSync, readFileSync, existsSync } = await import("node:fs");
+// The harness, run as Claude Code runs it: a call on stdin, in a throwaway repo, with a fake gh on PATH. Since #1126 base
+// takes more than one open branch, and a PR is merged by its author or their agent once GitHub's checks pass: gh pr merge
+// goes through into main or a branch of mine, and stays refused around the checks, into stable or another person's branch,
+// or when GitHub cannot say where the PR goes.
+test("the harness (#1126): base takes two people's branches; gh pr merge goes into main or mine, never around the checks", async () => {
+  const { mkdtempSync, writeFileSync, chmodSync } = await import("node:fs");
   const { execFileSync } = await import("node:child_process");
   const { join, resolve } = await import("node:path");
   const { tmpdir } = await import("node:os");
   const guard = resolve(import.meta.dirname, "../../harness/guard");
-  const run = (o: { prs: unknown[]; cmd: string; branch?: string }) => {
+  const run = (o: { prs?: unknown[]; base?: string | null; repo?: string; cmd: string; branch?: string }) => {
     const dir = mkdtempSync(join(tmpdir(), "claims-guard-"));
     const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, stdio: "ignore" });
     g("init", "-q", "-b", o.branch ?? "marco/base-wire-17"); g("config", "sol.login", "marcocyl04-ux"); g("remote", "add", "origin", "https://github.com/sol-mif/sol-dev.git");   // a sol-dev checkout (#479)
+    execFileSync("mkdir", ["-p", join(dir, "docs/people")]);
+    writeFileSync(join(dir, "docs/people/marco.md"), "login: marcocyl04-ux\n"); writeFileSync(join(dir, "docs/people/frank.md"), "login: franktsai2008-eng\n");
     const bin = join(dir, ".bin"); execFileSync("mkdir", [bin]);
-    writeFileSync(join(bin, "gh"), `#!/bin/sh\necho x >> "${join(dir, ".asked")}"\ncat <<'J'\n${JSON.stringify(o.prs)}\nJ\n`); chmodSync(join(bin, "gh"), 0o755);
-    const once = () => execFileSync("node", [guard], { cwd: dir, encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+    const view = o.base === null ? "exit 1" : `echo '${o.base ?? "main"} https://github.com/${o.repo ?? "sol-mif/sol-dev"}/pull/3'`;
+    writeFileSync(join(bin, "gh"), `#!/bin/sh
+if [ "$1 $2" = "pr view" ]; then ${view}; exit 0; fi
+cat <<'J'\n${JSON.stringify(o.prs ?? [])}\nJ\n`.replace(/\\n/g, "\n")); chmodSync(join(bin, "gh"), 0o755);
+    return execFileSync("node", [guard], { cwd: dir, encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
       input: JSON.stringify({ tool_name: "Bash", tool_input: { command: o.cmd }, cwd: dir }) });
-    const out = once(); once();
-    const asked = existsSync(join(dir, ".asked")) ? readFileSync(join(dir, ".asked"), "utf8").split("\n").filter(Boolean).length : 0;
-    return { out, asked };
   };
   const frank = { number: 12, headRefName: "frank/base-relay-12", author: { login: "frank" } };
-  const r = run({ prs: [frank], cmd: "git push -u origin HEAD" });
-  assert.match(r.out, /base-second-branch/);
-  assert.match(r.out, /base allows one open branch at a time; #12 \(frank\) is open: build on that branch or wait/);
-  assert.equal(r.asked, 1, "the gh answer is kept for a minute: asked once for two calls");
-  assert.match(run({ prs: [frank], cmd: "gh pr create --draft --body 'what to try'" }).out, /#12 \(frank\)/);
-  assert.equal(run({ prs: [{ ...frank, headRefName: "marco/base-keep-9", author: { login: "marcocyl04-ux" } }], cmd: "git push" }).out, "", "my own second base branch goes through");
-  assert.equal(run({ prs: [{ ...frank, headRefName: "frank/work-timer-91" }], cmd: "git push" }).out, "", "an open work branch is not base");
-  assert.equal(run({ prs: [frank], cmd: "git push", branch: "marco/product-docs-3" }).out, "", "from a branch that is not base");
-  assert.equal(run({ prs: [frank], cmd: "git status" }).out, "", "only a push or a PR is judged");
+  assert.equal(run({ prs: [frank], cmd: "git push -u origin HEAD" }), "", "a push from base beside another person's open base branch");
+  assert.equal(run({ prs: [frank], cmd: "gh pr create --draft --body 'what to try'" }), "", "and its PR");
+  assert.equal(run({ base: "main", cmd: "gh pr merge 3 --merge" }), "", "a PR into main, GitHub's checks the gate");
+  assert.equal(run({ base: "main", cmd: "gh pr merge --auto --merge --subject 'x y'" }), "", "the current branch's PR, merged once green");
+  assert.equal(run({ base: "marco/base-wire-17", cmd: "gh pr merge 4" }), "", "a PR into a branch of mine");
+  assert.match(run({ base: "main", cmd: "gh pr merge 3 --admin" }), /harness \(merge\)/, "never around the checks");
+  assert.match(run({ base: "stable", cmd: "gh pr merge 3" }), /harness \(merge\).*goes into stable/, "never into stable");
+  assert.match(run({ base: "frank/base-relay-12", cmd: "gh pr merge 3" }), /harness \(merge\).*goes into frank\/base-relay-12/, "never into another person's branch");
+  assert.match(run({ base: null, cmd: "gh pr merge 3" }), /harness \(merge\).*did not say/, "GitHub not answering: refused");
+  assert.match(run({ cmd: "gh api -X PUT repos/o/r/pulls/3/merge" }), /harness \(merge\)/, "the API's merge stays refused");
+  for (const c of ["gh pr merge 3 --admin=true", "gh pr merge 3 --admin=false", "gh pr merge 3 --merge --admin"])
+    assert.match(run({ base: "main", cmd: c }), /harness \(merge\)/, `${c}: --admin in any spelling`);
+  for (const c of ["gh pr merge 3 -md", "gh pr merge 3 --unknown-flag", "gh pr merge 3 -x"])
+    assert.match(run({ base: "main", cmd: c }), /harness \(merge\).*could not read/, `${c}: what it cannot read is refused`);
+  assert.match(run({ base: "main", cmd: "gh pr edit 3 --base stable && gh pr merge 3 --merge" }), /harness \(merge\).*alone on its own line/, "an edit of the base on the same line");
+  assert.match(run({ base: "main", cmd: "GH_REPO=sol-mif/sol-beta gh pr merge 3" }), /harness \(merge\).*alone on its own line/, "another repo by the environment");
+  for (const c of ["cd /tmp && gh pr merge 3", "export GH_REPO=sol-mif/sol-beta; gh pr merge 3", "env GH_HOST=x gh pr merge 3", "bash -c 'gh pr merge 3'", "gh repo set-default sol-mif/sol-beta && gh pr merge 3"])
+    assert.match(run({ base: "main", cmd: c }), /harness \(merge\)/, `${c}: never beside another command`);
+  assert.match(run({ base: "main", repo: "sol-mif/sol-beta", cmd: "gh pr merge 3 -R sol-mif/sol-beta" }), /harness \(merge\).*sol-mif\/sol-beta, not this checkout's sol-mif\/sol-dev/, "never another repository, the beta one least");
+  assert.match(run({ base: "main", repo: "sol-mif/sol-beta", cmd: "gh pr merge https://github.com/sol-mif/sol-beta/pull/3" }), /harness \(merge\).*sol-mif\/sol-beta/, "nor by its URL");
+  for (const c of ["gh -Rsol-mif/sol-dev pr merge 9 --admin", "gh -R=sol-mif/sol-dev pr merge 9 --admin", "gh --repo sol-mif/sol-dev pr merge 9 --admin"])
+    assert.match(run({ base: "main", cmd: c }), /harness \(merge\)/, `${c}: gh's own -R before pr, in any spelling`);
+  for (const c of ["echo 9 | xargs gh pr merge", "gh pr checkout 9 && gh pr merge --merge", "git checkout frank/x && gh pr merge"])
+    assert.match(run({ base: "main", cmd: c }), /harness \(merge\)/, `${c}: the PR it would merge is not the one asked about`);
+  for (const c of ["gh pr merge 3 -R sol-mif/sol-dev -R sol-mif/sol-beta", "gh pr merge 3 --repo=a/b -Rsol-mif/sol-dev", "gh pr merge 3 -t a --subject b"])
+    assert.match(run({ base: "main", cmd: c }), /harness \(merge\).*could not read/, `${c}: a valued option twice`);
+  for (const c of ["gh pr merge 3 -Rsol-mif/sol-dev --merge", "gh pr merge --repo=sol-mif/sol-dev 3 -m -d", "gh pr merge https://github.com/sol-mif/sol-dev/pull/3 --squash --subject=x"])
+    assert.equal(run({ base: "main", cmd: c }), "", `${c}: attached and = forms read as gh reads them`);
 });

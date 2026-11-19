@@ -1,0 +1,63 @@
+/* The rail (#682): the window's top line (Top.tsx). Laid out by rule (the layout skill): every space, size, height and
+   corner from the scale. One type step: every word on the rail is the body's size, the title in ink, the rest dim.
+   Every button flat: no fill and no rim at rest; the lift (--rail-lift, the kit's on colour at shade.on.flat, set by
+   Top.tsx) only under the pointer or while lit, and lit is that lift with the words in ink, never a colour. */
+.hc-bar { gap: var(--s1); color: var(--dim); font-size: var(--t-body); line-height: var(--t-body-line); }
+
+/* a rail button: a chip-high key, a glyph and/or a word, centred on the rail's line */
+.hc-bar .hc-rk { flex: none; display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-chip); background: none; color: var(--dim); font: inherit; cursor: pointer; }
+.hc-bar .hc-rk:hover, .hc-bar .hc-rk.on { background: var(--rail-lift); color: var(--ink); }
+.hc-bar .hc-rk:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 1px; }
+@supports (corner-shape: squircle) { .hc-bar .hc-rk { corner-shape: squircle; } }
+
+/* R1 the side key: two panes, the left one filled while the side is open (its state is the glyph, not a lift) */
+.hc-sidekey { gap: calc(var(--s1) / 2); padding: 0 var(--s1); }
+.hc-sidekey i { width: 5px; height: var(--s3); border: 1.2px solid currentColor; border-radius: calc(var(--s1) / 2); box-sizing: border-box; }
+.hc-sidekey.open i:first-child { background: currentColor; }
+
+/* R2 where: the title, then its folder · branch, dim; the title gives way first to an ellipsis, never a cut */
+.hc-where-at { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s2); padding-left: var(--s1); }
+.hc-title { flex: 0 1 auto; min-width: 0; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-where { flex: 0 1 auto; min-width: 0; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* R3 the mode's buttons; R4 the waiting marks: each a row of keys */
+.hc-tools, .hc-waiting { flex: none; display: flex; align-items: center; gap: var(--s1); }
+.hc-glyph { display: inline-flex; width: var(--s4); height: var(--s4); align-items: center; justify-content: center; }
+.hc-glyph:empty { display: none; }
+.hc-tmark { padding: 0 var(--s1); }
+
+/* a tool opened from R3, in the pane: its own pane fills the place, with no edge or grip of its own (the pane frame
+   has them), and no fill of its own (the pane is already the page's shade) */
+.hc-tool-pane > * { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.hc-tool-pane .pane { flex: 1; min-height: 0; width: auto !important; border-left: 0; background: none; }
+.hc-tool-pane .pane > .grip { display: none; }
+
+/* R5 the engine: always last. Healthy, a small mark in the on colour (mute), no word; not well, the fixed channel's
+   red and a word in ink; starting, its word, no colour. Its card floats under it, over the places below */
+.face.hc > .hc-bar { z-index: 3; }
+.hc-engine { position: relative; flex: none; display: flex; }
+.hc-engdot { display: block; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--mute); }
+.hc-bar .hc-eng { padding: 0 var(--s2); }
+.hc-bar .hc-eng:hover .hc-engdot, .hc-bar .hc-eng.on .hc-engdot { background: var(--dim); }
+.hc-bar .hc-eng.st-down, .hc-bar .hc-eng.st-hurt { color: var(--ink); }
+.hc-bar .hc-eng.st-down .hc-engdot, .hc-bar .hc-eng.st-hurt .hc-engdot { background: var(--error, var(--red-strong)); }
+.hc-engcard { position: absolute; top: calc(100% + var(--s1)); right: 0; z-index: 60; }
+.hc-engcard dl { margin: 0; padding: var(--s3) var(--s4); display: flex; flex-direction: column; gap: var(--s1); }
+.hc-engcard dl > div { display: grid; grid-template-columns: var(--s12) minmax(0, 1fr); gap: var(--s3); align-items: baseline; }
+.hc-engcard dt { color: var(--dim); }
+.hc-engcard dd { margin: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.hc-engcard .st-down dd, .hc-engcard .st-hurt dd { color: var(--error, var(--red-strong)); }
+
+/* the places on the rail's right read as groups: one step more between them than within one */
+.hc-tools + .hc-waiting, .hc-tools + .hc-engine, .hc-waiting + .hc-engine { margin-left: var(--s2); }
+
+/* the widths (#682): things fold away in their order and nothing moves place. Squished: R2's folder · branch goes
+   first, and R3's words go where a button has a glyph (a button that is only a word keeps it). Narrow: R3 is one key
+   (Top.tsx ToolKey); R4 shows because the side has folded to R1. R1 and R5 never go */
+.hc-bar.w-squished .hc-title + .hc-where, .hc-bar.w-narrow .hc-title + .hc-where { display: none; }   /* a new session keeps its folder: it is its only where */
+.hc-bar.w-squished .hc-tool.glyphed .hc-word { display: none; }
+.hc-bar.w-squished .hc-tool.glyphed { padding: 0 var(--s1); }
+/* a card that floats under its key on the rail (the engine's, the folded buttons'), over the places below */
+.hc-toolfold { position: relative; }
+.hc-pop { position: absolute; top: calc(100% + var(--s1)); right: 0; z-index: 60; }
+.hc-poplist { padding: var(--s2); }

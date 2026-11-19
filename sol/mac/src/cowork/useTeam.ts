@@ -11,11 +11,13 @@ import type { WorkSession } from "../work/useWork";
 import type { SolVersion } from "./version";
 import { fakePages } from "./pages/devPages";
 import { fakeTables } from "./tables/devTables";   // tables (#434): kept in this tab only
+import type { AskCard, Given } from "./asks";
 
 export type Presence = "here" | "elsewhere" | "away" | "working" | "yourcall";
 export type Member = { who: string; agent: boolean; machine: string; state: Presence; session?: { title: string; repo?: string }; since: number;
   thing?: { id: string; name: string; source: "face" | "agent"; at: number }; sessions?: { id: string; title: string; thing?: string }[];   // what they are in, in this room (round 44)
   quiet?: true;   // they turned "show my room sessions" off in this room (#238): their sessions do not show here
+  never?: true;   // their past group sessions are never given (#335): their page offers no "ask for it"
   version?: SolVersion };   // what their Sol runs (#417): a release plus their own layer; none: an older Sol, "unknown"
 export type Column = "waiting" | "branch" | "pr" | "main" | "stable" | "closed";
 export type Sign = { login: string; agent: boolean };
@@ -88,6 +90,8 @@ export function useTeam() {
   const [pings, setPings] = useState<Pinged[]>(DEV_TEAM ? FAKE.pings : []);
   const [showing, setShowing] = useState<Showing[]>(DEV_TEAM ? FAKE.showing : []);   // Show (#101): who shows what now
   const [waiting, setWaiting] = useState<Waiting[]>(DEV_TEAM ? FAKE.waiting : []);   // who waits for my press to come in
+  const [askCards, setAskCards] = useState<AskCard[]>(DEV_TEAM ? FAKE.asks : []);   // #335: a teammate's ask for a session of mine, waiting on my press
+  const [given, setGiven] = useState<Given[]>([]);   // #335: what came of an ask of mine, one card each until closed
   const shownSubs = useRef(new Set<(m: ShownMsg) => void>());
   // the hub's word (#223): its light, my place in its queue, "please update"; and every word as it comes (retry, watch)
   const [hub, setHub] = useState<HubNow>({ light: "green", old: false, ...(DEV_TEAM ? { join: true } : {}) });   // ?dev=team: the cloud's page, so S2's link shows
@@ -108,7 +112,7 @@ export function useTeam() {
     const L = link(ENGINE);
     const offM = L.on((m) => {
       if (typeof m?.type !== "string" || !m.type.startsWith("team.")) return;
-      if (m.type === "team.state") setState({ me: m.me, settings: m.settings, roster: m.roster ?? [], members: Array.isArray(m.members) ? m.members : [], relay: m.relay ?? { url: "", up: false }, ...(typeof m.hub === "string" ? { hub: m.hub } : {}), ...(m.cloud && typeof m.cloud.login === "string" ? { cloud: m.cloud } : {}), ...(m.version && typeof m.version.commit === "string" ? { version: m.version } : {}) });
+      if (m.type === "team.state") setState({ me: m.me, settings: m.settings, roster: m.roster ?? [], members: Array.isArray(m.members) ? m.members : [], ...(Array.isArray(m.agents) ? { agents: m.agents } : {}), relay: m.relay ?? { url: "", up: false }, ...(typeof m.hub === "string" ? { hub: m.hub } : {}), ...(m.cloud && typeof m.cloud.login === "string" ? { cloud: m.cloud } : {}), ...(m.version && typeof m.version.commit === "string" ? { version: m.version } : {}) });
       else if (m.type === "team.board" && Array.isArray(m.cards)) setBoard(m as Board);
       else if (m.type === "team.pinged") {
         const p: Pinged = { id: String(m.id ?? crypto.randomUUID()), kind: m.kind ?? "chat", from: m.from, line: m.line, at: m.at, ...(m.issue ? { issue: m.issue } : {}), ...(m.repo ? { repo: m.repo } : {}), ...(m.spooled ? { spooled: true } : {}), ...(m.count ? { count: Number(m.count) } : {}) };
@@ -121,6 +125,12 @@ export function useTeam() {
         for (const f of shownSubs.current) f(x);
       } else if (m.type === "team.shown.get" && Array.isArray(m.shows) && !m.rid) setShowing(m.shows);
       else if (m.type === "team.letin" && Array.isArray(m.asks)) setWaiting(m.asks);
+      else if (m.type === "team.asks" && Array.isArray(m.asks)) setAskCards(m.asks);
+      else if (m.type === "team.session.given" || m.type === "team.session.gave") {
+        const g: Given = { key: `${m.login}/${m.id}`, login: String(m.login ?? ""), id: String(m.id ?? ""), ...(m.title ? { title: String(m.title) } : {}), ...(typeof m.of === "number" ? { of: m.of } : {}),
+          ...(typeof m.lines === "number" ? { lines: m.lines } : {}), ...(m.done ? { done: true } : {}), ...(m.partial ? { partial: true } : {}), ...(m.error ? { error: String(m.error) } : {}) };
+        setGiven((l) => [...l.filter((x) => x.key !== g.key), g].slice(-4));
+      }
       else if (m.type === "team.hub") {
         const w = m as HubWord;
         // join (#327): the hub said in its hello that it serves the join page; a hello from one that does not takes it away
@@ -134,7 +144,7 @@ export function useTeam() {
       if (m.rid && asks.current.has(m.rid)) { const f = asks.current.get(m.rid)!; asks.current.delete(m.rid); f(m); }
     });
     // a Cowork face says hello on every link up, and asks for the board
-    const offL = L.onLink((u) => { setUp(u); if (u) { L.send({ type: "team.hello" }); L.send({ type: "team.board" }); L.send({ type: "team.shown.get" }); L.send({ type: "team.letin.get" }); } });
+    const offL = L.onLink((u) => { setUp(u); if (u) { L.send({ type: "team.hello" }); L.send({ type: "team.board" }); L.send({ type: "team.shown.get" }); L.send({ type: "team.letin.get" }); L.send({ type: "team.asks.get" }); } });
     return () => { offM(); offL(); };
   }, []);
   // one question, answered by rid; a silent engine answers { error } after the wait
@@ -156,7 +166,13 @@ export function useTeam() {
     // the card as I saw it (#325): the engine refuses a press on an ask that changed under it
     return ask<{ said?: string[]; error?: string }>("team.letin.answer", { room: a.room, login: a.login, github: a.github ?? "", repos: a.repos, yes }, 60_000);
   }, [ask]);
-  return { state, board, up, ask, refresh, pings, closePing, me: state?.me.login ?? "", showing, onShown, waiting, letIn, hub, onHub };
+  // my press on a teammate's ask (#335): give sends the session's lines, not now says so; the card goes either way
+  const answerAsk = useCallback(async (a: AskCard, yes: boolean) => {
+    setAskCards((l) => l.filter((x) => x.key !== a.key));
+    return ask<{ ok?: boolean; lines?: number; error?: string }>("team.session.give", { ask: a.key, yes }, 60_000);
+  }, [ask]);
+  const closeGiven = useCallback((key: string) => setGiven((l) => l.filter((g) => g.key !== key)), []);
+  return { state, board, up, ask, refresh, pings, closePing, me: state?.me.login ?? "", showing, onShown, waiting, letIn, hub, onHub, asks: askCards, answerAsk, given, closeGiven };
 }
 export type Team = ReturnType<typeof useTeam>;
 /** the hub's word to this Sol (#223, PROTOCOL round 41): the light, a queue, a retry, a watch refused, "please update" */
@@ -201,6 +217,7 @@ const FAKE = {
   showing: [{ login: "frank", issue: 34, repo: R, session: { id: "dev-frank-34", title: "#34 hand a session" } },
     { login: "frank", issue: 0, repo: "", session: { id: "dev-frank-room", title: "the goal page" }, scope: "room", thing: "d1b2c3d4" }] as Showing[],
   waiting: [{ room: "book-club", name: "Book Club", login: "isaac", repos: ["marco/book-club"], at: Date.now() - 60_000 }] as Waiting[],
+  asks: [{ key: "frank/dev-marco-room", from: { login: "frank", agent: true }, session: "dev-marco-room", title: "the sign-in page", at: Date.now() - 5 * 60_000 }] as AskCard[],
   board: {
     repos: [R], stable: { [R]: "7def65e" }, main: { [R]: "7a53b17" }, at: Date.now(), folders: { [R]: "~/computer/personal/projects/ecosystem" },
     leads: { [R]: { life: ["marco"], work: ["frank"], cowork: ["frank", "marco"], social: ["isaac"], base: ["frank"], product: ["isaac", "marco"] } },
@@ -261,6 +278,8 @@ export function fakeAnswer(type: string, body: any): any {
   if (type === "team.drive") return { connected: false, email: "", whole: false };   // #152: the shape only
   if (type === "team.drive.connect") return { ok: false, error: "the dev view connects nothing" };
   if (type === "team.letin.answer") return { said: [body.yes ? "invited" : "no"] };   // the shape only: nobody is added
+  if (type === "team.session.ask") return { ok: true, said: "asked; the lines come when they give it" };   // #335: the shape only
+  if (type === "team.session.give") return body.yes ? { ok: true, lines: 0 } : { ok: true };
   if (type === "team.leads.who") return { people: ["frank", "isaac", "marco"] };
   if (type === "team.leads.set") {   // the dev view keeps nothing: the change waits, as a proposal would
     const was = FAKE.board.leads![R][body.label] ?? [];

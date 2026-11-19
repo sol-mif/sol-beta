@@ -26,6 +26,13 @@
 // asks again on every connect and every ten minutes while it is up, so a kept one would only pile up for every person
 // of the room. A cloud group's ask (#325, round 57) is a person's press, said once, to the maker only (`to`) with the
 // asker's GitHub login (`github`): it is kept for the maker like a ping. Each is rebuilt by roomOf (hub-types.ts).
+// Ask for a session (#335, round 113): `ask` and `give` are directed like a ping, to one member of the room and never
+// the sender; each is rebuilt by its sanitizer (hub-types.ts askOf, giveOf). An ask is kept in the spool a day; a give
+// is never kept, so a past session's lines are never on the hub past the moment they pass.
+// A signal (#1377, the plan on #229): a wake with no content, who → whom, a kind and a link (hub-types.ts signalOf), to
+// one member of the room and never the sender, kept in the spool the 7 days a ping is. A person sends at most
+// SIGNALS_A_DAY a UTC day and SIGNALS_TO_ONE to any one person; past them it is not carried (counted in memory: a hub
+// that restarts starts the day's counts again, which only ever lets more through, never loses a signal).
 // The hub on its own (#206, S1 of #168): this file is the hub and its gate, and loads nothing of the engine (no team
 // settings, pings, record, identity or members) and starts nothing at load, so it can run on a box with no engine.
 // What it needs of GitHub is handed in: `verify` (who a token is) and `reads` (the proof gist and the org check); with
@@ -47,7 +54,7 @@ import type { Duplex } from "node:stream";
 import { timingSafeEqual, createHash } from "node:crypto";
 import { isIP } from "node:net";
 import { WebSocketServer, WebSocket } from "ws";
-import { CODE, LOGIN, KINDS, SPOOLED, GONE, SLOWED, FULL, TOO_OLD, TOO_FAST, KICKED, PROTOCOL, HUB, TALK_HISTORY, isObj, presenceOf, thingOf, sessionsOf, showOf, talkOf, talkSinceOf, githubOf, solVersionOf, roomOf, eventOf, pollsOf, type Kind, type RelayMsg, type RosterEntry, type EventWire } from "./hub-types.js";
+import { CODE, LOGIN, KINDS, SPOOLED, GONE, SLOWED, FULL, TOO_OLD, TOO_FAST, KICKED, PROTOCOL, HUB, TALK_HISTORY, isObj, presenceOf, thingOf, sessionsOf, showOf, askOf, giveOf, signalOf, SIGNALS_A_DAY, SIGNALS_TO_ONE, talkOf, talkSinceOf, githubOf, solVersionOf, roomOf, eventOf, pollsOf, type Kind, type RelayMsg, type RosterEntry, type EventWire } from "./hub-types.js";
 import { Bucket, rank, type Light, type Queue } from "./load.js";
 import type { Spool } from "./spool.js";
 import type { RoomRegistry, Guesses } from "./registry.js";
@@ -474,7 +481,7 @@ export class RelayHub {
       if (room) this.opts.registry?.saw(room, who, Date.now());   // a code the registry does not know: nothing written
       // C1, A5: what this hub is, to a Sol that reads it: its version, the largest message, the light
       // rooms (#238): a room show's lines go to its watchers only here; join (#327): a group's link opens a page here
-      if (v >= 2) this.say(c, "hello", { v: PROTOCOL, msgMax: this.msgMax, light: this.light(), watch: this.watchOnly, rooms: true, ...(this.opts.joinPage ? { join: true } : {}) });
+      if (v >= 2) this.say(c, "hello", { v: PROTOCOL, msgMax: this.msgMax, light: this.light(), watch: this.watchOnly, rooms: true, signal: true, ...(this.opts.joinPage ? { join: true } : {}) });
       // A6: the room's shows going on now, so a Sol that came late can watch them (their lines come only to watchers)
       // a room session's (#238) on every hub, so a Sol that came late knows it is going on
       for (const s of this.streams.get(room)?.values() ?? []) if (s.start && (this.watchOnly || s.room)) this.put(c, s.start);
@@ -528,10 +535,11 @@ export class RelayHub {
       me.state = state; me.session = session;
       // a presence says the whole of what I am in (#230): a thing or sessions it leaves out are over
       const inside = this.inside(m);
-      me.thing = inside.thing; me.sessions = inside.sessions; me.quiet = inside.quiet; me.github = inside.github;
+      me.thing = inside.thing; me.sessions = inside.sessions; me.quiet = inside.quiet; me.github = inside.github; me.never = inside.never;
       if (!me.thing) delete me.thing;
       if (!me.sessions) delete me.sessions;
       if (!me.quiet) delete me.quiet;
+      if (!me.never) delete me.never;
       if (me.github === undefined) delete me.github;
       const version = solVersionOf(m.version);   // #417: a newer one replaces it (after an update); a presence without one keeps the hello's
       if (version) me.version = version;
@@ -541,6 +549,21 @@ export class RelayHub {
       return;
     }
     const { room: _r, ...rest } = m;   // what a sender says of the room is not the hub's word: its hello's room is
+    // an ask or a give (#335): rebuilt by its own fields, for one member of this room who is not the sender, or dropped
+    if (m.kind === "ask" || m.kind === "give") {
+      const d = m.kind === "ask" ? askOf(m) : giveOf(m);
+      if (!d || d.to.toLowerCase() === me.who.toLowerCase() || !this.member(me.room, d.to)) return;
+      this.direct(c, me, { ...d, ...(id ? { id } : {}), kind: m.kind, from: { login: me.who, agent: from.agent === true }, at: Date.now() }, id);
+      return;
+    }
+    // a signal (#1377): rebuilt by its own fields, for one member of this room who is not the sender, under the day's caps
+    if (m.kind === "signal") {
+      const d = signalOf(m);
+      if (!d || d.to.toLowerCase() === me.who.toLowerCase() || !this.member(me.room, d.to)) return;
+      if (!this.signalled(me.who, d.to)) { this.noteLimited(me.who); if (me.v >= 2 && id) this.say(c, "ok", { id }); return; }   // ok: a capped one is not tried again
+      this.direct(c, me, { ...d, ...(id ? { id } : {}), kind: "signal", from: { login: me.who, agent: from.agent === true }, at: Date.now() }, id);
+      return;
+    }
     // a show is rebuilt by its own fields only (#238): a session's words go out as the sanitizer says them, nothing beside
     let shown = m.kind === "show" ? showOf(m) : null;
     if (m.kind === "show" && !shown) return;
@@ -578,6 +601,40 @@ export class RelayHub {
     if (out.kind === "talk" && me.room && this.opts.talk) {
       try { this.opts.talk.keep(me.room, out); } catch (e) { this.errors++; console.log(`relay: a talk line was not kept (${String((e as Error)?.message ?? e).slice(0, 120)})`); }
     }
+  }
+
+  /** an ask or a give (#335) to its one person in this room, every Sol of theirs there; an ask is kept for them when
+   *  none is on (a day, the spool says), a give never: its lines are live, and lost when nobody of theirs is on */
+  private direct(c: Conn, me: Seat, out: RelayMsg & { to: string }, id: string) {
+    const line = JSON.stringify(out), bytes = Buffer.byteLength(line), to = out.to.toLowerCase();
+    for (const o of this.rooms.get(me.room) ?? []) {
+      const e = this.conns.get(o);
+      if (o !== c && e && e.who.toLowerCase() === to) this.put(o, line, bytes);
+    }
+    if (out.kind === "ask" || out.kind === "signal") { this.keep({ ...out, room: me.room }); if (me.v >= 2 && id) this.say(c, "ok", { id }); }
+  }
+
+  /** a signal's day (#1377): per sender, today's count and the count to each person; the day's first signal starts them */
+  private signals = new Map<string, { total: number; to: Map<string, number> }>();
+  private signalDay = "";
+  /** counts one signal from `who` to `to` when it is under the caps: false when it is past either */
+  private signalled(who: string, to: string): boolean {
+    const day = new Date().toISOString().slice(0, 10), w = who.toLowerCase(), t = to.toLowerCase();
+    if (day !== this.signalDay) { this.signals.clear(); this.signalDay = day; }   // a new day: everyone's counts go together
+    let s = this.signals.get(w);
+    if (!s) { s = { total: 0, to: new Map() }; this.signals.set(w, s); }
+    if (s.total >= SIGNALS_A_DAY || (s.to.get(t) ?? 0) >= SIGNALS_TO_ONE) return false;
+    s.total += 1; s.to.set(t, (s.to.get(t) ?? 0) + 1);
+    return true;
+  }
+
+  /** is this login one of the room's people (#335): on in it now, or, in a coded room, one the registry has seen there;
+   *  in the common space, one the hub has heard say hello or the team names */
+  private member(room: string, who: string): boolean {
+    const low = who.toLowerCase();
+    if (this.seats(room).some((e) => e.who.toLowerCase() === low)) return true;
+    const people = room ? this.opts.registry?.lookup(room)?.people ?? [] : [...(this.opts.spool?.seen() ?? []), ...(this.opts.people?.() ?? [])];
+    return people.some((p) => p.toLowerCase() === low);
   }
 
   /** a show (A6): its start and end to the whole room, as before, so everyone knows who is showing; its lines only to
@@ -736,11 +793,12 @@ export class RelayHub {
     const sp = this.opts.spool;
     if (!sp) return;
     if (m.kind === "room" && !(typeof m.to === "string" && m.to)) return;
+    if (m.kind === "give") return;   // #335: a give's lines are live only, never kept
     const on = new Set(this.seats(m.room).map((e) => e.who.toLowerCase()));
     const sender = m.from.login.toLowerCase();
     const people = m.room ? this.opts.registry?.lookup(m.room)?.people ?? [] : [];
     // a ping in a coded room is kept only for one of that room's people: the spool is never a way to reach anyone else
-    const to = (m.kind === "ping" || m.kind === "room") && typeof m.to === "string" && m.to
+    const to = (m.kind === "ping" || m.kind === "room" || m.kind === "ask" || m.kind === "signal") && typeof m.to === "string" && m.to
       ? (!m.room || people.some((p) => p.toLowerCase() === String(m.to).toLowerCase()) ? [m.to] : [])
       : m.room ? people
       : [...new Set([...sp.seen(), ...(this.opts.people?.() ?? [])])];
@@ -809,10 +867,11 @@ export class RelayHub {
 
   /** a hello's or a presence's thing and room sessions (#230), sanitized; the keys only when there is something. The
    *  GitHub flag (#320) as a boolean only (githubOf) */
-  private inside(m: Record<string, unknown>): Pick<RosterEntry, "thing" | "sessions" | "quiet" | "github"> {
+  private inside(m: Record<string, unknown>): Pick<RosterEntry, "thing" | "sessions" | "quiet" | "never" | "github"> {
     const thing = thingOf(m.thing), sessions = sessionsOf(m.sessions), github = githubOf(m.github);
-    // quiet (#238): the room sees that I turned showing off, and no room session of mine by name
-    return { ...(thing ? { thing } : {}), ...(sessions && m.quiet !== true ? { sessions } : {}), ...(m.quiet === true ? { quiet: true as const } : {}), ...(github !== undefined ? { github } : {}) };
+    // quiet (#238): the room sees that I turned showing off, and no room session of mine by name. never (#335): my past
+    // group sessions are never given, so nobody's face offers to ask for one
+    return { ...(thing ? { thing } : {}), ...(sessions && m.quiet !== true ? { sessions } : {}), ...(m.quiet === true ? { quiet: true as const } : {}), ...(m.never === true ? { never: true as const } : {}), ...(github !== undefined ? { github } : {}) };
   }
 
   // a presence's roster goes at once, then at most one a second a room (#230's review): every presence sends the whole

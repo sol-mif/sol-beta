@@ -3,11 +3,16 @@
 // arrive: wash (the pick) through the glass, rim round its edge, shimmer crossing it; the others are alternates
 // (tokens.json, palette.looks.button). `state` sets it for a picture; left out, the pointer sets it. `w` left out, it
 // fits its word (#647: "done", "compact now"); `label` names a button whose inside is a mark.
+// `flat` (#647 round 5's pins, Marco 2026-11-07: "a gray button with a black background, why can't it just look more
+// modern"): at rest it follows the one rest pick every pill does (Pill.tsx, REST: words, black or tint, Marco's call
+// pending); under the pointer, pressed, or its card open (`up`) it lifts (shade.on.flat). A flat button that `acts`
+// (compact, send, done) wears the jelly's wash on hover and its fill on press instead of the lift: never grey.
 import { useState, type ReactNode } from "react";
 import { curve } from "./curve";
 import { Glass } from "./Glass";
 import { black, hex, ink, jellyBands, on, onColour, textW, useUid } from "./paint";
 import { CURVE, JELLY, LOOKS, TYPE } from "./tokens";
+import { restFill, restTint } from "./Pill";
 
 export type ButtonState = "rest" | "hover" | "press";
 export type ButtonForm = keyof typeof LOOKS.button.forms;
@@ -50,23 +55,30 @@ function Rim({ w, h, r, state, look }: { w: number; h: number; r: number; state:
   );
 }
 
-export function Button({ w: width, h, form = "holds", look = LOOKS.button.pick, state, label, onClick, children }: {
-  w?: number; h: number; form?: ButtonForm; look?: ButtonLook; state?: ButtonState; label?: string; onClick?: () => void; children: ReactNode;
+export function Button({ w: width, h, form = "holds", look = LOOKS.button.pick, state, label, flat, acts, up = false, onClick, children }: {
+  w?: number; h: number; form?: ButtonForm; look?: ButtonLook; state?: ButtonState; label?: string; flat?: boolean; acts?: boolean; up?: boolean; onClick?: () => void; children: ReactNode;
 }) {
+  // flat (Marco 2026-11-07, the chat bar's row): the glass with no rim and no edge, its word at the pill's size, as the row's pills
+  const size = flat ? TYPE.pill[0] : TYPE.body[0];
   const [felt, setFelt] = useState<ButtonState>("rest"), s = state ?? felt, r = Math.min(CURVE.radius.row, h / 2);
-  const w = width ?? (typeof children === "string" ? textW(children, TYPE.body[0], 500) + h : h);
+  const w = width ?? (typeof children === "string" ? textW(children, size, 500) + h : h);
   const sq = s === "press" ? LOOKS.button.forms[form] : [1, 1];
-  const lit = s === "press" && (look === "wash" || look === "shimmer");
+  const lit = s === "press" && (look === "wash" || look === "shimmer") && (!flat || acts);
+  // flat: the rest pick under its word; a button that acts takes the jelly's colours when touched, the rest only lift
+  const lift = up || (s !== "rest" && !acts);
+  const glass = flat
+    ? { surface: "glass" as const, fill: restFill(lift), edge: 0, over: <>{restTint(lift)}{acts && <Colour w={w} h={h} state={s} look={look} />}</> }
+    : { surface: "raised" as const, over: <Colour w={w} h={h} state={s} look={look} /> };
   const feel = state ? {} : {
     onPointerEnter: () => setFelt("hover"), onPointerLeave: () => setFelt("rest"),
     onPointerDown: () => setFelt("press"), onPointerUp: () => setFelt("hover"),
   };
   return (
     <div role="button" tabIndex={0} aria-label={label} onClick={onClick} onKeyDown={(ev) => { if (onClick && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); onClick(); } }} {...feel} style={{ position: "relative", transform: `scale(${sq[0]}, ${sq[1]})`, transformOrigin: "50% 60%", cursor: "default" }}>
-      <Glass w={w} h={h} r={r} step="raised" surface="raised" over={<Colour w={w} h={h} state={s} look={look} />}>
-        <div style={{ height: "100%", display: "grid", placeItems: "center", fontWeight: 500, fontSize: TYPE.body[0], whiteSpace: "nowrap", ...(lit ? onColour : { color: ink }) }}>{children}</div>
+      <Glass w={w} h={h} r={r} step="raised" {...glass}>
+        <div style={{ height: "100%", display: "grid", placeItems: "center", fontWeight: 500, fontSize: size, lineHeight: `${(flat ? TYPE.pill : TYPE.body)[1]}px`, whiteSpace: "nowrap", ...(lit ? onColour : { color: ink }) }}>{children}</div>
       </Glass>
-      <Rim w={w} h={h} r={r} state={s} look={look} />
+      {!flat && <Rim w={w} h={h} r={r} state={s} look={look} />}
     </div>
   );
 }

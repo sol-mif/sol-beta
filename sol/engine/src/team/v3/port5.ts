@@ -9,10 +9,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { STATE_DIR } from "../../work/state.js";
 import { undoneIn } from "./record.js";
+import { counts, dateAfter, inOrder, seatAfter, seatOf, seatWrite } from "./standing.js";
 
 export type By = { person: string; machine?: string; agent?: string };
 /** one event, as this slice reads it (slice 0's TrailEvent carries these and more) */
-export type Ev = { id: string; seq: number; at: number; project: string; by: By; kind: string; item?: string; field?: string; value?: unknown };
+export type Ev = { id: string; seq: number; at: number; project: string; by: By; kind: string; item?: string; field?: string; value?: unknown; key?: string; prev?: string };
 export type Draft = { project: string; by: By; kind: string; item?: string; field?: string; value?: unknown; at?: number };
 export interface Port {
   append(d: Draft): Ev;
@@ -83,20 +84,31 @@ const COLL: Record<string, keyof Rec> = { item: "items", loose: "loose", member:
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
 /** a project's record from its events (in the trail's order, the latest write of a field wins; slice 0's fold decides
- *  between two writes made without seeing each other, which this slice never makes) */
+ *  between two writes made without seeing each other, which this slice never makes). A member event counts only when
+ *  its writer could make it then (standing.ts, #1049); a member's object is one whatever the case of its login */
 export function recordOf(evs: Ev[]): Rec {
   const r: Rec = { items: {}, loose: {}, members: {}, places: {}, routing: {}, settings: { team: {}, project: {} }, artifacts: {}, automations: {} };
   const objs = new Map<string, Obj>();
   const undone = undoneIn(evs);   // slice 0's rule: an undone event folds as if it never happened
-  for (const e of [...evs].sort((a, b) => a.at - b.at || a.seq - b.seq)) {
-    if (undone.has(e.id)) continue;
+  const owners = new Set<string>();   // logins in lower case, kept as the fold goes
+  for (const e of inOrder(evs, (x) => Math.trunc(x.at), (x) => x.key ?? x.by.person)) {
+    if (undone.has(e.id) && e.kind !== "member") continue;   // a role is changed by another role event, never taken back into the past
     const c = COLL[e.kind];
     if (!c || !e.item) continue;
-    const k = `${c}\n${e.item}`;
+    const k = `${c}\n${c === "members" ? e.item.toLowerCase() : e.item}`;
     let o = objs.get(k);
+    let write = e.field !== undefined ? { [e.field]: e.value ?? null } : isObj(e.value) ? e.value : {};
+    if (c === "members") {
+      // a member event says the whole seat, role and in (people.ts reads the same shape); one that does not counts nothing
+      const seat = seatWrite(write);
+      const before = o ? seatOf(o.fields) : null, after = seat ? seatAfter(before, seat) : null;
+      if (!seat || (seat.in === undefined && !before) || !counts({ owners, writer: e.by.person, agent: !!e.by.agent, who: e.item, before, after })) continue;
+      if (after === null && !owners.has(e.by.person.toLowerCase())) write = { in: false };   // someone leaving writes only that they left
+      const who = e.item.toLowerCase();
+      if (after === "owner") owners.add(who); else owners.delete(who);
+    }
     if (!o) { o = { id: e.item, by: e.by, at: e.at, fields: {} }; objs.set(k, o); }
-    if (e.field !== undefined) o.fields[e.field] = e.value ?? null;
-    else if (isObj(e.value)) Object.assign(o.fields, e.value);
+    Object.assign(o.fields, write);
   }
   for (const [k, o] of objs) {
     const c = k.split("\n")[0] as keyof Rec;
@@ -120,7 +132,10 @@ export const inProject = (rec: Rec) => Object.values(rec.members).filter((m) => 
 /** a project nobody is a member of yet (today's groups, before the switch imports them): its first writer becomes its
  *  first owner, with one event that says so */
 export function ensureOwner(port: Port, project: string, by: By): Ev | null {
-  const rec = recordOf(port.since(project));
+  const evs = port.since(project), rec = recordOf(evs);
   if (inProject(rec).length) return null;
-  return port.append({ project, by, kind: "member", item: by.person, value: { role: "owner", in: true, letInBy: by.person, first: true } });
+  return port.append({ project, by, kind: "member", item: by.person, value: { role: "owner", in: true, letInBy: by.person, first: true }, ...dateAfter(lastMemberAt(evs)) });
 }
+
+/** the time of the latest member event in a project's events (ms), 0 when none: a role event is written after it */
+export const lastMemberAt = (evs: Ev[]): number => evs.reduce((n, e) => (e.kind === "member" ? Math.max(n, e.at) : n), 0);

@@ -33,12 +33,11 @@
 //                 read, never written: handed with `v: 0`, its kind as the registry names it now and the name on the
 //                 line as `old`. Its id was made the old way and is not checked; the chain starts at the first v1
 //                 event, whose prev is the last v0 line's id.
-//   the mirror    the old place, <home>/log/log.jsonl: carried over once (the move, into its days, finished whole or
-//                 done again at the next start), then every line goes to it too while the two are reconciled
-//                 (logcheck.ts), and it is never read back after the move (it sits in the home, where a seat can
-//                 write). The same line, so no free text: the value files are only at the log's place. Its write
-//                 failing is said, not thrown: the files are the log.
-import { appendFileSync, closeSync, existsSync, fstatSync, fsyncSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
+//   the old file  the old place, <home>/log/log.jsonl: carried over once (the move, into its days, finished whole or
+//                 done again at the next start), and never read or written after the move (it sits in the home,
+//                 where a seat can write). It was a mirror while the two were reconciled (logcheck.ts); they agreed
+//                 line for line on Frank's Sol, so nothing is written there any more (#691). The file is left as it is
+import { appendFileSync, closeSync, existsSync, fstatSync, statSync, fsyncSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { homedir, platform } from "node:os";
@@ -74,7 +73,7 @@ export interface LogPort {
   last(): number;
 }
 
-/** the log's old place, in the home: the mirror now */
+/** the log's old place, in the home: carried over once (openLog), then left as it is */
 export const logFile = (home: string) => join(home, "log", "log.jsonl");
 export function logDir(home: string): string {
   const env = (process.env.SOL_LOGDIR ?? "").trim();
@@ -86,12 +85,25 @@ export function logDir(home: string): string {
 export const KEEP = 5000;
 export const PAGE = 5000;
 /** the answer to the face's `GET /log?since=<seq>` (index.ts; its names are docs/backend-beta/WIRE.md §1): the events
- *  after since, the newest seq, and next when the page was cut there; with the frame off there is no log and no kernel */
-export function logAnswer(k: { since(seq: number): AnyEv[]; lastSeq(): number } | null, query: URLSearchParams): { last: number; events: AnyEv[]; next?: number } | { off: true; last: 0; events: [] } {
+ *  after since, the newest seq, and next when the page was cut there; with the frame off there is no log and no kernel.
+ *  With the narrow look on (`narrow`, settings.ts logKinds, #691 step 3): `kinds=<family>,...` keeps only the events of
+ *  those families and says them back as `kinds`, and `since=-1` answers `last` alone. The page is cut where it always is,
+ *  so `next` is the same with or without kinds, and a page can come back with no events and a `next` */
+export function logAnswer(k: { since(seq: number): AnyEv[]; lastSeq(): number } | null, query: URLSearchParams, narrow = false): { last: number; events: AnyEv[]; next?: number; kinds?: string[] } | { off: true; last: 0; events: [] } {
   if (!k) return { off: true, last: 0, events: [] };
-  const since = Math.max(0, Number(query.get("since")) || 0);
-  const events = k.since(since), last = k.lastSeq();
-  return { last, events, ...(events.length >= PAGE && events[events.length - 1].seq < last ? { next: events[events.length - 1].seq } : {}) };
+  const asked = Number(query.get("since"));
+  if (narrow && asked === -1) return { last: k.lastSeq(), events: [] };
+  const since = Math.max(0, asked || 0);
+  const page = k.since(since), last = k.lastSeq();
+  const next = page.length >= PAGE && page[page.length - 1].seq < last ? { next: page[page.length - 1].seq } : {};
+  const kinds = narrow ? familiesOf(query.get("kinds")) : null;
+  if (!kinds) return { last, events: page, ...next };
+  return { last, events: page.filter((e) => kinds.includes(String(e.kind ?? "").split(".")[0])), ...next, kinds };
+}
+/** the families a `kinds=` names (plugin,undo,key), each a lowercase word; null for none (then every event) */
+function familiesOf(q: string | null): string[] | null {
+  const fs = (q ?? "").split(",").map((x) => x.trim()).filter((x) => /^[a-z]+$/.test(x));
+  return fs.length ? [...new Set(fs)] : null;
 }
 /** the move's two marks in the folder: `.moving` while the old file is being carried over, `moved` once it is */
 const MOVING = ".moving", MOVED = "moved";
@@ -175,8 +187,8 @@ function keepValue(dir: string, hash: string, text: string, sync: boolean): void
   if (sync) { onDisk(dirname(file)); if (first) onDisk(dir); }
 }
 
-/** the log in a folder, a file a day, the newest KEEP events in memory. `mirrorLine` is told each line as it is written */
-export function dayTrail(dir: string, now?: () => number, mirrorLine?: (line: string) => void): LogPort {
+/** the log in a folder, a file a day, the newest KEEP events in memory */
+export function dayTrail(dir: string, now?: () => number): LogPort {
   const clock = now ?? Date.now;
   // the tail: the newest files, back until KEEP events are in hand. Their values are put back when they are first read
   const files = logFiles(dir);
@@ -219,7 +231,6 @@ export function dayTrail(dir: string, now?: () => number, mirrorLine?: (line: st
     newest = day;
     all.push(where === "file" ? filed(e) : e);
     if (all.length > KEEP) for (const gone of all.splice(0, all.length - KEEP)) raw.delete(gone);
-    mirrorLine?.(line);
     return e;
   }
 
@@ -266,42 +277,44 @@ export function dayTrail(dir: string, now?: () => number, mirrorLine?: (line: st
   };
 }
 
-/** the log at its place, with the old file as a mirror: the first time the folder has no log and the old file is
- *  there, the old file's whole lines are carried over into their days (the move, once; seq goes on; a move cut short
- *  is done again whole at the next start); after that every line goes to both, and nothing is read back from the
- *  mirror. A mirror ahead of the log, or step 1's one file overlapping the days, is said and left */
-export function openLog(dir: string, mirror: string | null, now?: () => number): LogPort {
-  if (mirror && resolve(dirname(mirror)) === resolve(dir)) mirror = null;   // the same folder is no mirror
-  if (mirror && existsSync(mirror)) {
+/** the log at its place: the first time the folder has no log and the old file is there, the old file's whole lines
+ *  are carried over into their days (the move, once; seq goes on; a move cut short is done again whole at the next
+ *  start); after that the old file is neither read nor written. An old file ahead of the log (written by a build from
+ *  before the move, or by a seat), or step 1's one file overlapping the days, is said and left */
+export function openLog(dir: string, old: string | null, now?: () => number): LogPort {
+  if (old && resolve(dirname(old)) === resolve(dir)) old = null;   // the old file in the log's own folder is the log
+  if (old && existsSync(old)) {
     const moving = join(dir, MOVING), moved = join(dir, MOVED);
     if (!existsSync(moved) && (!logFiles(dir).length || existsSync(moving))) {
       mkdirSync(dir, { recursive: true, mode: 0o700 });
       writeFileSync(moving, "");
       const byDay = new Map<string, string[]>();
       let day = "";
-      for (const l of readFileSync(mirror, "utf8").split("\n")) {   // each whole line as it stands
+      for (const l of readFileSync(old, "utf8").split("\n")) {   // each whole line as it stands
         const e = parseOne(l);
         if (!e || typeof e.at !== "number") continue;
         day = dayOf(e.at) > day ? dayOf(e.at) : day;
         byDay.set(day, [...(byDay.get(day) ?? []), l.trim()]);
       }
       for (const [d, lines] of byDay) writeFileSync(join(dir, `${d}.jsonl`), lines.join("\n") + "\n", { mode: 0o600 });
-      writeFileSync(moved, new Date(now?.() ?? Date.now()).toISOString() + "\n");
+      writeFileSync(moved, new Date(now?.() ?? Date.now()).toISOString() + "\n" + `old ${statSync(old).size}\n`);
       rmSync(moving, { force: true });
     } else {
-      const files = logFiles(dir), have = files.length ? lastSeqIn(files[files.length - 1]) : 0, theirs = lastSeqIn(mirror);
-      if (theirs > have) console.error(`the log's mirror (${mirror}) is ahead of the log (${dir}): not read; the log stands, logcheck shows the difference`);
+      const files = logFiles(dir), have = files.length ? lastSeqIn(files[files.length - 1]) : 0, theirs = lastSeqIn(old);
+      if (theirs > have) console.error(`the log's old file (${old}) is ahead of the log (${dir}): not read; the log stands`);
+      else if (existsSync(moved)) {
+        // nothing writes the old file now, so its size is kept in `moved` (the first start of a build without the mirror
+        // writes it): a build from before the move, or a seat, that wrote there since is said, even when its seq is behind
+        const size = statSync(old).size, kept = /^old (\d+)$/m.exec(readFileSync(moved, "utf8"));
+        if (!kept) appendFileSync(moved, `old ${size}\n`);
+        else if (Number(kept[1]) !== size) console.error(`the log's old file (${old}) changed since the log stopped writing it: an older build or a seat wrote there; not read, the log stands`);
+      }
     }
   }
   const files = logFiles(dir);
   if (files.length > 1 && files[0].endsWith("log.jsonl") && lastSeqIn(files[0]) >= (ends(files[1]).first?.seq ?? Infinity))
     console.error(`the log's old one file (${files[0]}) runs past the first day's start: an older build wrote there; the days stand`);
-  if (!mirror) return dayTrail(dir, now);
-  const m = mirror;
-  return dayTrail(dir, now, (line) => {
-    try { mkdirSync(dirname(m), { recursive: true, mode: 0o700 }); appendFileSync(m, line, { mode: 0o600 }); }
-    catch (err) { console.error("the log's mirror:", err instanceof Error ? err.message : String(err)); }
-  });
+  return dayTrail(dir, now);
 }
 /** every event in the folder, in order (logcheck, tests) */
 export const readLog = (dir: string): AnyEv[] => logFiles(dir).flatMap((f) => parse(readFileSync(f, "utf8")).map((l) => read(dir, l)));

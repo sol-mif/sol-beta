@@ -15,6 +15,8 @@ sol/home/attachments/
 # Sol: the stage's blocks and each session's stage.json (#695, engine/src/work/blocks.ts)
 sol/home/*/blocks/
 sol/home/*/sessions/
+sol/home/*/pieces-seen.json
+sol/home/*/pieces-trust.json
 
 # Sol: the keeper's copies of the engine build and its try count (engine/launchd/keep)
 sol/engine/dist.good/
@@ -32,6 +34,7 @@ sol/engine/.setup-*
 
 # Sol: settings and conversation names (written by the engine)
 sol/engine/settings.json
+sol/engine/models.json
 sol/engine/titles.json
 sol/engine/doors.json
 sol/engine/sticky.json
@@ -55,6 +58,7 @@ sol/home/memory/*
 sol/home/life/*
 !sol/home/life/.keep
 sol/home/school/
+sol/home/jobs/
 sol/home/desk/
 sol/home/talk/
 sol/home/output/
@@ -95,3 +99,8 @@ sol/home/atlas.html
 sol/home/log/
 sol/home/data/
 sol/design/system/fixtures/atlas.html
+# Home pass 2 shoots: a shot per flow scene, made on the NucBox, never committed (#692)
+sol/design/home/stage/p2/shots/
+sol/design/home/stage/p2/tmp/
+.sol/pieces/yours-*
+sol/home/screens.json

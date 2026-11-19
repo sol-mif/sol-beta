@@ -1,7 +1,10 @@
 import { stageWhole } from "../flag";
+import { heardAtSend } from "../yours/Offer";   // #1089: a send heard by Build's yours (build.yours)
+import { store as stageStore } from "../stage/engineStore";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { composing } from "../ime";
+import { anyWhole } from "../flag";   // #1001
 import type { FileOut, Seat } from "../useEngine";
 import type { useEngine } from "../useEngine";
 import { EngineBack } from "../EngineBack";
@@ -14,9 +17,10 @@ import { AsideCard, PermCard } from "./Cards";
 import { Menu, type MenuItem } from "./Menu";
 import { LeashWheel } from "./LeashWheel";
 import { ModePick, BYPASS_SURE } from "./ModePick";
-import { Hears, useLevel } from "./Listen";
-import { Field, Pill } from "../kit";
+import { useLevel } from "./Listen";
+import { Button, Field, Pill } from "../kit";
 import type { Usage } from "./Context";
+import { tooLarge } from "../socket";
 import { FolderPick, type Place } from "./FolderPick";
 import { Chips } from "./Chips";
 import { VoiceBody } from "../creature/Voice";
@@ -26,11 +30,21 @@ import { HELD } from "./WorkSidebar";
 import { StableLine } from "../cowork/StableLine";   // Ship (#33): a new stable is out, over the composer
 import { FileLine } from "../FileLine";               // File it (#119): the field and the receipt, over the composer
 import { Plus } from "./Plus";
+import { textW, useSize } from "../kit/paint";
+import { TYPE as KT } from "../kit/tokens";
+import { useShown } from "../shown/flag";
+import { ModeMark } from "../shown/marks";   // show, don't say (#1020): the mode as its mark
 import { CallKey } from "../buttons/call";
 import { v3On, v3Make, V3Stage } from "../cowork/v3/hooks";   // Cowork v3 (fr-30): the stage, only with the switch on
 import { BarChips, OnToken } from "../stage/BarChips";                // the stage's bar (#698): the chips and "on ·"
 import { askStage, preview } from "../stage/ask";
+import { useCross } from "../cross/flag";   // #1031: Home's pieces and "say it" sit in the box itself
+import { Pieces } from "../cross/Pieces";
+import { Say } from "../cross/Say";
 import { barState, sent as barSent, setThings, useBar } from "../stage/bar";
+import { BarMoment } from "../notify/InPlace";                  // the one notification (#845): the bar's jelly and line
+import { seenSession } from "../notify/moments";
+import { sayInBox } from "../screens/sayBox";   // #1090: "the plan to the big one" moves it, not sent
 
 // Work's box: the words, and around them what Claude Code's composer has. + opens attach / mention / command; @
 // lists the folder's files as you type, / the session's commands and skills; under the box the model, effort, the
@@ -50,13 +64,13 @@ type Pop = { kind: "at" | "slash"; q: string; start: number; end: number };
 type Hit = { key: string; label: string; dim?: string; put: string };
 
 // the same five as Claude Code's app, in its order and words (Marco, 2026-10-15); 1–5 pick in the menu
-export const MODES: { m: Mode; label: string; note: string; risky?: string }[] = [
-  { m: "auto", label: "Auto", note: "Claude handles permission decisions" },
-  { m: "default", label: "Manual", note: "Always ask before making changes" },
-  { m: "acceptEdits", label: "Accept edits", note: "Automatically accept all file edits" },
-  { m: "plan", label: "Plan", note: "Create a plan before making changes" },
-  { m: "bypassPermissions", label: "Bypass permissions", note: "Accepts all permissions", risky: "everything runs unasked" },
-];
+export const MODES: { m: Mode; label: string; short: string; note: string; risky?: string }[] = [
+  { m: "auto", label: "Auto", short: "Auto", note: "Claude handles permission decisions" },
+  { m: "default", label: "Manual", short: "Manual", note: "Always ask before making changes" },
+  { m: "acceptEdits", label: "Accept edits", short: "Edits", note: "Automatically accept all file edits" },
+  { m: "plan", label: "Plan", short: "Plan", note: "Create a plan before making changes" },
+  { m: "bypassPermissions", label: "Bypass permissions", short: "Bypass", note: "Accepts all permissions", risky: "everything runs unasked" },
+];   // `short`: the word the row shows when it narrows (home.css, the row squishes by shortening)
 const BUILTIN = ["compact", "context", "cost", "init", "review", "security-review"];
 const tilde = (p: string) => p.replace(/^\/Users\/[^/]+/, "~");
 const base = (p: string) => p.replace(/\/+$/, "").split("/").pop() || "~";
@@ -70,7 +84,7 @@ export type Draft = { text: string; atts: Att[] };
 /** #954 (whole.html's .send): the round send arrow at the row's end, always there; lit by the jelly when the box holds
  *  something to send, dim and pressing nothing when it is empty */
 function GoKey({ go, busy, onSend, onStop }: { go: boolean; busy: boolean; onSend: () => void; /** at work with nothing typed: the key stops the turn (as Esc does) */ onStop?: () => void }) {
-  const what = busy ? "queue it: it goes when this turn ends (enter)" : "send (enter)";
+  const what = busy ? "send now: this turn stops first (enter)" : "send (enter)";
   if (!go && onStop) return (
     <button className="wgo stop" onClick={onStop} title="stop this turn (esc)" aria-label="stop">
       <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1" /></svg>
@@ -82,24 +96,33 @@ function GoKey({ go, busy, onSend, onStop }: { go: boolean; busy: boolean; onSen
     </button>
   );
 }
-export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, onSent, onRec, d, setD, cowork, toChat, switchTo, clean, staged }: {
+// what the empty box says, longest first: a box the space made narrow (a chat column of 360) says the one that fits whole,
+// never a sentence cut at its edge
+const ASK = ["tell Claude what to do  ·  @ a file  ·  / a command", "tell Claude what to do  ·  @  ·  /", "tell Claude what to do", "tell Claude"];
+export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, onSent, onRec, d, setD, cowork, toChat, switchTo, clean, staged, hint }: {
   w: Work; e: ReturnType<typeof useEngine>; busy: boolean; working?: boolean; cwd?: string; asideOn: boolean; setAsideOn: (v: boolean) => void;
   box: React.RefObject<HTMLTextAreaElement | null>; onSent: () => void; onRec: (on: boolean) => void;
   d: Draft; setD: React.Dispatch<React.SetStateAction<Draft>>;   // kept by WorkApp: the words outlive a trip to Settings
   cowork?: boolean;   // Cowork's session: file it labels it cowork
   toChat?: (s: Seat, m?: string) => void;   // Home: a session runs on Claude Code; picking Codex in a new one opens a GPT talk (#141, #182)
   switchTo?: (s: Seat, m?: string) => void; // the same pick in a running session: a GPT talk carries it on in its folder (#182)
+  hint?: string;   // the box's words at rest, in place of the session's (Home's pass 1: the bar writes a sticky, #692)
   clean?: boolean;   // the clean Home (#589, Marco 2026-11-02): clicks only (no hold, right-click or keys on the mode), no
                      // codex | claude until it works (#590), the engine dots only in the title bar
   staged?: boolean;  // the stage is the session's main column (#698; a session not started has none): the words split into chips as you type, and
                      // the chips and what you point at go with them (useWork say's `stage`)
 }) {
+  const [boxW] = useSize(box);
   // #954, stage.whole: the box's words as whole.html draws them, one short line (a new session, at work, next)
   const whole = stageWhole() && !cowork;
   // #954 (scene 14): the box of whole.html: the words the whole width, under them one row, the + first and a round send
   // arrow last (lit by the jelly when there is something to send); what you point at is the words' first token
   const wbox = whole && !!clean;
   const draft = d.text, atts = d.atts;
+  const crossOn = useCross();
+  const cross = crossOn && !!clean;
+  // #1045: Build's own box (not the clean Home's, whose bar wrapper is the drop place) takes a piece carried from Home too
+  const crossBox = crossOn && !clean;
   const held = w.live ? w.sessions.find((s) => s.id === w.live)?.held : undefined;
   const [forking, setForking] = useState(false);
   const forkFrom = useRef<string | null>(null);
@@ -113,11 +136,15 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   };
   const forkHere = () => {
     if (!w.live) return;
+    const big = tooLarge(atts);
+    if (big) { w.warn(big, 8000); return; }
     setForking(true);
     forkFrom.current = w.live;
     w.forkHere(w.live, draft, atts);
   };
   const setDraft = (v: string | ((s: string) => string)) => setD((x) => ({ ...x, text: typeof v === "function" ? v(x.text) : v }));
+  // #1090: a said move taken back (⌘Z): its words come back into the box
+  useEffect(() => { const f = (ev: Event) => { const d = (ev as CustomEvent<string>).detail; if (typeof d === "string") setDraft(d); }; window.addEventListener("sol:box-words", f); return () => window.removeEventListener("sol:box-words", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const setAtts = (v: Att[] | ((a: Att[]) => Att[])) => setD((x) => ({ ...x, atts: typeof v === "function" ? v(x.atts) : v }));
   const [boxFocus, setBoxFocus] = useState(false);   // the box knows its focus (the engine asks); on the clean Home the kit Field deepens with it (#647)
   const [pop, setPop] = useState<Pop | null>(null);
@@ -142,7 +169,12 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
     if (!t) return;
     const prev = boxH.v || t.offsetHeight;
     t.style.height = "auto";
+    // #1001 (the run's switches): an empty box is measured without its placeholder, which Chromium counts in scrollHeight
+    // wrapped; the box grew a line after each send in a narrow talk, and stood one line before the first
+    const ph = anyWhole() && !t.value ? t.placeholder : null;
+    if (ph) t.placeholder = "";
     const nat = Math.min(240, Math.max(t.scrollHeight, mirror.current?.scrollHeight ?? 0));
+    if (ph) t.placeholder = ph;
     t.style.overflowY = nat >= 240 ? "auto" : "hidden";
     t.style.height = `${prev}px`;
     if (!boxH.v || reducedMotion()) boxH.set(nat); else boxH.to(nat);
@@ -158,7 +190,13 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   const attachRef = useRef(attach);
   attachRef.current = attach;
 
-  const send = () => {
+  // while a turn runs, enter interrupts: the turn stops and the words go the moment it has (Marco 2026-11-07: every
+  // message auto-queued and could only queue). Option-enter, or the queue button, puts them behind the turn instead.
+  // #1089 (build.yours): a send in Build's box is heard by yours at the send, whether its turn comes back or not
+  // with the folder it opens in: a new session's run is still opening when the engine hears it (#1131)
+  const yoursHear = (text: string) => { const sid = w.saidIn?.(); if (!cowork && sid) heardAtSend(sid, text, cwd); };
+  const send = (how: "auto" | "queue" = "auto") => {
+    seenSession(w.live);   // words sent in the session in front: its moment is answered (#845)
     // an aside (cmd+; or /btw): asked on the side, the session's task untouched
     const btw = /^\/btw\s+/i.exec(draft);
     if (asideOn || btw) {
@@ -178,17 +216,25 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
       else resume(cmd[2] ?? "");
       return;
     }
+    // #1090 (screens.two, two windows): a short line naming an open block and a screen moves it there, not sent
+    if (!atts.length && sayInBox(draft.trim(), w.live)) { setDraft(""); setPop(null); requestAnimationFrame(grow); return; }
     // Cowork v3 (fr-30): in a session with a project chip, words that make a thing go to the stage, not the session
     if (v3On(e.settings) && !atts.length && v3Make(w, e, draft.trim(), (t) => w.say(t, []))) { setDraft(""); setPop(null); requestAnimationFrame(grow); onSent(); return; }
+    // #1448: files over what the engine takes are not sent; the words and files stay in the box and a line says why
+    const big = tooLarge(atts);
+    if (big) { w.warn(big, 8000); return; }
     if (clean && busy && !held && w.live) {
       if (!draft.trim() && !atts.length) return;
-      setQueue((q) => [...q, { text: draft.trim(), atts, stage: stageOf() }]);
+      const d = { text: draft.trim(), atts, stage: stageOf() };
+      if (how === "queue") setQueue((q) => [...q, d]);
+      else { setQueue((q) => [d, ...q]); w.stop(); }   // interrupt: it goes first, as soon as the turn has stopped
       if (staged) barSent();
       setDraft(""); setAtts([]); setPop(null); requestAnimationFrame(grow);
       sendP.set(1); sendP.to(0, { cfg: CFG.settle, delay: 60 });
       return;
     }
     if (w.say(draft.trim(), atts.map(({ name, mime, dataBase64 }) => ({ name, mime, dataBase64 })), stageOf())) {
+      yoursHear(draft.trim());
       if (staged) barSent();
       setDraft(""); setAtts([]); setPop(null); requestAnimationFrame(grow);
       sendP.set(1); sendP.to(0, { cfg: CFG.settle, delay: 60 });
@@ -199,7 +245,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   useEffect(() => {
     if (busy || !queue.length || !w.live) return;
     const [h, ...rest] = queue;
-    if (w.say(h.text, h.atts.map(({ name, mime, dataBase64 }) => ({ name, mime, dataBase64 })), h.stage)) { setQueue(rest); onSent(); }
+    if (w.say(h.text, h.atts.map(({ name, mime, dataBase64 }) => ({ name, mime, dataBase64 })), h.stage)) { yoursHear(h.text); setQueue(rest); onSent(); }
   }, [busy, queue.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const unqueue = (i: number, back: boolean) => {
     const h = queue[i];
@@ -357,6 +403,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   // ---- the leash: cmd+shift+M steps through it ----
   const info = e.models.seats.find((s) => s.seat === "claude");
   const mode = MODES.find((x) => x.m === w.mode) ?? MODES[0];
+  const shownOn = useShown();
   const cycle = useRef(() => {});
   cycle.current = () => {   // the key steps through the modes; bypass only from the menu
     const safe = MODES.filter((x) => !x.risky);
@@ -391,6 +438,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
       { label: "mention a file", key: "@", run: () => insert("@") },
       { label: "a command", key: "/", run: () => { setDraft((d) => (d.startsWith("/") ? d : "/" + d)); requestAnimationFrame(() => { const t = box.current; if (t) { t.focus(); t.setSelectionRange(1, 1); scan(t); } }); } },
       ...(skills.length ? [{ label: "a skill", sub: skills.slice(0, 14).map((s) => ({ label: s, run: () => { setDraft((d) => `/${s} ${d}`); requestAnimationFrame(() => box.current?.focus()); } })) }] : []),
+      ...(whole ? [{ sep: true } as MenuItem, { label: "a browser on the stage", disabled: !w.live, run: () => { const id = w.live; if (!id || stageStore.read(id).blocks.some((x) => x.kind === "browser" && x.state !== "dead")) return; void stageStore.link()?.ask("work.stage.compose", { sessionId: id, block: { kind: "browser", title: "browser", body: JSON.stringify({ url: "", hand: "you" }) } }); } }] : []),
       { sep: true },
       { label: "ask on the side", key: clean ? undefined : "⌘;", disabled: !w.live, run: () => { setAsideOn(true); box.current?.focus(); } },
   ];
@@ -455,7 +503,12 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
   const setDefaultMode = (m: string) => e.setSettings({ defaults: { mode: m } });
   const turns = its.filter((i) => i.kind === "me").length;
   const usage = (w.run as (typeof w.run & { usage?: Usage }) | undefined)?.usage;
-  const compact = w.live ? () => e.send({ type: "work.compact", sessionId: w.live, model: w.model, effort: w.effort, mode: w.mode, fast: w.fast }) : undefined;
+  // compact: sent, the ring drains (Context.tsx) until the count lands lower or 40 s pass (a compact that never answers)
+  const [compacting, setCompacting] = useState(false);
+  const ctxNow = w.run?.context ?? 0, ctxAt = useRef(0);
+  const compact = w.live ? () => { e.send({ type: "work.compact", sessionId: w.live, model: w.model, effort: w.effort, mode: w.mode, fast: w.fast }); ctxAt.current = ctxNow; setCompacting(true); } : undefined;
+  useEffect(() => { if (compacting && ctxNow < ctxAt.current) setCompacting(false); }, [compacting, ctxNow]);
+  useEffect(() => { if (!compacting) return; const t = window.setTimeout(() => setCompacting(false), 40_000); return () => window.clearTimeout(t); }, [compacting]);
   const lastSaid = clean && meAt >= 0 ? String(its[meAt]?.text ?? "") : "";
   return (
     <div className="ask">
@@ -463,6 +516,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
         <StableLine />
         {v3On(e.settings) && <V3Stage w={w} e={e} />}
         <FileLine mode={cowork ? "cowork" : "work"} page={`${cowork ? "Cowork" : "Home"} · ${w.live ? "session" : "new session"} · ${cwd ? base(cwd) : "~"}`} conversation={w.live} />
+        <BarMoment live={w.live} onOpen={(id) => window.dispatchEvent(new CustomEvent("sol:open-work", { detail: id }))} />
         {held && !asideOn && (
           <div className="wheld">
             <span className="who"><i className={held.status} />open in <b>{HELD[held.who]}</b> · {held.status}{held.waitingFor ? ` (${held.waitingFor})` : ""} · read-only here</span>
@@ -475,9 +529,9 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
         {w.sideAnswer && <AsideCard key={w.sideAnswer.id} a={w.sideAnswer} onClose={() => w.dropAside()} />}
         <EngineBack up={e.up} />
         {clean && staged && <BarChips noOn={wbox} />}
-        <div className={`ask-inner${wbox ? " wbox" : ""} ${asideOn ? "aside" : ""} ${drop ? "drop" : ""} ${(busy || working) && !held ? "running" : ""}${clean ? " kit" : ""}${clean && listening ? " listening" : ""}`} ref={askBox} onFocus={() => setBoxFocus(true)} onBlur={() => setBoxFocus(false)}>
+        {cross && <Say text={draft} onSet={(p) => e.setSettings(p)} clear={() => setDraft("")} />}{/* #1031: say it and Settings moves */}
+        <div className={`ask-inner${wbox ? " wbox" : ""} ${asideOn ? "aside" : ""} ${drop ? "drop" : ""} ${(busy || working) && !held ? "running" : ""}${clean ? " kit" : ""}${clean && listening ? " listening" : ""}`} ref={askBox} {...(crossBox ? { "data-cross-drop": "talk" } : {})} onFocus={() => setBoxFocus(true)} onBlur={() => setBoxFocus(false)}>
           {clean && <Field focus={boxFocus || listening} />}
-          {clean && listening && <Hears />}
           {shown && (
             <div ref={popRef} className={`wpop ${pop!.kind}`} role="listbox">
               {hits.map((h, i) => (
@@ -488,6 +542,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
               ))}
             </div>
           )}
+        {crossOn && <Pieces />}{/* #1031: what a Home folder handed this talk, in the box like a file */}
         {atts.length > 0 && <Chips atts={atts} onRemove={(i) => setAtts((x) => x.filter((_, j) => j !== i))} />}
           {asking && <div className="wask"><PermCard key={asking.id} it={asking} w={w} /></div>}
           <div className="ask-line">
@@ -507,7 +562,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
           )}
           <textarea ref={box} rows={1} value={draft} disabled={!e.up}
             className={ghost ? "ghost" : undefined}
-            placeholder={clean && listening ? (heard.open ? "" : "listening: say it, the words land here") : !e.up ? "engine is starting" : held && !asideOn ? `words for it: fork here takes them along; copy puts them on the clipboard` : ghost ? `${ghost}   ⇥` : asideOn ? "ask on the side: the task goes on (esc to leave)" : whole ? (busy ? "say more: it hears you while it works" : w.thread?.items?.length ? "tell it what is next" : `what are we doing in ${base(cwd ?? "") || "here"}?`) : busy ? "say more: it waits for the next step" : "tell Claude what to do  ·  @ a file  ·  / a command"}
+            placeholder={hint && e.up && !listening ? hint : clean && listening ? (heard.open ? "" : "listening: say it, the words land here") : !e.up ? "engine is starting" : held && !asideOn ? `words for it: fork here takes them along; copy puts them on the clipboard` : ghost ? `${ghost}   ⇥` : asideOn ? "ask on the side: the task goes on (esc to leave)" : busy ? "say more: it waits for the next step" : ASK.find((t) => !boxW || textW(t, KT.read[0]) <= boxW) ?? ASK[ASK.length - 1]}
             onChange={(ev) => { setDraft(ev.target.value); grow(); scan(ev.target); }}
             onScroll={follow}
             onSelect={(ev) => scan(ev.currentTarget)}
@@ -528,11 +583,15 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
                 if (!draft) { ev.preventDefault(); box.current?.blur(); return; }
               }
               if (clean && listening && ev.key === "Enter" && !ev.shiftKey && !composing(ev)) { ev.preventDefault(); void micDown(); return; }   // enter ends the dictation; the next enter sends
-              if (ev.key === "Enter" && !ev.shiftKey && !composing(ev)) { ev.preventDefault(); send(); }
+              if (ev.key === "Enter" && !ev.shiftKey && !composing(ev)) { ev.preventDefault(); send(ev.altKey ? "queue" : "auto"); }
             }} />
           </>)}
-          {!wbox && clean && (draft.trim() || atts.length > 0) && !held && !asideOn && <button className="wsend" onClick={send} title={busy ? "queue it: it goes when this turn ends (enter)" : "send (enter)"} aria-label={busy ? "queue" : "send"}>{busy ? "queue" : "send"}</button>}
-          {!wbox && (busy || working) && !held && <button className="stop" onClick={() => w.stop()}>stop</button>}
+          {/* send acts: the kit's flat Button, the rest pick at rest, the jelly's wash on hover and its fill on press (#647 round 5) */}
+          {!wbox && clean && (draft.trim() || atts.length > 0) && !held && !asideOn && <span className="wsend kit" title={busy ? "send now: this turn stops first (enter)" : "send (enter)"}><Button h={24} flat acts label="send" onClick={() => send("auto")}>send</Button></span>}
+          {!wbox && clean && busy && (draft.trim() || atts.length > 0) && !held && !asideOn && <span className="wsend kit" title="queue it: it goes when this turn ends (option-enter)"><Button h={24} flat label="queue" onClick={() => send("queue")}>queue</Button></span>}
+          {!wbox && (busy || working) && !held && (clean
+            ? <span className="stop kit" title="stop (esc)"><Button h={24} flat acts label="stop" onClick={() => w.stop()}>stop</Button></span>
+            : <button className="stop" onClick={() => w.stop()}>stop</button>)}
           </div>
           {queue.length > 0 && (
             <div className="wqueue" aria-label="waiting to be sent">
@@ -548,17 +607,22 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
         {/* the same bar as a chat's (#24): the seat switch is always there; in Cowork it stays on Claude, a group's
             sessions being Claude Code ones, and says so */}
         <Picker locked={!toChat} lockedWhy={toChat ? undefined : "a project's session runs on Claude Code; Codex talks live in Home"} seat="claude" info={info} seats={e.models.seats} model={w.model} effort={w.effort as never} efforts={info?.efforts ?? e.efforts}
-          up={e.up} health={e.health} context={w.run?.context ?? 0} win={w.run?.window || 200000} rec={rec !== "off"} notice={w.error}
+          up={e.up} health={e.health} context={w.run?.context ?? 0} win={w.run?.window || 200000} rec={rec !== "off"} notice={w.error || e.notice}
           onSeat={(s) => { if (s !== "claude") (w.live ? switchTo : toChat)?.(s); }} onModel={(m) => w.adjust({ model: m })} onEffort={(v) => w.adjust({ effort: v })}
           onSeatModel={toChat ? (w.live ? switchTo : toChat) : undefined}
           onMicDown={micDown} onMicUp={micUp} call={clean ? undefined : <CallKey e={e} at={w.live ? { work: true, session: w.live } : null} />} noSeat={clean} noEngine={clean} row={clean}
-          usage={usage} turns={turns} busy={busy} onCompact={compact}
+          usage={usage} turns={turns} busy={busy} compacting={compacting} onCompact={compact} ctxKit={{ skills: w.run?.skills?.length ?? 0, commands: w.run?.commands?.length ?? 0 }} ctxPart={(p) => w.contextPart(p)}
           lead={wbox ? <Plus kit more={plusMore} onFiles={(fs) => void attach(fs)} /> : undefined}
-          tail={wbox ? <GoKey go={!!(draft.trim() || atts.length > 0) && !held && !asideOn} busy={busy} onSend={send} onStop={(busy || working) && !held ? () => w.stop() : undefined} /> : undefined}>
+          tail={wbox ? <GoKey go={!!(draft.trim() || atts.length > 0) && !held && !asideOn} busy={busy} onSend={() => send("auto")} onStop={(busy || working) && !held ? () => w.stop() : undefined} /> : undefined}>
           <button ref={leashBtn} className={`wchip leash ${w.mode}${clean ? " kit" : ""}${wheel || lift?.kind === "mode" ? " lifted" : ""}`} onClick={clean ? () => lifted("mode", leashBtn.current) : leash} onPointerDown={clean ? undefined : leashDown} onPointerUp={leashStop} onPointerLeave={leashStop}
             onContextMenu={clean ? undefined : (ev) => { ev.preventDefault(); leashStop(); leashOpen("stick"); }} title={clean ? "mode: what Claude may do without asking" : "mode: what Claude may do without asking (hold it for the wheel; cmd+shift+M steps)"}>
-            {clean
-              ? <Pill words={[mode.label]} picked={lift?.kind === "mode" ? 0 : -1} h={24} wash={w.mode === "bypassPermissions" ? 0.9 : 0} />   // Bypass: the pill lit by the jelly's colours, never a warning mark
+            {clean && shownOn
+              ? <ModeMark mode={w.mode} label={mode.label} lit={lift?.kind === "mode"} />
+              : clean
+              ? <>
+                  <span className="wlong"><Pill words={[mode.label]} picked={-1} up={lift?.kind === "mode"} h={24} wash={w.mode === "bypassPermissions" ? 0.9 : 0} /></span>
+                  <span className="wshort"><Pill words={[mode.short]} picked={-1} up={lift?.kind === "mode"} h={24} wash={w.mode === "bypassPermissions" ? 0.9 : 0} /></span>
+                </>   // Bypass: the pill lit by the jelly's heat, never a warning mark; the short word when the row narrows
               : <>{w.mode === "bypassPermissions" && <Aurora />}<span className="leash-w">{mode.label}</span></>}
           </button>
           {wheel && createPortal(<LeashWheel r={wheel.r} kind={wheel.kind} items={MODES} mode={w.mode} onPick={(m) => w.adjust({ mode: m as Mode })} onClose={() => setWheel(null)} chip={leashBtn.current} />, document.body)}
@@ -566,7 +630,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
           {clean && lift?.kind === "folder" && <FolderPick r={lift.r} places={places} cwd={w.freshCwd} copy={w.copy} onPick={(p) => w.fresh(p)} onCopy={w.setCopy} chip={folderBtn.current} onClose={() => setLift(null)}
             onOther={async (v) => { const r = await w.files(v, ""); return r.missing || !r.cwd ? null : r.cwd; }} />}
           {!w.live && <button ref={folderBtn} className={`wchip folder${clean ? " kit" : ""}${lift?.kind === "folder" ? " lifted" : ""}`} onClick={clean ? () => lifted("folder", folderBtn.current) : folder} title={(w.freshCwd ? tilde(w.freshCwd) : "your home folder") + (w.copy ? "\nin a side copy of its repo (its own branch)" : "")}>
-            {clean ? <Pill words={[`in ${atLabel}${w.copy ? " · side copy" : ""}`]} picked={lift?.kind === "folder" ? 0 : -1} h={24} /> : <>in {atLabel}{w.copy ? " · side copy" : ""}</>}</button>}
+            {clean ? <Pill words={[`in ${atLabel}${w.copy ? " · side copy" : ""}`]} picked={-1} up={lift?.kind === "folder"} h={24} /> : <>in {atLabel}{w.copy ? " · side copy" : ""}</>}</button>}
         </Picker>
         </div>
       </div>

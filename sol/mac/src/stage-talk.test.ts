@@ -22,7 +22,9 @@ test("the seam: dragged from the left dock it is the talk's right edge, from the
 });
 
 test("the bottom dock: a 200 px row that rises to 46% while you write and folds back on send", () => {
-  assert.equal(talkRow(800, false), 200);
+  assert.equal(talkRow(800, false), 300);
+  assert.equal(talkRow(690, false), Math.round(0.42 * 690));
+  assert.equal(talkRow(400, false), 200);
   assert.equal(talkRow(800, true), Math.round(0.46 * 800));
   assert.equal(talkRow(300, true), 200, "never lower than the row");
   assert.equal(talkRow(150, false), 150, "never past the room");

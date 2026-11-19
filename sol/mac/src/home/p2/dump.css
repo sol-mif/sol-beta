@@ -1,0 +1,108 @@
+/* The dump and the stickies column (#692, slice B: Dump.tsx, Stickies.tsx). Every space, size and corner a variable of
+   the scale; every colour a token. Words are the on colour at its strengths; yellow is "needs you", red "cannot start",
+   green "done" (the fixed meaning channel); the pearl is a sticky's paper, its words deep. */
+
+.p2-dump, .p2-stickies { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); }
+.du-k { display: flex; align-items: baseline; gap: var(--s2); margin-bottom: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); letter-spacing: 0.04em; }
+.du-k > span:first-child { text-transform: uppercase; flex: none; }
+.du-hint, .du-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0; }
+.du-n { margin-left: auto; color: var(--yellow-strong); }
+.p2-dump button, .p2-stickies button:where(:not(.pc-act)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+/* the page: one block per line or paragraph, its mark at its end */
+.du-page { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.du-line { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s1) 0; border-bottom: var(--hair) solid var(--line); container-type: inline-size; }
+.du-line:last-child { border-bottom: 0; }
+.du-text { position: relative; flex: 1; min-width: 0; }
+.du-mirror, .du-text textarea { font-family: inherit; font-size: var(--t-body); line-height: var(--t-body-line); white-space: pre-wrap; overflow-wrap: anywhere; padding: 0; margin: 0; letter-spacing: normal; }
+.du-mirror { color: var(--ink); min-height: var(--t-body-line); }
+.du-hide { color: transparent; }
+.du-text textarea { position: absolute; inset: 0; width: 100%; height: 100%; resize: none; border: 0; outline: none; background: none; color: var(--ink); overflow: hidden; caret-color: var(--ink); }
+.du-text textarea::placeholder { color: var(--mute); }
+.du-line[data-state] .du-text textarea { cursor: text; }
+
+/* the mark: ring, folder · when · what is happening, in set ink, quiet beside his words */
+.du-markbox { position: relative; flex: none; max-width: 45%; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; }
+.du-mark { display: flex; align-items: center; gap: var(--s1); max-width: 100%; font-size: var(--t-label); line-height: var(--t-body-line); color: var(--dim); white-space: nowrap; }
+.du-mark .ink { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.du-mark b { font-weight: 500; color: var(--ink); }
+.du-mark.t-you, .du-mark.t-you b { color: var(--yellow-strong); cursor: pointer; }
+.du-mark.t-fail, .du-mark.t-fail b { color: var(--red-strong); }
+.du-mark.t-done b { color: var(--green-strong); }
+.du-mark.t-dim { color: var(--mute); }
+.du-why { display: none; pointer-events: none; position: absolute; top: 100%; right: 0; z-index: 2; padding: var(--s1) var(--s2); border-radius: var(--r-chip); background: var(--c-base-box); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.du-markbox:hover .du-why { display: block; }
+.du-ring { flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); display: grid; place-items: center; overflow: hidden; box-sizing: border-box; }
+.du-ring.fresh, .du-ring.look { border: var(--hair) dashed var(--dim); }
+.du-ring.you { background: var(--yellow-strong); }
+.du-ring.fail { background: var(--red-strong); }
+.du-ring.done { background: var(--green-strong); }
+.du-ring.dim { border: var(--hair) solid var(--mute); }
+.du-ring.run, .du-ring.made { border: var(--hair) solid var(--dim); background: conic-gradient(var(--orange) var(--fill), transparent 0); }
+.du-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s1) var(--s2); margin-top: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--yellow-strong); }
+@container (max-width: 520px) { .du-line { flex-wrap: wrap; } .du-markbox { max-width: 100%; flex-basis: 100%; align-items: flex-start; } .du-ask { justify-content: flex-start; } }
+
+/* a chip: a flat pill, no grey at rest, the lift under the pointer */
+.du-chip { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); border: var(--hair) solid var(--edge); color: var(--ink); white-space: nowrap; font-size: var(--t-label); }
+.du-chip:hover, .du-chip:focus-visible { background: var(--c-lift); }
+.du-chip.first { border-color: var(--c-pearl-line); }
+
+/* the column */
+.sk-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s2); }
+.sk-card { position: relative; isolation: isolate; flex: none; padding: var(--s2) var(--s3); color: var(--c-deep); outline: none; cursor: default; transition: opacity var(--d-turn) var(--e-move), transform var(--d-turn) var(--e-move); }
+.sk-pearl { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.sk-card:focus-visible, .sk-card.open { box-shadow: 0 0 0 var(--hair) var(--c-deep); border-radius: var(--curve-row); }
+.sk-card.t-you { box-shadow: 0 0 0 var(--hair) var(--yellow-strong); border-radius: var(--curve-row); }
+.sk-card.t-fail { box-shadow: 0 0 0 var(--hair) var(--red-strong); border-radius: var(--curve-row); }
+.sk-card.t-done { box-shadow: 0 0 0 var(--hair) var(--green-strong); border-radius: var(--curve-row); }
+.sk-card.t-dim { opacity: 0.6; }
+.sk-card.t-note .sk-pearl { filter: brightness(0.92); }
+.sk-card.fading { opacity: 0; transform: translateY(calc(-1 * var(--s2))); transition-duration: var(--d-pour); }
+.sk-card.drag { opacity: 0.35; }
+.sk-head { display: flex; align-items: center; gap: var(--s2); }
+.sk-words { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.sk-ring { flex: none; width: var(--s4); height: var(--s4); display: grid; place-items: center; border-radius: var(--r-pill); overflow: hidden; box-sizing: border-box; }
+.sk-ring.fresh { border: var(--hair) dashed var(--c-deep); }
+.sk-ring.you { background: var(--yellow-strong); }
+.sk-ring.fail { background: var(--red-strong); }
+.sk-ring.done { background: var(--green-strong); }
+.sk-ring.dim:empty { border: var(--hair) solid var(--c-deep); }
+.sk-lines { display: flex; flex-direction: column; padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); min-width: 0; }
+.sk-where { align-self: flex-start; max-width: 100%; font-weight: 600; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p2-stickies .sk-where { color: var(--c-deep); }
+.sk-where:hover { text-decoration: underline; }
+.sk-step { opacity: 0.72; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-card.t-you .sk-step { opacity: 1; }
+.sk-opts, .sk-hands { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); }
+.p2-stickies .sk-card .du-chip { color: var(--c-deep); border-color: var(--c-pearl-line); }
+.p2-stickies .sk-card .du-chip.first { border-color: var(--c-deep); }
+.p2-stickies .sk-card .du-chip:hover { background: var(--c-pearl-line); }
+
+/* what it made: a file mark, its name, open; the corner peels it to its back */
+.sk-made { margin-top: var(--s1); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.sk-made-face { position: relative; display: flex; align-items: center; gap: var(--s1); min-width: 0; padding-right: var(--s4); }
+.sk-made-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; text-underline-offset: var(--s1); }
+.p2-stickies .sk-made-name { color: var(--c-deep); }
+.sk-open-word { flex: none; opacity: 0.55; }
+.sk-corner { position: absolute; right: 0; top: 0; width: var(--s3); height: var(--s3); background: linear-gradient(225deg, var(--c-pearl-line) 50%, transparent 50%) !important; }
+.sk-made.peeled .sk-corner { background: linear-gradient(225deg, var(--c-deep) 50%, transparent 50%) !important; }
+.sk-back { margin-top: var(--s2); }
+.sk-back .back-card { padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--c-pearl-line); transform: rotate(-1deg); }
+.sk-back dl { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--s2); margin: var(--s1) 0; }
+.sk-back dt { opacity: 0.6; } .sk-back dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.sk-back button { margin-right: var(--s2); text-decoration: underline; color: var(--c-deep); }
+.sk-doubts { margin-top: var(--s1); display: flex; flex-direction: column; gap: var(--s1); }
+.sk-doubt .ink-wave { cursor: pointer; }
+.sk-doubts .du-ask { justify-content: flex-start; color: var(--c-deep); }
+
+/* open in place: its steps */
+.sk-open { margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.sk-open .p2-runlog { display: flex; flex-direction: column; opacity: 0.8; }
+.sk-open .p2-runlog span { font-variant-numeric: tabular-nums; opacity: 0.6; }
+.sk-quiet { opacity: 0.6; }
+.sk-open .sk-hands { padding-left: 0; }
+
+/* a folder in the side with a sticky over it */
+[data-folder][data-sticky-over] { box-shadow: inset 0 0 0 var(--hair) var(--c-pearl); border-radius: var(--r-row); }
+/* the bud (pass2.ts PICKS.run): the jelly's small piece on a sticky being worked, at the head's end */
+.sk-bud { flex: none; width: var(--s4); height: var(--s4); display: grid; place-items: center; pointer-events: none; }

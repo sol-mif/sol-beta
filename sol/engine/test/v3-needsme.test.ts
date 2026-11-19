@@ -1,6 +1,6 @@
-// Cowork v3, slice 2 (fr-30, #555), E8: "needs me" is one count on the front, the stage chip and the notch: asks
-// addressed to me, items handed to me, an owner's yes asked of me. One fold, one number, wherever it is read. And with
-// the switch off the team.v3.* messages get no answer and the notch hears nothing new (F7, this slice's part).
+// Cowork v3, slice 2 (fr-30, #555), E8: "needs me" is one count on the front and the stage chip: asks addressed to
+// me, items handed to me, an owner's yes asked of me. One fold, one number, wherever it is read. And with the switch
+// off the team.v3.* messages get no answer (F7, this slice's part).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -18,8 +18,8 @@ process.env.SOL_COWORK_V3_TRAIL = join(tmp("sol-v3-"), "plan-trail.jsonl");
 process.env.SOL_COWORK_V3 = "off";
 delete process.env.DISCORD_WEBHOOK;
 
-await import("../src/creature.ts");   // the engine's own order: creature, then ping (tools.ts reads PING_TOOLS)
-const ping = await import("../src/ping.ts");
+await import("../src/creature.ts");   // the engine's own order: creature, then notify (tools.ts reads PING_TOOLS)
+const ping = await import("../src/notify.ts");
 const P = await import("../src/team/v3/plan.ts");
 const TODAY = "2026-11-01";
 
@@ -68,15 +68,15 @@ test("the front's tiles add up to the same count", async () => {
   assert.equal(tiles.reduce((n, x) => n + x.count, 0), P.needsMe(rec, "marco"));
 });
 
-test("the front, the stage chip (needsme) and the notch say one number", async () => {
+test("the front and the stage chip (needsme) say one number; no face is pushed a count (the notch was its reader)", async () => {
   const { t } = await world();
   P._setTrail(t);
   const sent: any[] = [];
-  const notch = { send: (m: object) => sent.push(m) };
+  const win = { send: (m: object) => sent.push(m) };
   ping._reset();
-  ping.addPingFace(notch);
-  ping.pingFaceIs(notch, "notch");
-  assert.equal(sent.filter((m) => m.type === "cw3.needsme").length, 0, "nothing until v3 told one");
+  ping.addMomentFace(win);
+  ping.momentFaceIs(win, "window");
+  assert.equal(sent.filter((m) => m.type === "cw3.needsme").length, 0, "nothing before v3 answers");
   const W = await import("../src/team/v3/planwire.ts");
   const f = (await W.handleV3Plan({ type: "team.v3.front", rid: "1" })) as any;
   const n = (await W.handleV3Plan({ type: "team.v3.needsme", rid: "2" })) as any;
@@ -86,12 +86,12 @@ test("the front, the stage chip (needsme) and the notch say one number", async (
   assert.equal(n.count, 3, "the stage chip");
   assert.equal(p.count, 3, "inside a project, the same one count");
   const told = sent.filter((m) => m.type === "cw3.needsme");
-  assert.equal(told.at(-1).count, 3, "the notch");
-  // a later notch hears the last count as it says which face it is
+  assert.equal(told.length, 0, "and after: no face is pushed the count");
+  // a later face is not told a count either as it says which face it is
   const late: any[] = [];
-  const notch2 = { send: (m: object) => late.push(m) };
-  ping.addPingFace(notch2); ping.pingFaceIs(notch2, "notch");
-  assert.equal(late.find((m) => m.type === "cw3.needsme")?.count, 3);
+  const win2 = { send: (m: object) => late.push(m) };
+  ping.addMomentFace(win2); ping.momentFaceIs(win2, "window");
+  assert.equal(late.find((m) => m.type === "cw3.needsme"), undefined);
   // a write moves all three together
   const drop = (await W.handleV3Plan({ type: "team.v3.plan", rid: "4", project: "sol", op: "drop", title: "for later" })) as any;
   assert.equal(drop.loose.length, 1);
@@ -102,7 +102,7 @@ test("the front, the stage chip (needsme) and the notch say one number", async (
   ping._reset();
 });
 
-test("switch off: no v3 route answers and the notch hears nothing new (F7, this slice)", async () => {
+test("switch off: no v3 route answers (F7, this slice)", async () => {
   process.env.SOL_COWORK_V3 = "off";
   ping._reset();
   const W = await import("../src/team/wire.ts");
@@ -111,7 +111,7 @@ test("switch off: no v3 route answers and the notch hears nothing new (F7, this 
   W.addTeamFace(face);
   for (const type of ["team.v3.front", "team.v3.plan", "team.v3.needsme"]) await W.handleTeam(face, { type, rid: type, project: "sol" });
   assert.equal(sent.length, 0, "no answer at all with the switch off");
-  assert.equal(ping._need(), null, "the notch's count was never set");
+  assert.equal("_need" in ping, false, "the notifier keeps no count at all");
   process.env.SOL_COWORK_V3 = "on";
   P._setTrail(P.memoryTrail());
   await W.handleTeam(face, { type: "team.v3.needsme", rid: "on" });

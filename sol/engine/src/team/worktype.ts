@@ -16,6 +16,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { featureIn, readFeatures, TYPES, typeLabel, typeOfLabel, type Feature, type WorkType } from "./features.js";
+import { quietGh } from "../quiet.js";
 
 export { TYPES, typeLabel, typeOfLabel, type WorkType };
 const RULES: [RegExp, WorkType][] = [
@@ -86,7 +87,10 @@ export function missingLabel(e: unknown, label: string): string {
   return /not found/i.test(w) && w.includes(label) ? `the label ${label} is not on GitHub yet: make the three type labels first ("To turn on" in #480's PR)` : w;
 }
 
-export const runGh: Gh = (args) => new Promise((ok, no) => execFile("gh", args, { maxBuffer: 16 << 20, timeout: 60_000 }, (e, out, err) => (e ? no(new Error(String(err || e.message).trim())) : ok(out))));
+export const runGh: Gh = (args) => new Promise((ok, no) => {
+  quietGh(args);   // a quiet Sol writes nothing to GitHub (#1293); a read goes
+  execFile("gh", args, { maxBuffer: 16 << 20, timeout: 60_000 }, (e, out, err) => (e ? no(new Error(String(err || e.message).trim())) : ok(out)));
+});
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 
 // `bash sol/worktype <pr> [--dry-run]`: one PR's type of work, set on GitHub, and why

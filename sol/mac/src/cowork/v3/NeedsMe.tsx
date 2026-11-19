@@ -1,6 +1,6 @@
 // Cowork v3, slice 2 (fr-30, #555): the one "needs me" count as a chip, for the front, the stage's bar and a project's
-// head. Asks to me, items handed to me and an owner's yes pending, counted once by the engine (plan.ts needsMe); the
-// notch draws the same number by its mark. Ember only when something needs me; nothing needs me is a quiet word.
+// head. Asks to me, items handed to me and an owner's yes pending, counted once by the engine (plan.ts needsMe).
+// Ember only when something needs me; nothing needs me is a quiet word.
 import { Droplet } from "../../creature/goo";
 import { useV3 } from "./front-store";
 import type { Team } from "../useTeam";

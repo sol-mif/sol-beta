@@ -1,0 +1,176 @@
+/* The runs view (#889, runs/Runs.tsx), behind build.runs. A solid surface over Build (nothing reads through it); every
+   number is the scale's (the layout skill), every colour a token. Only a stalled builder wears colour that asks. */
+.rv { position: fixed; left: var(--sp-w); top: 0; right: 0; bottom: 0; z-index: 55; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: var(--c-deep); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); border-left: 1px solid var(--c-on-line); }
+
+/* the head: where you are, how fresh the facts are, what you just did */
+.rv-head { flex: none; display: flex; align-items: center; gap: var(--s4); min-height: var(--h-head); padding: var(--s2) var(--s6) var(--s2) var(--s6); border-bottom: 1px solid var(--c-on-line); min-width: 0; }
+.rv-title { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; flex: none; }
+.rv-fresh { color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+.rv-space { flex: 1; }
+.rv-did { display: flex; align-items: center; gap: var(--s2); min-width: 0; flex: 0 1 auto; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); }
+.rv-did > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-link, .rv-close { flex: none; border: 0; background: none; padding: 0 var(--s2); height: var(--h-chip); border-radius: var(--r-chip); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink); text-decoration: underline; text-underline-offset: var(--s1); cursor: pointer; white-space: nowrap; }
+.rv-close { text-decoration: none; border: 1px solid var(--c-on-line); padding: 0 var(--s3); }
+.rv-link:hover, .rv-close:hover { background: var(--c-lift); }
+.rv-empty { margin: var(--s12) auto; max-width: 80%; color: var(--dim); text-align: center; }
+
+/* the tabs: one per project, each with one mark */
+.rv-tabs { flex: none; display: flex; gap: var(--s2); padding: var(--s3) var(--s6); border-bottom: 1px solid var(--c-on-line); min-width: 0; }
+.rv-tab { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: var(--s2) var(--s3); border: 1px solid transparent; border-radius: var(--r-row); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.rv-tab:hover { background: var(--c-lift); }
+.rv-tab.on { background: var(--c-lift); border-color: var(--c-on-line); }
+.rv-tabname { font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-tabmark { display: flex; align-items: center; gap: var(--s1); max-width: 100%; min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+.rv-tabword { font-weight: 500; color: var(--c-on-rest); white-space: nowrap; flex: none; }
+.rv-tab[data-mark="needs"] .rv-tabword { color: var(--sun); }
+.rv-tab.rv-else { flex: 0.6 1 0; }
+.rv-tab.rv-else .rv-tabname { font-weight: 500; color: var(--c-on-rest); }
+.rv-tabdetail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-tabdetail::before { content: "· "; }
+
+/* the marks: a dot each; only "needs you" and a stalled builder are in colour */
+.rv-dot { flex: none; display: inline-block; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--dim); }
+.rv-dot[data-mark="calm"], .rv-dot[data-state="done"] { background: none; border: 1px solid var(--dim); }
+.rv-dot[data-mark="ready"] { background: var(--green-strong); }
+.rv-dot[data-mark="needs"], .rv-dot[data-state="quiet"], .rv-dot[data-state="failed"], .rv-dot[data-state="cut"] { background: var(--sun); }
+.rv-dot[data-state="waiting"], .rv-dot[data-state="starting"] { background: none; border: 1px solid var(--c-on-rest); }
+
+/* the body: the lines, and beside them (or under them, narrow) Needs you and the machines */
+.rv-body { flex: 1; min-height: 0; min-width: 0; display: flex; }
+.rv-body.beside { flex-direction: row; }
+.rv-body.under { flex-direction: column; overflow: auto; }
+.rv-main { flex: 1; min-width: 0; padding: var(--s4) var(--s6) var(--s6); display: flex; flex-direction: column; gap: var(--s4); }
+.rv-body.beside .rv-main { overflow: auto; }
+.rv-side { flex: none; min-width: 0; display: flex; flex-direction: column; gap: var(--s6); padding: var(--s4) var(--s6) var(--s6); }
+.rv-body.beside .rv-side { width: calc(var(--s12) * 6 + var(--s8)); overflow: auto; border-left: 1px solid var(--c-on-line); }
+.rv-body.under .rv-side { border-top: 1px solid var(--c-on-line); }
+.rv-body.under .rv-side.rv-first { border-top: 0; padding-bottom: 0; }
+.rv-body.under .rv-machines { max-width: calc(var(--s12) * 13 + var(--s4)); }
+.rv-body.under .rv-main { flex: none; }
+.rv-h { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--c-on-rest); margin-bottom: var(--s2); }
+.rv-count { min-width: var(--s4); height: var(--s4); padding: 0 var(--s1); border-radius: var(--r-pill); background: var(--c-lift); color: var(--ink); border: 1px solid var(--c-on-line); display: inline-grid; place-items: center; font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-quiet { color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-none { color: var(--dim); padding: var(--s4) 0; }
+
+/* start: one sentence, then the plan */
+.rv-start { flex: none; display: flex; flex-direction: column; gap: var(--s3); }
+.rv-ask-row { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.rv-input { flex: 1; min-width: 0; height: var(--h-row); padding: 0 var(--s3); border: 1px solid var(--c-on-line); border-radius: var(--r-row); background: var(--c-lift); color: var(--ink); font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); outline: none; }
+.rv-input:focus { border-color: var(--c-on-rest); }
+.rv-input::placeholder { color: var(--dim); }
+.rv-plan { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border: 1px solid var(--c-on-line); border-radius: var(--r-card); background: var(--c-lift); min-width: 0; }
+.rv-planhead { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.rv-planhead .rv-quiet { font-weight: 400; }
+.rv-parts { margin: 0; padding: 0 0 0 var(--s4); display: flex; flex-direction: column; gap: var(--s1); }
+.rv-parts li { min-width: 0; }
+.rv-pwhat { font-weight: 500; }
+.rv-pon { margin-left: var(--s2); color: var(--c-on-rest); }
+.rv-why { display: block; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); overflow-wrap: anywhere; }
+.rv-pick { min-width: 0; }
+.rv-pick b { font-weight: 500; }
+.rv-planacts { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s2); flex-wrap: wrap; }
+.rv-err { color: var(--sun); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-asked { display: flex; flex-direction: column; gap: var(--s1); }
+.rv-ask { display: flex; gap: var(--s2); align-items: baseline; min-width: 0; }
+.rv-asksent { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the lines: one track each, read left to right */
+.rv-lines { display: flex; flex-direction: column; gap: var(--s3); }
+.rv-cols { display: grid; gap: var(--s4); padding: 0 var(--s4); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+.rv-track { border: 1px solid var(--c-on-line); border-radius: var(--r-card); background: var(--c-lift); }
+.rv-grid { display: grid; gap: var(--s4); padding: var(--s4); align-items: start; min-width: 0; }
+.rv-grid > div { min-width: 0; }
+.rv-track.rv-stacked .rv-grid { gap: var(--s3); }
+.rv-cell-label { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); margin-bottom: var(--s1); }
+.rv-name { font-weight: 600; overflow-wrap: anywhere; }
+.rv-issue { color: var(--dim); font-weight: 400; }
+.rv-goaltext { color: var(--c-on-rest); font-size: var(--t-label); line-height: var(--t-label-line); margin-top: var(--s1); overflow-wrap: anywhere; }
+.rv-builders { display: flex; flex-direction: column; gap: var(--s2); }
+.rv-b { min-width: 0; }
+.rv-bline { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.rv-bname { font-weight: 500; flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-bstate { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); white-space: nowrap; }
+.rv-bmeta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-b.stalled .rv-bstate { color: var(--sun); font-weight: 600; }
+.rv-said.whole { white-space: normal; overflow-wrap: anywhere; }
+.rv-bpr { flex: none; margin-left: auto; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-said { padding-left: calc(var(--s2) + var(--s2)); color: var(--c-on-rest); font-size: var(--t-label); line-height: var(--t-label-line); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-folded { padding-left: calc(var(--s2) + var(--s2)); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-join { display: flex; flex-direction: column; gap: var(--s3); }
+.rv-joinone { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.rv-joinname { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-joincount { font-weight: 500; }
+.rv-try { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); }
+.rv-trywords { font-weight: 500; overflow-wrap: anywhere; }
+
+/* Needs you: the one place colour asks for the eye */
+.rv-needs { display: flex; flex-direction: column; gap: var(--s2); }
+.rv-calm { color: var(--c-on-rest); }
+.rv-need { padding: var(--s3); border-radius: var(--r-row); background: var(--c-lift); border: 1px solid var(--c-on-line); cursor: pointer; min-width: 0; }
+.rv-need.first { border-color: var(--c-waits-line); box-shadow: var(--shadow-waits); }
+.rv-needtitle { font-weight: 500; overflow-wrap: anywhere; }
+.rv-needwhy { color: var(--c-on-rest); font-size: var(--t-label); line-height: var(--t-label-line); overflow-wrap: anywhere; }
+
+/* the machines: three meters, their room and why */
+.rv-machines { display: flex; flex-direction: column; gap: var(--s3); }
+.rv-m { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.rv-m.off .rv-mname, .rv-m.off .rv-mword { color: var(--dim); }
+.rv-mline { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.rv-mname { font-weight: 500; }
+.rv-mword { color: var(--c-on-rest); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.rv-mwhy { color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); overflow-wrap: anywhere; }
+
+/* the door in the spine */
+.sp-m.runs-on i { background: var(--c-lift); color: var(--ink); }
+
+/* #906 ---- the sheet "How builds run": opened from the head; beside the lines from 1040 px (in the side's place),
+   over the body narrower. A rule he changed wears "yours" and a line down its left edge; nothing in it asks for the eye */
+.rv-sheetdoor { display: inline-flex; align-items: center; gap: var(--s2); }
+.rv-sheetdoor.on { background: var(--c-lift); }
+.rv-yours { display: inline-flex; align-items: center; height: var(--s4); padding: 0 var(--s2); margin-left: var(--s2); border-radius: var(--r-pill); border: 1px solid var(--c-on-rest); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; white-space: nowrap; vertical-align: middle; }
+.rv-sheetdoor .rv-yours { margin-left: 0; }
+.rv-body.beside .rv-side.rv-sheetside { width: calc(var(--s12) * 8 + var(--s8)); }
+.rv-body.under.rv-withsheet .rv-sheetside { flex: 1; border-top: 0; }
+.rv-sheet { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+.rv-sheethead { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.rv-sheettitle { font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 600; }
+.rv-sheetneeds { align-self: flex-start; color: var(--sun); }
+.rv-note { padding: var(--s2) var(--s3); border-radius: var(--r-row); border: 1px solid var(--c-on-line); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-rule { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s3) var(--s3) var(--s4); border-radius: var(--r-row); border: 1px solid var(--c-on-line); background: var(--c-lift); min-width: 0; }
+.rv-rule.his { border-color: var(--c-on-rest); box-shadow: inset var(--s1) 0 0 0 var(--ink); }
+.rv-rule.fixed { background: none; }
+.rv-rulesent { line-height: var(--h-row); overflow-wrap: anywhere; }
+.rv-ctl { height: var(--h-chip); padding: 0 var(--s2); margin: 0 var(--s1); border: 1px solid var(--c-on-rest); border-radius: var(--r-chip); background: var(--c-deep); color: var(--ink); font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; max-width: 100%; vertical-align: baseline; }
+.rv-ctl:focus { outline: none; border-color: var(--ink); }
+.rv-num { width: calc(var(--s12) + var(--s1)); text-align: center; }
+.rv-num.bad { border-color: var(--sun); }
+.rv-refused { color: var(--sun); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-back { padding: 0; }
+.rv-ruleyours { display: flex; align-items: center; gap: var(--s3); }
+.rv-ruleyours .rv-yours { margin-left: 0; }
+.rv-sheetsub { margin: var(--s3) 0 0; }
+.rv-folders { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rv-folder { display: flex; justify-content: space-between; gap: var(--s3); color: var(--c-on-rest); min-width: 0; }
+.rv-folder span:first-child { color: var(--dim); min-width: 0; overflow-wrap: anywhere; }
+.rv-folder span:last-child { flex: none; }
+.rv-pick.his b::after { content: " · yours"; color: var(--c-on-rest); font-weight: 400; font-size: var(--t-label); }
+
+/* #906 ---- a project's sessions, above its lines: three groups side by side from 720 px, stacked under */
+.rv-sessions { display: flex; flex-direction: column; min-width: 0; }
+.rv-sgroups { display: flex; flex-direction: column; gap: var(--s3); }
+.rv-sgroups.rv-inline { display: grid; gap: var(--s4); align-items: start; }
+.rv-sgroup { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.rv-sgword { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); font-weight: 500; }
+.rv-sess { padding: var(--s2) var(--s3); border-radius: var(--r-row); border: 1px solid var(--c-on-line); background: var(--c-lift); cursor: pointer; min-width: 0; }
+.rv-sess:hover { border-color: var(--c-on-rest); }
+.rv-sline { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.rv-sname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.rv-dot[data-group="waits"] { background: var(--sun); }
+.rv-dot[data-group="working"] { background: var(--green-strong); }
+.rv-dot[data-group="unread"] { background: var(--ink); }
+
+/* #906 ---- Try, in ordinary words */
+.rv-trycard { flex: none; }
+.rv-landed { margin: 0; padding: 0 0 0 var(--s4); display: flex; flex-direction: column; gap: var(--s1); overflow-wrap: anywhere; }
+.rv-quietlink { color: var(--dim); }

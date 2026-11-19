@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTrackHome, dayFile } from "../src/track.ts";
+import { setTrackHome, dayFile, setPrivate } from "../src/track.ts";
 import { scanOthers, claudeDays, codexDays, planWords, appsInstalled, APPS, type Roots } from "../src/track-files.ts";
 
 let home = "", roots: Roots;
@@ -67,7 +67,7 @@ test("Claude Code's transcripts become one line a (day, model, entrypoint, folde
     { prompts: 1, answers: 3, sessions: 1, input: 111, output: 222, cache_read: 303, cache_write: 4 },
     "an answer's second content block is not a second answer; a tool result, a slash command and an interruption are not prompts; the workflow's subagent deep under the session counts; today's answer is not yet counted");
   const mm = keys.find((k) => k.includes("|sdk-ts|"))!;
-  assert.match(mm, /^2026-10-28\|claude-fable-5-1\|sdk-ts\|mission-market\|[0-9a-f]{12}$/, "a folder is its last name as a word and a hash, never the path");
+  assert.match(mm, /^2026-10-28\|claude-fable-5-1\|sdk-ts\|[0-9a-f]{12}$/, "a folder is a hash only: never its name, never the path");
 });
 
 test("Codex's sessions become one line a (day, model, folder) from each session's growth since the last scan, on the day the file last changed", async () => {
@@ -75,7 +75,7 @@ test("Codex's sessions become one line a (day, model, folder) from each session'
   const x = await codexDays(roots.codex, "2026-08-01", "2026-10-28", counted);
   assert.equal(x.size, 1);
   const [key, s] = [...x][0]!;
-  assert.match(key, /^2026-10-28\|gpt-5.6-sol\|sol\|[0-9a-f]{12}$/);
+  assert.match(key, /^2026-10-28\|gpt-5.6-sol\|[0-9a-f]{12}$/);
   assert.deepEqual({ sessions: s.sessions.size, input: s.input, output: s.output, cache_read: s.cache_read }, { sessions: 1, input: 200, output: 19, cache_read: 120 });
   assert.deepEqual(counted.c1![0], 339);
   // the same file again: nothing new
@@ -102,12 +102,12 @@ test("a scan writes the days up to yesterday once, the plan and the apps once a 
   const got = await scanOthers(roots);
   assert.equal(got.claude, 2); assert.equal(got.codex, 1); assert.equal(got.said, true); assert.equal(got.days, 90);
   const raw = readFileSync(dayFile(now, "files"), "utf8");
-  assert.doesNotMatch(raw, /sarah|rent|secret|frank@|acc-secret|at-secret|signature|\/Users\//, "no word of any file, no address, no token, no path");
+  assert.doesNotMatch(raw, /sarah|rent|secret|frank@|acc-secret|at-secret|signature|\/Users\/|mission/, "no word of any file or folder, no address, no token, no path");
   const names = lines().map((l) => l.name);
   assert.deepEqual(names, ["tester.who", "files.claude.day", "files.claude.day", "files.codex.day", "files.plan", "files.apps"]);
   assert.ok(!existsSync(dayFile(now)), "the day's own file is untouched: the other tools' lines have their own");
   const day = lines().find((l) => l.name === "files.claude.day" && l.props.via === "sdk-ts")!;
-  assert.deepEqual(day.props, { day: "2026-10-28", model: "claude-fable-5-1", via: "sdk-ts", folder: "mission-market", dir: day.props.dir, prompts: 0, answers: 1, sessions: 1, input: 5, output: 6, cache_read: 7, cache_write: 8 });
+  assert.deepEqual(day.props, { day: "2026-10-28", model: "claude-fable-5-1", via: "sdk-ts", dir: day.props.dir, prompts: 0, answers: 1, sessions: 1, input: 5, output: 6, cache_read: 7, cache_write: 8 });
   assert.deepEqual(lines().find((l) => l.name === "files.plan")!.props, { claude: "claude_max", claude_rate: "default_claude_max_20x", codex_mode: "chatgpt", codex: "plus" });
   // the same day again: nothing new
   const again = await scanOthers(roots);
@@ -128,4 +128,30 @@ test("roots that do not exist: nothing counted but the plan and apps words, and 
   assert.deepEqual(lines().map((l) => l.name), ["tester.who", "files.plan", "files.apps"]);
   const off = await scanOthers({ ...roots, consent: () => false });
   assert.deepEqual(off, { days: 0, claude: 0, codex: 0, said: false });
+});
+
+test("a private session (#1242): Claude Code's lines said while it was private and a Codex session's growth while private are not counted", async () => {
+  now = new Date(2026, 9, 28, 10, 30, 0);   // s1 went private after its first answer (10:00), before its 11:00 one
+  assert.ok(setPrivate("s1", true));
+  now = new Date(2026, 9, 28, 10, 45, 0);
+  assert.ok(setPrivate("c1", true));
+  now = new Date(2026, 9, 29, 9, 0, 0);
+  const c = await claudeDays(roots.claude, "2026-08-01", "2026-10-28");
+  const cli = c.get([...c.keys()].find((k) => k.includes("|cli|"))!)!;
+  assert.deepEqual({ prompts: cli.prompts, answers: cli.answers, output: cli.output }, { prompts: 1, answers: 2, output: 220 }, "the 11:00 answer said while private is gone; the 10:00 ones stay");
+  const counted: Record<string, [number, number]> = {};
+  assert.equal((await codexDays(roots.codex, "2026-08-01", "2026-10-28", counted)).size, 0, "c1's file changed at 11:00, while private");
+  assert.equal(counted.c1![0], 339, "passed over, so a later scan does not count it as growth");
+});
+
+test("a Codex session private between two counts and public again before its file changes (#1287): its growth is not counted", async () => {
+  const counted: Record<string, [number, number]> = { c1: [100, new Date(2026, 9, 28, 9, 0, 0).getTime()] };   // counted at 9:00
+  now = new Date(2026, 9, 28, 10, 0, 0); assert.ok(setPrivate("c1", true));
+  now = new Date(2026, 9, 28, 10, 30, 0); assert.ok(setPrivate("c1", false));   // public again before its file last changed (11:00)
+  now = new Date(2026, 9, 29, 9, 0, 0);
+  assert.equal((await codexDays(roots.codex, "2026-08-01", "2026-10-28", counted)).size, 0, "private for a stretch since 9:00: the growth is passed over");
+  assert.equal(counted.c1![0], 339);
+  const before: Record<string, [number, number]> = { c1: [100, new Date(2026, 9, 28, 10, 45, 0).getTime()] };   // counted after the private stretch ended
+  const x = await codexDays(roots.codex, "2026-08-01", "2026-10-28", before);
+  assert.equal([...x.values()][0]!.sessions.size, 1, "a private stretch before the last count does not hold back what grew after it");
 });

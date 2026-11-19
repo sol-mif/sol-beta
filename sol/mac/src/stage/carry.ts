@@ -31,7 +31,7 @@ export const nameOf = (sid: string) => names.get(sid) ?? sid.slice(0, 8);
  *  head is over it, "n carried" for the blocks here that are in it too, else nothing */
 export function rowWord(sid: string, live: string | null, blocks: { state: string; sessions: string[] }[], overSid: string | null): string | null {
   const open = blocks.filter((b) => b.state !== "dead");
-  if (sid === live) return open.length ? `${open.length} block${open.length > 1 ? "s" : ""}` : null;
+  if (sid === live) return open.length ? `${open.length} artifact${open.length > 1 ? "s" : ""}` : null;
   if (sid === overSid) return "carry here";
   const n = open.filter((b) => b.sessions.includes(sid)).length;
   return n ? `${n} carried` : null;

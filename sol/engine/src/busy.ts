@@ -1,10 +1,12 @@
 // Busy (sitting 6, #16): the one place that knows what is live in this engine, so that nothing restarts it mid-job.
 //
 // The counter: every long job joins it when it starts and leaves when it ends: a Life turn (either seat), a Work run's
-// turn, a call, a terminal, a review, a run cell's command, a talk (Anticipate). `renew` waits until the count is zero before going live
-// with a new build, and says who it is waiting on; `promote` reads the count from /health on the live engine and waits
-// the same way; the keeper never has to know, it only restarts what ended. No cap: a job that never ends (a terminal
-// left open) holds the renew and is named in the log and the window, so Marco can close it.
+// turn, a call, a terminal, a review, a run cell's command, a talk (Anticipate). `promote` reads the count from /health
+// on the live engine and waits until it is zero; the keeper never has to know, it only restarts what ended.
+// Background work (#1566, Frank's call on #1341): a Work run's background agents join as `background`. They count for
+// everything here (a move, a rename, letting go, the pin, /health), but not for the renew or a release's swap, which go
+// live between two turns (`betweenTurns`: nothing but background work is live), so a resting session with a 2 h
+// background Bash no longer holds a new build. A renew ends that work; renew.ts records it and the run is told.
 //
 // The writer lock: git's rule, one writer per session. A Life turn and a Work run on the same session id, or two Life
 // turns on it, would write one transcript at once; the second is refused with the reason. One holder may take its own
@@ -12,22 +14,25 @@
 
 // A job that works in a folder says which (a GPT talk in a project folder, #182; a Work run): `busyIn` answers "is
 // something running in this folder", for whatever would move or rename it (#181).
-export type Job = { kind: string; id: string; since: number; note?: string; cwd?: string };
+export type Job = { kind: string; id: string; since: number; note?: string; cwd?: string; background?: true };
 
 const jobs = new Map<symbol, Job>();
 const waiters = new Set<() => void>();
+const turnWaiters = new Set<() => void>();
 let listeners: ((jobs: Job[]) => void)[] = [];
 
 function changed() {
   const list = busyList();
   for (const l of listeners) l(list);
   if (!list.length) { const w = [...waiters]; waiters.clear(); for (const r of w) r(); }
+  if (!list.some((j) => !j.background)) { const w = [...turnWaiters]; turnWaiters.clear(); for (const r of w) r(); }
 }
 
-/** a long job starts: returns the leave function (safe to call twice) */
-export function join(kind: string, id: string, note?: string, cwd?: string): () => void {
+/** a long job starts: returns the leave function (safe to call twice). `background`: work that outlives its turn (a
+ *  Work run's background agents), which a renew does not wait for (#1566) */
+export function join(kind: string, id: string, note?: string, cwd?: string, background = false): () => void {
   const key = Symbol(kind);
-  jobs.set(key, { kind, id, since: Date.now(), ...(note ? { note } : {}), ...(cwd ? { cwd } : {}) });
+  jobs.set(key, { kind, id, since: Date.now(), ...(note ? { note } : {}), ...(cwd ? { cwd } : {}), ...(background ? { background: true as const } : {}) });
   changed();
   let left = false;
   return () => { if (left) return; left = true; jobs.delete(key); changed(); };
@@ -46,10 +51,21 @@ export function whenIdle(): Promise<void> {
   return new Promise((r) => waiters.add(r));
 }
 
-/** one line naming what is live, for the log and the window */
-export function busyLine(now = Date.now()): string {
-  return busyList().map((j) => `${j.kind} ${j.id.slice(0, 8)}${j.note ? ` (${j.note})` : ""} ${Math.round((now - j.since) / 1000)}s`).join(", ");
+/** the live jobs a renew waits for (#1566): every job but background work */
+export const turnsInFlight = (): Job[] => busyList().filter((j) => !j.background);
+/** no turn is in flight: only background work, or nothing, is live (#1566) */
+export const betweenTurns = () => !turnsInFlight().length;
+/** resolves when no turn is in flight (at once if none is) */
+export function whenBetweenTurns(): Promise<void> {
+  if (betweenTurns()) return Promise.resolve();
+  return new Promise((r) => turnWaiters.add(r));
 }
+
+const lineOf = (list: Job[], now: number) => list.map((j) => `${j.kind} ${j.id.slice(0, 8)}${j.note ? ` (${j.note})` : ""} ${Math.round((now - j.since) / 1000)}s`).join(", ");
+/** one line naming what is live, for the log and the window */
+export const busyLine = (now = Date.now()): string => lineOf(busyList(), now);
+/** one line naming the turns in flight, what a renew waits on (#1566) */
+export const turnLine = (now = Date.now()): string => lineOf(turnsInFlight(), now);
 
 // ---- the writer lock ----
 const locks = new Map<string, { holder: string; depth: number; cwd?: string }>();
@@ -100,4 +116,4 @@ export function letGo(now = Date.now(), except: string[] = []): boolean {
 /** a message that would start a job, while the engine is letting go */
 export const refusedWhileLettingGo = (type: unknown, now = Date.now()) => now < goneUntil && typeof type === "string" && STARTS.has(type);
 
-export const _reset = () => { jobs.clear(); locks.clear(); waiters.clear(); goneUntil = 0; };
+export const _reset = () => { jobs.clear(); locks.clear(); waiters.clear(); turnWaiters.clear(); goneUntil = 0; };

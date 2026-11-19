@@ -25,6 +25,16 @@ export function upsert(items: Item[], it: Item): Item[] {
   return n;
 }
 
+// A line the face put up on the press (`sending`, #917: a message, an answered question) is replaced whole by the
+// engine's own when it lands, so nothing of the guess stays on it
+export const landed = (items: Item[], it: Item): Item[] => upsert(items.map((x) => (x.id === it.id && x.sending ? { id: x.id, kind: x.kind } : x)), it);
+// a thread read again keeps the lines still on their way: the engine has not written them yet
+export const withSending = (fresh: Item[], before: Item[] = []): Item[] => {
+  const have = new Set(fresh.map((x) => x.id));
+  const on = before.filter((x) => x.sending && x.kind === "me" && !have.has(x.id));   // an answer on its way is the engine's card
+  return on.length ? [...fresh, ...on] : fresh;
+};
+
 // a word streamed into an item, buffered: nothing is copied until the next paint
 export function buffer(p: Pending, sessionId: string, id: string, text: string) {
   let s = p.get(sessionId);

@@ -1,0 +1,69 @@
+/* Cowork, whole (#1173): the anchor. Black, white and pearl, from the scale (sol/design/system/tokens.json). */
+.cw-whole { --cw-rail: 232px; position: absolute; inset: 0; display: grid; grid-template-columns: var(--cw-rail) 1fr; background: var(--base); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+html[data-spine="on"] .cw-whole { left: var(--f-spine); }
+.cw-rail { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s12) var(--s2) var(--s3); border-right: 1px solid var(--c-on-line); min-width: 0; overflow: auto; }
+.cw-h { font-size: var(--t-label); line-height: var(--t-label-line); letter-spacing: .09em; text-transform: uppercase; color: var(--c-on-dim); padding: var(--s3) var(--s3) var(--s1); }
+.cw-r { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: var(--s2); min-height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); color: var(--c-on-rest); cursor: pointer; min-width: 0; }
+.cw-r span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cw-r:hover { background: var(--c-lift); }
+.cw-r.on { background: var(--c-picked); color: var(--ink); box-shadow: inset 0 0 0 1px var(--c-pearl-line); }
+.cw-r:focus-visible { box-shadow: inset 0 0 0 1px var(--c-pearl); }
+.cw-n { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-pearl); }
+.cw-note { margin: var(--s2) 0 0; padding: 0 var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); }
+.cw-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--s2); }
+.cw-set { padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--surface); }
+.cw-set .lab { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.cw-set .lab small { color: var(--c-on-dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.cw-set .field-r { display: flex; align-items: center; gap: var(--s3); }
+.cw-view { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: var(--s12) minmax(0, 1fr); overflow: hidden; }
+/* one way to move between layers (#1416): the crumbs over every place, the place under them, a page as a layer over it */
+.cw-crumbs { display: flex; align-items: center; gap: var(--s1); padding: 0 var(--s6); min-width: 0; border-bottom: 1px solid var(--c-on-line); }
+.cw-step.off { opacity: .4; }
+.cw-trail { display: flex; align-items: center; gap: var(--s1); margin: 0 0 0 var(--s2); padding: 0; list-style: none; min-width: 0; overflow: hidden; }
+.cw-trail li { display: flex; align-items: center; gap: var(--s1); flex: none; min-width: 0; }
+.cw-trail li:last-child { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-trail i { font-style: normal; color: var(--c-on-dim); }
+.cw-trail b { font-weight: 500; }
+.cw-body { position: relative; min-width: 0; min-height: 0; overflow: auto; }
+.cw-body > .cw-pad { padding-top: var(--s6); }
+.cw-go { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--s1); cursor: pointer; background: var(--surface); border: 1px solid var(--c-on-line); border-radius: var(--r-card); padding: var(--s3) var(--s4); min-width: 0; }
+.cw-go:hover { background: var(--c-lift); }
+.cw-go:focus-visible { box-shadow: inset 0 0 0 1px var(--c-pearl); }
+.cw-as { position: absolute; right: var(--s6); bottom: var(--s4); z-index: 4; }
+.cw-out { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-rows: var(--s12) minmax(0, 1fr); background: var(--base); }
+.cw-out-hd { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 0 var(--s6); min-width: 0; }
+.cw-out-at { color: var(--c-on-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-out-page { position: relative; min-height: 0; }
+.cw-out-page > .st-child, .cw-out-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.cw-sys { position: absolute; inset: 0; }
+.cw-segs { display: flex; gap: var(--s1); padding: 0 var(--s3) var(--s1) var(--s6); }
+.cw-sg { all: unset; box-sizing: border-box; height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); border: 1px solid var(--c-on-line); color: var(--c-on-dim); font-size: var(--t-label); cursor: pointer; }
+.cw-sg.on { border-color: var(--c-pearl-line); color: var(--ink); }
+.cw-sg:hover { color: var(--ink); }
+.cw-map { position: absolute; inset: 0; }
+.cw-pad { padding: var(--s12) var(--s6) var(--s8); max-width: 1040px; }
+.cw-lead { margin: 0 0 var(--s4); color: var(--c-on-dim); max-width: var(--col); }
+.cw-dim { color: var(--c-on-dim); }
+.cw-k { margin: var(--s3) 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); text-transform: uppercase; letter-spacing: .06em; }
+.cw-top { margin-top: var(--s6); }
+.cw-card { background: var(--surface); border: 1px solid var(--c-on-line); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s3); min-width: 0; }
+.cw-card p { margin: 0; }
+.cw-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: var(--s2); }
+.cw-btn { all: unset; box-sizing: border-box; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-chip); border: 1px solid var(--c-pearl-line); color: var(--ink); cursor: pointer; font-size: var(--t-label); }
+.cw-btn:hover { background: var(--c-lift); }
+.cw-link { all: unset; cursor: pointer; color: var(--c-pearl); }
+.cw-empty { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s6); border: 1px dashed var(--c-on-line); border-radius: var(--r-card); max-width: var(--col); }
+.cw-empty span { color: var(--c-on-dim); }
+.cw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s3); }
+.cw-list, .cw-carried { margin: 0; padding: 0 0 0 var(--s4); }
+.cw-list li, .cw-carried li { margin: 0; min-width: 0; }
+.cw-item { all: unset; cursor: pointer; display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-item:hover { color: var(--c-pearl); }
+.cw-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.cw-table td, .cw-table th { border-bottom: 1px solid var(--c-on-line); padding: var(--s2); text-align: left; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
+.cw-table th { color: var(--c-on-dim); font-weight: 500; }
+.cw-table :is(td, th):not(:first-child) { width: 18%; }
+.cw-held { color: var(--c-pearl); }
+.cw-let { color: var(--c-on-dim); }
+.cw-carried { color: var(--c-on-rest); margin-top: var(--s1); }
+.cw-rw { display: flex; flex-direction: column; gap: var(--s1); }

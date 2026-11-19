@@ -245,7 +245,7 @@ test("the 9pm summary says which changes came in during the hand-in; one marked 
   assert.equal(T.handInWord({}), "");
 });
 
-test("the guard refuses a shell that marks a PR ready or draft, and the hand-in opened by hand", async () => {
+test("the guard lets a shell mark a PR ready or draft (#1126), and still refuses the review opened by hand", async () => {
   const { execFileSync } = await import("node:child_process");
   const { resolve } = await import("node:path");
   const guard = resolve(import.meta.dirname, "../../harness/guard");
@@ -254,13 +254,12 @@ test("the guard refuses a shell that marks a PR ready or draft, and the hand-in 
   g("init", "-q", "-b", "marco/mine"); g("config", "sol.login", ME); g("remote", "add", "origin", "https://github.com/sol-mif/sol-dev.git");   // a sol-dev checkout (#479)
   const run = (command: string) => execFileSync("node", [guard], { cwd: dir, encoding: "utf8", input: JSON.stringify({ tool_name: "Bash", tool_input: { command }, cwd: dir }) });
   const refused = (out: string) => out.includes('"deny"') ? (out.match(/harness \(([a-z-]+)\)/)?.[1] ?? "?") : "";
-  assert.equal(refused(run("gh pr ready 431")), "hand-in");
-  assert.equal(refused(run("gh pr ready 431 --undo --repo o/r")), "hand-in");
-  assert.equal(refused(run("cd x && gh pr ready 1")), "hand-in");
-  assert.equal(refused(run(`gh api graphql -f query='mutation { markPullRequestReadyForReview(input:{pullRequestId:"x"}) { clientMutationId } }'`)), "hand-in");
+  assert.equal(refused(run("gh pr ready 431")), "");
+  assert.equal(refused(run("gh pr ready 431 --undo --repo o/r")), "");
+  assert.equal(refused(run("cd x && gh pr ready 1")), "");
   assert.equal(refused(run(`curl -s -X POST -H 'content-type: application/json' -d '{"role":"hand-in"}' 127.0.0.1:7777/tonight`)), "tonight");
   assert.equal(refused(run("gh pr view 431 --json isDraft")), "");
-  assert.equal(refused(run("gh pr merge 431")), "merge");
+  assert.equal(refused(run("gh pr merge 431 --admin")), "merge");
 });
 
 test("the guard refuses the hand-in card's key and press from a shell or a script (rule hand-in-card); Sol's own source may name them", async () => {
@@ -288,13 +287,8 @@ test("the guard refuses the hand-in card's key and press from a shell or a scrip
   assert.equal(refused(call("Write", { file_path: join(dir, "sol/PROTOCOL.md"), content: "`team.handin.key` and `team.handin.press`" })), "");
   assert.equal(refused(run(`npx tsx --test test/together-handin-card.test.ts`)), "");
   assert.equal(refused(run(`cat sol/engine/src/team/handin.ts`)), "");
-  // the hand-in refusal says the buttons that do hand in (#579): the card's Bring it in, the wrap-up box's merge; never a
-  // Terminal line for the person to type
-  const why = run("gh pr ready 431");
-  assert.match(why, /press Bring it in there/);
-  assert.match(why, /a merge button naming the PR/);
-  assert.match(why, /No Terminal line/);
-  assert.ok(!/hand_in does it/.test(why));
+  // since #1126 a shell marks a PR ready itself: no refusal, so nothing to say
+  assert.equal(refused(run("gh pr ready 431")), "");
 });
 
 test("the project's rhythm says the hand-in hour: 20:00 New York time", async () => {

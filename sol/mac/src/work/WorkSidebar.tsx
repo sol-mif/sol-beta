@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { SeatScene } from "../SeatScene";
 import type { AppMode } from "../ModeSwitch";
 import { ModeWheel } from "../ModeWheel";
 import { CFG, enter, useSpring } from "../motion";
@@ -7,13 +6,19 @@ import { LAYOUTS, asLayout, nextLayout, parts, type Layout } from "./layouts";
 import { useSideFloat } from "../sideFloat";
 import { Fold, Pill, Turn } from "../MotionKit";
 import { CellCheck, Runner } from "../creature/indicators";
-import { working, type Group, type Project, type RunInfo, type Work, type WorkSession } from "./useWork";
+import { working, type Group, type Project, type Work, type WorkSession } from "./useWork";
 import { Menu, type MenuItem } from "./Menu";
 import { span, useNow } from "./Elapsed";
-import { Unseen } from "../Site";
+import { MomentDot } from "../notify/InPlace";   // the one notification (#845): the row's dot
 import { WHICH, type Thread } from "../useEngine";
 import { useTalksWaiting } from "../Conversations";
 import { useV3On, V3RowMark } from "../cowork/v3/hooks";   // Cowork v3 (fr-30): a project's fold is where things land
+import { useSideSorted } from "./sorted";   // #1016: Build keeps Build's folders, Home's fold away (side.sorted, off by default)
+import { sortFolders, kidsShown, kidsMark, type Placed } from "./sortedRules";
+import { FolderPieces } from "../folderPieces/FolderPieces";   // #1092: a folder's pieces above its sessions (build.pieces)
+import { useOpenPiece } from "../folderPieces/open";
+import { useSpine } from "../spine/flag";   // with the spine on, the modes are the spine's
+import { takeFindAsk } from "../spine/find";   // the spine's find focuses the search
 
 // Home's side (#132): every Claude Code session on this machine, under the folder it ran in, and below them the chats
 // (Life's conversations, in no folder). Pinned on top, then Marco's own groups, then the folders (or dates, or states). A row says its state with one mark: the runner while Claude
@@ -44,9 +49,8 @@ const HERE = WHICH === "live" ? "nucbox" : "mac";
 const MACHINE: Record<string, string> = { mac: "the Mac", nucbox: "the NucBox" };
 const away = (s: WorkSession) => !!s.machine && s.machine !== HERE;   // its folder is there, not gone: not struck through
 
-export type RowState = "running" | "needs" | "failed" | "unread" | "done" | "";
-export const rowState = (s: WorkSession, r?: RunInfo): RowState =>
-  r?.waiting ? "needs" : working(r) || s.running ? "running" : (r ? r.failed : s.failed) ? "failed" : s.unread ? "unread" : s.done ? "done" : "";
+export { rowState, type RowState } from "./rowState";   // one home, shared with the orchestration stage's session block
+import { rowState, type RowState } from "./rowState";
 
 const age = (t: number) => {
   const d = (Date.now() - t) / 1000;
@@ -108,6 +112,7 @@ type Section = {
   folders?: Section[]; dropFolder?: (path: string) => void;   // a group's folders, nested in it; a folder dropped on it
   topics?: Section[];   // a folder's topic groups, nested in it
   top?: string;   // a top row's key in work.order ("g:<id>" or the folder's path): it can be dragged above or below another
+  shut?: boolean;   // folded until opened (#1016: Home's folders and the quiet ones, side.sorted)
 };
 
 // the chats: Life's threads, both seats; active is the one showing (undefined while a session shows). A Claude one
@@ -120,7 +125,7 @@ const CHAT_PINS = "sol.home.chatpins";
 export type Lay = { layout?: string; share?: number; arrange: (patch: object) => void };
 
 export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConversations, onFresh, menuHold, onBeside, onPop, chats, lay }: {
-  w: Work; pinned: boolean; view: "chat" | "settings" | "conversations"; onMode: (m: AppMode) => void; onSettings: () => void; onConversations: () => void;
+  w: Work; pinned: boolean; view: "chat" | "settings" | "conversations" | "one"; onMode: (m: AppMode) => void; onSettings: () => void; onConversations: () => void;
   onFresh: (cwd?: string) => void; menuHold?: boolean; onBeside: (id: string) => void; onPop: (id: string, title: string) => void; chats?: Chats; lay?: Lay;
 }) {
   const [pins, setPins] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem(CHAT_PINS) ?? "[]"); return Array.isArray(v) ? v : []; } catch { return []; } });
@@ -128,6 +133,9 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
   const [view, setView] = useState<View>(loadView);
   const waiting = useTalksWaiting();   // talks not opened yet, from this Mac's engine: the dot on conversations
   const v3 = useV3On();
+  const sorted = useSideSorted();
+  const pieceOpen = useOpenPiece();   // #1092: a piece in the room takes the "you are here" from the session row
+  const [hit, setHit] = useState(0);   // side.sorted: the search's row the arrows are on, Enter opens it
   const setV = (p: Partial<View>) => setView((v) => { const n = { ...v, ...p }; localStorage.setItem("sol.work.view", JSON.stringify(n)); return n; });
   const [q, setQ] = useState("");
   const [folded, setFolded] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem("sol.work.folded") ?? "{}"); } catch { return {}; } });
@@ -160,7 +168,21 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
   const layout = went.layout ?? asLayout(lay?.layout), share = went.share ?? lay?.share ?? 0.5;
   const [picking, setPicking] = useState(false);
   const setLayout = (l: Layout) => { setWent((x) => ({ ...x, layout: l })); setPicking(false); lay?.arrange({ layout: { home: l } }); };
-  const f = useSideFloat(pinned, editing !== null || !!menu || !!menuHold || !!q || picking, 272);
+  // the spine's find (2026-11-11, spine/find.ts): the side opens if it is folded, held open while the search has the
+  // focus, and the focus lands in the search once the side is no longer inert (two frames: drawn open)
+  const spine = useSpine();
+  const [seeking, setSeeking] = useState(false);
+  const f = useSideFloat(pinned, editing !== null || !!menu || !!menuHold || !!q || picking || seeking, 272);
+  useEffect(() => {
+    const find = () => {
+      setSeeking(true);
+      // a focus that did not land lets the side go again, or it would stay held open with nothing to blur
+      requestAnimationFrame(() => requestAnimationFrame(() => { const el = searchRef.current; el?.focus(); if (!el || document.activeElement !== el) setSeeking(false); }));
+    };
+    if (takeFindAsk()) find();
+    window.addEventListener("sol:find", find);
+    return () => window.removeEventListener("sol:find", find);
+  }, []);
 
   // cmd+F (while the side is open) and cmd+shift+F search the sessions
   useEffect(() => {
@@ -187,12 +209,13 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     return (a: WorkSession, b: WorkSession) => sortAt(b) - sortAt(a);
   }, [view.sort, runs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // side sessions sit under the one that started them, when that one is in the list too; a side session Marco
-  // pinned or put in a group himself goes where he put it
-  const ids = new Set(visible.map((s) => s.id));
-  const nests = (s: WorkSession) => !!s.parent && s.parent !== s.id && ids.has(s.parent) && !s.pinned && !s.group;
+  // a session sits under the orchestration session that runs it (`under`), when that one is in the list too; starting
+  // a session never folds it (Marco 2026-11-14), so `parent` nests nothing. One rule with Home's side (sideSort
+  // foldUnder): one pinned or put in a group stays under its orchestrator too, its pin marked on its row in the fold
+  const orch = new Set(visible.filter((s) => s.kind === "orchestration").map((s) => s.id));
+  const nests = (s: WorkSession) => !!s.under && s.under !== s.id && orch.has(s.under);
   const kids = new Map<string, WorkSession[]>();
-  for (const s of visible) if (nests(s)) kids.set(s.parent!, [...(kids.get(s.parent!) ?? []), s]);
+  for (const s of visible) if (nests(s)) kids.set(s.under!, [...(kids.get(s.under!) ?? []), s]);
   const top = visible.filter((s) => !nests(s));
 
   const sections: Section[] = [];
@@ -208,7 +231,9 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     // by folder, a group holds its folders too (nested, folded with it); the other views list sessions only
     const byP = new Map<string, WorkSession[]>();
     for (const s of loose) byP.set(s.project, [...(byP.get(s.project) ?? []), s]);
-    const latest = (p: Project) => Math.max(0, ...(byP.get(p.path) ?? []).map(sortAt));
+    // the engine's, over every session in the folder (#1179): the loose rows alone left out the pinned and the grouped
+    // ones. An engine from before it (or the e2e stub) sends none: then the loose rows, as before, never 0 for every folder
+    const latest = (p: Project) => p.latest ?? Math.max(0, ...(byP.get(p.path) ?? []).map(sortAt));
     // a session dropped on a folder (or a topic group in it) is shown under that folder from then on
     const toFolder = (id: string, path: string, group: string | null) => {
       const s = w.sessions.find((x) => x.id === id);
@@ -229,9 +254,17 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
       key: "g:" + g.id, top: "g:" + g.id, label: g.name, group: g, rows: rest.filter((s) => s.group === g.id).sort(sorter), drop: (id) => w.mark(id, { group: g.id }),
       ...(g.in ? {} : { folders: folders.filter((p) => inGroup(p) && p.group === g.id).map(folderSec), dropFolder: (path: string) => w.group("move", { id: g.id, folder: path }) }),
     });
-    if (view.by === "project") for (const p of folders) if (!inGroup(p)) tops.push({ ...folderSec(p), top: p.path });
+    // side.sorted (#1016): Build lists Build's folders; Home's go to one fold at the bottom, the idle ones to "quiet"
+    const hot = (s: WorkSession) => { const st = rowState(s, runs[s.id]); return st === "running" || st === "needs"; };
+    const split = sorted && view.by === "project"
+      ? sortFolders(folders.filter((p) => !inGroup(p)) as (Project & Placed)[], latest, (p) => (byP.get(p.path) ?? []).some(hot) || w.sessions.some((s) => s.pinned && s.project === p.path),
+        view.status === "active" ? Date.now() : 0)   // quiet is for the active list: archived ones are all old, none folds away
+      : null;
+    if (view.by === "project") for (const p of split ? split.build : folders.filter((p) => !inGroup(p))) tops.push({ ...folderSec(p), top: p.path });
     const rank = (x: Section) => { const i = w.order.indexOf(x.top!); return i < 0 ? w.order.length : i; };
     sections.push(...tops.sort((a, b) => rank(a) - rank(b)));
+    if (split?.quiet.length) sections.push({ key: "side:quiet", label: "quiet", rows: [], folders: split.quiet.map(folderSec), shut: true });
+    if (split?.home.length) sections.push({ key: "side:home", label: "home's folders", rows: [], folders: split.home.map(folderSec), shut: true });
     if (view.by === "date") {
       const order: string[] = [];
       const by = new Map<string, WorkSession[]>();
@@ -352,9 +385,12 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
   };
 
   const row = (s: WorkSession, depth = 0, bare = false): React.ReactNode => {
-    const on = s.id === w.live || (s.seat === "codex" && s.id === chats?.active);
+    const on = (s.id === w.live && !pieceOpen) || (s.seat === "codex" && s.id === chats?.active);
     const st = rowState(s, runs[s.id]);
-    const children = bare ? [] : (kids.get(s.id) ?? []).sort(sorter);
+    const kb = sorted && words.length > 0 && !bare && sections[0]?.rows[Math.min(hit, sections[0].rows.length - 1)]?.id === s.id;
+    const all = bare ? [] : (kids.get(s.id) ?? []).sort(sorter);
+    // side.sorted (#1016): a session that started many shows the first few and the live ones, then "n more"
+    const { shown: children, hidden } = sorted ? kidsShown(all, live, !!more["k:" + s.id]) : { shown: all, hidden: 0 };
     return (
       <Arrive key={s.id} on={!bare && fresh(s.id)}>
         {editing === s.id ? (
@@ -366,24 +402,33 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
               }} />
           </div>
         ) : (
-          <div data-sid={s.id} className={`row wrow ${bare ? "peek" : ""} ${on ? "on" : ""} ${st} ${s.archived ? "archived" : ""} ${s.gone && !away(s) ? "gone" : ""} ${dragging === s.id ? "dragged" : ""}`} style={{ paddingLeft: 10 + depth * 14 }}
+          <div data-sid={s.id} className={`row wrow ${bare ? "peek" : ""} ${on ? "on" : ""} ${kb ? "kb" : ""} ${st} ${s.archived ? "archived" : ""} ${s.gone && !away(s) ? "gone" : ""} ${dragging === s.id ? "dragged" : ""}`} style={{ paddingLeft: 10 + depth * 14 }}
             draggable={s.mode !== "cowork"} onDragStart={(ev) => { if (s.mode === "cowork") return; ev.dataTransfer.setData("sol/session", s.id); ev.dataTransfer.effectAllowed = "move"; setDragging(s.id); }}
             onDragEnd={() => { setDragging(null); setOver(null); }}
             onClick={(ev) => (s.seat === "codex" ? chats?.onOpen(asChat(s)) : ev.metaKey ? onBeside(s.id) : w.open(s.id))} onDoubleClick={() => begin(s)} onContextMenu={(ev) => rowMenu(ev, s)}
             title={`${s.title}\n${s.cwd}${away(s) ? ` (on ${MACHINE[s.machine!]})` : s.gone ? " (folder gone)" : ""}${s.branch ? `\n${s.branch}` : ""}`}>
             {depth > 0 && <i className="twig" />}
             <StateMark st={st} />
-            <span className="t">{s.title || "untitled"}</span><Unseen sessionId={s.id} />
+            <span className="t">{s.title || "untitled"}</span><MomentDot sessionId={s.id} />
+            {depth > 0 && s.pinned && <small className="tag pin" title="pinned: it stays under the session that runs it">pinned</small>}
+            {depth > 0 && (s.grouped === "send" || s.grouped === "read") && (   // moved here by the engine (#1336): one click takes it back
+              <button className="tag grouped" title={`moved here because the session above ${s.grouped === "send" ? "sent to it" : "read it"}; a click takes it back out, and the two are never grouped again`}
+                onClick={(ev) => { ev.stopPropagation(); void w.under(s.id, null); }}>moved · undo</button>
+            )}
             {s.seat === "codex" && <small className="tag" title="a talk with GPT (Codex), run in this folder">gpt</small>}
             {s.worktree && <small className="tag" title={`a side copy: ${s.worktree}`}><Branch />{s.worktree.replace(/-[0-9a-f]{6}$/, "")}</small>}
             {away(s) && <small className="tag away" title={`ran on ${MACHINE[s.machine!]}; its transcript came over Syncthing`}>{s.machine}</small>}
             {s.held && <small className={`tag held ${s.held.status}`} title={`open in ${HELD[s.held.who]} (${s.held.status}${s.held.waitingFor ? `: ${s.held.waitingFor}` : ""}): read-only here`}>{HELD_SHORT[s.held.who]} · {s.held.status}</small>}
+            {sorted && all.length > 0 && <small className={`tag wkids ${all.some(live) ? "on" : ""}`} title={`${kidsMark(all, live).long}: sessions this one runs; a click shows ${more["k:" + s.id] ? "the first few" : "them all"}`}
+              onClick={(ev) => { ev.stopPropagation(); setMore((m) => ({ ...m, ["k:" + s.id]: !m["k:" + s.id] })); }}>{kidsMark(all, live).short}</small>}
             {!!runs[s.id]?.tasks?.length && <small className="tag agents" title={runs[s.id]!.tasks!.join("\n")}>{runs[s.id]!.tasks!.length} {runs[s.id]!.tasks!.length === 1 ? "agent" : "agents"}</small>}
             {runs[s.id]?.since ? <small className="age live" title="working for">{span(now - runs[s.id]!.since!)}</small> : <small className="age">{age(s.updatedAt)}</small>}
             <button className="arch" title={s.archived ? "unarchive" : "archive"} onClick={(ev) => { ev.stopPropagation(); w.mark(s.id, { archived: !s.archived }); }}><Box /></button>
           </div>
         )}
         {children.map((c) => row(c, depth + 1))}
+        {hidden > 0 && <button className="wmore" style={{ marginLeft: 30 + (depth + 1) * 14 }} onClick={() => setMore((m) => ({ ...m, ["k:" + s.id]: true }))}
+          title="sessions this one started">{hidden} more it started</button>}
       </Arrive>
     );
   };
@@ -440,6 +485,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
 
   // whether a section draws at all: an empty pinned only while a row is dragged, an empty folder only if it was added
   const drawn = (sec: Section) => {
+    if (sec.key === "search") return true;   // "nothing found" is an answer too (#1542)
     const count = sec.rows.length + [...(sec.folders ?? []), ...(sec.topics ?? [])].reduce((n, x) => n + x.rows.length, 0);
     if (!count && !sec.drop && !sec.dropFolder) return false;   // the groups fold has no rows of its own, only its groups
     if (!sec.rows.length && sec.key === "pinned" && !dragging) return false;
@@ -449,7 +495,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     const nested = sec.folders ?? [], topics = sec.topics ?? [];
     const count = sec.rows.length + [...nested, ...topics].reduce((n, x) => n + x.rows.length, 0);
     if (!drawn(sec)) return null;
-    const isFolded = !!folded[sec.key] && sec.key !== "search";
+    const isFolded = sec.key !== "search" && (sec.shut ? !folded[sec.key] : !!folded[sec.key]);
     // a group shows all its rows; a folder, and a topic group inside one, shows SHOW and then "n more"
     const all = more[sec.key] || sec.key === "search" || sec.key === "pinned" || (!!sec.group && !sec.group.in);
     const shown = all ? sec.rows : sec.rows.slice(0, SHOW);
@@ -459,6 +505,14 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     return (
       <div key={sec.key} className={`wsec ${over === sec.key ? "over" : ""} ${(p && dragging === "f:" + p.path) || (sec.top && moving === sec.top) ? "dragged" : ""} ${line && line.key === sec.top ? "line-" + line.at : ""}`} {...dropOn(sec)}>
         <div className={`group tog ${isFolded ? "" : "open"}`} data-s data-v3-room={v3 && sec.key.startsWith("room:") ? sec.key.slice(5) : undefined} onClick={() => fold(sec.key)} onContextMenu={(ev) => sectionMenu(ev, sec)}
+          // side.sorted (#1016): a folder's title takes the focus, Enter or Space folds and opens it: a fold is reached by keys
+          {...(sorted ? { tabIndex: 0, role: "button", "aria-expanded": !isFolded,
+            onKeyDown: (ev: React.KeyboardEvent) => {
+              if (ev.target !== ev.currentTarget || (ev.key !== "Enter" && ev.key !== " ")) return;
+              ev.preventDefault(); fold(sec.key);
+              const el = ev.currentTarget as HTMLElement;   // what opened comes into view under it
+              window.setTimeout(() => el.scrollIntoView({ block: "start", behavior: "smooth" }), 320);
+            } } : {})}
           title={p ? p.path + (w.prefs.newIn === p.path ? "\nnew sessions start here" : "") : undefined}
           draggable={(!!p || ordering(sec)) && !words.length}
           onDragStart={(p || ordering(sec)) ? ((ev) => {
@@ -469,6 +523,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
           onDragEnd={(p || ordering(sec)) ? endDrag : undefined} {...orderOn(sec)}>
           <Turn to={isFolded ? 0 : 90} cfg={CFG.settle}><Caret /></Turn>
           {p && <Folder />}<span className="gl">{sec.label}</span>
+          {sorted && (p as (Project & Placed) | undefined)?.place === "both" && <small className="warea" title={`a code project inside Home's ${(p as Project & Placed).area}: listed here and in Home`}>{(p as Project & Placed).area}</small>}
           {count > 0 && <small>{count}</small>}
           {v3 && sec.key.startsWith("room:") && <V3RowMark room={sec.key.slice(5)} />}
           {p && <button className="here" title={`new session in ${p.path}`} onClick={(ev) => { ev.stopPropagation(); onFresh(p.path); }}><Plus /></button>}
@@ -481,10 +536,12 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
           {said.open && said.files?.map((f) => <p key={f} className="wmine" title={f}>{shortPath(f, p.path)}</p>)}
         </>}
         {isFolded && (() => {   // folded, the live rows still show, flat, from everything under it (#111)
-          const peek = under(sec).filter(live).sort(sorter);
+          // side.sorted (#1016): a shut fold (Home's, quiet) also shows the session open now, so it is never lost from view
+          const peek = under(sec).filter((s) => live(s) || (!!sec.shut && s.id === w.live)).sort(sorter);
           return peek.length > 0 ? <div className="wpeek">{peek.map((s) => row(s, 0, true))}</div> : null;
         })()}
-        <Fold open={!isFolded} from={{ x: -18 }} gap={30}>
+        <Fold open={!isFolded} lazy={sec.shut} from={{ x: -18 }} gap={30}>
+          {p && <FolderPieces cwd={p.path} live={w.live} grammar="work" />}
           {topics.length > 0 && <div className="wnest">{topics.map((x) => section(x))}</div>}
           {!sec.rows.length && !nested.length && !topics.length && <p className="none">{sec.key === "pinned" ? "drop here to pin" : sec.group ? (sec.dropFolder ? "drag sessions or folders here" : "drag sessions here") : "no sessions yet"}</p>}
           {shown.map((s) => row(s))}
@@ -532,7 +589,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
               onClick={() => c.onOpen(t)} onDoubleClick={() => { setEditing("c:" + t.sessionId); setText(t.title); }} onContextMenu={(ev) => chatMenu(ev, t)}
               title={`${t.title || "untitled"}\n${t.seat}`}>
               <span className={`wst ${pins.includes(t.sessionId) ? "pin" : ""}`}><i /></span>
-              <span className="t">{t.title || "untitled"}</span><Unseen sessionId={t.sessionId} />
+              <span className="t">{t.title || "untitled"}</span><MomentDot sessionId={t.sessionId} />
               {t.door && <small className="door">{t.door}</small>}
               <small className="age">{age(ms(t.updatedAt))}</small>
             </div>
@@ -616,15 +673,27 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
     <>
       <aside ref={f.ref} className={`side wside ${f.open ? "open" : ""} ${pinned ? "pinned" : ""}`} onMouseEnter={f.onMouseEnter} onMouseLeave={f.onMouseLeave}
         aria-hidden={!f.open} inert={!f.open} onKeyDown={carKey}>
-        <div className="side-head" data-s>
-          <SeatScene mode="home" />
+        {/* with the spine on, the modes are the spine's alone (2026-11-11), and the head held nothing else */}
+        {!spine && <div className="side-head" data-s>
           <ModeWheel mode="home" onPick={onMode} />
-        </div>
+        </div>}
         <button className="newc" data-s onClick={() => onFresh()}><Plus /><span>new session</span><kbd>⌘N</kbd></button>
         <div className="wfind" data-s>
           <label className="wsearch"><Lens />
-            <input ref={searchRef} value={q} placeholder="search" aria-label="search sessions and chats" onChange={(ev) => setQ(ev.target.value)}
-              onKeyDown={(ev) => { if (ev.key === "Escape") { ev.stopPropagation(); setQ(""); ev.currentTarget.blur(); } }} />
+            <input ref={searchRef} value={q} placeholder="search" aria-label="search sessions and chats" onBlur={() => setSeeking(false)} onChange={(ev) => { setQ(ev.target.value); setHit(0); }}
+              onKeyDown={(ev) => {
+                if (ev.key === "Escape") { ev.stopPropagation(); setQ(""); setHit(0); ev.currentTarget.blur(); return; }
+                // side.sorted (#1016): the arrows walk the found rows, Enter opens the one they are on (the first at once)
+                const found = sorted && words.length ? sections[0]?.rows ?? [] : [];
+                if (!found.length) return;
+                if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); setHit((h) => Math.max(0, Math.min(found.length - 1, h + (ev.key === "ArrowDown" ? 1 : -1)))); }
+                else if (ev.key === "Enter") {
+                  ev.preventDefault();
+                  const s = found[Math.min(hit, found.length - 1)];
+                  if (s.seat === "codex") chats?.onOpen(asChat(s)); else if (ev.metaKey) onBeside(s.id); else w.open(s.id);
+                  setQ(""); setHit(0); ev.currentTarget.blur();
+                }
+              }} />
           </label>
           <span className="wlay">
             <button className="wview" onPointerDown={holdDown} onPointerLeave={holdOff} onClick={layClick} aria-label={`layout: ${layout}`}

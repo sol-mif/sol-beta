@@ -24,6 +24,10 @@
 //   record at `.sol/talk/<line id>.<ext>` (record.files.put: a cloud room, a GitHub room's repository, a Drive room's
 //   folder; 5 MB, 150 a room) and the line carries `file { path, name, size, kind }`, never the bytes. A face reads
 //   the bytes back through `team.talk.file`; an agent only ever reads "[an image]" or "[a file: <name>]".
+// - The @ rule (#1417, chatline.ts): only "@<login>" pings a person (no model runs), and only "@<login>'s agent" in
+//   `general`, in a person's line, hands the line to that agent (an ask, reach.ts, on its person's usage). No @: nobody
+//   is told. The line keeps who it was handed to (`woke`) and who was pinged (`pinged`), so every Sol shows the same
+//   read rule under it. A line may carry an artifact (`artifact { kind, ref, title }`), its link kept in the words.
 import { z } from "zod";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -34,14 +38,19 @@ import type { ToolResult, TurnCtx } from "../browser.js";
 import { STATE_DIR } from "../work/state.js";
 import { getTeam, mayAgentSpeak, signature, activeRoom, type TeamSettings } from "./settings.js";
 import { sendRelay, relayRoster, type RelayMsg } from "./relay.js";
-import { namedIn } from "./pings.js";
+import { groupChat } from "../seams/chat.js";   // a line goes out through the group chat seam (#1320)
+import { wakeUp } from "../seams/wake.js";   // a teammate named in it is woken through the wake seam (#1320)
+import { mentionsIn, artifactOf, refOk, withLink, type Artifact } from "./chatline.js";   // the @ rule and artifacts (#1417)
 import { talkFileOf, partIdOk, TALK_FILE_PATH, TALK_FILE_MAX, TALK_FILE_NAME_MAX, type TalkFile } from "../hub/index.js";
 import type { RoomRecord } from "./record.js";
+import { quietFetch } from "../quiet.js";
 
 export type Source = "relay" | "discord" | "whatsapp";
 /** room: the room (its id here) the line was said or heard in, taken when it arrived. file: an attachment in the
  *  room's record (#315). heard: its time is the hub's stamp */
-export type TalkLine = { id: string; thread: string; from: string; at: number; text: string; source: Source; agent?: boolean; to?: "discord"; room?: string; file?: TalkFile; heard?: true };
+export type TalkLine = { id: string; thread: string; from: string; at: number; text: string; source: Source; agent?: boolean; to?: "discord"; room?: string; file?: TalkFile; heard?: true;
+  /** #1417: the artifact on the line; the agents it was handed to; the people pinged */
+  artifact?: Artifact; woke?: string[]; pinged?: string[] };
 export type { TalkFile };
 
 export const CAP = 200;              // lines kept per thread
@@ -120,10 +129,11 @@ export function talkSince(): Record<string, number> {
   return out;
 }
 
-// the relay's send; tests hand in their own, to see a line with a file go
-let send: typeof sendRelay = (...a) => sendRelay(...a);
-/** tests: the relay's send, or back to the real one */
-export function _talkSend(fn: typeof sendRelay | null) { send = fn ?? ((...a) => sendRelay(...a)); }
+// the group chat seam's say (#1320); tests hand in their own, to see a line with a file go
+const sayOut: typeof sendRelay = (_kind, payload = {}, agent = false) => groupChat().say(payload, agent);
+let send: typeof sendRelay = sayOut;
+/** tests: their own send, or back to the seam's */
+export function _talkSend(fn: typeof sendRelay | null) { send = fn ?? sayOut; }
 
 // ---- who hears a new line (wire.ts: every Cowork face) ----
 const subs = new Set<(l: TalkLine) => void>();
@@ -139,15 +149,32 @@ function add(l: TalkLine) { const room = l.room ?? roomNow(); keep(room, l.threa
 let saidAt = 0;
 const sayNow = () => (saidAt = Math.max(Date.now(), saidAt));
 
+// who a line may name (#1417): the logins on the relay, and the group's members once wire.ts hands them in
+let loginsNow: () => string[] = () => [];
+/** wire.ts: the group's people, read from the team (never a list here) */
+export function setChatLogins(fn: () => string[]) { loginsNow = fn; }
+// how a person's line reaches an agent it names (#1417): an ask on reach, handed in by wire.ts (tests hand their own).
+// true when the ask went; none: nothing reads it
+let askAgent: ((to: string, question: string, id: string) => boolean) | null = null;
+export function setAskAgent(fn: typeof askAgent) { askAgent = fn; }
+
 export function say(thread: string, text: string, s: TeamSettings, agent: boolean, extra: Partial<TalkLine> = {}, mustSend = false): { line: TalkLine; sent: boolean } {
-  const line: TalkLine = { id: randomUUID(), thread, from: signature(s, agent), at: sayNow(), text, source: "relay", room: roomNow(), ...(agent ? { agent } : {}), ...extra };
+  const id = extra.id ?? randomUUID();
+  const named = mentionsIn(text, [...new Set([...loginsNow(), ...relayRoster().map((r) => r.who)])], s.me.login);
+  // the @ rule (#1417): an agent is handed a person's line in general only. An agent's line never wakes another agent,
+  // and a #N line is an issue comment, which the wake reads on its own (wake.ts)
+  const woke = !agent && thread === "general" && askAgent ? named.agents.filter((to) => askAgent!(to, text, id)) : [];
+  const line: TalkLine = { id, thread, from: signature(s, agent), at: sayNow(), text, source: "relay", room: roomNow(), ...(agent ? { agent } : {}), ...extra,
+    ...(woke.length ? { woke } : {}), ...(named.people.length ? { pinged: named.people } : {}) };
   if (!mustSend) add(line);
-  const sent = send("talk", { thread, text, id: line.id, ...(extra.to ? { to: extra.to } : {}), ...(line.file ? { file: line.file } : {}) }, agent);
+  const sent = send("talk", { thread, text, id: line.id, ...(extra.to ? { to: extra.to } : {}), ...(line.file ? { file: line.file } : {}),
+    ...(line.artifact ? { artifact: line.artifact } : {}), ...(woke.length ? { woke } : {}), ...(named.people.length ? { pinged: named.people } : {}) }, agent);
   if (mustSend && !sent) return { line, sent };
   if (mustSend) add(line);
   const issue = thread === "general" ? undefined : Number(thread.slice(1));
-  for (const to of namedIn(text, [...new Set(relayRoster().map((r) => r.who))], s.me.login))
-    sendRelay("ping", { to, pingKind: "chat", line: `in ${thread}: ${text.split("\n")[0].slice(0, 260)}`, ...(issue ? { issue, repo: s.repos[0] } : {}) }, agent);
+  // only an @ pings (#1417): a name said as a plain word tells nobody
+  for (const to of named.people)
+    wakeUp().send({ to, pingKind: "chat", line: `in ${thread}: ${text.split("\n")[0].slice(0, 260)}`, ...(issue ? { issue, repo: s.repos[0] } : {}) }, agent);
   return { line, sent };
 }
 
@@ -159,8 +186,13 @@ export function lineFromRelay(m: RelayMsg): TalkLine | null {
   if (!thread || (!text && !file) || !/^[A-Za-z0-9-]{1,39}$/.test(login)) return null;   // an attachment alone is a line (#315)
   if (!partIdOk(id, m.part)) return null;   // a "-pN" id is a part's only (the second review)
   const agent = m.from.agent === true;
+  // #1417: the artifact, and who the line was handed to and pinged, as its sender's Sol said them
+  const artifact = artifactOf(m.artifact) ?? undefined;
+  const logins = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && /^[A-Za-z0-9-]{1,39}$/.test(x)))].slice(0, 12) : []);
+  const woke = logins(m.woke), pinged = logins(m.pinged);
   // heard: its time is the hub's stamp (a hello's talkSince and the cloud's page cursor read only those)
-  return { id, thread, from: agent ? `${login}'s agent` : login, at: typeof m.at === "number" ? m.at : Date.now(), text, source: "relay", heard: true, ...(agent ? { agent } : {}), ...(m.to === "discord" ? { to: "discord" as const } : {}), ...(file ? { file } : {}) };
+  return { id, thread, from: agent ? `${login}'s agent` : login, at: typeof m.at === "number" ? m.at : Date.now(), text, source: "relay", heard: true, ...(agent ? { agent } : {}), ...(m.to === "discord" ? { to: "discord" as const } : {}), ...(file ? { file } : {}),
+    ...(artifact ? { artifact } : {}), ...(woke.length ? { woke } : {}), ...(pinged.length ? { pinged } : {}) };
 }
 /** a line as an agent reads it (#315): its words, and an attachment as words only, never its bytes or its path (pure) */
 export function saidOf(text: string, file?: Pick<TalkFile, "kind" | "name">): string {
@@ -237,6 +269,7 @@ export async function postDiscord(text: string, s: TeamSettings = getTeam(), url
   const name = s.me.name || s.me.login || "someone";
   const body = { content: text.slice(0, 2000), username: `${name}'s agent (for ${name})`.slice(0, 80), allowed_mentions: { parse: [] } };
   try {
+    quietFetch(url.trim());
     const r = await fetch(url.trim(), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000) });
     return r.ok ? { ok: true } : { ok: false, error: `Discord did not take it (${r.status})` };
   } catch {
@@ -247,12 +280,17 @@ export async function postDiscord(text: string, s: TeamSettings = getTeam(), url
 export type Said = { ok: true; line: TalkLine; sent: boolean } | { ok: false; error: string };
 /** a line typed in the chat (team.talk): `/discord ` goes out first, then the line is said as the person. `fileRaw`, the
  *  face's `file { name, bytes, kind }` (#315), is checked, written into the room's record, and named on the line */
-export async function typed(threadRaw: unknown, textRaw: unknown, s: TeamSettings = getTeam(), fileRaw?: unknown, d: AttachDeps | null = null): Promise<Said> {
+// `artifactRaw` (#1417): a PR, a diff or a file of the group's repositories, or a block, put on the line; its link goes
+// in the words. `repos`: where an artifact's address may point (wire.ts: the group's repositories)
+export async function typed(threadRaw: unknown, textRaw: unknown, s: TeamSettings = getTeam(), fileRaw?: unknown, d: AttachDeps | null = null, artifactRaw?: unknown, repos: readonly string[] = s.repos): Promise<Said> {
   const thread = threadOf(threadRaw);
   if (!thread) return { ok: false, error: "no such thread" };
   let text = cleanText(textRaw);
   const att = fileRaw === undefined || fileRaw === null ? null : attachmentOf(fileRaw);
   if (att && "error" in att) return { ok: false, error: att.error };
+  const given = artifactRaw !== undefined && artifactRaw !== null, artifact = given ? artifactOf(artifactRaw) : null;
+  if (given && (!artifact || !refOk(artifact, repos))) return { ok: false, error: "that artifact is not one of this group's: a PR, a diff or a file of its repositories, or a block on your stage" };
+  if (artifact) text = cleanText(withLink(text, artifact));
   if (!text && !att) return { ok: false, error: "nothing to say" };
   if (!s.me.login) return { ok: false, error: "who you are comes from GitHub: sign in first (Settings, my accounts)" };
   const out = /^\/discord(?:\s+|$)/i.test(text);
@@ -272,7 +310,7 @@ export async function typed(threadRaw: unknown, textRaw: unknown, s: TeamSetting
     ({ file, undo } = w);
   }
   // a line with a file goes first and is kept only when it went: else its file comes back out of the record
-  const { line, sent } = say(thread, text, s, false, { id, ...(out ? { to: "discord" as const } : {}), ...(file ? { file } : {}) }, !!file);
+  const { line, sent } = say(thread, text, s, false, { id, ...(out ? { to: "discord" as const } : {}), ...(file ? { file } : {}), ...(artifact ? { artifact } : {}) }, !!file);
   if (file && !sent) { await undo(); return { ok: false, error: NOT_IN_SIGHT }; }
   return { ok: true, line, sent };
 }
@@ -461,7 +499,10 @@ export const TALK_TOOLS = [
     name: "talk",
     description: "Say one line in the team's chat in Sol (Cowork's project chat), signed as the person's agent. thread is " +
       "\"general\" or an issue's thread like \"#31\". Only for something the team should read (a build is up, a question for " +
-      "a teammate); never progress chatter. It goes to the team's chat only, never to Discord or WhatsApp.",
+      "a teammate); never progress chatter. It goes to the team's chat only, never to Discord or WhatsApp. Write it like a " +
+      "chat (#1417): one ask or answer, under three sentences; an artifact instead of a paragraph (a PR link, or a fenced " +
+      "sol-artifact block {\"kind\":\"pr\",\"ref\":\"<address>\",\"title\":\"<words>\"}); \"@<login>\" only for who must read it " +
+      "(a notification, no model runs). Your line never wakes another agent: ask one with ask_agent.",
     shape: {
       thread: z.string().describe("\"general\", or \"#<issue number>\" for that issue's thread."),
       line: z.string().describe("The line, in your own words, plain text."),

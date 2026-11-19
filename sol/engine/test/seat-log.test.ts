@@ -1,5 +1,5 @@
 // The log's step 1 (the backend design in personify-lab, sol/docs/backend-design-v1/DESIGN.md "一、帳"): the file moves
-// out of the home to logDir(), a file a day (step 1b), the old file is carried over once and kept as a mirror, and the seats' own steps go on it
+// out of the home to logDir(), a file a day (step 1b), the old file is carried over once and then left as it is (it was a mirror until #691), and the seats' own steps go on it
 // as four kinds that never carry words. The last test runs a real engine with a stand-in codex and reads the log back.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
@@ -12,8 +12,9 @@ import { WebSocket } from "ws";
 import { Kernel } from "./kernels.ts";
 import { logDir, logFile, logFiles, readLog, openLog, dayTrail, dayOf, lastSeqIn, KEEP, PAGE } from "../src/log.ts";
 import { fileOf, sizeOf, claudeTokens, codexTokens, codexStepOf, base64Bytes, turnStarted, stepTaken, sentAtStart } from "../src/seatlog.ts";
-import { compareFiles, summarize, claudeCounts, codexCounts, reconcile } from "../src/logcheck.ts";
+import { summarize, claudeCounts, codexCounts, reconcile } from "../src/logcheck.ts";
 import type { Ev } from "../src/file-trail.ts";
+import { freePort } from "./test-engine.ts";
 
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const FIX = join(ENGINE, "..", "design/system/fixtures");
@@ -39,7 +40,7 @@ test("where the log lives: SOL_LOGDIR first (resolved), else the app's own folde
   if (was !== undefined) process.env.SOL_LOGDIR = was;
 });
 
-test("the move: an old log in the home is carried over once into its days, seq goes on, and every new line lands in the log and the mirror", () => {
+test("the move: an old log in the home is carried over once into its days, seq goes on, and new lines land in the log only", () => {
   const h = tmp("sol-log-move-"), home = join(h, "home"), dir = join(h, "applog");
   const old = logFile(home);
   mkdirSync(dirname(old), { recursive: true });
@@ -56,25 +57,41 @@ test("the move: an old log in the home is carried over once into its days, seq g
   const c = log.append({ project: "home", by: { person: "seat", agent: "claude" }, kind: "seat.turn", value: { session: "s1" } });
   assert.equal(c.seq, 4, "seq goes on from the old file");
   assert.deepEqual(readLog(dir).map((e) => e.id), [a.id, b.id, c0.id, c.id]);
-  assert.deepEqual(lines(old).map((e) => e.id), [a.id, b.id, c0.id, c.id], "the mirror has the same lines");
+  assert.deepEqual(lines(old).map((e) => e.id), [a.id, b.id, c0.id], "the old file is left as it was: nothing is written there");
   const joined = () => logFiles(dir).map((f) => readFileSync(f, "utf8").replace(/\n$/, "")).join("\n");
-  assert.equal(compareFiles(joined(), readFileSync(old, "utf8")).ok, true);
   // a second start: the folder has its days, the old file is not read again (no double carry)
   const again = openLog(dir, old, () => day2 + 2000);
   assert.equal(again.since("home").length, 4);
-  // no mirror: the folder only
+  // no old file: the folder only
   const lone = openLog(join(h, "lone"), null);
   lone.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "x" });
   assert.ok(!existsSync(join(h, "lone", "home")));
-  // the mirror ahead (a seat wrote in the home's file, or an older build wrote only there): never read back; the log
-  // stands, seq goes on from the log's own last, and the two differ from then on, which logcheck shows
+  // the old file ahead (a seat wrote in the home's file, or an older build wrote only there): never read back; the log
+  // stands, and seq goes on from the log's own last
   writeFileSync(old, readFileSync(old, "utf8") + JSON.stringify({ ...c, seq: 5, id: "forged" }) + "\n");
   const back = openLog(dir, old, () => day2 + 3000);
   assert.deepEqual(back.since("home").map((e) => e.seq), [1, 2, 3, 4], "the forged line is not the log's");
   assert.equal(back.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "y" }).seq, 5);
-  assert.equal(compareFiles(joined(), readFileSync(old, "utf8")).ok, false, "the drift stays visible");
   assert.ok(!joined().includes("forged"));
-  // a mirror inside the log's own folder is no mirror: one write, not two
+  // an old file written again behind the log's seq (a build from before the move, after this one stopped writing it):
+  // not read, and said, since its size is kept in `moved`; one untouched is said nothing of
+  {
+    const home2 = join(h, "home2"), dir2 = join(h, "applog2"), old2 = logFile(home2);
+    mkdirSync(dirname(old2), { recursive: true });
+    writeFileSync(old2, [a, b].map((e) => JSON.stringify(e)).join("\n") + "\n");
+    const said: string[] = [], was = console.error;
+    console.error = (m: unknown) => { said.push(String(m)); };
+    try {
+      openLog(dir2, old2, () => day2).append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "w" });
+      openLog(dir2, old2, () => day2 + 1000);
+      assert.deepEqual(said, [], "untouched: nothing said");
+      writeFileSync(old2, readFileSync(old2, "utf8") + JSON.stringify({ ...b, seq: 2, id: "late" }) + "\n");
+      const late = openLog(dir2, old2, () => day2 + 2000);
+      assert.ok(said.some((m) => /changed since the log stopped writing it/.test(m)), said.join(" | "));
+      assert.ok(!late.since("home").some((e) => e.id === "late"), "and not read");
+    } finally { console.error = was; }
+  }
+  // an old file inside the log's own folder is the log: not carried over onto itself
   const one = join(h, "one");
   openLog(one, join(one, "log.jsonl")).append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "z" });
   assert.equal(readLog(one).length, 1);
@@ -126,7 +143,7 @@ test("a file a day, the newest in memory, the rest read back from the files a pa
   // a kernel over the same folder knows its last seq after a restart, with more than KEEP events behind it
   const home = join(dirname(dir), "home");
   mkdirSync(join(home, "things"), { recursive: true });
-  const k = new Kernel(home, { logDir: dir, appDir: join(home, "app"), mirror: null, now: () => at });
+  const k = new Kernel(home, { logDir: dir, appDir: join(home, "app"), old: null, now: () => at });
   assert.equal(k.lastSeq(), n + 1, "last is the newest seq, not the page's end");
   assert.equal(k.since(n).map((e) => e.seq).join(","), String(n + 1));
   assert.equal(k.since(0).length, PAGE);
@@ -198,7 +215,7 @@ test("with the frame off nothing is read or written: the helpers return at once"
   assert.equal(base64Bytes(Buffer.from("hello world").toString("base64")), 11);
 });
 
-test("a kernel writes its log at logDir and mirrors it in the home; a seat's four kinds are by the seat, with the conversation in the value, and the blocks that listen do not hear them", async () => {
+test("a kernel writes its log at logDir and nothing in the home; a seat's four kinds are by the seat, with the conversation in the value, and the blocks that listen do not hear them", async () => {
   const h = tmp("sol-log-kernel-"), home = join(h, "home"), dir = join(h, "applog");
   mkdirSync(join(home, "things"), { recursive: true });
   cpSync(join(FIX, "things"), join(home, "things"), { recursive: true });
@@ -212,7 +229,7 @@ test("a kernel writes its log at logDir and mirrors it in the home; a seat's fou
   const k = new Kernel(home, { logDir: dir, appDir: join(home, "app"), now: () => Date.parse("2026-11-08T12:00:00") });
   await k.sync();
   assert.ok(logFiles(dir).length === 1, "the log is at logDir, today's file");
-  assert.ok(existsSync(logFile(home)), "and mirrored in the home");
+  assert.ok(!existsSync(logFile(home)), "and nothing at the old place in the home");
   const mark = k.lastSeq();
   const t = k.seat("seat.turn", "claude", { session: "abc", model: "opus" });
   k.seat("seat.sent", "claude", { session: "abc", what: "attachment", name: "/x/a.png", bytes: 10 });
@@ -227,7 +244,6 @@ test("a kernel writes its log at logDir and mirrors it in the home; a seat's fou
   const heard = k.since().filter((e) => e.kind === "plugin.line" && e.by.agent === "ear").map((e) => (e.value as { line: string }).line);
   assert.ok(heard.includes("heard plugin.load"), "it hears the engine's lines");
   assert.ok(!heard.some((x) => /heard seat\.(turn|sent|step|done)/.test(x)), "it hears none of a seat's four");
-  assert.equal(compareFiles(readFileSync(logFiles(dir)[0], "utf8"), readFileSync(logFile(home), "utf8")).ok, true, "the log and the mirror agree");
   // no words anywhere on the seat's lines
   for (const e of k.since(mark)) assert.ok(!JSON.stringify(e).includes("prompt") && !("text" in ((e.value ?? {}) as object)), JSON.stringify(e));
   await k.stop();
@@ -269,7 +285,8 @@ test("the reconcile, pure: the log's counts per conversation against a Claude tr
   ];
   const s = summarize(events);
   assert.deepEqual([...s.keys()], ["c1", "x1", "lost"]);
-  assert.deepEqual(s.get("c1"), { seat: "claude", first: at, turns: 1, steps: 2, out: 40 });
+  assert.deepEqual(s.get("c1"), { seat: "claude", first: at, running: null, turns: 1, steps: 2, out: 40 });
+  assert.equal(s.get("lost")?.running, at, "a turn begun and not ended is running");
   const ts = (ms: number) => new Date(at + ms).toISOString();
   const claude = [
     { type: "user", timestamp: ts(-7_200_000), message: { role: "user", content: "long ago" } },   // before the log: not counted
@@ -298,9 +315,23 @@ test("the reconcile, pure: the log's counts per conversation against a Claude tr
   const off = reconcile(events.filter((e) => e.seq !== 4), (seat, id) => (id === "c1" ? claude : null));
   assert.equal(off[0].ok, false);
   assert.match(off[0].note, /steps 1\/2/);
+  // a second turn still running (d7540cc2 on 2026-11-12, 66643 on the log against 104776 in the transcript): its tokens
+  // are on the transcript and not yet on the log, so the transcript's are counted up to its start
+  const later = at + 60_000;
+  const running = [...events, { ...ev(12, "seat.turn", "claude", { session: "c1" }), at: later }, { ...ev(13, "seat.step", "claude", { session: "c1", tool: "Read" }), at: later + 1000 }];
+  const more = claude + "\n" + [
+    { type: "user", timestamp: ts(60_000), message: { role: "user", content: "and then" } },
+    { type: "assistant", timestamp: ts(60_500), message: { id: "m3", usage: { output_tokens: 500 }, content: [{ type: "tool_use", id: "t3", name: "Read" }] } },
+    { type: "user", timestamp: ts(61_000), message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t3", content: "..." }] } },
+  ].map((o) => JSON.stringify(o)).join("\n");
+  assert.deepEqual(claudeCounts(more, at - 60_000), { turns: 2, steps: 3, out: 540 }, "the whole transcript, the running turn's 500 too");
+  const r = reconcile(running, (seat, id) => (id === "c1" ? more : null))[0];
+  assert.deepEqual([r.ok, r.log.out, r.note], [true, 40, "tokens agree (a turn has no seat.done yet, running or cut off: up to its start)"]);
+  const short = reconcile(running.map((e) => (e.seq === 5 ? { ...e, value: { session: "c1", ok: true, tokens: { in: 1, out: 39 } } } : e)), (seat, id) => (id === "c1" ? more : null))[0];
+  assert.match(short.note, /tokens 39 on the log, 40 in the transcript \(a turn has no seat.done yet/, "a real difference in the ended turns is still said");
 });
 
-test("a real engine with the frame on and a stand-in codex: a Home turn puts turn, sent, step and done on the log at SOL_LOGDIR, mirrored in the home, no words; the rollout reconciles", async () => {
+test("a real engine with the frame on and a stand-in codex: a Home turn puts turn, sent, step and done on the log at SOL_LOGDIR, nothing in the home, no words; the rollout reconciles", async () => {
   const dir = tmp("sol-log-engine-"), fakeHome = join(dir, "me"), home = join(dir, "solhome"), logdir = join(dir, "log");
   const rollouts = join(fakeHome, ".codex", "sessions", "2026", "11", "07");
   for (const d of [fakeHome, home, rollouts]) mkdirSync(d, { recursive: true });
@@ -336,7 +367,7 @@ process.stdin.on("end", () => {
   mkdirSync(logdir, { recursive: true });
   const before = PAGE + 120;
   writeFileSync(join(logdir, "2026-11-01.jsonl"), Array.from({ length: before }, (_, i) => JSON.stringify({ id: `old${i}`, seq: i + 1, at: Date.parse("2026-11-01T12:00:00") + i, project: "home", by: { person: "engine" }, kind: "line", item: "x", value: { i } })).join("\n") + "\n");
-  const PORT = 8040 + Math.floor(Math.random() * 9);
+  const PORT = await freePort();   // nobody else's (#938, #1144)
   const engine: ChildProcess = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: ENGINE, stdio: "ignore",
     env: {
@@ -375,10 +406,10 @@ process.stdin.on("end", () => {
   assert.deepEqual(mine[3].value, { session: id, ok: true, tokensTotal: { in: 3, out: 11, cacheRead: 0, cacheWrite: 0 } });
   const text = logFiles(logdir).filter((f) => !f.endsWith("2026-11-01.jsonl")).map((f) => readFileSync(f, "utf8")).join("");
   assert.ok(!text.includes("secret") && !text.includes("ls -la") && !text.includes("quietly"), "no words on the log");
-  assert.equal(log.last, mine[3].seq);
-  assert.ok(existsSync(logFile(home)), "the mirror in the home");
-  assert.equal(compareFiles(text, readFileSync(logFile(home), "utf8")).ok, true, "the days written by this engine match the mirror");
-  assert.ok(!existsSync(join(fakeHome, "Library", "Application Support", "Sol")) && !existsSync(join(fakeHome, ".local")), "nothing at the engine's own default place: SOL_LOGDIR won");
+  assert.ok(log.last >= mine[3].seq, "last is at or past the turn's done (the engine may write another event right after it, #1132)");
+  assert.equal(log.events.filter((e) => e.seq > mine[3].seq && e.by.person === "seat" && (e.value as any)?.session === id).length, 0, "nothing of this turn after its done");
+  assert.ok(!existsSync(logFile(home)), "nothing at the old place in the home");
+  assert.ok(!existsSync(join(fakeHome, "Library", "Application Support", "Sol")) && !existsSync(join(fakeHome, ".local", "share", "sol")), "nothing at the engine's own default place: SOL_LOGDIR won");
   const rollout = readFileSync(join(rollouts, `rollout-2026-11-07T00-00-00-${id}.jsonl`), "utf8");
   const rows = reconcile(log.events, () => rollout);
   assert.deepEqual(rows.map((r) => [r.session, r.ok, r.note]), [[id, true, "tokens agree"]]);

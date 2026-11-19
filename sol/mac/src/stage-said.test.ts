@@ -12,7 +12,7 @@ import { setStageSaid } from "./flag.ts";
 
 const P = (id: string, x = 12, y = 12, w = 300, h = 200, more: Partial<Place> = {}): Place => ({ id, x, y, w, h, z: 1, ...more });
 const TITLES: Record<string, string> = { a: "Plan", b: "Notes", c: "Diff", d: "Week", e: "Tests" };
-const title = (id: string) => TITLES[id] ?? "a block";
+const title = (id: string) => TITLES[id] ?? "an artifact";
 const say = (s: Said) => sentence(s, title);
 const full = (s: Said) => { const x = say(s); return x.back ? `${x.words} · ${x.back}` : x.words; };
 
@@ -26,8 +26,6 @@ const STEPS: Record<Kind, [Place | null, Place | null]> = {
   reopened: [null, P("a")],
   popped: [P("a"), P("a", 12, 12, 300, 200, { popped: true })],
   unpopped: [P("a", 12, 12, 300, 200, { popped: true }), P("a")],
-  pinned: [P("a"), P("a", 12, 12, 300, 200, { pinned: true, folded: true })],
-  unpinned: [P("a", 12, 12, 300, 200, { pinned: true, folded: true }), P("a", 12, 12, 300, 200, { folded: true })],
 };
 const stepFor = (k: Kind) => ({ before: { a: STEPS[k][0] }, after: { a: STEPS[k][1] } });
 
@@ -40,8 +38,6 @@ const WANT: Record<Kind, [string, string, string]> = {
   reopened: ["Brought Plan back · ⌘Z to close it again", "Closed Plan again · ⇧⌘Z to do it again", "Brought Plan back again · ⌘Z to undo it"],
   popped: ["Popped Plan out to its own window · ⌘Z to bring it back", "Brought Plan back from its window · ⇧⌘Z to do it again", "Popped Plan out again · ⌘Z to undo it"],
   unpopped: ["Brought Plan back to the stage · ⌘Z to pop it out again", "Popped Plan out again · ⇧⌘Z to do it again", "Brought Plan back to the stage again · ⌘Z to undo it"],
-  pinned: ["Pinned Plan to the notch · ⌘Z to take it off", "Took Plan off the notch · ⇧⌘Z to do it again", "Pinned Plan to the notch again · ⌘Z to undo it"],
-  unpinned: ["Took Plan off the notch · ⌘Z to pin it again", "Pinned Plan to the notch again · ⇧⌘Z to do it again", "Took Plan off the notch again · ⌘Z to undo it"],
 };
 
 for (const k of Object.keys(STEPS) as Kind[]) {
@@ -68,13 +64,13 @@ test("several blocks: named together, 'them' for the way back; a tile (moves and
   assert.equal(full({ who: "you", how: "did", step: fold }), "Folded Plan and Notes to the tray · ⌘Z to bring them back");
 });
 
-test("names: one, two, three, then 'and n more'; an empty title is 'a block'", () => {
+test("names: one, two, three, then 'and n more'; an empty title is 'an artifact'", () => {
   assert.equal(names(["Plan"]), "Plan");
   assert.equal(names(["Plan", "Notes"]), "Plan and Notes");
   assert.equal(names(["Plan", "Notes", "Diff"]), "Plan, Notes and Diff");
   assert.equal(names(["Plan", "Notes", "Diff", "Week", "Tests"]), "Plan, Notes and 3 more");
-  assert.equal(names(["  "]), "a block");
-  assert.equal(names([]), "a block");
+  assert.equal(names(["  "]), "an artifact");
+  assert.equal(names([]), "an artifact");
 });
 
 test("a fold the stage made to make room for the agent's newcomer is said as what happened to the block, and ⌘Z still brings it back", () => {
@@ -219,4 +215,35 @@ test("the agent's close over the socket is said as the agent's, though the next 
     assert.equal(said.length, 1, "said once");
     assert.equal(full(said[0]!), "The agent closed Notes · its ledger keeps it");
   } finally { setStageSaid(false); }
+});
+
+// #1001: the whole stage's verbs (stage.whole: drop, resize, close, a copy from the tray, ⌘Z) are recorded as shots of
+// the stage before and after (geometry.ts Snapshot); the line reads the same step from them, and a drop that sent
+// another block to the tray says both, never "Folded" the block the hand moved
+import { stepOfShots } from "./stage/said.ts";
+import type { Snapshot } from "./stage/geometry.ts";
+const S = (id: string, x: number, y: number, more: { folded?: boolean; closed?: boolean } = {}): Snapshot => ({ [id]: { r: { x, y, w: 300, h: 200 }, folded: !!more.folded, closed: !!more.closed, state: "live", versions: 0 } });
+test("a whole-stage step read from two shots is said as its kind (#1001)", () => {
+  assert.equal(stepOfShots({ ...S("a", 12, 12), ...S("b", 400, 12) }, { ...S("a", 12, 12), ...S("b", 400, 12) }), null);
+  const moved = stepOfShots({ ...S("a", 12, 12), ...S("b", 400, 12) }, { ...S("a", 12, 240), ...S("b", 400, 12) })!;
+  assert.deepEqual(Object.keys(moved.before), ["a"]);
+  assert.equal(full({ who: "you", how: "did", step: moved }), "Moved Plan · ⌘Z to put it back");
+  const closed = stepOfShots(S("c", 12, 12), S("c", 12, 12, { closed: true }))!;
+  assert.equal(full({ who: "you", how: "did", step: closed }), "Closed Diff · ⌘Z to bring it back");
+  assert.equal(full({ who: "you", how: "undid", step: closed }), "Brought Diff back · ⇧⌘Z to do it again");
+  const unfolded = stepOfShots(S("b", 12, 12, { folded: true }), S("b", 12, 12))!;
+  assert.equal(full({ who: "you", how: "did", step: unfolded }), "Opened Notes from the tray · ⌘Z to fold it again");
+});
+test("a drop that sent another block to the tray says the move and the block that made room (#1001)", () => {
+  const st = stepOfShots({ ...S("c", 16, 16), ...S("b", 16, 230) }, { ...S("c", 16, 230), ...S("b", 16, 230, { folded: true }) })!;
+  assert.equal(full({ who: "you", how: "did", step: st }), "Moved Diff; Notes went to the tray to make room · ⌘Z to undo both");
+  assert.equal(full({ who: "you", how: "undid", step: st }), "Put Diff back where it was; Notes came back from the tray · ⇧⌘Z to do it again");
+  assert.equal(full({ who: "you", how: "redid", step: st }), "Moved Diff again; Notes went to the tray again · ⌘Z to undo it");
+});
+test("a block opened from the tray that moved another aside says so, never \"Opened\" both (#1001)", () => {
+  const st = stepOfShots({ ...S("b", 16, 16, { folded: true }), ...S("c", 16, 16) }, { ...S("b", 16, 16), ...S("c", 16, 240) })!;
+  assert.equal(full({ who: "you", how: "did", step: st }), "Opened Notes from the tray; Diff moved to make room · ⌘Z to undo both");
+  assert.equal(full({ who: "you", how: "undid", step: st }), "Folded Notes back to the tray; Diff moved back · ⇧⌘Z to do it again");
+  // a close alone, or a move alone, is said as before
+  assert.equal(full({ who: "you", how: "did", step: stepOfShots(S("c", 16, 16), S("c", 16, 16, { closed: true }))! }), "Closed Diff · ⌘Z to bring it back");
 });

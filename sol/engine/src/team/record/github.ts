@@ -19,6 +19,8 @@ import { slug } from "../settings.js";
 import { PROOF_FILE } from "../../hub/index.js";
 export { PROOF_FILE };
 
+import { quietGh } from "../../quiet.js";
+
 const run = promisify(execFile);
 const ENV = () => ({ ...process.env, GIT_TERMINAL_PROMPT: "0" });
 
@@ -26,12 +28,15 @@ const ENV = () => ({ ...process.env, GIT_TERMINAL_PROMPT: "0" });
 
 /** the default (was note.ts runGh): in a folder, no prompt, the first line of what gh said on a failure as the message;
  *  the whole of it on `full` (#194: gh's `(HTTP nnn)` is on the last line, so a classifier reads that) */
-export const runGh: Gh = (args, cwd) => new Promise<string>((ok, no) =>
+export const runGh: Gh = (args, cwd) => new Promise<string>((ok, no) => {
+  quietGh(args);
   execFile("gh", args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
-    (err, out, errOut) => { if (!err) return ok(String(out)); const full = String(errOut || err.message).trim(); no(Object.assign(new Error(full.split("\n")[0]), { full })); }));
+    (err, out, errOut) => { if (!err) return ok(String(out)); const full = String(errOut || err.message).trim(); no(Object.assign(new Error(full.split("\n")[0]), { full })); });
+});
 
 /** gh with stdin (#328: `gh secret set`, whose value goes on stdin, never on a command line any process list shows) */
 export const runGhStdin = (args: string[], input: string, cwd?: string) => new Promise<string>((ok, no) => {
+  quietGh(args);
   const c = execFile("gh", args, { cwd, timeout: 30_000, maxBuffer: 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
     (err, out, errOut) => { if (!err) return ok(String(out)); const full = String(errOut || err.message).trim(); no(Object.assign(new Error(full.split("\n")[0]), { full })); });
   c.stdin?.end(input);
@@ -40,28 +45,35 @@ export const runGhStdin = (args: string[], input: string, cwd?: string) => new P
 export const runners = {
   note: runGh,
   /** board.ts: 30 s, 16 MB */
-  board: ((args) => new Promise<string>((ok, no) =>
-    execFile("gh", args, { timeout: 30_000, maxBuffer: 16 * 1024 * 1024 }, (err, out) => (err ? no(err) : ok(String(out)))))) as Gh,
+  board: ((args) => new Promise<string>((ok, no) => {
+    quietGh(args);
+    execFile("gh", args, { timeout: 30_000, maxBuffer: 16 * 1024 * 1024 }, (err, out) => (err ? no(err) : ok(String(out))));
+  })) as Gh,
   /** members.ts: 20 s, 4 MB */
-  members: ((args) => new Promise<string>((ok, no) =>
-    execFile("gh", args, { timeout: 20_000, maxBuffer: 4 * 1024 * 1024 }, (err, out) => (err ? no(err) : ok(String(out)))))) as Gh,
+  members: ((args) => new Promise<string>((ok, no) => {
+    quietGh(args);
+    execFile("gh", args, { timeout: 20_000, maxBuffer: 4 * 1024 * 1024 }, (err, out) => (err ? no(err) : ok(String(out))));
+  })) as Gh,
   /** hand.ts: no prompt, 30 s, 16 MB */
-  hand: ((args) => run("gh", args, { env: ENV(), timeout: 30_000, maxBuffer: 16 << 20 }).then((r) => r.stdout)) as Gh,
+  hand: (async (args) => { quietGh(args); return run("gh", args, { env: ENV(), timeout: 30_000, maxBuffer: 16 << 20 }).then((r) => r.stdout); }) as Gh,
   /** try.ts: no prompt, 60 s, 16 MB, trimmed */
-  try: ((args) => run("gh", args, { env: ENV(), timeout: 60_000, maxBuffer: 16 << 20 }).then((r) => r.stdout.trim())) as Gh,
+  try: (async (args) => { quietGh(args); return run("gh", args, { env: ENV(), timeout: 60_000, maxBuffer: 16 << 20 }).then((r) => r.stdout.trim()); }) as Gh,
   /** share.ts: 30 s, 32 MB */
-  share: ((args) => run("gh", args, { timeout: 30_000, maxBuffer: 32 << 20 }).then((r) => String(r.stdout))) as Gh,
+  share: (async (args) => { quietGh(args); return run("gh", args, { timeout: 30_000, maxBuffer: 32 << 20 }).then((r) => String(r.stdout)); }) as Gh,
   /** share.ts: bytes, 30 s, 48 MB */
-  shareBytes: ((args) => run("gh", args, { timeout: 30_000, maxBuffer: 48 << 20, encoding: "buffer" }).then((r) => r.stdout as Buffer)) as GhBytes,
+  shareBytes: (async (args) => { quietGh(args); return run("gh", args, { timeout: 30_000, maxBuffer: 48 << 20, encoding: "buffer" }).then((r) => r.stdout as Buffer); }) as GhBytes,
   /** ship.ts: in sol/, no prompt, 30 s, 8 MB */
-  ship: (root: string): Gh => (args) => run("gh", args, { cwd: root, env: ENV(), timeout: 30_000, maxBuffer: 8 << 20 }).then((r) => r.stdout),
+  ship: (root: string): Gh => async (args) => { quietGh(args); return run("gh", args, { cwd: root, env: ENV(), timeout: 30_000, maxBuffer: 8 << 20 }).then((r) => r.stdout); },
   /** settings.ts: who I am on first run, 15 s */
-  settings: ((args) => new Promise<string>((ok, no) =>
-    execFile("gh", args, { timeout: 15_000 }, (err, out) => (err ? no(err) : ok(String(out)))))) as Gh,
+  settings: ((args) => new Promise<string>((ok, no) => {
+    quietGh(args);
+    execFile("gh", args, { timeout: 15_000 }, (err, out) => (err ? no(err) : ok(String(out))));
+  })) as Gh,
   /** identity.ts: as one token, in its env only (never on the command line), 15 s */
   as: ((args, token) => new Promise<string>((ok, no) => {
     const env: NodeJS.ProcessEnv = { ...process.env, GH_TOKEN: token };
     delete env.GITHUB_TOKEN;   // only this token, nothing else the shell had
+    quietGh(args);
     execFile("gh", args, { env, timeout: 15_000 }, (err, out) => (err ? no(new Error("gh refused")) : ok(String(out))));
   })) as GhAs,
 };

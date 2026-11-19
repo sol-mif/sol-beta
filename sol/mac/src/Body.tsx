@@ -9,25 +9,41 @@
 // spring (so reduced motion jumps, and slow ×4 slows it); the followed pointer lags by lag (140, the hand's: never
 // slowed). gooBlur is the CSS goo's number and is not read here: the shader's field is the goo. Under
 // prefers-reduced-motion it is drawn settled once, still, and never flies in.
-// BodyMark is the switch's door (body/flag.ts, `sol.body.a`): off, it is Mark exactly; on, the body in Mark's place.
 import { useEffect, useRef, useState } from "react";
+import tempo from "../../design/tempo.json";
 import { Mark } from "./Mark";
 import { CFG, Spring, clock, dur, reducedMotion, type Cfg } from "./motion";
 import { pointer } from "./creature/loop";
 import { CREATURE, GRADIENTS, type RGB } from "./creature/palette";
 import { useCreature } from "./creature/state";
-import { useBodyA } from "./body/flag";
 import { LOOKS } from "./kit/tokens";
 import type { Pt } from "./stage/jellyPath";
+import { bodyVariant, type BodyVariant } from "./body/variants";
+import { BodyVariantView } from "./body/Bodies";
 
 export type BodyState = "apart" | "settled";
 /** the six, one per AI, in the sketch's order (SIX in one.html) */
 const SIX: readonly RGB[] = [CREATURE.heart, CREATURE.pink, CREATURE.orange, CREATURE.amber, CREATURE.sun, CREATURE.green];
 
-// the jelly between two places: travel, one of the five (motion.ts, ui.md "Motion"; tempo.json's own spring retired, #763)
-export const BETWEEN: Cfg = { ...CFG.travel, eps: 0.002 };
+const T = tempo.body;
+// a spring that peaks at moveMs with the overshoot asked: the damping ratio from the overshoot, the stiffness from the
+// time to the peak (π over the damped frequency); c = 2·z·√k at the motion module's mass 1. The jelly's own material
+// (#872, picked by Marco): it keeps its overshoot whole, so the module's 4 px clamp is lifted for it alone (clamp: ∞)
+export const springOf = (moveMs: number, overshoot: number): Cfg => {
+  const l = Math.log(overshoot - 1), z = -l / Math.sqrt(Math.PI * Math.PI + l * l);
+  const wd = Math.PI / (moveMs / 1000), wn = wd / Math.sqrt(1 - z * z);
+  return { name: "travel", k: wn * wn, c: 2 * z * wn, eps: 0.002, clamp: Infinity };
+};
+// the jelly between two places, as his window draws it (tempo.json's body spring); the night's rule, travel (motion.ts,
+// #763), is kept beside it for the build switch that asks for it
+export const BETWEEN: Cfg = springOf(T.moveMs, T.overshoot);
+export const BETWEEN_TRAVEL: Cfg = { ...CFG.travel, eps: 0.002 };
+/** the stage's material, the jelly page's "full" take (#872, picked 2026-11-10 as a first pass): the body on the stage
+ *  arrives in 760 ms and passes its place by 7.5% */
+export const FULL = { moveMs: 760, overshoot: 1.075 } as const;
+export const FULL_SPRING: Cfg = springOf(FULL.moveMs, FULL.overshoot);
 
-// Dev only (the stills): ?bodystate=apart|settled|you holds the body in one state (BodyMark); ?bodyat=<ms> draws every
+// Dev only (the stills): ?bodystate=apart|settled|you holds the body in one state (BodyLive); ?bodyat=<ms> draws every
 // body still, at that moment after its mount (the merge, frame by frame).
 const devQ = import.meta.env.DEV && typeof location !== "undefined" ? new URLSearchParams(location.search) : null;
 const devState = devQ?.get("bodystate") ?? null;
@@ -124,7 +140,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 /** the halo outside the edge: where it starts in the field (lo, lower reaches further), how it falls (fall), how strong
  *  (gain), how much of the jelly's colour it carries against white (carry), how much it adds as light rather than covers
  *  (light), the light it lays on the glass under the jelly (pool), and how much wider than the frame the canvas is drawn
- *  so a far halo is not cut by its square (reach). HALO is the one the notch wears today. */
+ *  so a far halo is not cut by its square (reach). HALO is the one the body wears by default. */
 export type HaloLook = { lo: number; fall: number; gain: number; carry: number; light: number; pool: number; reach: number };
 export const HALO: HaloLook = { lo: 0.45, fall: 2.2, gain: 0.55, carry: 0.8, light: 0, pool: 0, reach: 1 };
 
@@ -136,9 +152,15 @@ const LEAN = 0.3;
 /** `lean`: the body travels (#697): while apart its six lean that way, [sign x, sign y], as the pointer leans them when
  *  `follow`; null when it is not travelling. The halo may change every render (what the body is doing): the frame reads
  *  it, so a new halo is a new look on the next frame, never a new canvas. */
-export function Body({ size = 24, state, you = null, follow = false, lean = null, halo = HALO, className }: {
+type BodyProps = {
   size?: number; state: BodyState; you?: RGB | null; follow?: boolean; lean?: readonly [number, number] | null; halo?: HaloLook; className?: string;
-}) {
+};
+/** the body: rendering A, or the body the page's switch names (#1215, body/variants.ts; A unless a page set another) */
+export function Body(props: BodyProps & { variant?: BodyVariant }) {
+  const v = props.variant ?? bodyVariant();
+  return v === "a" ? <BodyA {...props} /> : <BodyVariantView variant={v} size={props.size ?? 24} className={props.className} />;
+}
+function BodyA({ size = 24, state, you = null, follow = false, lean = null, halo = HALO, className }: BodyProps) {
   const cv = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);
   // what the frame reads; the springs write here (motion.ts runs them, so they are interruptible and honour reduced motion)
@@ -217,6 +239,8 @@ export function Body({ size = 24, state, you = null, follow = false, lean = null
     const loop = (now: number) => {
       raf = 0;
       if (document.hidden) return;
+      // not showing (the talk is full, its stage has no room): nothing is drawn, and the loop looks again twice a second (#866)
+      if (!el.getClientRects().length) { setTimeout(wake, 500); return; }
       const moving = !!(s.home?.on || s.youK?.on) || (s.home?.v ?? 1) < 1 || s.pull > 0.01;
       if (still ? s.dirty : now - drawn >= (moving ? 0 : 1000 / 30) - 2) draw(now);
       raf = requestAnimationFrame(loop);
@@ -339,37 +363,22 @@ export function JellyLayer({ look, place, onLand, onDone }: {
  *  from the tokens so the kit and the body do not import each other) */
 export const haloDoing = (doing: keyof typeof LOOKS.halo.states): HaloLook => LOOKS.halo.takes[LOOKS.halo.states[doing]];
 
-/** Mark, or the body in its place when `sol.body.a` is on. `notch`: the notch window, whose hover the app tells it
- *  (notch-hover; the webview's own hover sleeps while the window is not key). The body comes apart while hovered and
- *  its six follow the pointer; it wears the seat's colour while Sol is with you (the creature's here). */
-export function BodyMark({ size, live: alive, notch }: { size: number; live?: boolean; notch?: boolean }) {
-  const on = useBodyA();
-  if (!on) return <Mark size={size} live={alive} />;
-  return <BodyHere size={size} notch={!!notch} />;
-}
-
-/** the body itself, whatever the switch says: for a place that is the jelly's by design (the spine, behind sol.spine).
+/** the body itself, for a place that is the jelly's by design (the spine, an empty talk). It comes apart while hovered
+ *  and its six follow the pointer; it wears the seat's colour while Sol is with you (the creature's here).
  *  `six`: always its six colours, never the seat's (Marco 2026-11-08: "where's the original beautiful colors") */
 export const BodyLive = BodyHere;
 const FRAME = 1.75;
-function BodyHere({ size, notch, six }: { size: number; notch: boolean; six?: boolean }) {
+function BodyHere({ size, six }: { size: number; six?: boolean }) {
   const cr = useCreature();
   const [hov, setHov] = useState(false);
-  useEffect(() => {
-    if (!notch || !(window as any).__TAURI_INTERNALS__) return;
-    let off: (() => void) | null = null, gone = false;
-    import("@tauri-apps/api/event").then((ev) => ev.listen<boolean>("notch-hover", (e) => setHov(!!e.payload)))
-      .then((f) => { if (gone) f(); else off = f; }).catch(() => {});
-    return () => { gone = true; off?.(); };
-  }, [notch]);
   const state: BodyState = devState ? (devState === "apart" ? "apart" : "settled") : hov ? "apart" : "settled";
   const you = devState ? (devState === "you" ? GRADIENTS.home[0] : null) : !six && cr.state === "here" ? GRADIENTS[cr.seat][0] : null;
   // the sketch's frame keeps half its width for the six apart, so the settled body is about half the frame: the frame is
   // drawn FRAME times the slot, centred on it, so the settled body is the mark's size and the six reach past the slot
   const f = Math.round(size * FRAME), off = (size - f) / 2;
   return (
-    <span style={{ display: "inline-block", position: "relative", width: size, height: size, verticalAlign: "top", pointerEvents: notch ? undefined : "auto" }}
-      onPointerEnter={notch ? undefined : () => setHov(true)} onPointerLeave={notch ? undefined : () => setHov(false)}>
+    <span style={{ display: "inline-block", position: "relative", width: size, height: size, verticalAlign: "top", pointerEvents: "auto" }}
+      onPointerEnter={() => setHov(true)} onPointerLeave={() => setHov(false)}>
       <span style={{ position: "absolute", left: off, top: off }}><Body size={f} state={state} you={you} follow /></span>
     </span>
   );

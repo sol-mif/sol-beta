@@ -2,8 +2,8 @@
 // another app. Pure, so the face's tests run them (src/stage-lens.test.ts); the lens itself is kept in stage.json.
 //   app   the stage, the strip, the side: as you left it
 //   TUI   a terminal block (part 5) full on the stage, every other block folded to a line inside it; ⌘1-9 opens one
-//   CLI   the strip alone (the talk lifted); a block opens the stage when it asks (waits)
-//   IDE   the search-first file column at the left (FilePane), the same blocks, the talk beside
+//   CLI   the strip alone (the talk lifted); an artifact opens the stage when it asks (waits)
+//   IDE   the search-first file column at the left (FilePane), the same artifacts, the talk beside
 // Leaving a lens restores what it folded; the TUI's own terminal folds when you leave it, a terminal it borrowed goes
 // back to where it sat.
 import { isRunBody } from "./kinds/runs.ts";
@@ -14,10 +14,10 @@ export const LENSES: Lens[] = ["app", "tui", "cli", "ide"];
 export const LENS_NAMES: Record<Lens, string> = { app: "app", tui: "TUI", cli: "CLI", ide: "IDE" };
 /** the toast a lens says when you pick it (play.html's) */
 export const LENS_WORDS: Record<Lens, string> = {
-  app: "app: stage, strip, side",
+  app: "app: the talk beside the stage",   // #1001: the strip went in #742
   tui: "TUI: a terminal on the stage, the blocks fold to lines",
-  cli: "CLI: the strip alone; a block opens the stage when it asks",
-  ide: "IDE: files on the left, the same blocks, the talk beside",
+  cli: "CLI: the talk alone; an artifact opens the stage when it asks",
+  ide: "IDE: files on the left, the same artifacts, the talk beside",
 };
 /** the TUI lens's own terminal, when it has to make one */
 export const TUI_TITLE = "terminal · this session";
@@ -99,4 +99,15 @@ export function ideGroups(order: string[], room: { w: number; h: number }, pad: 
   const groups: Group[] = rects.map((r) => ({ ids: [], r }));
   order.forEach((id, i) => groups[i % n].ids.push(id));
   return groups;
+}
+
+/** #1001: leaving a lens that narrowed the stage (the IDE's file column): each block back at the place and size it had
+ *  before the lens, which the narrower stage shrank to fit (Stage.tsx fitInto) and nothing gave back. A block the hand
+ *  moved or sized meanwhile, or one folded or popped since, stays as it is (pure) */
+export function backFromLens(now: Place[], was: Place[], moved: ReadonlySet<string>): Place[] {
+  return now.map((p) => {
+    const w = was.find((x) => x.id === p.id);
+    if (!w || w.folded || moved.has(p.id) || p.folded || p.popped) return p;
+    return { ...p, x: w.x, y: w.y, w: w.w, h: w.h };
+  });
 }

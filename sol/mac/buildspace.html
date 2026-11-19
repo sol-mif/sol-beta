@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Build as one space, driven through its store (dev)</title>
+    <style>html,body{margin:0;background:#000}</style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- shown inside the stage's frame, a page has no storage of its own and reading it throws: give it one that forgets -->
+    <script>
+      for (const name of ["localStorage", "sessionStorage"]) {
+        try { void window[name].length; } catch {
+          const m = new Map();
+          Object.defineProperty(window, name, { configurable: true, value: { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: (k) => { m.delete(k); }, clear: () => m.clear(), key: (i) => [...m.keys()][i] ?? null, get length() { return m.size; } } });
+        }
+      }
+    </script>
+    <script type="module" src="/src/pieces/buildSpacePage.tsx"></script>
+  </body>
+</html>

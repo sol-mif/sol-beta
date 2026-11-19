@@ -14,7 +14,7 @@ export function StartLines({ store, session }: { store: StageStore; session: str
   const st = seen.stage.start;
   if (!st?.lines.length) return null;
   const chips = seen.stage.blocks.filter((p) => p.folded).length;
-  const said = `${st.lines.length} last line${st.lines.length > 1 ? "s" : ""}${st.from ? ` from "${nameOf(st.from)}"` : " of the project"}${chips ? ` · ${chips} open block${chips > 1 ? "s" : ""} folded below` : ""}`;
+  const said = `${st.lines.length} last line${st.lines.length > 1 ? "s" : ""}${st.from ? ` from "${nameOf(st.from)}"` : " of the project"}${chips ? ` · ${chips} open artifact${chips > 1 ? "s" : ""} folded below` : ""}`;
   return (
     <div className="st-start">
       <button tabIndex={-1} onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? "fold" : said}</button>

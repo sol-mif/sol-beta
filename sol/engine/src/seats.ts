@@ -14,11 +14,43 @@
 //                               a time; cancelled, its tool `cancel` is told when it has one; taken out with the block, a
 //                               turn on it ends with "the seat is gone". Its card says a seat reaches whatever its record
 //                               asks. The conversations it keeps are named by the shell, never by the block (below)
+//   a seat the shell starts     behind a switch, on unless set off (SOL_ACP_SEAT; the v2 design §7.1, step A2): a block whose
+//                               record says needs.seat is a program the shell starts and keeps running, walled, speaking
+//                               ACP on its stdio (acp.ts). It streams, asks, and says its steps and what it spent
+//   wider replies (step A2)     ask takes the old { question } or { kind: "question", text } or a permission: { kind:
+//                               "permission", tool, line (one line for the person), print (a fingerprint of the
+//                               arguments), options (what the seat offered, said), args (the arguments themselves,
+//                               as the seat sent them, when it did: its line is its own words and may not say all) }; a permission's answer is "once" or
+//                               "no", anything else is no. step({ tool, title, state }) a tool step of the seat's own;
+//                               usage({ in, out, cacheRead?, cacheWrite? }) the tokens a turn spent (a step carries an id too, so its end is paired with its start). A seat that has none of them still plugs in
+//   four more in can (step A2)  perCall: does a call reach us before it runs ("hook": we stop it before; "request": it
+//                               comes to ask; "none"), stopAtTool: can it wait at a tool for a person, mcp: Sol's tools
+//                               as an MCP server it takes ("stdio", "http", "none"), sandbox: what walls it ("own": its
+//                               own; "ours": Sol's; "none": nothing, and such a seat is not put on the seam). Left out,
+//                               they are not said: today's seats (Sol's two, a block's tool seat) say none of them
+//   what the person allowed    a turn in a folder the person's record names (~/.sol/record/me.json, consent.levels:
+//                               record · show · draft · do) is held at that folder's level: its tools past it are
+//                               refused by name, the record named (consent.ts; a Codex talk in a folder, index.ts
+//                               sayCodex, and a folder agent's ticket, agent/run.ts) (#1216)
 export type SeatTask = { text: string; sessionId?: string; model?: string; effort?: string; cwd?: string };
 export type SeatResult = { ok: true; text: string; sessionId?: string; structured?: unknown } | { ok: false; why: string; sessionId?: string };
-/** what a seat may say while it works: only the parts it can (stream: delta; ask: ask) */
-export type SeatOut = { delta?: (text: string) => void; ask?: (q: { question: string }) => Promise<string> };
-export type SeatCan = { stream: boolean; resume: boolean; ask: boolean };
+/** what a seat asks a person: the old plain question, a question, or may it run a tool */
+export type SeatAsk = { question: string } | { kind: "question"; text: string } | { kind: "permission"; tool: string; line: string; print: string; options: string[]; args?: unknown };
+/** a permission's answer: only this once, or no */
+export const PERMIT = ["once", "no"] as const;
+/** id: the same on a step's start and its end (the face's `tool` message pairs them by it) */
+export type SeatStep = { id: string; tool: string; title: string; state: "started" | "done" | "failed" };
+/** what a turn spent, in tokens, as the seat says it: in and out, and what it read from and wrote to its cache when
+ *  it says those (Claude Code does, and its `in` is only what the cache did not hold; whether another seat's `in`
+ *  counts the cached part is that seat's to say, so the parts are not summed here) */
+export type SeatSpent = { in: number; out: number; cacheRead?: number; cacheWrite?: number };
+/** what a seat may say while it works: only the parts it can (stream: delta; ask: ask; a step, what it spent) */
+export type SeatOut = { delta?: (text: string) => void; ask?: (q: SeatAsk) => Promise<string>; step?: (s: SeatStep) => void; usage?: (u: SeatSpent) => void };
+export type SeatCan = { stream: boolean; resume: boolean; ask: boolean; perCall?: "hook" | "request" | "none"; stopAtTool?: boolean; mcp?: "stdio" | "http" | "none"; sandbox?: "own" | "ours" | "none" };
+
+/** the face's messages for a seat's ask, our names (not Marco's yet), kept here so they change in one place: the engine
+ *  sends { type: ask, id, seat, ask } on the turn's socket; Sol's own window answers { type: answer, id, answer } */
+export const SEAT_WIRE = { ask: "seat.ask", answer: "seat.answer" } as const;
 
 export type SeatProvider = {
   name: string;
@@ -41,6 +73,7 @@ const seats = new Map<string, SeatProvider>();
 /** a seat put on the seam: a built-in at the engine's start, a block's when it loads. A block's never replaces another's or a built-in */
 export function registerSeat(p: SeatProvider): { ok: true } | { ok: false; why: string } {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(p.name)) return { ok: false, why: `${p.name} is not a seat's name` };
+  if (!p.builtIn && p.can.sandbox === "none") return { ok: false, why: `${p.name} says nothing walls it (sandbox: none): a seat that cannot be walled is not put on the seam` };
   const had = seats.get(p.name);
   if (had && (had.builtIn || had.block !== p.block)) return { ok: false, why: `there is a seat ${p.name} already (${had.builtIn ? "Sol's own" : `the block ${had.block}'s`})` };
   seats.set(p.name, p);

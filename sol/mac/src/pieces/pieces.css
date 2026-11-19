@@ -1,0 +1,110 @@
+/* Build mode as one space of pieces (mine, 2026-11-12; pieces/arrange.ts). The space holds every piece at the box the
+   rule gives it; a piece is laid once at its new box and carried there by a transform, so a move costs no layout. The
+   talk and the box wear no frame: an artifact is a thing Sol made, the talk and the box are where you and Sol speak. */
+.pc { position: relative; flex: 1; min-width: 0; min-height: 0; overflow: hidden; --st-fullw: 720px; }
+.pc-piece { position: absolute; contain: layout style; }
+.pc-in { position: absolute; inset: 0; transition: scale var(--d-turn) var(--e-move), opacity var(--d-turn) var(--e-move); }
+.pc-piece { transition: box-shadow var(--d-turn) var(--e-move), background-color var(--d-turn) var(--e-move); }
+.pc-piece.lifted, .pc-piece.landing { z-index: 5; }
+.pc-piece.lifted > .pc-in { scale: 0.985; opacity: 0.9; }
+.pc.carrying { cursor: grabbing; }
+.pc.carrying iframe { pointer-events: none; }
+
+/* the talk and the box, as pieces */
+.pc .st-talk { position: absolute; inset: 0; width: auto; max-width: none; border: 0; transition: none; user-select: text; -webkit-user-select: text; }
+.pc.st-room.whole .st-talkbox { position: absolute; left: 0; right: 0; top: 0; padding: 0; }
+.pc .st-grip { display: none; }
+/* what the box opens over itself (the list on / and @) stands over the chat, not under it */
+.pc-piece[data-piece="box"] { z-index: 3; }
+
+/* a piece that waits on you says so in its head and its rim, nothing more: it keeps its box (no step forward, which
+   pushed it past the space's margin) and wears no glow (a wide shadow is painted again on every frame of a carry) */
+.pc.st-room.whole .st-block.waits { transform: none; }
+.pc.st-room.whole .st-block.waits::before { box-shadow: none; }
+
+/* every piece is taken by the same grip, at the middle of its top edge; pearl while it is held where the hand put it */
+.pc-grip { position: absolute; top: 0; left: 50%; translate: -50% 0; width: min(40%, calc(var(--s12) * 5)); height: var(--s6); z-index: 6; cursor: grab; opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); touch-action: none; user-select: none; -webkit-user-select: none; }
+.pc-grip::after { content: ""; position: absolute; left: 50%; translate: -50% 0; width: var(--s8); top: var(--s2); height: var(--s1); border-radius: var(--pill); background: var(--mute); transition: width var(--d-turn) var(--e-move), background var(--d-turn) var(--e-move); }
+.pc-grip:hover::after, .pc.carrying .pc-piece.lifted > .pc-grip::after { width: var(--s12); background: var(--ink); }
+.pc-grip:active { cursor: grabbing; }
+/* the chat has no head of its own, so its whole top edge takes the hand */
+.pc-piece[data-piece="talk"] > .pc-grip { left: 0; translate: none; width: 100%; }
+/* while the hand holds a piece or a seam, nothing under it is picked out as words */
+.pc-holding, .pc-holding * { user-select: none !important; -webkit-user-select: none !important; }
+.pc-holding { cursor: grabbing; }
+.pc-piece.lifted { box-shadow: 0 var(--s4) var(--s12) rgb(0 0 0 / 0.5); border-radius: 18px; background: var(--pop); overflow: hidden; }
+.pc:not(.carrying) .pc-piece:hover > .pc-grip, .pc-grip.held, .pc-piece.lifted > .pc-grip { opacity: 1; }
+.pc-grip.held::after { background: var(--c-pearl); }
+/* the talk's two verbs, the same as an artifact's head: put away, larger */
+.pc-acts { position: absolute; top: var(--s1); right: var(--s2); z-index: 6; display: flex; opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.pc-piece:hover > .pc-acts { opacity: 0.55; }
+.pc-piece > .pc-acts:hover { opacity: 1; }
+.pc-acts button { all: unset; width: var(--s8); height: var(--h-chip); text-align: center; color: var(--dim); border-radius: var(--r-row); cursor: default; }
+.pc-acts button:hover { color: var(--ink); background: var(--surface); }
+
+/* the chat condensed on the box (arrange.ts Tail). A few lines: the real chat at its end, the older lines fading out
+   above. One line: what Sol is doing or last wrote to you, in the chat's own column, pressed for more; it stands low in its
+   box, close on the chat box's own frame */
+.pc-piece:is([data-form="lines"], [data-form="asks"]) .st-talk .talk { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--s8)); mask-image: linear-gradient(to bottom, transparent 0, #000 var(--s8)); padding-bottom: var(--s2); }
+.pc-line { position: absolute; inset: var(--s4) 0 calc(-1 * var(--s4)); z-index: 4; box-sizing: border-box; max-width: var(--st-fullw); margin: 0 auto; padding: 0 calc(var(--col-pad) + var(--sp-in)); display: flex; align-items: center; gap: var(--s3); color: var(--dim); cursor: default; outline: 0; touch-action: none; user-select: none; -webkit-user-select: none; transition: color var(--d-turn) var(--e-move); }
+.pc-line span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-line i { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--pill); background: var(--mute); }
+.pc-line:hover, .pc-line:focus-visible { color: var(--ink); }
+.pc-line.working i { background: var(--jelly); animation: pc-breath var(--d-breath) ease-in-out infinite; }
+.pc-line.asks { color: var(--c-pearl); }
+.pc-line.asks i { background: var(--c-pearl); }
+@keyframes pc-breath { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .pc-line.working i { animation: none; } }
+
+/* a seam between two columns: nothing at rest, a hairline under the hand */
+.pc-seam { position: absolute; top: var(--s3); bottom: var(--s3); width: var(--s3); z-index: 4; cursor: col-resize; touch-action: none; }
+.pc-seam::after { content: ""; position: absolute; left: 50%; top: 20%; bottom: 20%; width: var(--hair); background: var(--c-pearl-line); opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.pc-seam:hover::after, .pc.seaming .pc-seam::after { opacity: 1; }
+
+/* what is put away, by name, at the bottom edge */
+.pc-names { position: absolute; display: flex; align-items: center; gap: var(--s1); overflow: hidden; box-sizing: border-box; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); }
+.pc-name { all: unset; flex: none; display: inline-flex; align-items: center; gap: var(--s1); height: var(--s6); padding: 0 var(--s2); border-radius: var(--pill); white-space: nowrap; cursor: default; }
+.pc-name:hover { color: var(--ink); background: var(--surface); }
+.pc-name svg { width: var(--s4); height: var(--s4); fill: currentColor; }
+.pc-name.waits { color: var(--c-pearl); }
+.pc-more { flex: none; padding: 0 var(--s2); }
+
+/* what was just done (#903's line, step.ts; stage.said): at the strip's far end, after what is put away, so a name never
+   moves; the agent's steps wear its dot. One line; it leaves by itself, and stays while the pointer is on it */
+.pc-step { margin-left: auto; flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: var(--s2); padding-left: var(--s3); color: var(--dim); animation: pc-step-in var(--d-turn) var(--e-arrive); }
+.pc-step > i { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--pill); background: var(--jelly); }
+.pc-step-w { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button.pc-step-w { all: unset; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; text-decoration: underline dotted var(--mute); text-underline-offset: 3px; }
+button.pc-step-w:hover { color: var(--ink); }
+.pc-step-back { all: unset; flex: none; height: var(--s6); line-height: var(--s6); padding: 0 var(--s2); border-radius: var(--pill); color: var(--ink); background: var(--surface); cursor: default; }
+.pc-step-back:hover { background: var(--pop); }
+.pc-step > kbd { flex: none; font: inherit; color: var(--mute); }
+.pc-steps { position: absolute; z-index: 7; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 12px; background: var(--pop); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); box-shadow: 0 var(--s2) var(--s6) rgb(0 0 0 / 0.5); }
+@keyframes pc-step-in { from { opacity: 0; translate: 0 var(--s1); } }
+@media (prefers-reduced-motion: reduce) { .pc-step { animation: none; } }
+/* the line's "see": the artifact the agent changed, ringed where it stands */
+.pc-piece.pc-seen > .pc-in { outline: 2px solid var(--sun, #e8c66a); outline-offset: 3px; border-radius: 14px; }
+
+/* the page's own furniture, outside the window: which moment is shown */
+.pc-page { position: fixed; inset: 0; overflow: hidden; background: #000; color: var(--c-pearl, #e6e1d8); }
+.pc-strip { position: absolute; left: 0; right: 0; top: 0; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 14px; box-sizing: border-box; font-size: 12px; }
+.pc-strip button { all: unset; cursor: default; opacity: 0.6; padding: 4px 6px; border-radius: 6px; }
+.pc-strip button:hover { opacity: 1; background: rgb(255 255 255 / 0.08); }
+.pc-ticks { display: flex; gap: 3px; align-items: center; }
+.pc-ticks button { width: 14px; height: 14px; padding: 0; position: relative; }
+.pc-ticks button::after { content: ""; position: absolute; left: 4px; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.35; }
+.pc-ticks button.on { opacity: 1; }
+.pc-ticks button.on::after { opacity: 1; scale: 1.5; }
+.pc-strip b { font-weight: 500; }
+.pc-strip i { font-style: normal; opacity: 0.5; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-win { position: absolute; left: 50%; top: 40px; transform-origin: 0 0; border-radius: 12px; overflow: hidden; }
+
+/* your own words: the row takes the column, so a short line is not broken to the width of its own bubble */
+.pc .wme > .me-row { align-self: stretch; }
+/* a session not started yet: the welcome over the box */
+.pc-greet { position: absolute; display: flex; justify-content: center; padding-bottom: var(--s6); pointer-events: none; }
+.pc-greet .hc-new { height: auto; }
+
+/* the agent's lens (#1437, Space.tsx lens): a part of a list, a table or a diff taken to, ringed, its one line over it */
+.pc-lens { outline: 2px solid var(--sun, #e8c66a); outline-offset: 3px; border-radius: 4px; position: relative; }
+.pc-lens[data-say]::after { content: attr(data-say); position: absolute; left: 0; bottom: calc(100% + 6px); padding: 4px 9px; border-radius: 7px; font: 600 12px/1.3 -apple-system, system-ui; color: #111; background: var(--sun, #e8c66a); white-space: nowrap; pointer-events: none; z-index: 5; }

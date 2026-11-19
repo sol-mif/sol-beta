@@ -1,0 +1,216 @@
+/* The one onboarding's stage in the real window (#1088): the designer's page.css (design/page.css) without the page's
+   own frame and strip, and the stage filling the window. */
+.ob-stage { --move: .45s cubic-bezier(.3,1.02,.5,1); position: relative; width: 1280px; height: 800px; overflow: hidden; background: #050506; border-radius: 12px; }
+.ob-stage button { font-family: inherit; }
+
+.ob-jelly { position: absolute; left: 48px; top: 30px; width: 56px; height: 56px; display: grid; place-items: center; transition: left var(--move), top var(--move); z-index: 3; }
+.ob-line { position: absolute; left: 120px; top: 28px; right: 48px; animation: ob-say .3s ease-out both; }
+.ob-line .t-read { color: var(--dim); }
+.ob-line .t-display span { color: var(--dim); font-weight: 400; }
+@keyframes ob-say { from { opacity: 0; transform: translateY(4px); } }
+
+.ob-left { position: absolute; left: 48px; top: 116px; width: 440px; bottom: 32px; display: flex; flex-direction: column; gap: var(--s3); transition: transform var(--move), opacity .3s; }
+.ob-pane { position: relative; height: 132px; transition: height var(--move); }
+.m-watch .ob-pane, .m-yours .ob-pane, .m-home .ob-pane { height: 420px; }   /* through the hand-over's beat the pane stays as it was */
+.ob-glass { position: absolute; inset: 0; }
+.ob-pane > :not(:first-child) { position: absolute; inset: 0; }
+.ob-box { box-sizing: border-box; padding: var(--s4); border: 0; outline: 0; resize: none; background: none; color: var(--ink); font-family: inherit; }
+.ob-box::placeholder { color: var(--mute); }
+.ob-quote { padding: var(--s6); color: var(--dim); box-sizing: border-box; }
+.ob-foot { display: flex; align-items: center; gap: var(--s4); min-height: 56px; }
+.ob-foot > :last-child:not(:first-child) { margin-left: auto; }
+.ob-quiet { border: 0; background: none; padding: var(--s2); color: var(--dim); font-size: var(--t-body); cursor: pointer; border-radius: 8px; }
+.ob-quiet:hover { color: var(--ink); }
+.ob-quiet kbd { font: inherit; font-size: var(--t-label); color: var(--mute); margin-left: var(--s1); }
+.ob-took { color: var(--dim); }
+.ob-took button { border: 0; background: none; padding: 0; color: var(--ink); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+/* what the level means, drawn: the four steps of any piece of work, the jelly's as far as the level reaches */
+.ob-steps { display: flex; align-items: center; justify-content: center; gap: var(--s4); }
+.ob-steps > div { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 76px; height: 76px; border-radius: 50%; outline: 1px dashed rgba(var(--on), .3); outline-offset: -1px; color: var(--dim); font-size: var(--t-label); transition: background .35s, color .2s; }
+.ob-steps > div.mine { outline: 0; color: #0a0a0b; font-weight: 600; }
+.ob-steps > div.mine svg { color: #0a0a0b; stroke: #0a0a0b; }
+.ob-steps svg { width: 18px; height: 18px; }
+.ob-steps em { position: absolute; top: 100%; margin-top: var(--s2); font-style: normal; font-weight: 400; color: var(--mute); }
+.ob-steps > div.mine em { color: var(--ink); }
+
+.ob-right { position: absolute; left: 528px; top: 96px; right: 40px; bottom: 0; padding: 20px 8px 40px; box-sizing: border-box; overflow: hidden auto; scrollbar-width: none; transition: left var(--move), top var(--move); }
+.ob-right::-webkit-scrollbar { display: none; }
+.ob-right > .obf { margin-top: 16px; }
+.ob-folders { display: grid; gap: 30px 22px; padding-top: 34px; align-items: start; transition: padding var(--move); }
+.ob-folders.n4 { grid-template-columns: repeat(4, 1fr) ; }
+.ob-folders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ob-folders.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ob-folders.ob-withplus { grid-template-columns: repeat(3, minmax(0, 1fr)) 112px; }
+.ob-folders.n4.ob-withplus { grid-template-columns: repeat(4, minmax(0, 1fr)) 96px; }
+.ob-plus .obf h2 { font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 500; }
+.ob-plus .obf { padding: var(--s3); cursor: pointer; }
+.ob-plus .obf .who { padding-right: 0; font-size: var(--t-label); }
+.ob-foot.yours { flex-direction: column; align-items: stretch; gap: var(--s3); }
+.ob-foot.yours > :last-child { margin-left: auto; }
+/* "you" at the hand-over: it folds away to its row in Home's side (the person's name), and the parts take the room */
+.ob-right > .obf.you { max-height: 200px; transition: max-height var(--move), opacity .25s, transform var(--move), margin var(--move), padding var(--move); transform-origin: 0 0; }
+.ob-folders .obf.l { grid-column: 1 / -1; order: -1; }
+.ob-folders .obf.l .obf-pieces { grid-template-columns: repeat(4, 1fr); }
+.ob-folders .obf { min-height: 150px; }
+.ob-date { position: absolute; top: -22px; left: 0; color: var(--dim); }
+
+
+/* the hand-over: nothing cuts. The left column leaves, Home's spine and side arrive, the folders glide to Home's place */
+/* the hand-over's beat: the screen stays as they left it (the lens, the level, "this is my Home" held pressed, the jelly
+   working); the glide itself clears it (handover.ts fades all that is not a folder), and the jelly travels then */
+.m-home .ob-left { pointer-events: none; }
+.ob-rail-says { color: var(--mute); }
+.ob-stage[data-gliding] .ob-jelly { left: -2px; top: 48px; }
+
+.ob-fly { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.ob-dot { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 12px currentColor; will-change: transform; }
+
+
+/* in Home, an unsure piece opens its answer in place */
+.ob-scrim { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; background: rgba(0,0,0,.5); animation: ob-say .2s ease-out both; padding-left: 316px; }
+.ob-card { border-radius: 26px; background: #0c0c0d; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+
+.ob1-stage.ob-stage { position: fixed; inset: 0; width: auto; height: auto; border-radius: 0; z-index: 60; background: #050506; color: var(--ink);
+  -webkit-font-smoothing: antialiased; }   /* the face's own typeface, inherited: the hand-over keeps its letters */
+
+/* "look again" in Home's head, right (design/page.css .ob-again, .ob-round): the seven sources with their counts, then
+   the round arrow. A closed source keeps a dashed ring; pressing it opens it and reads it then and there. */
+.fh-head .ob-again { display: flex; align-items: center; gap: var(--s3); animation: ob-say .3s ease-out .3s both; }
+.ob-round { width: 44px; height: 44px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center; background: var(--pearl); color: #0a0a0b; cursor: pointer; transition: transform .15s; }
+.ob-round:hover { transform: rotate(40deg); }
+.ob-round:active { transform: rotate(180deg) scale(.94); }
+.ob-round svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.ob-again .obl-stop.closed, .ob-again .obl-stop.refused, .ob-again .obl-stop.none { opacity: .75; background: none; outline: 1px dashed rgba(var(--on), .45); outline-offset: -1px; }
+
+/* A narrow pane (lifted as drawn from the designer's design/page.css, NOW 03:58 item 3): the stage under 900 px wide,
+   Jelly beside another window. One column that scrolls as a whole; the folders as their heads; nothing zoomed or cut. */
+.ob-stage { container: obstage / inline-size; }
+@container obstage (max-width: 900px) {
+  .ob-jelly { left: 16px; top: 14px; }
+  .ob-line { left: 84px; top: 14px; right: 20px; }
+  .ob-line .t-display { font-size: var(--t-title); line-height: var(--t-title-line); }
+  .ob-left { position: relative; left: auto; top: auto; bottom: auto; width: auto; margin: 88px 20px 0; }
+  .m-watch .ob-pane { height: 240px; }
+  .m-yours .ob-pane, .m-home .ob-pane { height: 320px; }
+  .ob-foot.watch { position: absolute; right: 0; top: 0; min-height: 44px; }   /* pause sits at the rail's end: no row of its own */
+  .ob-right { position: relative; left: auto; top: auto; right: auto; bottom: auto; margin: 0 20px; padding: 12px 0 24px; overflow: visible; }
+  .ob-folders, .ob-folders.n4, .ob-folders.ob-withplus, .ob-folders.n4.ob-withplus { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 12px; padding-top: 30px; }
+  /* before Home, "you" and the parts are one grid of heads, as many across as fit */
+  .ob-stage:not(.m-home) .ob-right { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 26px 12px; padding-top: 30px; align-items: start; }
+  .ob-stage:not(.m-home) .ob-folders { display: contents; }
+  .ob-stage:not(.m-home) .ob-right > .obf { margin-top: 0; }
+  .ob-folders .obf { min-height: 0; }
+  .ob-stage:not(.m-home) .obf.s > .obf-pieces, .ob-stage:not(.m-home) .obf.s > .who { display: none; }
+  .ob-stage:not(.m-home) .obf.s { padding-bottom: var(--s3); }
+  /* Home, narrow: the side is the face's own to fold; the sources sit under the line; the folders keep their pieces */
+  .ob-side { display: none; }
+  .m-home .ob-left { display: none; }
+  .m-home .ob-line { left: 64px; top: 30px; right: 20px; }
+  .m-home .ob-again { left: 64px; right: auto; top: 88px; }
+  .m-home .ob-right { left: auto; top: auto; margin: 150px 20px 0 64px; }
+  .m-home .ob-folders { padding-top: 18px; }
+  .m-home:has(.ob-door) .ob-right { margin-top: 222px; transition: margin-top .25s var(--pour); }   /* an open door pushes the folders down; it never lies on one */
+  .ob-folders .obf.l .obf-pieces { grid-template-columns: repeat(2, 1fr); }
+  .ob-scrim { padding-left: 0; }
+  /* a later mode's first visit, narrow: the mode's side is folded (the face's own), the card is as wide as the chat box */
+  .ob-stage.m-build .ob-right, .ob-stage.m-cowork .ob-right, .ob-stage.m-build .ob-left, .ob-stage.m-cowork .ob-left { display: none; }
+  .ob-mode { grid-template-columns: 1fr; }
+  .ob-mside { display: none; }
+  .ob-chat { width: calc(100% - 40px); }
+}
+@media (max-width: 900px) { .ob1-stage.ob-stage { overflow-y: auto; } }   /* the face is the window: the column scrolls as a whole */
+/* Home's folders: never narrower than 216 px (a name is never cut to "DES …"); as many fill the row as fit, the "+"
+   goes on at a folder's width (designer NOW 04:52 item 2c) */
+.ob-folders.oh-grid, .ob-folders.n4.oh-grid { grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); grid-auto-rows: max-content; flex: none; height: auto; }
+.ob-folders.oh-grid .ob1-plus { min-height: 150px; }
+/* watching, a folder's name stays on one line */
+.ob1-stage .obf h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Home's head after a look: the sources lit (ink 1, count .7); a source's door under the rail: one line, one button */
+.fh-head .top { position: relative; }
+.fh-head .ob-again { flex-wrap: nowrap; justify-content: flex-end; }
+.fh-head .ob-again .obl-stop.done { opacity: 1; }
+.fh-head .ob-again .obl-stop.done span { opacity: .7; }
+.ob-door { position: absolute; right: 0; top: calc(100% + 4px); width: min(460px, 100%); box-sizing: border-box; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s2) var(--s2) var(--s2) var(--s4); border-radius: 16px; background: #0c0c0d; box-shadow: inset 0 0 0 1px var(--edge); animation: ob-say .25s ease-out both; text-align: left; }
+.ob-door .ob1-btn { flex: none; }
+/* landing: the folders travel left onto Home's boxes and are never clipped on the way */
+.m-home .ob-right, .m-home .ob-folders { overflow: visible; }
+/* an open door never lies on the end of Home's line: the line is cut short beside it (not in a narrow pane) */
+@media (min-width: 900px) { .fh-head:has(.ob-door) .fh-one { max-width: calc(100% - 480px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+.ob-folders.oh-grid .ob1-plus { margin-top: 0; }   /* level with the folder box beside it */
+/* #1223: what the reader is checking, under the lens while it reads (function first; the look is another session's) */
+.ob-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); max-height: 96px; overflow: hidden; }
+.ob-log li { display: flex; gap: var(--s2); min-width: 0; color: var(--ink); }
+.ob-log li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ob-log li em { font-style: normal; color: var(--dim); white-space: nowrap; margin-left: auto; }
+.ob-log li[data-k="skip"] span { color: var(--dim); text-decoration: line-through; }
+
+/* the places under the box (#1423, SignIns.tsx): reached ones with a green dot, one that needs signing in again in
+   orange, the suggested ringed as an AI tool not signed in is in the lens (lens.css .obl-ask), the rest quiet */
+.osi { display: flex; flex-direction: column; gap: var(--s2); }
+.osi-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.osi-lbl { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.osi-row > .osi-lbl:first-child { min-width: var(--s12); }   /* the two rows' chips start on one edge */
+.osi-chip { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s3) 0 var(--s2); border: 0; border-radius: var(--r-pill); background: rgba(var(--on), .06); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; transition: background var(--d-turn) var(--e-move), color var(--d-turn) var(--e-move); }
+.osi-chip:hover { background: rgba(var(--on), .1); color: var(--ink); }
+.osi-chip i { width: var(--s2); height: var(--s2); border-radius: 50%; background: rgba(var(--on), .3); }
+.osi-chip.on { color: var(--ink); }
+.osi-chip.on i { background: var(--green); }
+.osi-chip.hint { background: none; outline: 1px dashed var(--yellow-strong); outline-offset: -1px; color: var(--yellow-strong); }
+.osi-chip.hint i { background: none; outline: 1px solid var(--yellow-strong); outline-offset: -1px; }
+.osi-chip.late { color: var(--ink); }
+.osi-chip.late i { background: var(--orange); }
+.osi-chip.shut { opacity: .45; }
+.osi-chip.sel { outline: 1px solid rgba(var(--on), .6); outline-offset: -1px; }
+.osi-chip.busy i { animation: osi-wait 1s var(--e-move) infinite alternate; }
+.osi-chip.more { background: none; outline: 1px dashed rgba(var(--on), .2); outline-offset: -1px; color: var(--mute); }
+@keyframes osi-wait { to { opacity: .3; } }
+.osi-card { display: flex; align-items: center; gap: var(--s4); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: rgba(var(--on), .05); box-shadow: inset 0 0 0 1px rgba(var(--on), .08); }
+.osi-text { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; flex: 1; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); }
+.osi-text b { color: var(--ink); font-weight: 600; }
+.osi-text em { font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--yellow-strong); }
+.osi-acts { display: flex; flex-direction: column; align-items: stretch; gap: var(--s1); flex: none; }
+.osi-press { height: var(--h-row); padding: 0 var(--s4); border: 0; border-radius: var(--r-pill); background: rgba(var(--on), .9); color: var(--c-deepest, #0a0a0b); font-size: var(--t-body); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.osi-press:disabled { opacity: .5; cursor: default; }
+/* checking each folder (Check.tsx, #1423): one card over Home, a folder at a time */
+.osc { width: min(560px, calc(100vw - var(--s12))); max-height: calc(100vh - var(--s12)); overflow: hidden; display: flex; flex-direction: column; padding: var(--s4) 0; border-radius: var(--r-card); background: var(--c-lift); box-shadow: inset 0 0 0 1px var(--c-on-line), 0 30px 80px rgba(0,0,0,.6); }
+.osc-pills { display: flex; flex-wrap: wrap; gap: var(--s1); padding: 0 var(--s6); }
+.osc-pill { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); box-shadow: inset 0 0 0 1px var(--c-on-line); }
+.osc-pill.on { background: var(--c-pearl); color: var(--c-deep); box-shadow: none; }
+.osc-pill.done { color: var(--green); box-shadow: none; background: rgba(var(--on), .05); }
+.osc-pill.done::before { content: "✓"; }
+.osc-pill.later { color: var(--yellow-strong); box-shadow: inset 0 0 0 1px var(--yellow-strong); }
+.osc-head { padding: var(--s4) var(--s6) var(--s1); }
+.osc-head h3 { margin: 0; font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; color: var(--ink); }
+.osc-head p { margin: var(--s1) 0 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); }
+.osc-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) var(--s4) 0; }
+.osc-gap { padding: var(--s2) var(--s2) 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); }
+.osc-row { flex-shrink: 0; display: grid; grid-template-columns: var(--s4) minmax(0, 1fr) auto; align-items: center; gap: var(--s3); width: 100%; padding: var(--s2); border: 0; border-radius: var(--r-row); background: none; color: var(--ink); text-align: left; cursor: pointer; }
+.osc-row:hover { background: rgba(var(--on), .05); }
+.osc-mk { display: grid; place-items: center; width: var(--s4); height: var(--s4); border-radius: 50%; font-size: var(--t-label); background: rgba(var(--on), .08); color: var(--green); }
+.osc-txt { display: flex; flex-direction: column; min-width: 0; }
+.osc-txt b { font-weight: 500; font-size: var(--t-body); line-height: var(--t-body-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.osc-txt small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.osc-act { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); opacity: 0; white-space: nowrap; }
+.osc-row:hover .osc-act { opacity: 1; }
+.osc-row.unsure { box-shadow: inset 0 0 0 1px var(--yellow-strong); }
+.osc-row.unsure .osc-mk { background: none; color: var(--yellow-strong); box-shadow: inset 0 0 0 1px var(--yellow-strong); }
+.osc-row.unsure .osc-act { opacity: 1; color: var(--yellow-strong); }
+.osc-row.out { box-shadow: none; }
+.osc-row.out .osc-mk { background: rgba(var(--on), .05); color: var(--mute); box-shadow: none; }
+.osc-row.out b { color: var(--mute); text-decoration: line-through; }
+.osc-row.out .osc-act { opacity: 1; color: var(--dim); }
+.osc-miss { display: flex; align-items: center; gap: var(--s3); height: var(--h-row); margin: var(--s3) var(--s6) 0; padding: 0 var(--s3); border-radius: var(--r-row); background: rgba(var(--on), .04); box-shadow: inset 0 0 0 1px var(--c-on-line); }
+.osc-miss span { font-size: var(--t-body); color: var(--dim); white-space: nowrap; }
+.osc-miss input { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--ink); font: inherit; font-size: var(--t-body); }
+.osc-miss input::placeholder { color: var(--mute); }
+.osc-added { min-height: var(--t-label-line); margin: var(--s1) var(--s6) 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--green); }
+.osc-foot { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s6) 0; }
+.osc-count { margin-left: auto; font-size: var(--t-label); color: var(--mute); }
+.osc-end { display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s8) var(--s6) var(--s4); text-align: center; }
+.osc-end b { font-size: var(--t-title); line-height: var(--t-title-line); color: var(--ink); }
+.osc-end p { max-width: 440px; margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); }
+.osc-tally { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s2); margin: var(--s2) 0 var(--s3); }
+.osc-tally span { padding: var(--s1) var(--s3); border-radius: var(--r-pill); font-size: var(--t-label); color: var(--dim); box-shadow: inset 0 0 0 1px var(--c-on-line); }
+/* a folder made and not yet checked: ringed in Home until it is opened */
+.obf.unchecked { box-shadow: inset 0 0 0 1px var(--yellow-strong); }

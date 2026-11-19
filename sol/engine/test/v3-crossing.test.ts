@@ -139,14 +139,14 @@ test("E4 through the wire, and Send pressed twice there: one event, the same tok
   process.env.SOL_COWORK_V3 = "on";
   const { handleTeam, addTeamFace } = await import("../src/team/wire.ts");
   const f = face(); addTeamFace(f.w);
-  await handleTeam(f.w, { type: "team.v3.cross.propose", rid: "p1", sessionId: "s1", text: "logo review by Nov 5", room: "sol", roomName: "Sol", topic: "Logo review" });
+  await handleTeam(f.w, { type: "team.v3.cross.propose", fromSol: true, rid: "p1", sessionId: "s1", text: "logo review by Nov 5", room: "sol", roomName: "Sol", topic: "Logo review" });
   const p = f.by("p1")?.proposal;
   assert.ok(p, "a proposal");
   assert.equal(p.project, "sol"); assert.equal(p.projectName, "Sol"); assert.equal(p.spot, "plan");
   // the card was retitled on the face; the project comes from what the engine proposed, never from the face
   await Promise.all([
-    handleTeam(f.w, { type: "team.v3.cross.send", rid: "s1", proposal: { ...p, title: "Logo review, final", project: "elsewhere" } }),
-    handleTeam(f.w, { type: "team.v3.cross.send", rid: "s2", proposal: { ...p, title: "Logo review, final", project: "elsewhere" } }),
+    handleTeam(f.w, { type: "team.v3.cross.send", fromSol: true, rid: "s1", proposal: { ...p, title: "Logo review, final", project: "elsewhere" } }),
+    handleTeam(f.w, { type: "team.v3.cross.send", fromSol: true, rid: "s2", proposal: { ...p, title: "Logo review, final", project: "elsewhere" } }),
   ]);
   const a = f.by("s1"), b = f.by("s2");
   assert.ok(a?.token && b?.token);
@@ -154,9 +154,9 @@ test("E4 through the wire, and Send pressed twice there: one event, the same tok
   assert.equal(a.event.id, b.event.id, "one event");
   assert.equal(a.event.project, "sol");
   assert.equal(a.event.body.title, "Logo review, final");
-  await handleTeam(f.w, { type: "team.v3.cross.send", rid: "s3", proposal: { id: "x-made-up", title: "x" } });
+  await handleTeam(f.w, { type: "team.v3.cross.send", fromSol: true, rid: "s3", proposal: { id: "x-made-up", title: "x" } });
   assert.ok(f.by("s3")?.error, "a card this engine did not make is refused");
-  await handleTeam(f.w, { type: "team.v3.cross.undo", rid: "u1", token: a.token });
+  await handleTeam(f.w, { type: "team.v3.cross.undo", fromSol: true, rid: "u1", token: a.token });
   assert.equal(f.by("u1")?.ok, true);
   await handleTeam(f.w, { type: "team.v3.cross.landed", rid: "l1", project: "sol" });
   assert.deepEqual(f.by("l1")?.events, [], "undone: nothing stayed");

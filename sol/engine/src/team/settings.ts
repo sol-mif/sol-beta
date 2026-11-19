@@ -59,12 +59,69 @@ export type TeamSettings = {
   rooms: Room[];                                       // every room I am in (#154); never empty once cleaned
   room: string;                                        // the active room's id
   speak: { github: boolean; cowork: boolean; discord: "never" | "builds" | "any"; whatsapp: boolean };
-  leaves: { prompts: boolean; memory: boolean; transcripts: boolean; audit: "ask" | "never" };
+  leaves: { prompts: boolean; memory: boolean; transcripts: boolean; audit: "ask" | "never"; give: "ask" | "never" };   // give (#335): my past group sessions, when a teammate asks
   seats: { life: "codex" | "claude"; work: "codex" | "claude" };
   machines: { name: string; url: string }[];           // my machines (the engines I can pick); Control owns the rows
   channel: "" | "dev" | "beta";                        // the releases this Sol follows (#418, ship.ts): "" = dev for a developer, beta for a tester
   dials: Dials;                                        // per ping kind: always, matters (default), never (#100)
+  wake: Record<string, WakeRule>;                      // who may wake my agent, per repository "owner/name" (#1151); none by default
+  wakeAsk: WakeAsk;                                    // my answer to the one question, may my group's members wake my agent (#1313)
 };
+
+/** who may wake my agent with a comment on one repository (#1151, wake.ts). `mine`: a comment by my own login, an
+ *  ordinary session on the ask-first mode. `others`: a comment by a login in `from`, a narrow session that can only read
+ *  the thread and the repository and answer there; on only with `read` set, the day the terms line (fr-31, "Help, not
+ *  lending") was shown and the person turned it on anyway. `perDay`: wakes a thread a day */
+export type WakeRule = { mine: boolean; others: boolean; from: string[]; read: string; perDay: number };
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** my answer to the question Sol asks once (#1313): may my group's members wake my agent on its repositories, and may
+ *  their agents ask mine (reach.ts answering)? "" never asked, "later" ask again another day, "yes" both on (the narrow
+ *  way, wake.ts rulesOf), "no" off. `at` the day I answered: for "yes" it is the day the terms line was shown, as a
+ *  rule's `read`. `room` the group I answered for: the answer holds for that group alone, and another group in use asks
+ *  again. `off`: a line I turned off since in Settings, the other kept on (only with "yes"; none when both are on) */
+export type WakeLine = "wake" | "asks";
+export type WakeAsk = { answer: "" | "yes" | "no" | "later"; at: string; room: string; off?: WakeLine[] };
+/** wakes a thread a day when my group's members may wake my agent: the same as a rule's default */
+export const TEAM_WAKE_PER_DAY = 3;
+const NO_ANSWER: WakeAsk = { answer: "", at: "", room: "" };
+/** the answer, made valid (pure): any answer only with its day and its group */
+export function cleanWakeAsk(v: unknown): WakeAsk {
+  if (!isObj(v)) return { ...NO_ANSWER };
+  const at = typeof v.at === "string" && DAY.test(v.at) ? v.at : "";
+  const room = typeof v.room === "string" ? v.room.trim().slice(0, 100) : "";
+  const answer = v.answer === "yes" || v.answer === "no" || v.answer === "later" ? v.answer : "";
+  if (!answer || !at || !room) return { ...NO_ANSWER };
+  const off = answer === "yes" && Array.isArray(v.off) ? (["wake", "asks"] as const).filter((l) => (v.off as unknown[]).includes(l)) : [];
+  return off.length ? { answer, at, room, off } : { answer, at, room };
+}
+/** whether one line of my yes is on for the group in use (pure): yes for it, with its day, and that line not turned off */
+export const wakeLineOn = (a: WakeAsk, room: string, line: WakeLine) => a.answer === "yes" && !!a.at && a.room === room && !(a.off ?? []).includes(line);
+/** whether the question is due for the group in use (pure): never answered for it, or "later" on a day before today */
+export const wakeAskDue = (a: WakeAsk, room: string, today: string) => a.room !== room || a.answer === "" || (a.answer === "later" && a.at < today);
+
+/** how many repositories may have a rule, and how many logins one rule may name */
+export const WAKE_REPOS_MAX = 20, WAKE_FROM_MAX = 10;
+/** the wake rules, made valid (pure): a repository's rule is kept by its owner/name; anything else is dropped. `others`
+ *  stays on only with a login to hear and the day the terms line was read */
+export function cleanWake(v: unknown): Record<string, WakeRule> {
+  const out: Record<string, WakeRule> = {};
+  if (!isObj(v)) return out;
+  for (const [repo, raw] of Object.entries(v)) {
+    if (!isRepo(repo) || !isObj(raw) || Object.keys(out).length === WAKE_REPOS_MAX) continue;
+    const from = Array.isArray(raw.from)
+      ? [...new Set(raw.from.filter((x): x is string => typeof x === "string" && LOGIN.test(x.trim())).map((x) => x.trim()))].slice(0, WAKE_FROM_MAX)
+      : [];
+    const read = typeof raw.read === "string" && DAY.test(raw.read) ? raw.read : "";
+    const n = typeof raw.perDay === "number" && Number.isFinite(raw.perDay) ? Math.round(raw.perDay) : 3;
+    out[repo] = {
+      mine: bool(raw.mine, false),
+      others: bool(raw.others, false) && from.length > 0 && read !== "",
+      from, read,
+      perDay: Math.min(10, Math.max(1, n)),
+    };
+  }
+  return out;
+}
 
 export const TEAM_DEFAULTS: TeamSettings = {
   me: { login: "", name: "" },
@@ -74,11 +131,13 @@ export const TEAM_DEFAULTS: TeamSettings = {
   rooms: [],      // absent in a file: one room, "team", from org, repos and relay.url (#154)
   room: "",
   speak: { github: true, cowork: true, discord: "builds", whatsapp: false },
-  leaves: { prompts: false, memory: false, transcripts: false, audit: "ask" },
+  leaves: { prompts: false, memory: false, transcripts: false, audit: "ask", give: "ask" },
   seats: { life: "codex", work: "claude" },
   machines: [],   // absent in a file: this Mac and the relay's machine (defaultMachines); present and empty: empty
   channel: "",
   dials: { ...DIAL_DEFAULTS },
+  wake: {},       // nobody wakes my agent until I say so, repository by repository (#1151)
+  wakeAsk: { answer: "", at: "", room: "" },   // not asked yet (#1313): until I answer yes, my group's members do not wake it
 };
 
 /** the record first in a list (#507, #510, pure): the team's repository keeps its main PR-only
@@ -120,6 +179,7 @@ const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
 const seat = (v: unknown, d: "codex" | "claude") => (v === "codex" || v === "claude" ? v : d);
 // the format rules are the hub's (#206): hub/hub-types.ts keeps the one copy (#208: the package sol/hub), read here as before
 import { REPO, LOGIN, CODE } from "../hub/index.js";
+import { isQuiet } from "../quiet.js";
 export { REPO, LOGIN, CODE };
 const WS = /^wss?:\/\/\S+$/;
 const URL_OK = /^wss?:\/\/[^\s/]+(\/\S*)?$/;
@@ -181,7 +241,7 @@ export function moved(hub: string, coded = true, builtIn: ReadonlyMap<string, st
  *  when it says `off` (a Sol that meets only on its own relay), else the cloud (S6b, #226); blank is not said, so
  *  .env.example's `SOL_HUB=` is the cloud. Read when asked, not at import: the engine reads .env after its imports */
 export const sharedHub = (): string => {
-  const h = (process.env.SOL_HUB ?? "").trim().replace(/[?#].*$/, "");
+  const h = isQuiet() ? "off" : (process.env.SOL_HUB ?? "").trim().replace(/[?#].*$/, "");
   if (/^(off|none)$/i.test(h)) return "";
   return WS.test(h) ? h : h ? "" : CLOUD_HUB;
 };
@@ -325,11 +385,15 @@ export function cleanTeam(raw: unknown): TeamSettings {
       // prompts, memory and transcripts never leave this machine (Marco's rule): fixed rows, not switches
       prompts: false, memory: false, transcripts: false,
       audit: leaves.audit === "never" ? "never" : "ask",
+      // a past group session a teammate asks for (#335): ask me each time (the default), or never
+      give: leaves.give === "never" ? "never" : "ask",
     },
     seats: { life: seat(seats.life, "codex"), work: seat(seats.work, "claude") },
     machines: cleanMachines(r.machines, here.hub),   // #169: the rows by default follow the relay this Sol dials
     channel: r.channel === "dev" || r.channel === "beta" ? r.channel : "",
     dials: cleanDials(r.dials),
+    wake: cleanWake(r.wake),
+    wakeAsk: cleanWakeAsk(r.wakeAsk),
   };
 }
 
@@ -572,7 +636,7 @@ export function speakParagraph(s: TeamSettings): string {
   return [
     `Where you may speak (${person}'s own setting in Sol): you act for ${person}, and anything you write where other people read it is signed ${sig}, never as ${person} and never unsigned.`,
     `GitHub (issues, pull requests, comments, reviews): ${yn(s.speak.github)}. Sol's team view (Cowork): ${s.speak.cowork ? "yes, signed" : "no"}. Discord: ${discord}. WhatsApp: ${s.speak.whatsapp ? "yes" : "never"}.`,
-    `Prompts, memory and transcripts never leave this machine${s.leaves.audit === "ask" ? `; an audit asks ${person} first` : "; audits are refused"}.`,
+    `Prompts, memory and transcripts never leave this machine${s.leaves.audit === "ask" ? `; an audit asks ${person} first` : "; audits are refused"}${s.leaves.give === "ask" ? `; a past group session leaves only when ${person} presses give` : "; past group sessions are never given"}.`,
     `When a task needs a place you may not speak, say so and stop there; do not find a way around it.`,
   ].join(" ");
 }

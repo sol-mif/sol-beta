@@ -2,7 +2,7 @@
 // The kit's values (#674): every primitive in sol/mac/src/kit reads these and holds none of its own.
 
 /** the one black in its shade steps: the window, its blur, the surfaces; `on`, the on colour's strengths */
-export const SHADE = {"black":"#000000","window":0.78,"blur":48,"drag":24,"steps":{"side":0.1,"card":0.25,"raised":0.4,"box":0.55,"pop":0.96},"on":{"ink":0.92,"dim":0.55,"mute":0.32,"line":0.06,"edge":0.1,"hover":0.06},"read":{"window":0.92,"dim":0.7,"mute":0.54,"block":"pop"}} as const;
+export const SHADE = {"black":"#000000","window":0.78,"blur":48,"drag":24,"steps":{"side":0.1,"card":0.25,"raised":0.4,"box":0.55,"pop":0.96},"on":{"ink":0.92,"dim":0.55,"mute":0.32,"line":0.06,"edge":0.1,"hover":0.06,"flat":0.07},"read":{"window":0.92,"dim":0.7,"mute":0.54,"block":"pop"}} as const;
 export type Step = keyof typeof SHADE.steps;
 /** the glass and the jelly's light on it; glass is every surface's default, raised and box are named */
 export const GLASS = {"light":{"from":[-0.55,-0.7],"rim":0.42,"sheen":0.1},"surfaces":{"glass":{"rim":0,"sheen":0},"raised":{"rim":0.42,"sheen":0},"box":{"rim":0.42,"sheen":0.1}}} as const;
@@ -11,6 +11,8 @@ export type Surface = keyof typeof GLASS.surfaces;
 export const JELLY = {"six":["#ff2e4e","#ff4888","#fb7129","#f89b2a","#f4c82a","#70df45"],"warm":["#ff4888","#fb7129","#f89b2a","#f4c82a"],"angle":90,"soft":0.08,"veil":0.38} as const;
 /** the continuous corner: the smoothing of Apple's squircle and the kit's radii (the card's is looks.card's pick) */
 export const CURVE = {"smoothing":0.6,"radius":{"chip":8,"row":12,"field":14,"box":20,"tile":56,"block":18,"mark":5,"card":26}} as const;
+/** the ground (#1183): the jelly's colours as one soft mass under the window, its takes (Ground.tsx) */
+export const GROUND = {"pick":"glass","blur":150,"goo":[1,0],"edge":0,"drift":70,"takes":{"mist":{"take":"a","name":"grey with one blue, from the blue pin","paper":"#d5dbe1","grain":0.11,"blobs":[["#5c8ae6",-0.08,0.02,0.26],["#5c8ae6",0.98,0.96,0.3],["#b4c4e4",0.7,0.6,0.16]]},"cream":{"take":"b","name":"cream with one mauve, from the flower pin","paper":"#ebe5cf","grain":0.12,"blobs":[["#cfb3cc",0.02,0.98,0.3],["#e9c9a4",0.96,0.1,0.26],["#f4f0e4",0.5,0.5,0.2]]},"dusk":{"take":"c","name":"navy, lit from one corner, from the dark pin","paper":"#0a1440","grain":0.2,"blobs":[["#9fdcee",-0.12,1.05,0.42],["#1f55a6",0.3,0.7,0.34],["#050a22",1,0,0.36]]}}} as const;
 /** the glyphs (#764): drawn on a `grid`, set in a `size` box, the stroke `stroke` px at any size */
 export const GLYPH = {"size":24,"grid":20,"stroke":2} as const;
 /** the pearl, what has you; deep, the words on it */
@@ -20,7 +22,7 @@ export const DEEP = "#0a0a0b";
 export const PEARL_TINT = "rgb(230 225 216 / 0.035)";
 export const NACRE = "radial-gradient(70% 120% at 18% 0%, rgb(255 255 255 / 0.55), transparent 70%), linear-gradient(180deg, rgb(255 255 255 / 0.35), transparent 60%), repeating-linear-gradient(104deg, rgb(249 55 80 / 0.34) 0px, rgb(253 51 83 / 0.34) 2px, rgb(254 51 87 / 0.34) 4px, rgb(255 52 91 / 0.34) 6px, rgb(255 54 96 / 0.34) 8px, rgb(255 56 100 / 0.34) 10px, rgb(255 58 105 / 0.34) 12px, rgb(255 60 109 / 0.34) 14px, rgb(255 62 114 / 0.34) 16px, rgb(255 64 118 / 0.34) 18px, rgb(255 66 122 / 0.34) 20px, rgb(255 68 126 / 0.34) 22px, rgb(255 70 129 / 0.34) 24px, rgb(255 73 129 / 0.34) 26px, rgb(255 75 126 / 0.34) 28px, rgb(254 78 121 / 0.34) 30px, rgb(254 81 114 / 0.34) 32px, rgb(254 85 107 / 0.34) 34px, rgb(253 88 99 / 0.34) 36px, rgb(253 91 92 / 0.34) 38px, rgb(253 94 85 / 0.34) 40px, rgb(253 97 78 / 0.34) 42px, rgb(252 100 70 / 0.34) 44px, rgb(252 104 63 / 0.34) 46px, rgb(252 107 56 / 0.34) 48px, rgb(251 110 50 / 0.34) 50px, rgb(251 113 45 / 0.34) 52px, rgb(251 116 43 / 0.34) 54px, rgb(251 119 42 / 0.34) 56px, rgb(250 123 41 / 0.34) 58px, rgb(250 126 41 / 0.34) 60px, rgb(250 129 41 / 0.34) 62px, rgb(250 132 41 / 0.34) 64px, rgb(249 136 42 / 0.34) 66px, rgb(249 139 42 / 0.34) 68px, rgb(249 142 42 / 0.34) 70px, rgb(249 145 42 / 0.34) 72px, rgb(248 149 42 / 0.34) 74px, rgb(248 152 42 / 0.34) 76px, rgb(248 155 42 / 0.34) 78px, rgb(248 159 42 / 0.34) 80px, rgb(247 162 42 / 0.34) 82px, rgb(247 165 42 / 0.34) 84px, rgb(247 169 42 / 0.34) 86px, rgb(246 172 42 / 0.34) 88px, rgb(246 176 42 / 0.34) 90px, rgb(246 179 42 / 0.34) 92px, rgb(246 183 42 / 0.34) 94px, rgb(245 186 42 / 0.34) 96px, rgb(245 190 42 / 0.34) 98px, rgb(244 193 42 / 0.34) 100px, rgb(242 196 42 / 0.34) 102px, rgb(238 199 43 / 0.34) 104px, rgb(232 201 45 / 0.34) 106px, rgb(223 203 46 / 0.34) 108px, rgb(213 205 48 / 0.34) 110px, rgb(203 207 50 / 0.34) 112px, rgb(193 209 52 / 0.34) 114px, rgb(183 211 54 / 0.34) 116px, rgb(173 212 57 / 0.34) 118px, rgb(163 214 59 / 0.34) 120px, rgb(153 216 61 / 0.34) 122px, rgb(143 218 63 / 0.34) 124px, rgb(134 219 65 / 0.34) 126px, rgb(127 218 67 / 0.34) 128px, rgb(124 214 68 / 0.34) 130px, rgb(128 206 69 / 0.34) 132px, rgb(135 195 70 / 0.34) 134px, rgb(145 182 71 / 0.34) 136px, rgb(156 169 72 / 0.34) 138px, rgb(167 155 72 / 0.34) 140px, rgb(178 141 73 / 0.34) 142px, rgb(189 128 74 / 0.34) 144px, rgb(200 114 75 / 0.34) 146px, rgb(211 100 75 / 0.34) 148px, rgb(222 87 76 / 0.34) 150px, rgb(232 74 77 / 0.34) 152px, rgb(242 63 78 / 0.34) 154px, rgb(249 55 80 / 0.34) 156px), linear-gradient(#e6e1d8, #e6e1d8)";
 /** the type: the family and the scale's sizes, [size, line] */
-export const TYPE = {"family":"-apple-system, BlinkMacSystemFont, \"SF Pro Text\", Inter, \"Helvetica Neue\", sans-serif","label":[11,16],"body":[13,20],"read":[15,24],"title":[20,28],"head":[12.5,16],"big":[19,26],"display":[28,34],"code":[12,20]} as const;
+export const TYPE = {"family":"-apple-system, BlinkMacSystemFont, \"SF Pro Text\", Inter, \"Helvetica Neue\", sans-serif","label":[11,16],"pill":[11.5,16],"body":[13,20],"read":[15,24],"title":[20,28],"head":[12.5,16],"big":[19,26],"display":[28,34],"code":[12,20]} as const;
 /** the looks: each its takes, named, with the letter it had on the kit page; `pick` the default, the rest alternates;
  *  the halo's takes are the jelly's states (`states`) */
 export const LOOKS = {
@@ -263,6 +265,66 @@ export const LOOKS = {
       }
     }
   },
+  "block": {
+    "title": "A block, as a card",
+    "pick": "tab",
+    "fill": {
+      "dark": "#1b1b1e",
+      "light": "#fbfaf6"
+    },
+    "sheet": {
+      "dark": "#161618",
+      "light": "#f1eee7"
+    },
+    "rim": 0.14,
+    "shadow": {
+      "dark": [
+        0.55,
+        14,
+        36
+      ],
+      "light": [
+        0.12,
+        10,
+        30
+      ]
+    },
+    "lift": {
+      "scale": 1.02,
+      "tilt": -1,
+      "shadow": {
+        "dark": [
+          0.7,
+          28,
+          60
+        ],
+        "light": [
+          0.2,
+          24,
+          50
+        ]
+      }
+    },
+    "takes": {
+      "tab": {
+        "take": "a",
+        "name": "the folder's tab: the name in a lip that steps up from the body",
+        "head": 34,
+        "join": 18,
+        "corner": 14
+      },
+      "band": {
+        "take": "b",
+        "name": "the head as a band across the top",
+        "head": 34
+      },
+      "plain": {
+        "take": "c",
+        "name": "no lip: the name inside, fill and shadow alone",
+        "head": 34
+      }
+    }
+  },
   "card": {
     "title": "A card",
     "pick": "soft",
@@ -287,9 +349,11 @@ export const LOOKS = {
     }
   }
 } as const;
+/** the one system (#1213, sol/design/system/rules.md): depth steps, colour roles, shapes, type roles, moves; every accent piece and the body draw from it */
+export const SYSTEM = {"spine":"folders & cards","depth":{"well":{"fill":"#0c0c0e","rim":0,"inner":0.6,"shadow":[0,0,0],"note":"sunk into a card: the field, a meter's track, the undo's track; its dark falls from the top edge (inner)"},"card":{"fill":"#1b1b1e","rim":0.14,"shadow":[0.55,14,36],"note":"every object at rest: a block, a row's card, the bar, a holder of chips (= looks.block)"},"control":{"fill":"#2a2a2f","rim":0.12,"shadow":[0.45,2,6],"note":"a thing you press, raised under the pointer or as you press it: one step up, its own small drop; at rest a pill is its word on its holder, with no fill (rules.md 12)"},"lifted":{"fill":"#222226","rim":0.24,"shadow":[0.7,28,60],"scale":1.02,"note":"in hand, dragged, or the one thing that waits on you: the glass & objects family, as height, never as film"},"sticker":{"fill":"role","rim":0,"shadow":[0.5,1,2],"tilt":-2,"note":"flat on top of a card, a hard small drop, set a little askew; its fill is a role colour (pearl or a meaning)"}},"light":{"card":"#fbfaf6","control":"#ffffff","well":"#ece9e1","sheet":"#f1eee7","note":"the same steps on a light ground (cream, mist): fill only; the shadows soften to looks.block.shadow.light"},"role":{"rest":{"value":"on","note":"grey words and glyphs (shade.on ink, dim, mute): everything that is not asking for you"},"picked":{"value":"nacre","note":"what you chose or where you are: the pearl with the jelly's hues in bands (looks.pearl nacre), words in deep"},"sol":{"value":"jelly","note":"Sol's own energy: running, working, the effort's heat, how full it is, send once there are words; the six as bands (palette.jelly), the one place they appear"},"done":{"value":"green","fixed":true,"note":"functional.green.strong, flat"},"ask":{"value":"yellow","fixed":true,"note":"functional.yellow.strong, flat: your call"},"wrong":{"value":"red","fixed":true,"note":"functional.red.strong, flat"},"kind":{"value":"looks.file.kinds","note":"a file's kind colour, flat, on the file mark alone"}},"shape":{"card":{"radius":"curve.radius.block","note":"a thing: the continuous corner (curve.ts)"},"pill":{"radius":999,"note":"a thing you press: send, a picker, a chip, a coin, the meter"},"sticker":{"radius":4,"note":"a thing Sol says on another thing: a stamp, a needs-you label, a count"},"inner":{"rule":"outer − gap","note":"a shape inside another keeps the outer's curve less the gap between them"}},"type":{"number":{"scale":"read","weight":500,"tabular":true,"note":"a count, a time, a percent: a mark, set larger than its words"},"word":{"scale":"body","weight":400},"picked":{"scale":"body","weight":500},"head":{"scale":"head","weight":500},"sticker":{"scale":"label","weight":600,"caps":true,"track":0.06,"mono":true,"note":"the sticker's voice: mono capitals, the only capitals"}},"move":{"press":{"d":"turn","e":"reveal","scale":0.97,"note":"every press gives, the same give"},"hover":{"d":"turn","e":"reveal","rise":-1,"note":"a hover lifts by a point and lightens its rim; no colour arrives on hover"},"lift":{"d":"glass","e":"reveal","note":"to depth.lifted"},"pour":{"d":"pour","e":"pour","note":"colour arrives: it fills from the left, as the jelly would"},"land":{"d":"land","e":"pour","from":[1.14,-6],"note":"a sticker or a coin arrives: from a little big and above, it settles"},"drift":{"d":"cycle","e":"drift","note":"Sol at work: the jelly's bands slide, one cycle; the only endless motion, one place per window"},"drain":{"d":"glass","e":"leave","note":"time running out: one step goes, the rest hold"},"breath":{"d":"breath","e":"breath","note":"at rest a living thing barely moves"}}} as const;
 /** the timed motion in ms and its curves (ui.md Motion), feel.md's springs at mass 1 { k stiffness, c damping }, the clamp in px and the slow factor; motion.ts runs them */
-export const TIMED = {"turn":150,"pour":850,"breath":4800,"reveal":120,"glass":220,"lag":140} as const;
-export const EASE = {"arrive":"ease-out","leave":"ease-in","move":"ease","pour":"cubic-bezier(0.3, 1.12, 0.6, 1)","reveal":"cubic-bezier(0.2, 0.8, 0.2, 1)","breath":"ease-in-out"} as const;
+export const TIMED = {"turn":160,"pour":850,"breath":4800,"reveal":120,"glass":220,"lag":140,"land":320,"cycle":2400} as const;
+export const EASE = {"arrive":"ease-out","leave":"ease-in","move":"ease","pour":"cubic-bezier(0.3, 1.12, 0.6, 1)","reveal":"cubic-bezier(0.2, 0.8, 0.2, 1)","breath":"ease-in-out","drift":"linear"} as const;
 export const SPRING = {"mass":1,"clamp":4,"slow":4,"settle":{"k":520,"c":40},"travel":{"k":300,"c":31},"glide":{"k":200,"c":27},"lift":{"k":900,"c":54},"fade":{"k":400,"c":40}} as const;
 export type Spring = Exclude<keyof typeof SPRING, "mass" | "clamp" | "slow">;
 export type Look = keyof typeof LOOKS;

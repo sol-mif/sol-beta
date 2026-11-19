@@ -1,0 +1,45 @@
+/* The closing moment's pieces (Yours.tsx, #1088): the evidence of one unsure thing, and the level. */
+.oby-ev { width: 100%; height: 100%; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s6); box-sizing: border-box; color: var(--ink, #ebebe8); animation: oby-in .35s cubic-bezier(.3,1.12,.6,1) both; }
+@keyframes oby-in { from { opacity: 0; transform: translateX(24px); } }
+.oby-pic { flex: 1; min-height: 0; display: grid; place-items: center; border-radius: 18px; background: rgba(235,235,232,.035); }
+.oby-ans { display: flex; align-items: center; gap: var(--s2); }
+.oby-ans .ghost { border-radius: 12px; outline: 1px dashed rgba(235,235,232,.5); outline-offset: 2px; }
+.oby-left { margin-left: auto; display: flex; gap: var(--s1); }
+.oby-left i { width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--yellow-strong); }
+.oby-ev i { font-style: normal; }
+
+.oby-day { position: relative; width: 150px; height: 80%; border-radius: 8px; background: rgba(235,235,232,.05); }
+.oby-day span { position: absolute; left: -22px; font-size: 10px; line-height: 10px; margin-top: -5px; color: rgba(235,235,232,.55); }
+.oby-day i { position: absolute; left: 4px; right: 4px; padding: 4px 6px; border-radius: 6px; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; box-sizing: border-box; }
+.oby-day .was { background: rgba(230,225,216,.9); color: #0a0a0b; }
+.oby-day .oby-ask { left: 28px; right: -28px; background: #0a0a0b; color: var(--yellow-strong); box-shadow: inset 0 0 0 1px var(--yellow-strong); }
+.oby-weeks { display: grid; grid-template-columns: repeat(7, 14px); gap: 8px; }
+.oby-weeks i { width: 14px; height: 14px; border-radius: 50%; background: rgba(235,235,232,.07); }
+.oby-weeks i.on { background: #e6e1d8; }
+.oby-weeks i.on:nth-child(n+22) { background: none; box-shadow: inset 0 0 0 1px var(--yellow-strong); }
+.oby-shut { display: flex; gap: var(--s6); }
+.oby-shut i { position: relative; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: rgba(235,235,232,.08); font-size: var(--t-title); font-weight: 600; color: rgba(235,235,232,.4); }
+.oby-shut i::after { content: ""; position: absolute; left: 8px; right: 8px; top: 50%; height: 1px; background: #ebebe8; transform: rotate(-38deg); }
+.oby-shut span { position: absolute; top: 100%; margin-top: 4px; font-size: var(--t-label); font-weight: 400; color: rgba(235,235,232,.55); }
+.oby-disc { display: grid; place-items: center; width: 112px; height: 112px; border-radius: 50%; outline: 1px dashed var(--yellow-strong); color: var(--yellow-strong); font-size: var(--t-read); }
+.oby-dir { display: grid; grid-template-columns: 24px auto; column-gap: var(--s3); align-items: center; }
+.oby-dir svg { width: 22px; height: 22px; grid-row: span 2; }
+.oby-dir b { font-size: var(--t-title); font-weight: 600; }
+.oby-dir span { font-size: var(--t-label); color: rgba(235,235,232,.55); }
+
+.oby-level { display: flex; flex-direction: column; gap: var(--s2); }
+.oby-level .oby-track { position: relative; padding: var(--s2) 0; cursor: grab; touch-action: none; border-radius: 6px; }
+.oby-level .oby-track:active { cursor: grabbing; }
+.oby-level .oby-track:focus-visible { outline: 1px solid #e6e1d8; outline-offset: 2px; }
+.oby-level .oby-track [role="meter"] > div { transition: width .35s cubic-bezier(.3,1.12,.6,1); }
+.oby-level .ghost { position: absolute; top: 2px; bottom: 2px; width: 0; margin-left: -1px; border-left: 1px dashed rgba(235,235,232,.7); }
+.oby-level .words { display: grid; grid-template-columns: repeat(4, 1fr); }
+.oby-level .words button { white-space: nowrap; border: 0; background: none; padding: 0; text-align: right; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: rgba(235,235,232,.32); cursor: pointer; }
+.oby-level .words button.on { color: #ebebe8; }
+/* each row says its question above and what the picked choice means under it (Marco's try 2026-11-17) */
+.oby-q { color: var(--mute); }
+.oby-means { color: var(--mute); text-wrap: pretty; }
+.oby-tree { display: flex; flex-direction: column; gap: var(--s4); }
+.oby-tree .in { display: flex; gap: var(--s4); padding-left: var(--s8); border-left: 1px solid rgba(235,235,232,.12); margin-left: 11px; }
+.oby-tree .in i { display: flex; flex-direction: column; align-items: center; gap: var(--s1); width: 72px; }
+.oby-tree .in em { font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); color: rgba(235,235,232,.55); text-align: center; }

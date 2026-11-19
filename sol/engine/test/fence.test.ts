@@ -10,7 +10,7 @@ const HOME = join(SOL, "home");
 const SRC = join(SOL, "mac", "src");
 
 test("the fence holds the boundaries, the pages that mount them, the message builders, the ring and the loop", () => {
-  for (const f of ["Site.tsx", "renovation.ts", "sites.ts", "hot.ts", "main.tsx", "notch/main.tsx", "creature/ring.ts", "creature/loop.ts", "creature/states.ts", "useEngine.ts", "socket.ts"]) assert.equal(fenced(HOME, join(SRC, f)), true, f);
+  for (const f of ["Site.tsx", "renovation.ts", "sites.ts", "hot.ts", "main.tsx", "creature/ring.ts", "creature/loop.ts", "creature/states.ts", "useEngine.ts", "socket.ts"]) assert.equal(fenced(HOME, join(SRC, f)), true, f);
   assert.equal(fenced(HOME, join(SRC, "App.tsx")), false);
   assert.equal(fenced(HOME, join(SRC, "creature/Space.tsx")), false);
 });
@@ -29,6 +29,6 @@ test("the fence imports nothing a seat may edit (static imports, followed throug
       walk(cand);
     }
   };
-  for (const f of ["Site.tsx", "renovation.ts", "socket.ts", "sites.ts", "hot.ts", "main.tsx", "notch/main.tsx"]) walk(join(SRC, f));
+  for (const f of ["Site.tsx", "renovation.ts", "socket.ts", "sites.ts", "hot.ts", "main.tsx"]) walk(join(SRC, f));
   assert.ok(readdirSync(SRC).length > 0);
 });

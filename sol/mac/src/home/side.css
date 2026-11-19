@@ -1,0 +1,318 @@
+/* The side (#682, the universal layer's brief): the list of sessions, built from the kit (sol/mac/src/kit, look.md).
+   Laid out by rule (the layout skill): every space, size, height and corner a variable of the scale.
+   Six places that never move, at any width, in any mode: S1 the modes, S2 new, S3 find, S4 the list, S5 done today,
+   S6 settings at the foot. One type step, the body's: a folder head is dimmer, never smaller; a time, a count and a key
+   are the same size, mute. Every line of text starts on one of two edges: the row's inset, or the inset plus one mark
+   (the 16px box + --s2).
+   Flat (Marco 2026-11-07, round 5): at rest a row is its words on the black, no fill, no rim, no edge. The 7% lift
+   (shade.on.flat, the kit's Glass behind the row, .hc-lift) shows under the pointer, from the keys, or while its menu is
+   open; the picked row wears the pearl (the kit's Pearl), the only pearl in the side. */
+.hc { --hc-side: 264px; --hc-side-min: 216px; --hc-mark: var(--s4); }
+
+/* the side's own glass: a deeper step of the one black, drawn by the kit (Glass, step side) on the card's curve; no edge */
+.hc-side { position: relative; isolation: isolate; width: var(--hc-side); flex: none; display: flex; flex-direction: column; min-height: 0;
+  margin: 0 0 var(--s2) var(--s2); padding: var(--s2); box-sizing: border-box; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); }
+.hc-side.wide { flex: 1; width: auto; margin: 0 var(--s2) var(--s2); padding: var(--s2) var(--s6); }
+.hc-side button { font: inherit; color: inherit; }
+
+/* the folded side, soft-opened over the talk: the pop step, so the talk's words never read through */
+.hc-edge { position: absolute; left: 0; top: 0; bottom: 0; width: var(--s2); z-index: 6; }
+.hc-side.soft { position: absolute; left: 0; top: 0; bottom: 0; z-index: 7; animation: hc-soft-in var(--d-turn) var(--e-arrive); }
+.hc-side.soft.closing { animation: hc-soft-out var(--d-turn) var(--e-leave) forwards; pointer-events: none; }
+/* its hover reaches the window's edge: the cursor that soft-opened it in the edge strip stays on it once its margin sets
+   it in, so a layout change under a still cursor (data arriving) never closes and reopens it (#610) */
+.hc-side.soft::before { content: ""; position: absolute; top: 0; bottom: 0; right: 100%; width: var(--s2); }
+@keyframes hc-soft-in { from { translate: calc(-1 * var(--s6)) 0; opacity: 0; } }
+@keyframes hc-soft-out { to { translate: calc(-1 * var(--s6)) 0; opacity: 0; } }
+
+/* the places: S1-S3 at the top, S4 takes the room and scrolls, S5 and S6 at the foot */
+.hc-sidetop { flex: none; display: flex; flex-direction: column; gap: 0; padding: 0 0 var(--s2); }
+.hc-side.wide .hc-sidetop { width: calc(var(--hc-side) - 2 * var(--s2)); }   /* opened wide, the top keeps the side's width */
+.hc-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: var(--s2); }
+/* a line the scroll cuts fades out at the list's foot, so no glyph is cut hard */
+.hc-list { mask-image: linear-gradient(to bottom, #000 calc(100% - var(--s6)), transparent); }
+.hc-done { flex: none; padding-top: var(--s2); max-height: calc(var(--h-row) * 5); overflow-y: auto; padding-bottom: var(--s2); }
+.hc-sidefoot { flex: none; padding: var(--s2) 0 0; }
+
+/* S1 the modes: the words, the mode you are in in ink, the other dim; flat, the lift under the pointer */
+.hc-modes { display: flex; gap: var(--s1); margin-bottom: var(--s2); }
+.hc-mode { position: relative; isolation: isolate; display: flex; align-items: center; height: var(--h-row); padding: 0 var(--s2); border: 0; background: none; cursor: pointer; color: var(--dim); }
+.hc-mode.on { color: var(--ink); cursor: default; }
+
+/* every line of the side: one box (32px, inset --s2), one mark column (16px + --s2), one type step */
+.hc-side :is(.hc-head, .hc-fhead, .hc-row, .hc-gear) { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s2); height: var(--h-row);
+  padding: 0 var(--s2); border: 0; background: none; box-sizing: border-box; cursor: pointer; color: var(--dim); width: 100%; text-align: left; }
+.hc-side :is(.hc-head:not(.hc-more), .hc-gear, .hc-fhead) > :first-child, .hc-side .hc-row > .hc-mk { flex: none; width: var(--hc-mark); height: var(--hc-mark); display: grid; place-items: center; }
+.hc-plus::before { content: "+"; }
+.hc-caret::before { content: "›"; }
+.hc-caret { transition: rotate var(--d-turn) var(--e-move); }
+.hc-caret.open { rotate: 90deg; }
+.hc-side :is(.hc-n, .hc-when, .hc-c) { flex: none; margin-left: auto; font: inherit; color: var(--mute); }
+.hc-side :is(.hc-n, .hc-when, .hc-head kbd) { min-width: var(--s6); text-align: right; }   /* the right column: ⌘N, ⌘K, the counts and the times end on one edge */
+.hc-side .hc-head kbd { flex: none; font: inherit; color: var(--mute); }
+.hc-side .hc-head > span:not(:first-child, .hc-lift) { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* a folder head: dimmer, not smaller */
+.hc-side .hc-fhead { color: var(--mute); margin-top: var(--s2); }
+.hc-side .hc-folder:first-child > .hc-fhead { margin-top: 0; }
+.hc-fname { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-side .hc-more { padding-left: calc(var(--s2) + var(--hc-mark) + var(--s2)); color: var(--mute); }
+
+/* a row: its title dim at rest (the kit's Row), ink under the pointer, deep on the pearl */
+.hc-side .hc-tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-side .hc-row.on { color: var(--c-deep); font-weight: 500; }
+.hc-side .hc-row.on :is(.hc-when, .hc-c) { color: var(--c-deep); opacity: 0.55; font-weight: 400; }
+.hc-side .hc-row.gone .hc-tt { color: var(--mute); }
+.hc-empty { margin: 0; padding: var(--s4) var(--s2); color: var(--dim); }
+
+/* the lift: the kit's Glass behind a line, the on colour at 7%, shown only under the pointer, from the keys, or while its
+   menu is open; the pearl behind the picked row */
+.hc-lift { position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity var(--d-turn) var(--e-move); }
+.hc-lift.pearl { opacity: 1; }
+.hc-side :is(.hc-head, .hc-fhead, .hc-row, .hc-gear, .hc-mode:not(.on), .hc-filters button):is(:hover, .held, :focus-visible) > .hc-lift { opacity: 1; }
+.hc-side :is(.hc-head, .hc-fhead, .hc-row:not(.on), .hc-gear, .hc-mode:not(.on), .hc-filters button):is(:hover, .held, :focus-visible) { color: var(--ink); }
+.hc .hc-side :is([data-thing], .hc-mode):focus-visible { outline: none; }   /* from the keys the lift says where you are, no ring */
+.hc-side .hc-head.on { color: var(--ink); }
+
+/* the side opened wide: the same rows with more columns; the filters are words, the one picked in ink */
+.hc-filters { display: flex; gap: var(--s1); padding: var(--s2) 0 var(--s3); }
+.hc-filters button { position: relative; isolation: isolate; height: var(--h-row); border: 0; background: none; padding: 0 var(--s3); color: var(--dim); cursor: pointer; }
+.hc-filters button.on { color: var(--ink); }
+.hc-cols, .hc-side.wide .hc-row { display: grid; grid-template-columns: var(--hc-mark) minmax(0, 1fr) calc(var(--s12) * 3) calc(var(--s12) * 2) calc(var(--s12) + var(--s6)); gap: var(--s2); align-items: center; }
+.hc-cols { padding: 0 var(--s2) var(--s2); color: var(--mute); }
+.hc-cols span:first-child { grid-column: 2; }
+.hc-side.wide .hc-row > :is(.hc-c, .hc-when) { margin-left: 0; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* each value under its head */
+
+/* the wild card (sol.layer.wild): the needs-you shelf at the top of the list, its head's words in the jelly's heat
+   (all six bands across them, still); its rows are the side's rows */
+.hc-side .hc-shelf > .hc-fhead .hc-fname { flex: 0 1 auto; color: transparent; background: var(--jelly); -webkit-background-clip: text; background-clip: text; }   /* all six across the words: two bands alone read as the failed red */
+.hc-side .hc-shelf { padding-bottom: var(--s2); }
+
+/* the row's menu: the kit's Card and List (as the bar's pickers), floating at the pointer */
+.hc-menu { position: fixed; z-index: 60; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); outline: none; }
+.hc-menu-in { padding: var(--s2); }
+/* renaming in place: the title's own words, now a field; no box, no ring (the row's lift holds while it is open) */
+.hc-side .hc-rename { flex: 1; min-width: 0; height: var(--t-body-line); padding: 0; border: 0; background: none; outline: none; font: inherit; color: var(--ink); }
+
+/* a state's mark when it has none: an empty box, so the words keep their edge */
+.hc-nomark { display: inline-block; width: var(--hc-mark); height: var(--hc-mark); }
+
+/* the marks' motion: the heat drifts under the needs-you disc as the bar's lit pill's does; the working light breathes */
+.hc-mark { display: block; overflow: visible; }
+.hc-mark .hc-drift { transform-box: fill-box; animation: hc-drift calc(var(--d-pour) * 3) var(--e-move) infinite alternate; }
+.hc-mark .hc-breathe { transform-box: fill-box; transform-origin: center; animation: hc-breathe calc(var(--d-pour) * 2) var(--e-move) infinite alternate; }
+@keyframes hc-drift { to { translate: -50% 0; } }
+@keyframes hc-breathe { from { opacity: 0.25; scale: 0.8; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-lift, .hc-caret { transition: none; }
+  .hc-mark :is(.hc-drift, .hc-breathe) { animation: none; }
+}
+
+/* sorted by what needs you (sideSort.ts, 2026-11-11). A row in a section that crosses projects says its project where
+   the time was, so a title is placed without reading the list; the time is in its tip. */
+.hc-side .hc-rowwhere { max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the pin: under the pointer it takes the right column's place; a pinned row's is filled */
+.hc-side .hc-pin { position: absolute; right: var(--s2); top: 0; bottom: 0; width: var(--s6); display: grid; place-items: center end; color: var(--mute); opacity: 0;
+  transition: opacity var(--d-turn) var(--e-move), color var(--d-turn) var(--e-move), scale var(--d-turn) var(--e-arrive); }
+.hc-side .hc-row:is(:hover, .held) > .hc-pin { opacity: 1; }
+.hc-side .hc-row:is(:hover, .held):has(> .hc-pin) > .hc-when { opacity: 0; }
+/* a pinned child stays in its orchestrator's fold: its pin shows there, where its time was */
+.hc-side .hc-row.hc-kid > .hc-pin.on { opacity: 1; }
+.hc-side .hc-row.hc-kid:has(> .hc-pin.on) > .hc-when { opacity: 0; }
+.hc-side .hc-when { transition: opacity var(--d-turn) var(--e-move); }
+.hc-side .hc-pin:hover { color: var(--ink); scale: 1.15; }
+.hc-side .hc-pin:active { scale: 0.9; }
+.hc-side .hc-row.on > .hc-pin { color: var(--c-deep); }
+
+/* an orchestration row (2026-11-14): it reads as one at rest, a hairline in the row's own line colour inside its
+   edge (an outline takes no room); the carry and the focus ring draw over it. Its words say what it runs, quiet when
+   nothing is under it yet */
+.hc-side .hc-row.hc-orch:not(.carry, :focus-visible) { outline: var(--hair) solid var(--hc-line); outline-offset: calc(-1 * var(--hair)); }
+.hc-side .hc-when.hc-quiet { opacity: 0.6; }
+/* an orchestration row's fold is its mark (2026-11-14): the state mark at rest, the arrow under the pointer and while
+   open, in one place; its press area runs from the row's left edge to the title, the row's whole height */
+.hc-side .hc-row > .hc-fold { position: relative; cursor: pointer; color: var(--mute); }
+.hc-side .hc-row > .hc-fold::after { content: ""; position: absolute; top: calc((var(--hc-mark) - var(--h-row)) / 2); bottom: calc((var(--hc-mark) - var(--h-row)) / 2); left: calc(-1 * var(--s2)); right: calc(-1 * var(--s2)); }
+.hc-side .hc-row > .hc-fold > * { grid-area: 1 / 1; transition: opacity var(--d-turn) var(--e-move), rotate var(--d-turn) var(--e-move); }
+.hc-side .hc-row > .hc-fold > .hc-caret { opacity: 0; }
+.hc-side .hc-row > .hc-fold > .hc-caret:only-child, .hc-side .hc-row:is(:hover, .held) > .hc-fold > .hc-caret, .hc-side .hc-row > .hc-fold.open > .hc-caret { opacity: 1; }
+.hc-side .hc-row:is(:hover, .held) > .hc-fold > :not(.hc-caret), .hc-side .hc-row > .hc-fold.open > :not(.hc-caret) { opacity: 0; }
+.hc-side .hc-row > .hc-fold:hover { color: var(--ink); }
+/* while a session is dragged, every orchestration row that could take it says so: its outline darkens */
+.hc-side .hc-row.hc-orch.hc-can { outline-color: var(--mute); }
+.hc-side .hc-when.hc-refused { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* a refused drop's words fit or end in an ellipsis */
+/* a row an orchestration row runs: the side's row, set in one mark's width, arriving as the fold opens */
+.hc-side .hc-row.hc-kid { padding-left: calc(var(--s2) + var(--hc-mark) + var(--s2)); animation: hc-kid-in var(--d-turn) var(--e-arrive) both; }
+@keyframes hc-kid-in { from { opacity: 0; translate: 0 calc(-1 * var(--s1)); } }
+/* moving sessions by hand (step 3b, home/side-moves.md). A refused move: the row shakes once, a reveal long (120 ms),
+   side to side by a quarter step, its reason in its title */
+.hc-side .hc-row.hc-shake { animation: hc-shake var(--d-reveal) var(--e-move) 1; }
+@keyframes hc-shake { 25% { translate: calc(-1 * var(--s1)) 0; } 75% { translate: var(--s1) 0; } }
+/* dragging one of a group's own children: a strip of its own above the group's top, a hairline and the quiet words at
+   the side's edge, says let go here. It takes its one line of room, so it never paints over the head row's words */
+.hc-side .hc-line { position: relative; }
+.hc-side .hc-letgo { display: flex; align-items: center; min-height: var(--h-row); border-top: var(--hair) dashed currentColor; opacity: 0.6;
+  padding: 0 var(--s2); text-align: left; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--hc-dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-side .hc-letgo.over { opacity: 1; color: var(--ink); }
+/* an open fold's room: a strip under its last child, part of the group, so a drop on the empty space in it lands there */
+.hc-side .hc-line.hc-room { padding-bottom: var(--s2); }
+/* the foot's toast after a move: one line, its words, then undo as the word to press; for 8 s */
+.hc-side .hc-undo { display: flex; align-items: center; gap: var(--s2); min-width: 0; height: var(--h-row); padding: 0 0 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--hc-dim); animation: hc-kid-in var(--d-turn) var(--e-arrive) both; }
+.hc-side .hc-undo-w { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-side .hc-undo-b { padding: 0; border: 0; background: none; font: inherit; color: var(--mute); cursor: pointer; text-decoration: underline; text-decoration-thickness: var(--hair); }
+.hc-side .hc-undo-b:is(:hover, :focus-visible) { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-side .hc-row.hc-kid, .hc-side .hc-row.hc-shake, .hc-side .hc-undo { animation: none; }
+  .hc-side :is(.hc-pin, .hc-when) { transition: none; }
+}
+
+/* Hold it (2026-11-11, Marco's pick of the three ideas, sideIdeas.tsx; "executed perfectly, or else the side bar gets
+   too overwhelming"). The detail pass, as rules: one level of glass (a section or a folder is one tray, the kit's Glass
+   at the block's curve; a row inside is its words); no mark column, a state is said by weight and one word in the right
+   column; colour in two places only (the needs-you head's heat, the goo under a running row); what is put away is a
+   chip at the list's end; the pearl stays the picked row's. */
+.hc-side.hold .hc-list { display: flex; flex-direction: column; gap: var(--s2); }
+.hd-top { display: flex; gap: var(--s2); align-items: center; }
+.hd-top > [data-thing] { flex: none; cursor: pointer; }
+.hd-tray { position: relative; isolation: isolate; flex: none; padding: var(--s1); }
+.hc-side .hd-tray .hc-fhead { margin-top: 0; height: calc(var(--h-row) - var(--s1)); }
+.hc-side .hd-tray .hc-fhead > :first-child { flex: 1; width: auto; height: auto; display: block; min-width: 0; }
+.hc-side .hd-tray.hc-shelf { padding-bottom: var(--s1); }
+.hc-side .hd-tray.hc-shelf > .hc-fhead > .hc-fname { flex: 1; background-size: 9em 100%; background-repeat: no-repeat; }
+.hc-side .hd-tray .hc-row { padding-left: var(--s2); }
+.hc-side .hc-row:is(.hd-needs, .hd-unread):not(.on) .hc-tt { color: var(--ink); font-weight: 500; }
+.hc-side .hc-row.hd-needs:not(.on) .hd-asks { color: var(--ink); }
+.hc-side .hc-row.hd-failed:not(.on) .hd-said { color: var(--error, var(--red-strong)); }
+/* a row's right column, its time or its state word, starts on one edge (the layout skill, rule 2): a column as wide as
+   the widest word, "asks you"; numbers in tabular figures, so two counts or two times of one length start together */
+.hc-side.hold .hc-row > .hc-when { min-width: calc(var(--s12) + var(--s1)); text-align: left; }
+.hc-side :is(.hc-n, .hc-when) { font-variant-numeric: tabular-nums; }
+/* running: goo on the row's lower edge, the jelly's warm bands drifting; there is no measure of how far it is, so it
+   says "at work", not how much */
+.hc-side .hc-row.hd-goes::after { content: ""; position: absolute; left: var(--s2); right: var(--s2); bottom: 1px; height: calc(var(--s3) / 4); border-radius: calc(var(--s1) / 2); background-image: var(--hd-goo); background-size: 200% 100%; opacity: 0.9; pointer-events: none;
+  animation: hd-goo calc(var(--d-pour) * 6) var(--e-drift) infinite; }
+@keyframes hd-goo { to { background-position-x: 200%; } }
+.hc-side .hd-tray .hc-row.hc-kid { padding-left: var(--s6); }
+.hc-side .hd-tray .hc-more { padding-left: var(--s2); }
+/* a tray's "+": a new session in this folder, under the pointer where the count was */
+.hc-side .hd-plus { position: absolute; right: var(--s2); top: 0; bottom: 0; width: var(--s6); display: grid; place-items: center end; color: var(--mute); opacity: 0; font-size: var(--t-read, 15px); transition: opacity var(--d-turn) var(--e-move); }
+.hc-side .hd-plus::before { content: "+"; }   /* a mark, not words: it starts no line of its own */
+.hc-side .hc-fhead:hover > .hd-plus { opacity: 1; }
+.hc-side .hc-fhead:hover:has(> .hd-plus) > .hc-n { opacity: 0; }
+.hc-side .hd-plus:hover { color: var(--ink); }
+/* trays put away: chips, one wrapped row at the list's end */
+.hd-chips { display: flex; flex-wrap: wrap; gap: var(--s1); padding-top: var(--s1); }
+.hc-side .hd-chip { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: var(--s2); height: calc(var(--h-row) - var(--s2)); max-width: 100%; padding: 0 var(--s3); border: 0; background: none; cursor: pointer; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hc-side .hd-chip:is(:hover, :focus-visible, .drop) { color: var(--ink); }
+.hd-chipn { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-side .hd-chip .hc-n { min-width: 0; margin-left: 0; }
+.hc-side .hd-chip .hc-n[data-n]::before { content: attr(data-n); }
+/* the foot: the artifacts tray, then one row of words */
+.hd-arts { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s2); height: calc(var(--h-row) + var(--s2)); padding: 0 var(--s3); margin-bottom: var(--s1); box-sizing: border-box; cursor: pointer; color: var(--dim); }
+.hd-arts:is(:hover, .held) { color: var(--ink); }
+.hd-artmarks { display: flex; align-items: center; }
+.hd-artmarks > i { display: block; margin-right: calc(-1 * var(--s1)); }
+.hd-artmarks:not(:empty) { margin-right: var(--s1); }
+.hd-artw { flex: 1; min-width: 0; }
+.hd-foot { display: flex; align-items: center; gap: var(--s1); }
+.hc-side .hd-word { position: relative; isolation: isolate; flex: none; height: var(--h-row); padding: 0 var(--s2); border: 0; background: none; cursor: pointer; color: var(--mute); }
+.hc-side .hd-word:is(:hover, :focus-visible, .on) { color: var(--ink); }
+.hc-side .hd-word:is(:hover, :focus-visible) > .hc-lift { opacity: 1; }
+.hd-foot > .hd-word:first-child { margin-left: auto; }
+/* the quick edit: every folder as one glass row to drag, rename, hide; a row or a tray a drag is over says "drop here" */
+.hd-edit { display: flex; flex-direction: column; gap: var(--s1); }
+.hd-elab { padding: var(--s1) var(--s2) 0; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.hc-side .hd-erow { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s1) 0 var(--s3); box-sizing: border-box; color: var(--dim); cursor: grab; }
+.hc-side .hd-erow > .hc-fname { cursor: text; }
+.hc-side .hd-erow:is(:hover, .drop) { color: var(--ink); }
+.hc-side .hd-erow.gone { color: var(--mute); cursor: default; }
+.hc-side .hd-erow.hd-new { cursor: pointer; color: var(--mute); }
+.hc-side .hd-erow .hc-n { margin-left: 0; }
+.hd-tray.drop .hc-fhead .hc-n, .hd-erow.drop .hc-n, .hd-chip.drop .hc-n { color: var(--ink); }
+
+/* the artifacts' peek and everything made (sideArts.tsx): the kit's Card at the pop step, rows of file marks and words */
+.ha-peek { position: fixed; z-index: 60; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); animation: ha-in var(--d-turn) var(--e-arrive); }
+@keyframes ha-in { from { opacity: 0; translate: calc(-1 * var(--s1)) 0; } }
+.ha-veil { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: color-mix(in srgb, var(--c-deepest) 35%, transparent); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); animation: ha-fade var(--d-turn) var(--e-arrive); }
+@keyframes ha-fade { from { opacity: 0; } }
+.ha-in { padding: var(--s3); display: flex; flex-direction: column; gap: var(--s1); }
+.ha-all .ha-in { padding: var(--s4); max-height: min(72vh, calc(var(--s8) * 20)); box-sizing: border-box; }
+.ha-head { display: flex; align-items: baseline; gap: var(--s2); padding: 0 var(--s2); }
+.ha-title { font-size: var(--t-title, 17px); line-height: var(--t-title-line, 24px); font-weight: 600; }
+.ha-count { margin-left: auto; color: var(--mute); }
+.ha-say { margin: 0; padding: 0 var(--s2); color: var(--dim); }
+.ha-sort { padding: var(--s2) var(--s2) var(--s1); }
+.ha-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s2); }
+.ha-from { padding: var(--s1) var(--s2); color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ha-row { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--s3); min-height: calc(var(--h-row) + var(--s3)); padding: 0 var(--s2); box-sizing: border-box; cursor: pointer; }
+.ha-mark { flex: none; display: grid; place-items: center; width: var(--s6); }
+.ha-words { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ha-t, .ha-n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ha-t { font-weight: 500; }
+.ha-n { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ha-lift { position: absolute; inset: 0; z-index: -1; opacity: 0; pointer-events: none; transition: opacity var(--d-turn) var(--e-move); }
+.ha-row:hover > .ha-lift { opacity: 1; }
+.ha-bring { flex: none; padding: var(--s1) var(--s2); color: var(--mute); opacity: 0; transition: opacity var(--d-turn) var(--e-move); }
+.ha-row:hover > .ha-bring { opacity: 1; }
+.ha-bring:hover { color: var(--ink); }
+.ha-more { padding-top: var(--s1); }
+.ha-none { margin: 0; padding: var(--s4) var(--s2); color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-side .hc-row.hd-goes::after, .ha-peek, .ha-veil { animation: none; }
+}
+
+/* Build settings › sidebar: the folder list (Settings.tsx SideDrawer), the same edits as the side's edit mode */
+.side-fname { width: 100%; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; outline: none; border-radius: var(--r-s); }
+.side-fname:focus { box-shadow: 0 1px 0 var(--mute); }
+.side-fmove { flex: none; display: flex; gap: var(--s1); }
+.side-fmove button { width: calc(var(--h-row) - var(--s1)); height: calc(var(--h-row) - var(--s1)); border: 0; border-radius: var(--r-s); background: none; color: var(--mute); font: inherit; cursor: pointer; }
+.side-fmove button:hover:not(:disabled) { color: var(--ink); background: var(--line); }
+.side-fmove button:disabled { opacity: 0.3; cursor: default; }
+
+/* every session (sideAll.tsx): the artifacts card's rules, plus a find field; a folder is a heading with its count, its
+   sessions under it on a line; a session is its plain title, where it stands, and what it made; a press reads it */
+.hs-all .ha-in { max-height: min(80vh, calc(var(--s2) * 95)); gap: var(--s2); }
+.hs-all .ha-say { color: var(--dim); }
+.hs-all .ha-list { gap: var(--s1); padding-top: var(--s1); }
+.hs-find { position: relative; isolation: isolate; margin: var(--s1) var(--s2) 0; height: calc(var(--h-row) + var(--s2)); flex: none; display: flex; align-items: center; }
+.hs-find input { flex: 1; min-width: 0; height: 100%; padding: 0 var(--s3); border: 0; background: none; color: var(--ink); font: inherit; outline: none; }
+.hs-find input::placeholder { color: var(--mute); }
+.hs-folder { min-height: calc(var(--s12) + var(--s3)); gap: var(--s2); }
+.hs-caret { flex: none; width: var(--s3); color: var(--mute); font-size: var(--t-read); text-align: center; }
+.hs-fname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; }
+.hs-twin { font-weight: 400; color: var(--dim); }
+.hs-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+.hs-n { flex: none; min-width: var(--s8); text-align: right; font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 500; font-variant-numeric: tabular-nums; }
+.hs-of { font-size: var(--t-body); font-weight: 400; color: var(--dim); }
+.hs-group.open { padding-bottom: var(--s3); }
+/* a folder's sessions hang from a line under its caret */
+.hs-kids { margin-left: calc(var(--s2) + var(--s3) / 2); padding-left: var(--s2); border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: calc(var(--s1) / 2); }
+.hs-path { padding: 0 var(--s2) var(--s1); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-ses { align-items: flex-start; gap: var(--s3); min-height: 0; padding: var(--s2); }
+.hs-mark { flex: none; display: grid; place-items: center; width: var(--s4); height: var(--t-read-line); }
+.hs-t, .hs-st, .hs-more { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-t { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 500; color: var(--ink); }
+.hs-st { color: var(--dim); }
+.hs-more { color: var(--mute); }
+.hs-ses.hs-quiet .hs-t, .hs-ses.hs-done .hs-t { font-weight: 400; }
+.hs-ses.hs-failed .hs-st { color: var(--dim); }
+.hs-ses.here .hs-st { color: var(--ink); }
+.hs-open { align-self: center; }
+.hs-one { position: relative; isolation: isolate; }
+.hs-one.reading > .hs-ses > .ha-lift { opacity: 0; }
+.hs-one.reading > .hs-ses > .hs-open { opacity: 1; }
+/* a session read: what was asked, what it did, the last thing it said, each a few lines; then open it */
+.hs-read { margin: 0; padding: var(--s1) var(--s3) var(--s3) calc(var(--s2) + var(--s4) + var(--s3)); display: flex; flex-direction: column; gap: var(--s3); }
+.hs-part { display: flex; flex-direction: column; gap: calc(var(--s1) / 2); }
+.hs-label { color: var(--dim); font-weight: 500; }
+.hs-text { margin: 0; color: var(--ink); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: anywhere; }
+.hs-wait { margin: 0; color: var(--mute); }
+.hs-go { display: flex; }
+.hs-rest { min-height: var(--h-row); padding: 0 var(--s2) 0 calc(var(--s2) + var(--s4) + var(--s3)); }
+.hs-pick { cursor: pointer; border-radius: var(--r-s); transition: color var(--d-turn) var(--e-move); }
+.hs-pick:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--mute); text-underline-offset: 3px; }
+.hs-pick.on { color: var(--ink); font-weight: 500; }

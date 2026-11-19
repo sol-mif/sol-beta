@@ -1,6 +1,6 @@
 /* Cowork v3, slice 4 (fr-30, #557): Places. The real face's tokens (face.css) and the prototype's sol.css recipes for
    rooms-people.js's places; Sol's own accents: the seat's glow (candy in Home, amber in Work) as the ring around the
-   project and the dots that run along each live line, the short gradient tab line under the kicker, the notch's black
+   project and the dots that run along each live line, the short gradient tab line under the kicker, the black
    slab with pearl words for the connect card. Ember only where a place needs you: a sign-in that expired.
    Loaded only with the switch on (Places.tsx imports it). */
 :root { --v3-pl-pearl: #e9e6df; --v3-pl-pearl-dim: rgb(233 230 223 / .55); --v3-pl-ease: cubic-bezier(.16, 1, .3, 1);
@@ -142,7 +142,7 @@
 @keyframes v3-pl-run { 0% { offset-distance: 0%; opacity: 0; } 20% { opacity: 1; } 60% { offset-distance: 100%; opacity: 0; } 100% { offset-distance: 100%; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .v3-pl-flow, .v3-pl-rdot { display: none; } .v3-pl-reach.after .v3-pl-rl { animation: none; stroke-dashoffset: 0; } }
 
-/* the connect card: the notch's black slab, pearl words, a lit top edge in the seat's glow */
+/* the connect card: a black slab, pearl words, a lit top edge in the seat's glow */
 .v3-pl-veil { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; background: var(--shade); animation: v3-pl-fade .3s both; }
 @keyframes v3-pl-fade { from { opacity: 0; } }
 .v3-pl-connect { position: relative; width: 560px; max-width: calc(100vw - 48px); background: #000; color: var(--v3-pl-pearl); border-radius: 28px; padding: 30px 32px 28px;

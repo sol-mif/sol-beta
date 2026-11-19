@@ -1,0 +1,26 @@
+/* The tracker's inside (Tracker.tsx, #692 suite step 2): a table on the pearl card, rows of one kind. The scale's values
+   only (the layout skill). It starts on the frame's text edge (the ring's 16px + --s2), like the crumb and the step. */
+.tk { container-type: inline-size; display: flex; flex-direction: column; gap: var(--s2); min-width: 0; margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.tk-table { display: flex; flex-direction: column; min-width: 0; }
+.tk-tr { display: grid; gap: var(--s2); min-width: 0; padding: var(--s1) 0; border-bottom: var(--hair) solid var(--c-pearl-line); cursor: pointer; outline: none; border-radius: var(--r-chip); }
+.tk-tr:not(.head):hover, .tk-tr:focus-visible { background: color-mix(in srgb, var(--c-deep) 6%, transparent); }
+.tk-tr.head { opacity: 0.6; cursor: default; }
+.tk-tr span { display: flex; align-items: center; gap: var(--s1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-tr span:first-child { font-weight: 500; }
+.tk-tr span.unsure { opacity: 0.55; text-decoration: underline dashed; text-underline-offset: var(--s1); }
+/* a row opened as a sticky: a small mark before its thing */
+.tk-mark { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--c-deep); }
+.tk-foot { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.tk-foot .pc-act { flex: none; padding: 0 var(--s3); border-style: solid; border-width: var(--hair); }  /* over pass 2's ".p2-stickies button" reset */
+.tk-name { height: var(--h-chip); min-width: 0; flex: 0 1 calc(var(--s12) * 4); box-sizing: border-box; padding: 0 var(--s3); border: var(--hair) solid currentColor; border-radius: var(--r-pill); background: none; color: inherit; font: inherit; outline: none; }
+.tk-by { flex: 1; min-width: 0; text-align: right; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-tr .tk-first { overflow: visible; }
+/* compact (under COL_MIN a column, Tracker.tsx): a row is two lines, its thing and its stage, then the rest */
+.tk-cols { display: block; padding-bottom: var(--s1); border-bottom: var(--hair) solid var(--c-pearl-line); opacity: 0.6; }
+.tk.compact .tk-tr { display: flex; flex-direction: column; gap: 0; }
+.tk.compact .tk-tr .tk-one { display: flex; align-items: center; gap: var(--s2); min-width: 0; overflow: visible; font-weight: 400; }
+.tk.compact .tk-one > span:first-of-type { flex: 1; font-weight: 500; }
+.tk.compact .tk-one > span:last-child { flex: none; max-width: 50%; opacity: 0.8; }
+.tk.compact .tk-tr .tk-rest { display: block; min-width: 0; opacity: 0.75; overflow: visible; white-space: normal; font-weight: 400; }
+.tk.compact .tk-rest span { display: inline; font-weight: 400; white-space: normal; overflow: visible; }
+.tk .tk-wait { margin: 0; padding-left: 0; }

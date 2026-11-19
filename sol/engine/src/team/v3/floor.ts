@@ -1,6 +1,6 @@
 // Cowork v3, slice 7 (fr-30, #560): the floor, the things under every room that keep a team standing.
 // - What may interrupt me, and my quiet hours: one me-layer setting of the project (`interrupt`), so a project can set
-//   the default and I override it for myself; mayInterrupt() is the one rule the notch and pings read.
+//   the default and I override it for myself; mayInterrupt() is the one rule pings read.
 // - Someone leaving: what breaks, one line each (their places' sign-ins, their open items, files only on their machine,
 //   their agent's key, the automations they own in the studio), one press a line (an automation has two: hand it over
 //   or switch it off), nothing changing until it is pressed; the rest of the project keeps working.
@@ -239,7 +239,7 @@ export function devices(p: Port, project: string, login: string): Device[] {
   }
   return [...out.values()].sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
 }
-/** which of my machines answers for me (the one the notch and asks go to), one me-layer event */
+/** which of my machines answers for me (the one asks go to), one me-layer event */
 export function setAnswers(p: Port, project: string, by: By, name: string): Ev {
   if (!NAME.test(name)) throw new Error("which machine?");
   return p.append({ project, by, kind: KIND_OF.settings, item: `me:${by.person.toLowerCase()}`, field: "answers", value: name });

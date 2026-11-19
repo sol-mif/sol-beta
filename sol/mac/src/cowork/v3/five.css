@@ -1,5 +1,5 @@
 /* Cowork v3, slice 5 (fr-30, #558): Talk per thing, setup by conversation, joining. The face's tokens (face.css), Sol's
-   gradient for the tab in use (palette.css --sol), ember only for what asks me, the notch's black slab with pearl words
+   gradient for the tab in use (palette.css --sol), ember only for what asks me, a black slab with pearl words
    for the one card that waits on my press. */
 .v5 { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 14px; padding: 6px 22px 18px; }
 .v5-head { display: flex; align-items: flex-end; gap: 22px; }
@@ -65,7 +65,7 @@
 .v5-in { font-size: 11.5px; color: var(--glow); }
 .v5-core { color: var(--mute); font-size: 12px; margin: 0; }
 
-/* Join: the let-in card is the notch's black slab, pearl words */
+/* Join: the let-in card is a black slab, pearl words */
 .v5-join { display: flex; flex-direction: column; gap: 18px; overflow: auto; flex: 1; min-height: 0; max-width: 980px; }
 .v5-letins { display: flex; flex-direction: column; gap: 8px; }
 .v5-letin { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-l); background: #000; color: #e9e6df; }

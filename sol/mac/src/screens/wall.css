@@ -1,0 +1,56 @@
+/* The wall is the page (design NOW 03:00 #2). One block alone on a window with no side and no talk: the block's
+   frame and head step away and the monitor reads as that one thing, at the reading type, in one centred column.
+   `.one` is set on .sc-wall by Home.tsx while exactly one block is drawn open there (not while a peek is out).
+   Tokens only. Shot on the real kit at 4cebef48 with the stage's fixture blocks (screens-design.html?v=wall-kit-side,
+   wall-side-diff, wall-gate, wall-week, wall-kit-side+gate): design/stills 20 to 23; the bar's rules with the real Top (still 23). */
+.sc-wall.one .st-block > .st-glass { opacity: 0; transition: opacity var(--d-glass) var(--e-arrive); }
+.sc-wall.one .st-block::before { box-shadow: none; }
+.sc-wall.one .st-head { opacity: 0; transition: opacity var(--d-glass) var(--e-arrive); }
+/* the head is there for a hand: the pointer in this window, the keyboard in the block, or the block waiting on the person */
+.sc-wall.one:hover .st-head, .sc-wall.one .st-block:focus-within .st-head, .sc-wall.one .st-block.waits .st-head { opacity: 1; }
+.sc-wall.one .st-head, .sc-wall.one .st-body { padding-inline: max(var(--s6), calc((100% - var(--col) * 1.25) / 2)); }
+/* a wall is read from further away: every type step the block draws with goes one up (label to body, body to read).
+   Two elements, so each step reads the one above it and not itself */
+.sc-wall.one { --t-label: var(--t-body); --t-label-line: var(--t-body-line); }
+.sc-wall.one > .st-stage { --t-body: var(--t-read); --t-body-line: var(--t-read-line); }
+.sc-wall.one .st-body { color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+/* shorter than the room: it stands at the middle, as a slide does; longer: from the top, and it scrolls */
+/* (builder, 04:30, seen at full size: the head stayed at the top, far from the block it names) the head and the body
+   stand at the middle together: the block's inside is centred, the body only as tall as it is, the head's height kept
+   free under it so the pair's middle is the room's */
+.sc-wall.one .st-in:not(:has(.st-pagebox)) { justify-content: safe center; padding-bottom: var(--h-head); }
+.sc-wall.one .st-in:not(:has(.st-pagebox)) > .st-body { flex: 0 1 auto; min-height: 0; }
+/* a page keeps its own layout and takes the whole width; give a diff and the world the same line (the block carries no
+   kind in the DOM today: add what you need to select them) */
+.sc-wall.one .st-body:has(> .st-pagebox) { padding-inline: var(--s3); }
+/* (builder, 04:30) a page takes the whole width: its head starts where the page does, not at the reading column */
+.sc-wall.one .st-in:has(.st-pagebox) > .st-head { padding-inline: var(--s3); }
+/* words alone (a markdown page, design NOW 04:14 #1): one column of 720 of its own layout, 1080 on the screen at 1.5, at
+   the middle (Page.tsx); its head starts at the column's left edge. Narrower than that, the column fills: the rule above */
+.sc-wall.one .st-in:has(.st-pagebox.words) > .st-head { padding-inline: max(var(--s3), calc((100% - 1080px) / 2)); }
+/* shorter than the block: the column and its head stand at the middle together (Page.tsx sets .short and its height) */
+.sc-wall.one .st-in:has(.st-pagebox.words.short) { justify-content: safe center; padding-bottom: var(--h-head); }
+.sc-wall.one .st-in:has(.st-pagebox.words.short) > .st-body { flex: 0 0 auto; }
+
+/* the wall's bar: the map alone, and only while the pointer is in this window (Home.tsx sets data-role on .face) */
+/* not drawn (display, not visibility): the two spacers then hold the map at the bar's middle */
+.face[data-role="wall"] .hc-bar > :not(.hc-mid):not(.spacer) { display: none; }
+.face[data-role="wall"] .hc-bar { transition: opacity var(--d-glass) var(--e-arrive); }
+.face[data-role="wall"]:not(:hover) .hc-bar { opacity: 0; }
+/* an offer on the map (an arrangement, a carry near it) is always seen */
+.face[data-role="wall"] .hc-bar:has(.sm [stroke-dasharray]) { opacity: 1; }
+/* something waits on the person (the map's count is a button only then): the map stays on every window, so what needs
+   them is seen from the monitor too (his words: "the anchor info … all across any screen") */
+.face[data-role="wall"] .hc-bar:has(button.sm-fact) { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .sc-wall.one .st-head, .sc-wall.one .st-block > .st-glass, .face[data-role="wall"] .hc-bar { transition: none; } }
+
+/* the jelly crossed to a block that waits on another window: none here (builder, design NOW 03:00 #3) */
+html[data-jelly-away] .st-room .jelly-layer { opacity: 0; transition: opacity var(--d-glass) var(--e-arrive); }
+.sc-wallbox { position: relative; width: 100%; height: 100%; }
+.sc-wallbox > .st-stage { position: absolute; inset: 0; }
+/* the jelly on a wall sits inside the block it waits by (the block fills the window): above the blocks, lit as at home,
+   under the stage's folds, tray and toast (design NOW 05:08: stills 97, 98 were black on black) */
+.sc-wallbox > .jelly-layer { z-index: 940; }
+.sc-wall.one .sc-wallbox > .st-stage { --t-body: var(--t-read); --t-body-line: var(--t-read-line); }
+/* the jelly's home on a wall: a point on the seam toward the talk, at the waiting block's height (Wall.tsx sets where) */
+.sc-wallrest { width: 2px; height: 2px; margin: -1px; }

@@ -39,7 +39,6 @@ const { briefOf, handBody, takenBody, passedBody, parseRecord, pendingFor, handW
 const ghCli = (await import("../src/team/record.ts")).runners.hand;   // hand's gh, moved into the record (#152)
 type Hand = import("../src/team/hand.ts").Hand;
 type Item = import("../src/work/items.ts").Item;
-const { cardOf, keyAction, LABEL, TINT } = await import("../../mac/src/notch/answer.ts");
 
 const git = (cwd: string, ...a: string[]) => execFileSync("git", a, { cwd, encoding: "utf8" }).trim();
 const REPO = "acme/sol";
@@ -286,29 +285,6 @@ test("a word heard is kept only when it is to me, from a login, on a team repo; 
   assert.deepEqual(c.map((x) => x.url), ["u2", "u1"]);
   assert.deepEqual(parseRecord(c).map((r) => r.how), ["taken", "hand"]);
   assert.equal(day(new Date(2026, 0, 5)), "2026-01-05");
-});
-
-test("the notch: a hand is Take · Pass · Later, a review Open · Later; Return does nothing, Escape only closes", () => {
-  const none = { crew: false, ping: null, unplugged: false, starting: false, ask: null, call: false, turn: null };
-  const hd = { id: `${REPO}#34`, from: "frank", issue: 34, title: "the hands record" };
-  const card = cardOf({ ...none, hand: hd, stable: { sha: "a".repeat(40), tag: "stable-x", by: "isaac" } });
-  assert.equal(card.kind, "handed");
-  assert.deepEqual(card.buttons, ["take", "pass", "later"]);
-  assert.equal(card.line, "frank hands you #34", "the title is left out when it does not fit beside three buttons");
-  assert.equal(cardOf({ ...none, hand: { ...hd, title: "notch" } }).line, "frank hands you #34 · notch");
-  assert.equal(keyAction(card, "Return"), null);
-  assert.equal(keyAction(card, "Escape"), "close", "Escape only closes (polish two); Later stays a button");
-  assert.equal(LABEL.take, "Take");
-  assert.equal(TINT.take, "green");
-  const rv = cardOf({ ...none, hand: { ...hd, issue: 29, review: true } });
-  assert.deepEqual(rv.buttons, ["open", "later"]);
-  assert.equal(rv.line, "frank asks you to review #29");
-  assert.equal(cardOf({ ...none, hand: { ...hd, taking: true, said: "taking #34…" } }).buttons.length, 0);
-  // a running turn still comes first; a stable card alone is unchanged, and its Escape still closes
-  assert.equal(cardOf({ ...none, hand: hd, turn: { seat: "claude", sessionId: "s", title: "x", kind: "work" } }).kind, "turn");
-  const st = cardOf({ ...none, stable: { sha: "a".repeat(40), tag: "stable-x", by: "isaac" } });
-  assert.equal(st.kind, "stable");
-  assert.equal(keyAction(st, "Escape"), "close");
 });
 
 test("the engine's side: a word to me tells every face, stays pending until answered, and the record wins after", async () => {

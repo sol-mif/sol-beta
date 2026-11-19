@@ -15,6 +15,7 @@ writeFileSync(TEAM, JSON.stringify({ me: { login: "tester", name: "T" }, repos: 
 process.env.SOL_HOME = HOME;
 process.env.SOL_TEAM = TEAM;
 process.env.SOL_TEAM_OFFLINE = "1";
+process.env.SOL_STAGE_WHOLE = "off";   // these are the stage before stage.whole, which is on by default since #691
 
 const S = await import("../src/work/blocks.ts");
 const tools = await import("../src/work/tools.ts");
@@ -110,7 +111,7 @@ test("freeze copies the body to versions/n, which never changes; a refinement is
   assert.ok(S.ledger(project, b.id).filter((l) => l.ev === "frozen").length === 2);
 });
 
-test("place: a slot, fold, the notch's pin (one at a time), carry to another session (one ledger), close (the ledger stays)", () => {
+test("place: a slot, fold, carry to another session (one ledger), close (the ledger stays)", () => {
   const a = S.compose(who(), { kind: "diff", title: "Side.tsx", body: "" });
   const b = S.compose(who(), { kind: "card", title: "the gate", body: "green" });
   const r = S.place(who(), { id: a.id, slot: "right" });
@@ -118,10 +119,7 @@ test("place: a slot, fold, the notch's pin (one at a time), carry to another ses
   assert.deepEqual(S.slotRect("right"), { x: r.placed!.x, y: r.placed!.y, w: r.placed!.w, h: r.placed!.h });
   assert.equal(S.place(who(), { id: a.id, fold: true }).placed?.folded, true);
   assert.equal(S.place(who(), { id: a.id, fold: false }).placed?.folded, false);
-  S.place(who(), { id: a.id, pin: true });
-  S.place(who(), { id: b.id, pin: true });
-  const st = S.getStage(project, SID);
-  assert.deepEqual(st.blocks.filter((p) => p.pinned).map((p) => p.id), [b.id]);
+  assert.ok(S.getStage(project, SID).blocks.some((p) => p.id === b.id));
   const other = "sess-bbbb2222";
   const c = S.place(who(), { id: a.id, carry: other });
   assert.equal(c.to, other);

@@ -1,0 +1,100 @@
+/* Home and Build, one place (#1031): the hand's slab, what may be picked up, where it may be put down, the shelf of
+   Home's folders, the pieces over the talk, made in Build, and the undo pill. Every rule waits for :root[data-cross="on"]
+   or an element only cross draws. Colours from the palette (palette.css); the moves are springs (hand.ts), not CSS. */
+
+/* what can be picked up: a grab hand, and a faint lift on hover */
+:root[data-cross="on"] [data-cross-lift] { cursor: grab; border-radius: var(--r-row); transition: background-color var(--d-reveal); }
+:root[data-cross="on"] [data-cross-lift]:hover { background: var(--c-pearl-tint); }
+:root[data-cross="on"] [data-cross-lift][data-cross-lifted] { opacity: .32; }
+:root[data-cross-hand] { cursor: grabbing; }
+:root[data-cross-hand] * { cursor: grabbing !important; }
+/* a page block draws in a frame of its own, which would take the hand's moves: while a thing is held, frames let it pass */
+:root[data-cross-hand] iframe { pointer-events: none; }
+
+/* the slab in the hand: a small card of the thing, lifted (a deeper shadow), its folder under its words */
+.cross-slab {
+  position: fixed; left: 0; top: 0; z-index: 300; pointer-events: none; transform-origin: 30% 50%;
+  display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center;
+  min-width: 180px; max-width: 320px; padding: 10px 14px; border-radius: var(--r-card);
+  background: var(--c-lift); color: var(--ink); border: 1px solid var(--c-pearl-line);
+  box-shadow: 0 18px 44px var(--c-scrim), 0 2px 6px var(--c-scrim);
+}
+.cross-slab i { grid-row: span 2; width: 10px; height: 10px; border-radius: 50%; background: var(--c-pearl); }
+.cross-slab[data-mark="fact"] i { border-radius: 2px; }
+.cross-slab[data-mark="source"] i { background: var(--jelly); }
+.cross-slab b { font: 500 var(--t-body)/var(--t-body-line) inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cross-slab small { color: var(--c-on-dim); font-size: var(--t-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* a stage block carried to the shelf: its slab with the hand, the block faint in its place */
+.cross-slab-block i { border-radius: 3px; width: 14px; height: 11px; background: none; border: 1.5px solid var(--c-pearl); }
+:root[data-cross="on"] .st-stage [data-block][data-cross-away] { opacity: .35; transition: opacity 120ms; }
+
+/* while a thing is in the hand, the page's words are not selected under it */
+:root[data-cross-hand], :root[data-cross-hand] * { user-select: none; -webkit-user-select: none; }
+
+/* where it may go: while a thing is in the hand, the stage and the talk's box breathe a pearl edge; the one under the
+   hand fills */
+:root[data-cross-hand] [data-cross-drop] { outline: 1.5px dashed var(--c-pearl-line); outline-offset: -6px; border-radius: var(--r-card); }
+:root[data-cross-hand] [data-cross-drop][data-cross-over] { outline: 2px solid var(--c-pearl); background-color: var(--c-pearl-tint); }
+/* a spine letter the hand holds over: a ring fills for POP_HOLD, then the window turns */
+.spine [data-view][data-cross-hold] { box-shadow: 0 0 0 2px var(--c-pearl); border-radius: 12px; animation: cross-hold 400ms linear; }
+@keyframes cross-hold { from { box-shadow: 0 0 0 0 var(--c-pearl); } to { box-shadow: 0 0 0 3px var(--c-pearl); } }
+
+/* the folder shelf beside the spine's home letter, while a block is dragged near the spine */
+.cross-shelf {
+  position: fixed; left: 64px; z-index: 260; display: flex; flex-direction: column; gap: 6px; padding: 10px;
+  border-radius: var(--r-card); background: var(--c-lift); border: 1px solid var(--c-pearl-line);
+  box-shadow: 0 18px 44px var(--c-scrim);
+}
+.cross-shelf-h { color: var(--c-on-dim); font-size: var(--t-label); padding: 0 6px 2px; }
+.cross-shelf-f {
+  display: flex; align-items: center; gap: 8px; min-width: 150px; padding: 8px 12px; border-radius: var(--r-row);
+  color: var(--ink); background: var(--c-pearl-tint); transition: transform 140ms, background-color 140ms;
+}
+.cross-shelf-f.kid { margin-left: 14px; min-width: 136px; }
+.cross-shelf-f i { width: 14px; height: 11px; border-radius: 2px 2px 3px 3px; border: 1.5px solid currentColor; opacity: .7; }
+.cross-shelf-f.over, .cross-shelf-f[data-cross-over] { background: var(--c-pearl); color: var(--c-deep); transform: translateX(6px) scale(1.04); }
+
+/* the pieces waiting over the talk's box */
+.cross-pieces { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px 0; }
+.cross-piece {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 360px; padding: 5px 6px 5px 10px; border-radius: var(--r-pill);
+  background: var(--c-lift); border: 1px solid var(--c-pearl-line); color: var(--ink); font-size: var(--t-label);
+}
+.cross-piece i { width: 8px; height: 8px; border-radius: 50%; background: var(--c-pearl); flex: none; }
+.cross-piece small { color: var(--c-on-dim); white-space: nowrap; }
+.cross-piece b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cross-piece button { border: 0; background: none; color: var(--c-on-dim); cursor: pointer; padding: 0 4px; font: inherit; }
+
+/* made in Build, in a Home folder: small slabs of the blocks seated here */
+.cross-made { margin-top: 14px; }
+/* #1045: in his folders, the head reads as his folders' own labels do (folders.css .fh-lbl), under its own name */
+.cross-made.his { margin-top: 26px; }
+.cross-made-h { font-size: var(--t-label); color: var(--mute); letter-spacing: .02em; }
+.cross-made-none { color: var(--c-on-dim); font-size: var(--t-label); padding: 6px 0; }
+.cross-made-row { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
+.cross-made-slab { display: inline-flex; align-items: center; border-radius: var(--r-card); background: var(--c-lift); border: 1px solid var(--c-pearl-line); }
+.cross-made-open { display: inline-flex; align-items: center; gap: 8px; padding: 10px 6px 10px 12px; border: 0; background: none; color: var(--ink); cursor: pointer; font: inherit; }
+.cross-made-open b { font-weight: 500; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cross-made-out { border: 0; background: none; color: var(--c-on-dim); cursor: pointer; padding: 0 10px; font: inherit; }
+.cross-kind { color: var(--c-pearl); flex: none; }
+
+/* the undo pill: what the hand just did, and its draining ring */
+.cross-undo {
+  position: fixed; left: 50%; bottom: 22px; translate: -50% 0; z-index: 500; display: flex; align-items: center; gap: 12px;
+  padding: 6px 8px 6px 16px; border-radius: var(--r-pill); background: var(--c-lift); color: var(--ink);
+  border: 1px solid var(--c-pearl-line); box-shadow: 0 12px 34px var(--c-scrim); font-size: var(--t-label);
+}
+.cross-refused { padding: 6px 8px 6px 0; color: var(--sun); }
+.cross-ring { border: 0; background: none; color: var(--ink); cursor: pointer; display: grid; padding: 0; }
+.cross-drain { stroke-dashoffset: 0; animation-name: cross-drain; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes cross-drain { to { stroke-dashoffset: var(--c); } }
+@media (prefers-reduced-motion: reduce) { .cross-drain, .spine [data-view][data-cross-hold] { animation: none; } .cross-shelf-f { transition: none; } }
+
+/* say it: the offer over the talk's box, and a look row moved by words */
+.cross-say { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 8px 8px 12px; border-radius: var(--r-card); background: var(--c-lift); border: 1px solid var(--c-pearl-line); font-size: var(--t-label); color: var(--ink); }
+.cross-say-h { color: var(--c-on-dim); }
+.cross-say-row { display: inline-flex; gap: 6px; padding: 3px 8px; border-radius: var(--r-pill); background: var(--c-pearl-tint); font-variant-numeric: tabular-nums; }
+.cross-say-row b { font-weight: 500; }
+.cross-say-go { margin-left: auto; border: 0; border-radius: var(--r-pill); padding: 6px 12px; background: var(--c-pearl); color: var(--c-deep); font: inherit; font-weight: 600; cursor: pointer; }
+:root[data-cross="on"] .field-r[data-cross-moving] { border-radius: var(--r-row); box-shadow: -10px 0 0 -7px var(--c-pearl); background: var(--c-pearl-tint); transition: box-shadow 600ms, background-color 600ms; }   /* a pearl edge just left of the row: rows lit together never cross each other, and the words keep their place */

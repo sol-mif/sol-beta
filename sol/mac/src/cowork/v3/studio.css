@@ -1,5 +1,5 @@
 /* Cowork v3, slice 6 (fr-30, #559): the studio and the nights. face.css tokens only, Sol's flavour: the candy/amber glow
-   on what is on, the gradient line under the head, the creature marks, the notch's dark slab for the studio itself.
+   on what is on, the gradient line under the head, the creature marks, a dark slab for the studio itself.
    Ember only for what needs you (the owner's yes). Loaded only with the switch on, with Studio.tsx. */
 .v3s { --v3s-grad: linear-gradient(95deg, #fb5ad0 0 14%, #f8478e 26% 40%, #ef3a2a 52% 64%, #fb7111 76% 100%);
   --v3s-slab: #000; position: relative; min-height: 100%; padding: 34px clamp(22px, 5vw, 64px) 120px; color: var(--ink); }
@@ -79,7 +79,7 @@
 .v3s-row .v3s-row-ic { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--mute); }
 .v3s-row.on .v3s-row-ic { color: var(--amber); filter: drop-shadow(0 0 4px var(--glow)); }
 
-/* the studio: the notch's dark slab */
+/* the studio: a dark slab */
 .v3s-stage { max-width: 1040px; margin: 0 auto; }
 .v3s-back { font: inherit; font-size: 12px; color: var(--mute); background: none; border: 0; padding: 0; margin: 0 0 14px; cursor: pointer; }
 .v3s-back:hover { color: var(--ink); }

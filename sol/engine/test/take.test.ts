@@ -60,18 +60,16 @@ test("take: my own second base branch goes through (#296), as CONTRIBUTING says"
   assert.ok(w.calls().some((c) => c.join(" ") === "issue edit 296 --add-assignee marcocyl04-ux --add-label now"));
 });
 
-test("take: another person's open base branch still stops a base take, and names them", () => {
+test("take: another person's open base branch no longer stops a base take (#1126)", () => {
   const w = world("marcocyl04-ux", [
     { number: 300, title: "Setup and tests", labels: ["base", "now"], assignees: ["frank"] },
     { number: 271, title: "the port", labels: ["base", "now"], assignees: ["marcocyl04-ux"] },
     { number: 296, title: "Take refuses", labels: ["base"], assignees: [] },
   ]);
   const r = w.take(296);
-  assert.equal(r.status, 1);
-  assert.match(r.stderr, /base allows one open branch at a time, and #300 \(frank\) is open/);
-  assert.doesNotMatch(r.stderr, /#271/);
-  assert.ok(!w.branches().some((b) => b.endsWith("-296")));
-  assert.ok(!w.calls().some((c) => c[0] === "issue" && c[1] === "edit"));
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /one open branch/);
+  assert.ok(w.branches().some((b) => b.endsWith("-296")));
 });
 
 test("take: the issue being taken and unheld base issues never count", () => {

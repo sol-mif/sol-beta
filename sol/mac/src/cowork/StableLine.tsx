@@ -1,18 +1,29 @@
 // Ship (#33, #418): the window's half of "a new stable is out" (or a dev release that could not install itself). One
-// line over the composer in Work and Cowork (Composer.tsx mounts it), the same words as the notch card: the tag, who
+// line over the composer in Work and Cowork (Composer.tsx mounts it): the tag, who
 // made it, Update (filled) and Later. Update asks the
 // engine to fast-forward this checkout (team.update); while it runs the line says so and the buttons go; when the
 // engine's code changed Sol renews a moment later. Later puts this stable off on this Mac (both windows) for 12 hours.
 // #425: on a */mine Sol the offer says how far behind it is, and when the person's own changes do not go on by
 // themselves the line carries the carry's words and its answers: Use it (ready), Set aside and update · Stay as I am
 // (failed). While a session carries them, or the Sol moves over, only the words show.
-import { later, releaseWord, update, useStable, useCarried, setAside, stay } from "./stable";
+// #1150: a release this Sol installed by itself carries over with no press (no Use it), and for an hour after a release
+// the line says who has it, each team person ✓ or waiting with their Sol's reason, here too when this Sol has it.
+// #1153: that line names the iteration, and each person's drift beside their ✓ (3 off, 1 iteration).
+import { later, releaseWord, update, useStable, useRuns, hasLine, useCarried, setAside, stay } from "./stable";
 import { Droplet } from "../creature/goo";
 import "./ship.css";
 
 export function StableLine() {
   const s = useStable();
-  if (!s) return null;
+  const runs = useRuns();
+  if (!s) return runs && (
+    <div className="sline done" role="status">
+      <span className="what" title="what each team person's Sol runs, as they said it">
+        <Droplet kind="done" size={12} seed={runs.tag} className="cstate" />
+        iteration <b>{runs.tag}</b> · {hasLine(runs.who)}
+      </span>
+    </div>
+  );
   const d = s.doing, c = s.carry;
   const name = s.tag || s.sha.slice(0, 7);
   const cls = d ? (d.updating || c?.stage === "session" || c?.stage === "moving" ? "busy" : d.failed ? "failed" : "done") : "";
@@ -21,13 +32,13 @@ export function StableLine() {
     <div className={`sline ${cls}`} role="status">
       <span className="what" title={c ? d?.said : `${s.tag} · ${s.sha.slice(0, 7)}`}>
         <Droplet kind={kind} size={12} seed={s.sha || c?.aside || "carry"} className="cstate" />
-        {d ? d.said : <>a new {releaseWord(s)} is out <b>{name}</b>{s.by && <> · by <span className="by">{s.by}</span></>}{s.count ? <> · you are {s.count} behind</> : null}</>}
+        {d ? d.said : <>a new {releaseWord(s)} is out <b>{name}</b>{s.by && <> · by <span className="by">{s.by}</span></>}{s.count ? <> · you are {s.count} behind</> : null}{runs?.tag === s.tag ? <> · {hasLine(runs.who)}</> : null}</>}
       </span>
-      {c ? <CarryMoves stage={c.stage} back={c.kind === "back"} />
+      {c ? (c.auto && c.stage !== "failed" ? null : <CarryMoves stage={c.stage} back={c.kind === "back"} />)
         : !d?.updating && !(d && !d.failed) && (
         <span className="moves">
           {!d && <button className="wbtn" onClick={() => void update()} title={`bring this Mac up to the new ${releaseWord(s)}; Sol renews itself after when its code changed`}>Update</button>}
-          <button className="wbtn ghost" onClick={() => later(s.sha)} title="put it off for 12 hours, here and in the notch">Later</button>
+          <button className="wbtn ghost" onClick={() => later(s.sha)} title="put it off for 12 hours">Later</button>
         </span>
       )}
     </div>

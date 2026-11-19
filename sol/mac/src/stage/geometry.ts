@@ -25,13 +25,6 @@ const lo = (room: Room) => PAD + (room.left ?? 0);
 export function overlaps(a: Rect, b: Rect): boolean {
   return !(a.x + a.w + GAP <= b.x + 0.5 || b.x + b.w + GAP <= a.x + 0.5 || a.y + a.h + GAP <= b.y + 0.5 || b.y + b.h + GAP <= a.y + 0.5);
 }
-/** #891, behind the switches: the blocks drawn solid, so none reads through another: every one while a block is
- *  dragged, else those whose boxes truly cross another's (touching edges do not); at rest and apart they stay glass (pure) */
-export function drawnSolid(boxes: { id: string; r: Rect }[], dragging: boolean): Set<string> {
-  if (dragging) return new Set(boxes.map((b) => b.id));
-  const cross = (a: Rect, b: Rect) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
-  return new Set(boxes.filter((a) => boxes.some((b) => b.id !== a.id && cross(a.r, b.r))).map((b) => b.id));
-}
 /** wholly on the stage, pad in from every edge */
 export function inside(room: Room, r: Rect): boolean {
   return r.x >= lo(room) - 0.5 && r.y >= PAD - 0.5 && r.x + r.w <= room.w - PAD + 0.5 && r.y + r.h <= room.h + 0.5;
@@ -41,6 +34,20 @@ export function clampIn(room: Room, r: Rect): Rect {
   return { ...r, x: Math.max(lo(room), Math.min(r.x, room.w - PAD - r.w)), y: Math.max(PAD, Math.min(r.y, room.h - r.h)) };
 }
 export const toGrid = (v: number) => Math.round(v / GRID) * GRID;
+/** a block fitted to its content (B17) at height h, where it may go (#1001): where it is when that is free, else the
+ *  nearest free place at the new size, else it stays and grows only as far as the first block below it and the floor
+ *  (its body shows "+N lines" there), never over another block; a block already covering one is left as it is (pure) */
+export function fitGrow(room: Room, q: Rect, h: number, others: Rect[]): Rect {
+  const r = { ...q, h };
+  if (inside(room, r) && !others.some((o) => overlaps(r, o))) return r;
+  const spot = freeSpot(room, q.w, h, others, { x: q.x, y: q.y });
+  if (spot) return spot;
+  if (others.some((o) => overlaps(q, o))) return q;
+  // the most it can grow in place: up to the gap above the nearest block under it that it would cross, and the floor
+  const under = others.filter((o) => o.y >= q.y + q.h && !(q.x + q.w + GAP <= o.x + 0.5 || o.x + o.w + GAP <= q.x + 0.5));
+  const most = Math.min(room.h - q.y, ...under.map((o) => o.y - GAP - q.y));
+  return { ...q, h: Math.max(q.h, Math.min(h, most)) };
+}
 
 // ── the magnet ──────────────────────────────────────────────────────────────────────────────────────────────────
 /** a snap target on one axis: where the block's near edge goes (t) and the line its guide is drawn on */
@@ -232,6 +239,14 @@ export function undo(u: Undo): { u: Undo; to: Snapshot; verb: string } | null {
 export function redo(u: Undo): { u: Undo; to: Snapshot; verb: string } | null {
   const e = u.redo[u.redo.length - 1];
   return e ? { u: { undo: [...u.undo, e], redo: u.redo.slice(0, -1) }, to: e.after, verb: e.verb } : null;
+}
+
+/** #891, behind the switches: the blocks drawn solid, so none reads through another: every one while a block is
+ *  dragged, else those whose boxes truly cross another's (touching edges do not); at rest and apart they stay glass (pure) */
+export function drawnSolid(boxes: { id: string; r: Rect }[], dragging: boolean): Set<string> {
+  if (dragging) return new Set(boxes.map((b) => b.id));
+  const cross = (a: Rect, b: Rect) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
+  return new Set(boxes.filter((a) => boxes.some((b) => b.id !== a.id && cross(a.r, b.r))).map((b) => b.id));
 }
 
 /** #954 (whole.md pain 5, "no re-tiling"): the stage got smaller (the talk, the window). Each block that sticks out moves

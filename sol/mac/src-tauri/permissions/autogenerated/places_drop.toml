@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-places-drop"
+description = "Enables the places_drop command without any pre-configured scope."
+commands.allow = ["places_drop"]
+
+[[permission]]
+identifier = "deny-places-drop"
+description = "Denies the places_drop command without any pre-configured scope."
+commands.deny = ["places_drop"]

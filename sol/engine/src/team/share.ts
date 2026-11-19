@@ -23,6 +23,7 @@ import { onRelay, sendRelay } from "./relay.js";
 import { join as joinBusy } from "../busy.js";
 import { makeGithubRecord, runners } from "./record.js";
 import type { Card } from "../desk.js";
+import { quietPush } from "../quiet.js";
 
 const run = promisify(execFile);
 const ENV = () => ({ ...process.env, GIT_TERMINAL_PROMPT: "0" });
@@ -423,6 +424,7 @@ export async function commitCard(dir: string, card: Card, o: { login: string; si
     return { ok: true, branch, path, sha, pushed: false };
   }
   try {
+    quietPush();   // a quiet Sol pushes nothing (#1293)
     await g(["push", "-q", "origin", `${sha}:refs/heads/${branch}`]);
     await g(["update-ref", `refs/remotes/origin/${branch}`, sha]).catch(() => {});
     return { ok: true, branch, path, sha, pushed: true };

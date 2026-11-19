@@ -1,0 +1,41 @@
+/* Home on the stage (#692): the block's inside. The stage's frame and head are the stage's (stage.css); Home's parts keep
+   their own css; this file only lays Home into a block and draws the knobs card. One wrapper, st-home, is the container
+   Home's own container queries ask (the stage's whole column is one too, so without it they would ask the stage). */
+.hb-block { --hb-side: 264px; container-type: inline-size; display: flex; gap: var(--s4); height: 100%; min-height: 0; min-width: 0; overflow: hidden; color: var(--ink); }
+.hb-block .hb-side { flex: none; width: var(--hb-side); min-height: 0; overflow: auto; padding-top: var(--s2); }
+.hb-block .hb-side::-webkit-scrollbar { width: 0; }
+.hb-block .hb-core { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.hb-block .hb-home { flex: 1; min-height: 0; }
+.hb-block .p2 { padding: var(--s2) 0 var(--s4); }
+.hb-block .p2::-webkit-scrollbar { width: 0; }
+
+/* narrow: where you are, and the places button that drops the side over Home */
+.hb-head { flex: none; display: flex; align-items: center; gap: var(--s2); min-height: var(--h-chip); min-width: 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.hb-crumb { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--dim); }
+.hb-crumb b { color: var(--ink); font-weight: 500; }
+.hb-crumb i { font-style: normal; color: var(--mute); margin: 0 var(--s1); }
+.hb-crumb button { all: unset; cursor: pointer; color: var(--dim); }
+.hb-crumb button:hover { color: var(--ink); }
+.hb-places { flex: none; height: var(--h-chip); padding: 0 var(--s3); border: var(--hair) solid var(--edge); border-radius: var(--r-pill); background: none; color: var(--dim); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; }
+.hb-places:hover, .hb-places.on { color: var(--c-deep); background: var(--c-pearl); border-color: var(--c-pearl); }
+.hb-drop { position: absolute; z-index: 3; top: calc(var(--h-chip) + var(--s2)); right: 0; width: min(var(--hb-side), 100%); max-height: calc(100% - var(--h-chip) - var(--s2)); overflow: auto; padding: var(--s2) 0; border: var(--hair) solid var(--edge); border-radius: var(--r-card); background: var(--c-lift); box-shadow: var(--shadow-jump); }
+
+/* the notes line: the dump's own box, one line, at the top of today */
+.hb-notes { flex: none; display: flex; align-items: center; gap: var(--s3); min-width: 0; height: var(--h-row); padding: 0 var(--s3); border: var(--hair) solid var(--edge); border-radius: var(--r-row); }
+.hb-notes:focus-within { border-color: var(--c-pearl-line); }
+.hb-notes input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--ink); font: inherit; font-size: var(--t-read); line-height: var(--t-read-line); }
+.hb-notes input::placeholder { color: var(--mute); }
+.hb-said { flex: none; max-width: 50%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* the knobs card */
+.kn { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.kn-sec { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.kn-sec h6 { margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+.kn-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-width: 0; flex-wrap: wrap; }
+.kn-h { min-width: 0; color: var(--dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.kn-line { margin: 0; color: var(--dim); }
+.kn-line.quiet { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.kn-folders { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.kn-chip { height: var(--h-chip); padding: 0 var(--s3); border: var(--hair) solid var(--edge); border-radius: var(--r-pill); background: none; color: var(--dim); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; }
+.kn-chip:hover { color: var(--ink); }
+.kn-chip.on { background: var(--c-pearl); border-color: var(--c-pearl); color: var(--c-deep); }

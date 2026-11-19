@@ -12,7 +12,8 @@ import { recordOf, cleanRoom } from "../src/team/settings.js";
 import { changeThings, readThings, forgetBranches, forgetThings, agentAdd } from "../src/team/things.js";
 import { setGoal, addGoalFile, readGoal } from "../src/team/goal.js";
 import { makeRoom } from "../src/team/rooms.js";
-import { connectDrive, driveToken, disconnectDrive, driveAccount, driveForFace, driveConsentUrl, resetDrive, REVOKE_URL } from "../src/team/drive.js";
+import { connect, token, disconnect, readGrant, consentUrl, resetGrants } from "../src/team/grant.js";
+import { DRIVE, driveForFace, REVOKE_URL } from "../src/team/drive.js";
 import { planStart } from "../src/team/start.js";
 
 const FOLDER = "application/vnd.google-apps.folder";
@@ -374,7 +375,7 @@ test("a Drive room is made from a name and a folder's link: the folder is checke
 // ---- connecting Drive (the engine's side of the loopback flow) ----
 
 test("connect Google Drive: the system browser goes to Google with offline access and PKCE; the code goes to the cloud with my ticket; the refresh token is kept 0600, the access token in memory", async () => {
-  resetDrive();
+  resetGrants();
   const dir = mkdtempSync(join(tmpdir(), "sol-drive-"));
   const file = join(dir, "drive", "account.json");
   const hub = "http://127.0.0.1:9/relay";
@@ -393,7 +394,7 @@ test("connect Google Drive: the system browser goes to Google with offline acces
   }) as typeof globalThis.fetch;
   let opened = "";
   const d = { file, ticket: async () => "sol1.ticket", fetch, now: () => now, open: (u: string) => { opened = u; } };
-  const p = connectDrive(hub, d);
+  const p = connect(DRIVE, hub, d);
   while (!opened) await new Promise((r) => setTimeout(r, 5));
   const consent = new URL(opened);
   assert.equal(consent.origin + consent.pathname, "https://accounts.google.com/o/oauth2/v2/auth");
@@ -416,37 +417,37 @@ test("connect Google Drive: the system browser goes to Google with offline acces
   assert.equal(statSync(join(dir, "drive")).mode & 0o777, 0o700);
   const kept = JSON.parse(readFileSync(file, "utf8"));
   assert.deepEqual(Object.keys(kept).sort(), ["at", "email", "hub", "refresh", "scope"], "never the access token");
-  assert.deepEqual(driveForFace(driveAccount(file)), { connected: true, email: "frank@example.com", whole: true });
+  assert.deepEqual(driveForFace(readGrant(file)), { connected: true, email: "frank@example.com", whole: true });
   // the access token held, then refreshed through the cloud a minute before its hour ends
-  assert.equal(await driveToken(d), "ya29.first");
+  assert.equal(await token(DRIVE, d), "ya29.first");
   now += 3_600_000 - 30_000;
-  assert.equal(await driveToken(d), "ya29.second");
+  assert.equal(await token(DRIVE, d), "ya29.second");
   assert.equal(seen.filter((x) => x.path === "/drive/refresh").length, 1);
   // let go: revoked at Google, forgotten here
-  assert.equal(await disconnectDrive(d), true);
+  assert.equal(await disconnect(DRIVE, d), true);
   assert.match(seen.find((x) => x.path === "revoke")!.body, /token=1%2F%2Frefresh/);
   assert.equal(existsSync(file), false);
-  assert.equal(await driveToken(d), "");
-  resetDrive();
+  assert.equal(await token(DRIVE, d), "");
+  resetGrants();
 });
 
 test("a refresh Google refuses forgets the connection; no Sol ticket, no cloud Drive: connect says why", async () => {
-  resetDrive();
+  resetGrants();
   const dir = mkdtempSync(join(tmpdir(), "sol-drive-"));
   const file = join(dir, "drive", "account.json");
   const { writeFileSync, mkdirSync } = await import("node:fs");
   mkdirSync(join(dir, "drive"), { recursive: true });
   writeFileSync(file, JSON.stringify({ hub: "https://cloud.example.com/relay", refresh: "1//old", scope: "x", email: "", at: 1 }));
   const d = { file, ticket: async () => "sol1.t", fetch: (async () => new Response(JSON.stringify({ error: "Google Drive wants you to connect it again" }), { status: 401 })) as typeof fetch };
-  assert.equal(await driveToken(d), "");
+  assert.equal(await token(DRIVE, d), "");
   assert.equal(existsSync(file), false);
-  resetDrive();
+  resetGrants();
   const off = { file, ticket: async () => "sol1.t", fetch: (async () => new Response(JSON.stringify({ error: "this cloud has no Google Drive yet" }), { status: 404 })) as typeof fetch, open: () => assert.fail("no browser") };
-  assert.deepEqual(await connectDrive("https://cloud.example.com/relay", off), { ok: false, error: "this cloud has no Google Drive yet" });
+  assert.deepEqual(await connect(DRIVE, "https://cloud.example.com/relay", off), { ok: false, error: "this cloud has no Google Drive yet" });
   const noTicket = { ...off, ticket: async () => "", fetch: (async () => new Response(JSON.stringify({ client: "c", scopes: "s" }))) as typeof fetch };
-  assert.deepEqual(await connectDrive("https://cloud.example.com/relay", noTicket), { ok: false, error: "sign in to Sol first: Settings › me › Sol" });
-  assert.deepEqual(await connectDrive("http://example.com/relay", off), { ok: false, error: "Drive is connected through a cloud over https only" });
-  assert.match(driveConsentUrl("c", "s", "http://127.0.0.1:1/done", "st", "ch"), /prompt=consent\+select_account/);
+  assert.deepEqual(await connect(DRIVE, "https://cloud.example.com/relay", noTicket), { ok: false, error: "sign in to Sol first: Settings › me › Sol" });
+  assert.deepEqual(await connect(DRIVE, "http://example.com/relay", off), { ok: false, error: "Drive is connected through a cloud over https only" });
+  assert.match(consentUrl(DRIVE, "c", "s", "http://127.0.0.1:1/done", "st", "ch"), /prompt=consent\+select_account/);
 });
 
 test("a room is made only over a folder its maker can write in: a reader's, a file, one not shared, or no Drive, says why", async () => {
@@ -462,7 +463,7 @@ test("a room is made only over a folder its maker can write in: a reader's, a fi
 });
 
 test("a refresh that comes back after Drive was let go of, or connected anew, is not held", async () => {
-  resetDrive();
+  resetGrants();
   const dir = mkdtempSync(join(tmpdir(), "sol-drive-"));
   const file = join(dir, "drive", "account.json");
   const { writeFileSync, mkdirSync } = await import("node:fs");
@@ -475,12 +476,12 @@ test("a refresh that comes back after Drive was let go of, or connected anew, is
     await gate;
     return new Response(JSON.stringify({ access: "ya29.late", until: Date.now() + 3_600_000 }));
   }) as typeof fetch };
-  const p = driveToken(d);
-  await disconnectDrive(d);
+  const p = token(DRIVE, d);
+  await disconnect(DRIVE, d);
   release();
   assert.equal(await p, "", "the late answer is dropped");
-  assert.equal(await driveToken(d), "");
-  resetDrive();
+  assert.equal(await token(DRIVE, d), "");
+  resetGrants();
 });
 
 test("a folder unshared or trashed after it was read is refused at once, never read as empty, and nothing is written into the trash", async () => {

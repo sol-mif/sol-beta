@@ -12,6 +12,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Ping } from "./pings.js";
+import { quietFetch } from "../quiet.js";
 
 export const POLL_MS = 60_000;
 export const SILENT_AFTER = 5;           // polls in a row with no answer before it is said
@@ -59,6 +60,7 @@ export class OnCall {
     else if (open) t = this.held;   // the feed takes a ticket past its hour: the last one this Sol had
     if (!t && !open) return null;
     try {
+      quietFetch(this.d.watch);
       const r = await this.d.fetch(this.d.watch.replace(/\/+$/, "") + path, { method: body ? "POST" : "GET", headers: { ...(t ? { authorization: `Bearer ${t}` } : {}), ...(body ? { "content-type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(10_000) });
       return { status: r.status, v: await r.json().catch(() => ({})) as Record<string, unknown> };
     } catch { return null; }

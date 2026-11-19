@@ -1,0 +1,18 @@
+/* The edge answers a lifted block (design Next 4; page moment 23). With one window and a second screen known, the
+   ghost seam is the only sign that a block can leave the window. At rest it is the pearl hairline at its own strength
+   (it was 0.6 of that: not found in still 75). The moment any block is picked up (`lift` on the ghost seam, from the
+   stage's drag start to its end) the line goes solid pearl and the other screen's shape stands at it, at the block's
+   height (`--sc-y`, the same value the lit strip uses): where this can go, with no word. Tokens only.
+   <div className={`sc-seam ${edge} ghost ${lifted ? "lift" : ""}`} style={{ "--sc-y": `${y * 100}%` }}><i className="sc-dest" style={{ aspectRatio: `${other.w} / ${other.h}` }} /></div> */
+.sc-seam.ghost { opacity: 1; }
+.sc-seam.ghost.lift { animation: none; }
+.sc-seam.ghost.lift.left, .sc-seam.ghost.lift.right { border-left: 2px solid var(--c-pearl); }
+.sc-seam.ghost.lift.top, .sc-seam.ghost.lift.bottom { border-top: 2px solid var(--c-pearl); }
+.sc-dest { position: absolute; height: var(--s6); aspect-ratio: 16 / 10; border: 1px dashed var(--c-pearl); border-radius: var(--r-s); opacity: 0; pointer-events: none;
+  transition: opacity var(--d-glass) var(--e-arrive), translate var(--d-glass) var(--e-reveal); }
+.sc-seam.right .sc-dest { right: var(--s3); top: var(--sc-y, 50%); transform: translateY(-50%); translate: var(--s2) 0; }
+.sc-seam.left .sc-dest { left: var(--s3); top: var(--sc-y, 50%); transform: translateY(-50%); translate: calc(-1 * var(--s2)) 0; }
+.sc-seam.top .sc-dest { top: var(--s3); left: var(--sc-y, 50%); transform: translateX(-50%); translate: 0 calc(-1 * var(--s2)); }
+.sc-seam.bottom .sc-dest { bottom: var(--s3); left: var(--sc-y, 50%); transform: translateX(-50%); translate: 0 var(--s2); }
+.sc-seam.lift .sc-dest { opacity: 1; translate: 0 0; }
+@media (prefers-reduced-motion: reduce) { .sc-dest { transition: none; } }

@@ -8,8 +8,8 @@
 //   sol/mac/src/kit/tokens.ts       the kit's values for code (#674: shade, glass, jelly, curve, font, looks)
 // It refuses a contract it cannot trust: a contract number without a migration for each bump, a migration that is not
 // { from, to: from + 1, keys: { old: new or null } }, a place list that is not words, a token without its value or the
-// rule it serves, a palette value that is not #rrggbb. A token marked `hand` is still written by hand in face.css until
-// Home is rebuilt on the frame; the two must agree, and a drift fails here. A token marked `fixed` is a functional
+// rule it serves, a palette value that is not #rrggbb. Since #1183 no token is written by hand in face.css: it imports tokens.css;
+// a token still marked `hand` must agree with face.css, and a drift fails here. A token marked `fixed` is a functional
 // colour (the meaning channel): a block may read it and never set it (mac/src/home/frameRules.ts refuses one that does).
 //   node sol/design/system/tokens.mjs            writes the three files
 //   node sol/design/system/tokens.mjs --check    the same, and exits 1 when a committed file was stale or the data is wrong
@@ -94,6 +94,11 @@ function kitProblems(p) {
   if (typeof p.looks.pearl?.takes?.nacre?.hue !== "number") out.push("palette.looks.pearl.takes.nacre: no hue (the nacre bands' strength)");
   for (const [k, v] of Object.entries(p.material?.sheen ?? {})) if (v?.value === "kit" && k !== "nacre") out.push(`palette.material.sheen.${k}: only nacre is drawn from the kit`);
   if (typeof p.material?.colour?.["pearl-tint"]?.value !== "string") out.push("palette.material.colour.pearl-tint: missing (a frozen block's fill)");
+  for (const [k, m] of Object.entries(p.system?.move ?? {})) {
+    if (!(m.d in (p.motion?.duration ?? {}))) out.push(`palette.system.move.${k}: ${m.d} is not one of motion.duration`);
+    if (!(m.e in (p.motion?.easing ?? {}))) out.push(`palette.system.move.${k}: ${m.e} is not one of motion.easing`);
+  }
+  for (const k of ["well", "card", "control", "lifted", "sticker"]) if (!p.system?.depth?.[k]) out.push(`palette.system.depth.${k}: missing`);
   if (typeof p.looks.card?.takes?.[p.looks.card?.pick]?.radius !== "number") out.push("palette.looks.card: the picked take has no radius (the kit's card corner)");
   return out;
 }
@@ -275,6 +280,8 @@ export function kitTs(p) {
     `export const JELLY = ${j({ six: hexOf(p, p.jelly.six), warm: hexOf(p, p.jelly.warm), angle: p.jelly.angle, soft: p.jelly.soft, veil: p.jelly.veil })} as const;`,
     "/** the continuous corner: the smoothing of Apple's squircle and the kit's radii (the card's is looks.card's pick) */",
     `export const CURVE = ${j({ smoothing: p.curve.smoothing, radius: curveRadius(p) })} as const;`,
+    "/** the ground (#1183): the jelly's colours as one soft mass under the window, its takes (Ground.tsx) */",
+    `export const GROUND = ${j({ ...p.ground, note: undefined, takes: Object.fromEntries(Object.entries(p.ground.takes).map(([n, t]) => [n, { ...t, blobs: t.blobs.map(([c, ...at]) => [p.creature.colours[c] ?? c, ...at]) }])) })} as const;`,
     "/** the glyphs (#764): drawn on a `grid`, set in a `size` box, the stroke `stroke` px at any size */",
     `export const GLYPH = ${j({ size: p.glyph.size, grid: p.glyph.grid, stroke: p.glyph.stroke })} as const;`,
     "/** the pearl, what has you; deep, the words on it */",
@@ -288,6 +295,8 @@ export function kitTs(p) {
     "/** the looks: each its takes, named, with the letter it had on the kit page; `pick` the default, the rest alternates;",
     " *  the halo's takes are the jelly's states (`states`) */",
     `export const LOOKS = ${JSON.stringify(looks, null, 2)} as const;`,
+    "/** the one system (#1213, sol/design/system/rules.md): depth steps, colour roles, shapes, type roles, moves; every accent piece and the body draw from it */",
+    `export const SYSTEM = ${j(Object.fromEntries(Object.entries(p.system).filter(([k]) => k !== "note")))} as const;`,
     "/** the timed motion in ms and its curves (ui.md Motion), feel.md's springs at mass 1 { k stiffness, c damping }, the clamp in px and the slow factor; motion.ts runs them */",
     `export const TIMED = ${j(p.motion.duration)} as const;`,
     `export const EASE = ${j(p.motion.easing)} as const;`,

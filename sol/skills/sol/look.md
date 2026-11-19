@@ -40,9 +40,6 @@ state never brings a colour or a shape of its own.
 | the seat: Sol over the mode pill | `mac/src/SeatScene.tsx`, `ModeWheel.tsx`, `SeatSwitch.tsx useBridgeThumb` | Sol plain at home; on cowork two friends bud out of him; the pill's capsule stretches across |
 | people | `creature/goo.tsx Bud, FAMILIES, familyOf`; `cowork/Person.tsx` | each person's agent wears a bud in their family, by name; yours is Sol |
 
-Untouched on purpose: the notch (its crew and bead are still the cell map, `mac/src/Mark.tsx`) until it is redrawn
-as its own space.
-
 ## Checking a change
 
 - `mac/gallery.html` on the scratch Vite shows every piece large and at size (`src/gallery.tsx`; add a `<Section>` for

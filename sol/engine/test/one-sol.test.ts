@@ -16,6 +16,15 @@ test("the twin: a folder under either home is the same folder under this one; an
   assert.equal(twinIn("/Users/someone-else/y", NUC), `${NUC}/y`, "a home is one path part, whatever its name");
 });
 
+test("the twin: a path already in this home stays itself, even a home deeper than /home/<x> (#1125)", () => {
+  const deep = "/home/you/scratch/try-home/os";   // a test home: HOME set below the person's own
+  assert.equal(twinIn(`${deep}/code/northside-site`, deep), `${deep}/code/northside-site`, "not a made-up twin under itself");
+  assert.equal(twinIn(deep, deep), deep, "the home itself");
+  assert.equal(twinIn(`${deep}/code/northside-site`, `${deep}/`), `${deep}/code/northside-site`, "a home written with a slash");
+  assert.equal(twinIn("/home/you/scratch/try-home/osx/a", deep), `${deep}/scratch/try-home/osx/a`, "a sibling that only starts the same is not in it");
+  assert.equal(twinIn("/Users/you/code/northside-site", deep), `${deep}/code/northside-site`, "the other machine's path still comes over");
+});
+
 test("the work folder: its own when it is here, else the twin, else none", () => {
   const repo = "/computer/personal/projects/ecosystem";
   // on the NucBox: a session the Mac made, its folder synced

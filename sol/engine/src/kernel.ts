@@ -17,8 +17,8 @@
 //               It lives outside the home and outside this checkout, where no seat's folder reaches, a file a day
 //               (log.ts: ~/Library/Application Support/Sol/log/<home>/<day>.jsonl on a Mac, SOL_LOGDIR first); the
 //               newest events stay in memory and older ones are read back from the files; the old place,
-//               <home>/log/log.jsonl, is carried over once and kept as a mirror while the two are reconciled
-//               (logcheck.ts), then goes; it is never read back after that move (a seat can write in the home). A
+//               <home>/log/log.jsonl, is carried over once and then neither read nor written (a seat can write in
+//               the home; it was a mirror until logcheck.ts found the two the same, #691). A
 //               line that cannot be written is said on the engine's own output and never ends a seat's turn.
 //   the loader  at start and on change, every block in the home and every one of Sol's own (Stable, step 7: Sol's code,
 //               sol/engine/blocks/<id>/, the same record and engine half; the home's of the same id is found first, unless
@@ -43,42 +43,54 @@
 //               again. Ten refusals in a row mark a block suspect. The install tool (install.ts) loads one now and says
 //               how it went.
 //   undo        undo() below: the record's `current` one version back, the block unloaded and loaded again, one line.
+//   the past    behind a switch, on unless set off (SOL_HISTORY, record.ts historyOn; the v2 design §7.3, step A3): a block reads
+//               the log's past with sol.since(from, kinds), in either room, a batch at a time (past() below). Only the
+//               kinds its record names in needs.history, which a person pressed on its card; any other is refused and
+//               logged as the door's refusals are. It gets each event's skeleton, and its value only when that holds no
+//               free text, unless the record asked for the words too (text: true) and that was pressed. No id or hash
+//               reaches any block, in the past or in what it hears (pastOf, heardOf; whatever the switch), so a guess
+//               cannot be checked: a block's handle on an event is its seq.
 // A tool call is checked against the block's life before it is sent and again when its answer comes back: an answer
 // from a block unloaded meanwhile is dropped, and unload ends the call with the worker.
-import { readFileSync, renameSync, writeFileSync, existsSync, mkdirSync, realpathSync, lstatSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync, existsSync, mkdirSync, realpathSync, lstatSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { platform, release } from "node:os";
+import { platform, release, tmpdir, homedir } from "node:os";
 import { Worker, MessageChannel, type MessagePort } from "node:worker_threads";
 import { z } from "zod";
 import type { By } from "./file-trail.js";   // who wrote an event: the shape the team trail and Cowork v3 use (not changed here)
-import { openLog, logDir, logFile, PAGE, HOME, type LogPort, type LogEv, type AnyEv, type Via, type Ctx } from "./log.js";   // the log: its place, a file a day, the event (v1) and its value files, the old file as a mirror (log.ts)
-import { kindRow, KINDS_PRINT } from "./contract/kinds.js";   // the kinds the log takes (the registry)
-import { canonical } from "./canonical.js";   // the one way an object is written before it is hashed (the team trail's, shared)
+import { openLog, logDir, logFile, PAGE, HOME, type LogPort, type LogEv, type AnyEv, type Via, type Ctx } from "./log.js";   // the log: its place, a file a day, the event (v1) and its value files, the old file carried over once (log.ts)
+import { kindRow, placeOf, KINDS_PRINT, SEAT_KINDS } from "./contract/kinds.js";   // the kinds the log takes (the registry)
+import { frameOn, onFrame, onPatch } from "./settings.js";   // the frame's switch, read and heard (kernelFollows)
 import { versionNow } from "./version.js";   // the release and the commit this engine runs, once read (engine.start)
 import { execFileSync } from "node:child_process";   // the checkout's HEAD, read once at start (engine.start)
-import { columnsOf, hearsKind, dataPlace, type Columns } from "./record.js";   // the record's four new columns (step 2): room, needs, stores, hears
+import { canonical } from "./canonical.js";   // the one way an object is written before it is hashed (a block's print with the origin's switch off)
+import { columnsOf, hearsKind, dataPlace, historyOn, originOn, type Columns } from "./record.js";   // the record's four new columns (step 2): room, needs, stores, hears
 import { readThings, readFolder, readIn, type ThingWire } from "./things.js";
+import { currentOf, engineFileOf, ENGINE_FILE, fingerprintOf } from "./fingerprint.js";   // which version is current, its engine half, and the whole block's print (§10 `hash`, step M1)
 import { isHelper, helperFor, helperHere } from "./helpers.js";   // Sol's own small programs, built here (step 7)
-import { Room, BIG, type Limits, appDir, folderClash, redact, findProgram, bigRoomHere, runRefusal, runBeside, fetchRefusal, fetchFor, takesPictures } from "./bigroom.js";   // the big room (step 3)
+import { Room, BIG, type Limits, type Proxy, appDir, folderClash, redact, findProgram, bigRoomHere, runRefusal, runBeside, fetchRefusal, fetchFor, takesPictures, openProxy, profileOf } from "./bigroom.js";   // the big room (step 3)
+import { startAcp, SECRET_MIN, type AcpSeat } from "./acp.js";   // a seat the shell starts and keeps running, speaking ACP (step A2)
 import { writeWhole, plainIn } from "./safewrite.js";
 import { carry, stamp, newerThan, forgetCopies } from "./dataundo.js";
-import { registerSeat, unregisterSeat, type SeatResult } from "./seats.js";   // a block that provides a seat (step 6)   // a block's own data goes back with its version (step 5)
-import { readKey, haveKey, noteUser, noteScope, listKeys, type KeyMeta } from "./keys.js";
+import { registerSeat, unregisterSeat, convoId, type SeatResult } from "./seats.js";   // a block that provides a seat (step 6)   // a block's own data goes back with its version (step 5)
+import { readKey, haveKey, keyMeta, noteUser, noteScope, listKeys, type KeyMeta } from "./keys.js";
 import { askOf, asksAny, cardOf, readPress, writePress, forgetPress, widerThan, homeKey, OUTWARD, type Waiting } from "./card.js";   // the card and the press (step 4)
 import type { ToolResult } from "./browser.js";
+import { logKinds } from "./settings.js";   // the narrow look's switch: a page or an ask edited in place is said (plugin.edited, #691 step 3)
 
 /** the log's one project in the trail: the home */
 export const LOG_PROJECT = HOME;
-export { logDir, logFile } from "./log.js";   // where the log lives, and its old place (the mirror)
+export { logDir, logFile } from "./log.js";   // where the log lives, and its old place (carried over once)
 const ENGINE: By = { person: "engine" };
-/** the seats the log knows, by name: Home's two and Work (one Claude Code per session) */
-export type SeatName = "claude" | "codex" | "work";
+/** the seats the log knows, by name: Home's two, Work (one Claude Code per session), and a seat the shell starts for a
+ *  block (seat:<id>, acp.ts: step A2), named as a seat's step through a block's tool names it */
+export type SeatName = "claude" | "codex" | "work" | `seat:${string}`;
 /** tokens as the seats report them: in, out, read from and written to the cache */
 export type Tokens = { in: number; out: number; cacheRead?: number; cacheWrite?: number };
 /** the seats' own kinds on the log (seatlog.ts) */
-export type SeatKind = "seat.turn" | "seat.done" | "seat.step" | "seat.sent";
+export type SeatKind = "seat.turn" | "seat.done" | "seat.step" | "seat.sent" | "seat.usage";
 
 export type Arg = "string" | "number" | "boolean";
 /** a tool a block registered, as a seat sees it: thing_<id>_<name> (it runs in the block's worker) */
@@ -94,7 +106,50 @@ export type Sol = {
   log(line: string): void;
   read(what: string): unknown;
   write(what: string, value: unknown): void;
+  /** the log's past (step A3): only with its switch on, and only the kinds its record names in needs.history */
+  since?(from: number, kinds?: string[]): Past;
 };
+/** one batch of the past: the events, oldest first, and the seq to ask from next (null: the end) */
+export type Past = { events: Record<string, unknown>[]; next: number | null };
+/** how many events one sol.since hands back at most, and how many it looks through at most to find them */
+export const SINCE_BATCH = 500;
+const SINCE_SCAN = PAGE;
+
+/** what of a past event a block is handed besides its value: its skeleton. Never `hash` (the value's SHA-256), nor `id`,
+ *  `prev` or `cause` (ids: each is a hash over a body that holds a value's hash, and the chain runs through them), so a
+ *  value held back or erased cannot be confirmed by hashing a guess; `seq` is the block's handle on an event */
+const PAST_KEYS = ["v", "seq", "at", "kind", "kv", "old", "item", "field", "by", "via", "ctx", "mode"] as const;
+/** an event's id, or a value's hash, as the log writes them (log.ts sha): 64 hex digits */
+const HASHED = /^[0-9a-f]{64}$/;
+/** a past event as a block is handed it (pure): its skeleton (PAST_KEYS), and its value only when that holds no free
+ *  text (it sits on the day's line: contract/kinds.ts placeOf) or the words were asked for and pressed (`text`). A value
+ *  held back says `withheld: true`; an erased one `erased: true`, as GET /log. An `item` that is an event's id is left
+ *  out, and an erase's value (the hash of what it erased) is never handed, words or not: record.ts refuses the log's own
+ *  kinds in needs.history, and this holds whatever a record says */
+export function pastOf(e: AnyEv, text: boolean): Record<string, unknown> {
+  const { value, erased } = e as AnyEv & { value?: unknown; erased?: true };
+  const out: Record<string, unknown> = {};
+  for (const k of PAST_KEYS) if ((e as Record<string, unknown>)[k] !== undefined) out[k] = (e as Record<string, unknown>)[k];
+  if (typeof out.item === "string" && HASHED.test(out.item)) delete out.item;
+  if (value === undefined) return erased ? { ...out, erased: true } : out;
+  if (e.kind === "log.erase") return { ...out, withheld: true };
+  return text || placeOf(e.kind, value) === "line" ? { ...out, value } : { ...out, withheld: true };
+}
+/** a heard event as every block is handed it, in either room (pure): without its id, prev, hash and cause, and without
+ *  an `item` that is an event's id; `seq` is its handle on an event. Any block: one that hears could otherwise pass the
+ *  chain's ids to one that reads the past (through shared data), which could then rebuild a held-back event's id from a
+ *  guess at its value and check the guess. A person's own record that a block hears only after a press (a `card` kind
+ *  that is not a seat's: today.pick) keeps its words back as the past does (pastOf): its value is handed only when it
+ *  holds no free text, or the record asked for the words of that kind (needs.history text: true) and that was pressed */
+export function heardOf(e: LogEv, text = false): Record<string, unknown> {
+  const { id: _id, prev: _prev, hash: _hash, cause: _cause, ...rest } = e;
+  const out: Record<string, unknown> = { ...rest };
+  if (typeof out.item === "string" && HASHED.test(out.item)) delete out.item;
+  if (kindRow(e.kind)?.hear !== "card" || SEAT_KINDS.includes(e.kind) || e.value === undefined) return out;
+  if (text || placeOf(e.kind, e.value) === "line") return out;
+  delete out.value;
+  return { ...out, withheld: true };
+}
 
 export class GateError extends Error {}
 
@@ -137,8 +192,51 @@ export function gate(rec: { reads?: unknown; writes?: unknown }, op: "read" | "w
 }
 
 const TOOL = /^[a-z][a-z0-9_]{0,31}$/;
-const ENGINE_FILE = /^[a-z0-9][a-z0-9._-]{0,63}\.(?:ts|js|mjs)$/;
 export const toolName = (block: string, name: string) => `thing_${block}_${name}`;
+
+// ---- a seat the shell starts: what its wall opens beyond a big room's run (loadSeat) ----
+/** what a real agent needs inside the wall to start and to reach its service, found by walling real ones (codex-acp
+ *  2.6.0 and 0.16.0, 2026-11-11), each line the narrowest that did it: the certificate service (as a big room's run
+ *  has); who the person is (the user lookup: an agent asks whose home it is in before it opens a conversation. That
+ *  service answers what the account database holds of every account and group of this Mac, so a seat can also learn
+ *  their names and numbers, the person's full name, each one's shell and home path and who is in which group, the
+ *  administrators among them: never what is in a home); /etc, /tmp and /var as the links they are (their names,
+ *  not what is in them); and the system's own tables of languages and time zones (/usr/share/icu, read only, the same
+ *  on every Mac of its version, nothing of the person's: without them Claude Code's program, started by
+ *  claude-agent-acp 0.106.0, waits for ever before its first answer, 2026-11-11) */
+const SEAT_MORE = [
+  `(allow mach-lookup (global-name "com.apple.trustd.agent"))`,
+  `(allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo"))`,
+  `(allow file-read-metadata (literal "/etc") (literal "/tmp") (literal "/var"))`,
+  `(allow file-read* (subpath "/usr/share/icu"))`,
+];
+/** the system's own file of root certificates, read only and named to the seat as SSL_CERT_FILE: with it an agent
+ *  checks its service's certificate itself, and the keychain's services stay shut to it */
+const SEAT_CERTS = "/private/etc/ssl/cert.pem";
+/** the declared folders in the person's home, linked at the same place in a seat's scratch home: a program that keeps
+ *  its login in ~/.name finds the folder its record was given, and nothing else of the home. Made before the seat
+ *  starts, in a scratch folder that is new and nobody's yet. A folder inside another declared one is reached through
+ *  that one's link */
+function linkHome(own: string, folders: string[], me: string): void {
+  let home: string;
+  try { home = realpathSync(me); } catch { return; }
+  const inside = (a: string, b: string) => a.startsWith(b.endsWith("/") ? b : b + "/");
+  for (const f of folders) {
+    if (!inside(f, home) || folders.some((g) => g !== f && inside(f, g))) continue;
+    const at = join(own, f.slice(home.length).replace(/^\/+/, ""));
+    mkdirSync(dirname(at), { recursive: true, mode: 0o700 });
+    symlinkSync(f, at);
+  }
+}
+/** a seat's scratch folder gone, and only it: a link in it is removed and never followed (the folder it led to stays,
+ *  with all that is in it), whatever the seat made of its scratch folder meanwhile, the folder itself a link included.
+ *  No path inside it is walked by name here: the seat wrote there, and a name of its choosing is not gone after.
+ *  One it made so it cannot be removed (a folder nobody may open, a hidden child still writing after three tries) is
+ *  left where it is, in the temporary folder, said on the engine's own output: taking a seat out never fails on it */
+function dropScratch(own: string): void {
+  try { rmSync(own, { recursive: true, force: true, maxRetries: 2, retryDelay: 50 }); }
+  catch (e) { console.error(`a seat's scratch folder could not be removed and is left there (${own}): ${e instanceof Error ? e.message : "?"}`); }
+}
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 
 type Answer = { ok: boolean; value?: string; why?: string };
@@ -150,30 +248,13 @@ type Life = {
   lines: number; lineAt: number;   // its lines this second (the loop breaker)
   room: Room | null; timers: NodeJS.Timeout[];   // a big room's process and the times the engine counts for it (step 3)
   stop: AbortController; doing: Set<Promise<unknown>>;   // a big room's errands through the door (a run, a request): ended with it, said before its unload line (step 0b)
+  seat?: { acp: AcpSeat; proxy: Proxy; own: string } | null;   // a seat the shell started for it, kept running (acp.ts, step A2)
 };
 /** how many lines a block may write in one second before it is broken as a loop */
 export const LINES_A_SECOND = 100;
 type Block = { id: string; dir: string; stable: boolean; print: string; pkg: string | null; v: number | null; state: EngineState; life: Life; record: Record<string, unknown> | null; columns: Columns | null; waiting: Waiting | null; since: number };
 /** what a worker says, over its port */
-type Said = { t: string; line?: string; name?: string; description?: string; args?: Record<string, unknown>; what?: string; value?: unknown; where?: string; why?: string; call?: number; ok?: boolean };
-
-/** which version is current, and its entry (the record as written: `current`, else the highest v) */
-function currentOf(r: Record<string, unknown>): { v: number; entry: Record<string, unknown> } | null {
-  const vs = Array.isArray(r.versions) ? r.versions.filter(isObj) : [];
-  const want = Number.isInteger(r.current) ? (r.current as number) : Math.max(0, ...vs.map((x) => (Number.isInteger(x.v) ? (x.v as number) : 0)));
-  const entry = vs.find((x) => x.v === want);
-  return entry ? { v: want, entry } : null;
-}
-
-/** the engine half's file name for a record, or null when it has none (a face-only block) */
-function engineFileOf(dir: string, entry: Record<string, unknown>): string | null {
-  if (typeof entry.engine === "string") {
-    if (!ENGINE_FILE.test(entry.engine)) throw new Error(`its version's engine "${entry.engine}" is not a file name beside the record (.ts or .js)`);
-    return entry.engine;
-  }
-  for (const f of ["engine.ts", "engine.js"]) if (existsSync(join(dir, f))) return f;
-  return null;
-}
+type Said = { t: string; line?: string; name?: string; description?: string; args?: Record<string, unknown>; what?: string; value?: unknown; where?: string; why?: string; call?: number; ok?: boolean; from?: unknown; kinds?: unknown };
 
 /** the format's second half (the design's gate): every version the record lists is a whole one, its face file there and
  *  its engine half, when it names one, beside it. Null when they hold, else what does not */
@@ -208,8 +289,8 @@ export type KernelOptions = {
   /** where the log's folder is: the live kernel's is logDir(home), decided by syncKernel when the frame is on; a test
    *  gives its own. A kernel given none is not made (no place of the machine's is a default here) */
   logDir?: string;
-  /** the old file every line is also written to (default <home>/log/log.jsonl); null for none */
-  mirror?: string | null;
+  /** the old file carried over once into an empty log (default <home>/log/log.jsonl); null for none */
+  old?: string | null;
   /** Sol's own folder, where the presses and the keys are: the live kernel's is appDir() (SOL_APPDIR, else
    *  ~/Library/Application Support/Sol), decided by syncKernel when the frame is on; a test gives its own. Required, as logDir */
   appDir?: string;
@@ -219,15 +300,24 @@ export type KernelOptions = {
   stable?: string | null;
   /** whose home "~/" in a record's folders is (default the person's own, os.homedir()) */
   me?: string;
+  /** a seat the shell starts: how long it has to open a conversation or set one of its options (default two minutes), and
+   *  with children the most processes it may have at once before it is stopped (default 200) */
+  seat?: { answerMs?: number; kidsMax?: number };
   /** the timezone the engine is in now (default this machine's); a test gives its own, to cross one */
   zone?: () => Zone;
+  /** whether a page or an ask.md edited in place (plugin.edited), and a tool a block registers after its load
+   *  (plugin.tools), are said on the log: the narrow look's switch, read each time (settings.ts logKinds, #691 step 3;
+   *  syncKernel's); none, never */
+  edits?: () => boolean;
 };
 /** a timezone as the log says it: its name, and the minutes local time is ahead of UTC */
 export type Zone = { tz: string; offset: number };
 // at UTC the minus gives -0, which the log's file reads back as 0: said as 0, so what is held is what is written
 const zoneNow = (): Zone => ({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone, offset: -new Date().getTimezoneOffset() || 0 });
 /** what an event may say beyond its kind, its item and its value (log.ts) */
-export type More = { cause?: string; ctx?: Ctx; via?: Via; field?: string; mode?: "record" | "replay" };
+/** what an append may say besides its kind, item, value and writer. `at`: the time it happened, when its writer judged
+ *  it at a time it was handed (a way's draft, way-own.ts); else the log's clock */
+export type More = { cause?: string; ctx?: Ctx; via?: Via; field?: string; mode?: "record" | "replay"; at?: number };
 
 export class Kernel {
   readonly log: LogPort;
@@ -249,24 +339,30 @@ export class Kernel {
   private readonly now: () => number;
   private readonly stable: string | null;
   private readonly me: string | undefined;
+  private readonly seatLimits: { answerMs: number; kidsMax: number };
   private readonly zone: () => Zone;
   /** the timezone last said on the log, and when it was last looked at; null until started() */
   private zoneSaid: (Zone & { at: number }) | null = null;
+  private readonly edits: () => boolean;
+  /** by block, the print of its page and its ask.md as last looked at (plugin.edited) */
+  private faces = new Map<string, string>();
 
   constructor(readonly home: string, o: KernelOptions = {}) {
     // the machine's own places are chosen only where the frame is turned on (syncKernel), so a kernel made anywhere else
     // (a test that forgot its folders) fails here, before it writes a line, instead of writing into the person's own
     if (!o.logDir || !o.appDir) throw new Error("a kernel is given its log's folder and Sol's own folder (logDir, appDir): syncKernel decides them, with the frame on");
     this.logDir = o.logDir;
-    this.log = openLog(this.logDir, o.mirror === undefined ? logFile(home) : o.mirror, o.now);
+    this.log = openLog(this.logDir, o.old === undefined ? logFile(home) : o.old, o.now);
     this.last = this.log.last();
     this.loadMs = o.loadMs ?? 5000;
+    this.edits = o.edits ?? (() => false);
     this.callMs = o.callMs ?? 30_000;
     this.closeMs = o.closeMs ?? 1000;
     this.app = o.appDir;
     this.big = { ...BIG, ...o.big };
     this.now = o.now ?? Date.now;
     this.stable = o.stable ?? null;
+    this.seatLimits = { answerMs: o.seat?.answerMs ?? 120_000, kidsMax: o.seat?.kidsMax ?? 200 };
     this.me = o.me;
     this.zone = o.zone ?? zoneNow;
   }
@@ -357,9 +453,11 @@ export class Kernel {
     if (!kindRow(e.kind)?.hear) return;   // a kind no block is handed (the registry): a block's trouble, the log's own
     for (const b of this.blocks.values()) {
       if (b.id === from || !b.life.live) continue;   // a block never hears itself: no loop of one
-      if (b.life.room) { if (b.columns?.hears?.includes(e.kind)) b.life.room.event(e); continue; }   // a big room hears only the kinds it named, kept while it is put away
+      const h = b.columns?.needs?.history;
+      const heard = heardOf(e, !!h?.text && h.kinds.includes(e.kind));   // no block hears an id; a person's record without its words (step A3)
+      if (b.life.room) { if (b.columns?.hears?.includes(e.kind)) b.life.room.event(heard); continue; }   // a big room hears only the kinds it named, kept while it is put away
       if (!b.life.listens || !hearsKind(b.columns ?? { hears: null }, e)) continue;
-      b.life.worker?.postMessage({ t: "ev", e });
+      b.life.worker?.postMessage({ t: "ev", e: heard });
     }
   }
   /** the events after a seq, the newest from memory, older ones read from the files, at most PAGE at a time (log.ts) */
@@ -403,7 +501,16 @@ export class Kernel {
       seen.add(t.id);
       const print = this.printOf(t);
       const had = this.blocks.get(t.id);
-      if (had && had.print === print) continue;
+      const face = this.faceOf(t), was = this.faces.get(t.id);
+      this.faces.set(t.id, face);
+      if (had && had.print === print) {
+        // the page or the ask changed and nothing else: no load, so said on its own, for the face's narrow look
+        if (was !== undefined && was !== face && this.edits()) {
+          const [p0, a0] = was.split(":"), [p1, a1] = face.split(":");
+          this.append("plugin.edited", t.id, { page: p0 !== p1, ask: a0 !== a1 });
+        }
+        continue;
+      }
       if (had) await this.unload(had, "changed");
       if (had && !had.stable && t.stable && !readThings(this.home).some((x) => x.id === t.id)) forgetPress(this.app, this.home, had.id);   // the home's is gone and Sol's own is in its place: one written there later is asked again (one taken out keeps its press)
       await this.load(t, print, had && had.stable === t.stable ? had.v : null);
@@ -411,9 +518,16 @@ export class Kernel {
     for (const b of [...this.blocks.values()]) if (!seen.has(b.id)) {
       await this.unload(b, "gone from the home");
       this.blocks.delete(b.id);
+      this.faces.delete(b.id);
       forgetPress(this.app, this.home, pressId(b));   // a block written later under the same id is asked again
       try { forgetCopies(this.home, b.id, this.now()); } catch { /* nothing kept, or not ours to move */ }   // and starts with none of the old one's copies
     }
+  }
+
+  /** a block's face as the face reads it on GET /things: its current page and its ask.md, a short hash each */
+  private faceOf(t: Found): string {
+    const h = (x: string | null) => createHash("sha256").update(x ?? "\u0000").digest("hex").slice(0, 16);
+    return `${h(t.html)}:${h(t.ask)}`;
   }
 
   /** a block's fingerprint: its record and its engine half as written; a change in either loads it again */
@@ -428,6 +542,8 @@ export class Kernel {
       if (c?.ok && asksAny(askOf(c.columns))) {   // a press, a key pasted or taken away: it loads again
         h.update(JSON.stringify(readPress(this.app, this.home, pressId(t))));
         for (const k of c.columns.needs?.keys ?? []) h.update(`${k}:${haveKey(this.app, k)}`);
+        const held = c.columns.needs?.seat?.key;   // a seat holds its key from its start: another pasted in its place starts it again
+        if (held) h.update(`seat:${held}:${keyMeta(this.app, held)?.added ?? 0}`);
       }
     } catch (e) { h.update(String(e)); }
     return h.digest("hex");
@@ -474,6 +590,7 @@ export class Kernel {
       if (NOT_FOR_BLOCKS(tool)) return broken(`needs.sol names ${tool}, which a block may not call (a block's own tool, or the install tool)`);
       if (solNames && !solNames.has(tool)) return broken(`needs.sol names ${tool}, which is not one of Sol's tools`);
     }
+    if (n?.seat) return this.loadSeat(b, t.dir, cur.v, broken);   // a program the shell starts as a seat (step A2): no engine half, no room host
     if (cols.columns.room === "small") {
       const out = n ? OUTWARD.filter((k) => n[k].length > 0).concat(n.screen ? ["screen" as never] : []) : [];
       if (out.length) return broken(`a small room cannot reach beyond its wall, and its record asks for ${out.join(", ")}: room "big" is where that runs`);
@@ -481,7 +598,10 @@ export class Kernel {
     const dir = t.dir;
     let file: string | null;
     try { file = engineFileOf(dir, cur.entry); } catch (e) { return broken((e as Error).message); }
-    b.pkg = createHash("sha256").update(canonical(r)).update("\n").update(file ? readIn(dir, file) ?? "" : "").digest("hex");   // what was loaded: its record and its engine half as written (an event's via.pkg). Not yet the whole folder
+    if (originOn()) {   // the record's origin's switch (record.ts originOn, step M1)
+      try { b.pkg = fingerprintOf(dir, r); } catch (e) { return broken(`its files could not be read: ${(e as Error).message}`); }   // what was loaded, the whole block (an event's via.pkg, fingerprint.ts)
+      if (typeof r.hash === "string" && r.hash !== b.pkg) this.append("plugin.altered", t.id, { hash: r.hash, now: b.pkg });   // its record says another fingerprint: said, not refused
+    } else b.pkg = createHash("sha256").update(canonical(r)).update("\n").update(file ? readIn(dir, file) ?? "" : "").digest("hex");   // off: its record and its engine half as written, as before the switch
     if (was !== null && was !== cur.v) this.append("plugin.release", t.id, { from: was, to: cur.v });
     if (cols.columns.room === "big") return this.loadBig(b, dir, file, cur.v, broken);
     const wait = this.waitFor(b);   // a small room that hears a seat waits for a press as a big room does
@@ -505,6 +625,13 @@ export class Kernel {
    *  a name a seat has already (Sol's own two) is refused. Taken off when it unloads or breaks */
   private provide(b: Block): void {
     if (!b.columns?.needs?.provides.includes("seat") || !b.life.live) return;
+    const acp = b.life.seat?.acp;
+    if (acp) {   // a seat the shell started (step A2): it streams, asks and says its steps; what it can is what it said at hello
+      const r = registerSeat({ name: b.id, builtIn: false, block: b.id, can: acp.can, run: acp.run });
+      if (!r.ok) return this.crash(b, `it provides a seat named ${b.id}, and ${r.why}`);
+      this.append("plugin.seat", b.id, { provided: true });
+      return;
+    }
     if (!b.life.tools.has("task")) return this.crash(b, "it provides a seat, and a seat takes its task through a tool named task: its record lists none (needs.tools), or its engine half registered none");
     let busy = false;
     const r = registerSeat({
@@ -565,6 +692,36 @@ export class Kernel {
   /** a call that passed: the run of refusals is over */
   private passed(id: string) { if (this.refusals.has(id) && (this.refusals.get(id) ?? 0) < SUSPECT_AFTER) this.refusals.delete(id); }
 
+  /** the declared folders as they are now: a symlink is never one (it could be pointed anywhere after the press), and
+   *  none reaches what the wall is for; checked at load and again at every wake and every run (a big room's, a seat's) */
+  private wallFolders(declared: string[], make: boolean): string[] {
+    const guarded = [{ path: this.app, what: "Sol's own folder (the keys, the presses)" }, { path: this.logDir, what: "the log" }, { path: this.home, what: "the home (every block and its data)" }];
+    const out: string[] = [];
+    for (const f of declared) {
+      let st;
+      try { st = lstatSync(f); } catch {
+        const c = folderClash([f], guarded);
+        if (c) throw new Error(c);
+        if (!make) continue;   // not there yet at load: not opened, and still never where the wall is for
+        // the room is up (pressed): its folder is made, then checked as any other. The part of the path that is there is
+        // checked first: a link planted above it would have the folder made where nobody pressed
+        let up = dirname(resolve(f));
+        while (!existsSync(up) && up !== dirname(up)) up = dirname(up);
+        if (realpathSync(up) !== up) throw new Error(`the folder it declares, ${f}, goes through a symlink (${up} is ${realpathSync(up)}): declare the folder by its own path`);
+        mkdirSync(f, { recursive: true, mode: 0o700 });
+        st = lstatSync(f);
+      }
+      if (st.isSymbolicLink()) throw new Error(`the folder it declares, ${f}, is a symlink: a block's folder is a folder`);
+      const real = realpathSync(f);
+      // the path as declared, all the way down: a symlink anywhere on it (planted in a parent after the press) would
+      // move the grant somewhere nobody pressed
+      if (real !== resolve(f)) throw new Error(`the folder it declares, ${f}, goes through a symlink (it is ${real}): declare the folder by its own path`);
+      out.push(real);
+    }
+    const clash = folderClash(out, guarded);
+    if (clash) throw new Error(clash);
+    return out;
+  }
   /** a big room at load: nothing is started (it starts when used). Its three ways to be broken beyond the small room's: a
    *  sandbox that cannot be made here, a program it declares that is not on this Mac, nobody having pressed its card */
   private loadBig(b: Block, dir: string, file: string | null, v: number, broken: (why: string) => void): void {
@@ -584,36 +741,7 @@ export class Kernel {
       if (!exe) return broken(`the program it declares, ${p}, is not on this Mac`);
       found[p] = exe;
     }
-    const guarded = [{ path: this.app, what: "Sol's own folder (the keys, the presses)" }, { path: this.logDir, what: "the log" }, { path: this.home, what: "the home (every block and its data)" }];
-    /** the declared folders as they are now: a symlink is never one (it could be pointed anywhere after the press), and
-     *  none reaches what the wall is for; checked at load and again at every wake and every run */
-    const folders = (make = false): string[] => {
-      const out: string[] = [];
-      for (const f of n?.folders ?? []) {
-        let st;
-        try { st = lstatSync(f); } catch {
-          const c = folderClash([f], guarded);
-          if (c) throw new Error(c);
-          if (!make) continue;   // not there yet at load: not opened, and still never where the wall is for
-          // the room is up (pressed): its folder is made, then checked as any other. The part of the path that is there is
-          // checked first: a link planted above it would have the folder made where nobody pressed
-          let up = dirname(resolve(f));
-          while (!existsSync(up) && up !== dirname(up)) up = dirname(up);
-          if (realpathSync(up) !== up) throw new Error(`the folder it declares, ${f}, goes through a symlink (${up} is ${realpathSync(up)}): declare the folder by its own path`);
-          mkdirSync(f, { recursive: true, mode: 0o700 });
-          st = lstatSync(f);
-        }
-        if (st.isSymbolicLink()) throw new Error(`the folder it declares, ${f}, is a symlink: a block's folder is a folder`);
-        const real = realpathSync(f);
-        // the path as declared, all the way down: a symlink anywhere on it (planted in a parent after the press) would
-        // move the grant somewhere nobody pressed
-        if (real !== resolve(f)) throw new Error(`the folder it declares, ${f}, goes through a symlink (it is ${real}): declare the folder by its own path`);
-        out.push(real);
-      }
-      const clash = folderClash(out, guarded);
-      if (clash) throw new Error(clash);
-      return out;
-    };
+    const folders = (make = false): string[] => this.wallFolders(n?.folders ?? [], make);
     try { folders(); } catch (e) { return broken((e as Error).message); }
     const wait = this.waitFor(b);
     if (wait) return broken(wait);
@@ -641,10 +769,11 @@ export class Kernel {
     const errand = <T>(p: Promise<T>): Promise<T> => { life.doing.add(p); p.then(() => life.doing.delete(p), () => life.doing.delete(p)); return p; };
     /** whether what an errand did may still be said: never once the block's unload line is written */
     const saying = () => life.live || life.closing;
-    const room = new Room({ id: b.id, dir, file: join(dir, file), host: realpathSync(fileURLToPath(HOST)), cols, closeMs: this.closeMs, ...this.big }, {
+    const room = new Room({ id: b.id, dir, file: join(dir, file), host: realpathSync(fileURLToPath(HOST)), cols, closeMs: this.closeMs, ...(historyOn() ? { since: true } : {}), ...this.big }, {
       folders: () => folders(true),
       read: (what) => this.read(b, what),
       write: (what, value) => { this.write(b, what, value); },
+      since: (from, kinds) => this.past(b, from, kinds),
       said: (m) => {
         if ((m.t === "tool" || m.t === "refused-net") && !tally()) return;
         if (m.t === "tool") { if (!life.tools.has(String(m.name))) this.append("plugin.trouble", b.id, { where: "sol.tool", why: `${m.name} is not among the tools its record declares (needs.tools): it is not offered` }, by); return; }
@@ -704,6 +833,92 @@ export class Kernel {
     this.provide(b);
   }
 
+  /** a seat the shell starts (needs.seat, step A2, acp.ts): its program walled as a big room's run is (the declared
+   *  folders and a scratch folder of its own read and written, its own folder read only, its declared domains through a
+   *  proxy of its own, no fork, a clean environment), started once its card is pressed, kept running, spoken to in ACP.
+   *  What a real agent needs beyond that to start at all is opened to every seat (SEAT_MORE), and its declared folders
+   *  in the person's home are linked at the same place in its scratch home (linkHome). One whose record says children
+   *  starts programs of its own, inside the same wall: the files in its own folder and the programs it declares,
+   *  found by name in a folder of links that is its PATH.
+   *  Broken when it cannot be: not a Mac, its program not here, an engine half beside it, nobody pressed, no hello */
+  private async loadSeat(b: Block, dir: string, v: number, broken: (why: string) => void): Promise<void> {
+    const life = b.life, n = b.columns!.needs!, start = n.seat!.start;
+    try { const cur = currentOf(b.record!); if (cur && engineFileOf(dir, cur.entry)) return broken("a seat the shell starts is its program: no engine half goes with it, and one is beside its record"); } catch (e) { return broken((e as Error).message); }
+    const here = bigRoomHere(this.big.sandbox);
+    if (here) return broken(here);
+    if (isHelper(start[0])) return broken(`${start[0]} is one of Sol's helpers, not a seat`);
+    const exe = findProgram(start[0]);
+    if (!exe) return broken(`the program it starts as a seat, ${start[0]}, is not on this Mac`);
+    try { this.wallFolders(n.folders, false); } catch (e) { return broken((e as Error).message); }
+    const wait = this.waitFor(b);
+    if (wait) return broken(wait);
+    // the key it is started with (needs.seat.key): read now and put only in its environment, never in its arguments.
+    // A seat holds its key, so it is given one only when all its wall reaches is what the key is for (keys/<name>.json)
+    let held: { as: string; key: string } | null = null;
+    if (n.seat!.key) {
+      const name = n.seat!.key, k = readKey(this.app, name);
+      if (!("key" in k)) return broken(k.why);
+      const beyond = n.domains.filter((d) => !k.hosts.includes(d.toLowerCase()) && !k.hosts.includes(d.toLowerCase().replace(/:\d+$/, "")));
+      if (beyond.length) return broken(`the key ${name} is for ${k.hosts.join(", ") || "no host yet (its hosts are said when it is pasted)"}, and its seat reaches ${beyond.join(", ")} too: a seat holds its key, so it is started with one only when all it reaches is what the key is for`);
+      if (k.key.length < SECRET_MIN) return broken(`the key ${name} is shorter than ${SECRET_MIN} characters: too short to be cut out of what its seat says, so no seat is started with it`);
+      held = { as: n.seat!.keyAs!, key: k.key };
+    }
+    const noKey = (why: string) => redact(why, held?.key ?? null);
+    // a host it is refused is its own words too: one its key is spelled into goes on the log without it, as it wrote it and as a host's name is read (in small letters)
+    const noHost = (h: string) => redact(noKey(h), held?.key.toLowerCase() ?? null);
+    let folders: string[];
+    try { folders = this.wallFolders(n.folders, true); } catch (e) { return broken((e as Error).message); }
+    const by: By = { person: "engine", agent: b.id };
+    const mine = () => life.live && this.blocks.get(b.id)?.life === life;   // taken out: it says nothing more
+    const proxy = await openProxy(n.domains, (host, port) => { if (mine()) this.refusedOne(b, { op: "connect", what: noHost(`${host}:${port}`), why: "not among the domains its record declares" }, by); });
+    const own = realpathSync(mkdtempSync(join(tmpdir(), "sol-acp-seat-")));
+    const away = async () => { await proxy.close(); dropScratch(own); };
+    // the programs its children may start (needs.seat.children): each declared program as the file that runs, never one
+    // of Sol's helpers; by name they are links in a folder of the scratch home, which is its PATH
+    const kids: string[] = [];
+    let path = dirname(exe), profile: string;
+    try {
+      linkHome(own, folders, this.me ?? homedir());
+      if (n.seat!.children) {
+        path = join(own, ".sol-bin");
+        mkdirSync(path, { mode: 0o700 });
+        for (const p of new Set([start[0], ...n.programs])) {
+          if (isHelper(p)) continue;
+          const file: string | null = p === start[0] ? exe : findProgram(p);
+          if (!file) throw new Error(`the program it declares, ${p}, is not on this Mac`);
+          symlinkSync(file, join(path, p));
+          if (file !== exe && !kids.includes(file)) kids.push(file);
+        }
+      }
+      const certs = existsSync(SEAT_CERTS);
+      profile = profileOf({ exe, read: [dir], write: [own, ...folders], proxy: proxy.port, more: [...SEAT_MORE, ...(certs ? [`(allow file-read* (literal ${JSON.stringify(SEAT_CERTS)}))`] : [])], ...(n.seat!.children ? { children: { exes: kids, within: [dir] } } : {}) });
+    } catch (e) { await away(); return broken((e as Error).message); }
+    const url = `http://127.0.0.1:${proxy.port}`;
+    const who: SeatName = `seat:${b.id}`;
+    let acp: AcpSeat;
+    try {
+      acp = await startAcp({
+        name: b.id, command: [this.big.sandbox, "-p", profile, exe, ...start.slice(1)], cwd: dir, sessionCwd: own,
+        env: { HOME: own, TMPDIR: own, PATH: path, HTTPS_PROXY: url, https_proxy: url, HTTP_PROXY: url, http_proxy: url, ...(existsSync(SEAT_CERTS) ? { SSL_CERT_FILE: SEAT_CERTS } : {}), ...(held ? { [held.as]: held.key } : {}) },
+        ...(held ? { secret: held.key } : {}),
+        ...(n.seat!.children ? { children: true, kidsMax: this.seatLimits.kidsMax } : {}),
+        startMs: this.big.loadMs, closeMs: this.closeMs, answerMs: this.seatLimits.answerMs, convo: (inner) => convoId(b.id, inner),
+        said: {
+          turn: (session) => { if (mine()) this.seat("seat.turn", who, { session }); },
+          step: (session, tool, ok) => { if (mine()) this.seat("seat.step", who, { session, tool, ok }); },
+          usage: (session, u) => { if (mine()) this.seat("seat.usage", who, { session, ...u }); },
+          done: (session, ok) => { if (mine()) this.seat("seat.done", who, { session, ok }); },
+        },
+        gone: (why) => this.crash(b, noKey(why)),
+      });
+    } catch (e) { await away(); return broken(`its seat did not start: ${noKey((e as Error).message)}`); }
+    if (!mine()) { await acp.close(); await away(); return; }
+    life.seat = { acp, proxy, own };
+    b.state = { state: "loaded", v, tools: [], room: "big", ...this.suspectOf(b.id) };
+    this.append("plugin.load", b.id, { v, room: "big" });
+    this.provide(b);
+  }
+
   /** start a block's worker; null once its engine half has loaded, else why it did not */
   private start(b: Block, dir: string, file: string): Promise<string | null> {
     const life = b.life;
@@ -711,7 +926,7 @@ export class Kernel {
     const flag = new SharedArrayBuffer(4);
     const w = new Worker(WORKER, {
       name: `sol-block-${b.id}`,
-      workerData: { id: b.id, file: join(dir, file), dir, flag, reply: port2, askMs: this.callMs },
+      workerData: { id: b.id, file: join(dir, file), dir, flag, reply: port2, askMs: this.callMs, ...(historyOn() ? { since: true } : {}) },   // since: sol.since is on its sol (step A3)
       transferList: [port2],
       execArgv: [], env: {}, resourceLimits: LIMITS, stdout: true, stderr: true,
     });
@@ -762,12 +977,16 @@ export class Kernel {
         const args: Record<string, Arg> = {};
         for (const [k, a] of Object.entries(m.args ?? {})) if (TOOL.test(k) && (a === "string" || a === "number" || a === "boolean")) args[k] = a;
         life.tools.set(m.name, { block: b.id, name: m.name, description: String(m.description ?? m.name).slice(0, 500), args });
-        if (b.state.state === "loaded") b.state = { ...b.state, tools: [...life.tools.values()].map((x) => toolName(b.id, x.name)) };
+        if (b.state.state === "loaded") {
+          const had = b.state.tools.join(",");
+          b.state = { ...b.state, tools: [...life.tools.values()].map((x) => toolName(b.id, x.name)) };
+          if (this.edits() && b.state.tools.join(",") !== had) this.append("plugin.tools", b.id, { tools: b.state.tools }, by);   // after its load, so plugin.load did not say it: the face's narrow look hears it here; the same list again is not said
+        }
         return;
       }
-      case "read": case "write": {
+      case "read": case "write": case "since": {
         let a: { ok: boolean; value?: unknown; why?: string };
-        try { a = { ok: true, value: m.t === "read" ? this.read(b, String(m.what)) : this.write(b, String(m.what), m.value) }; }
+        try { a = { ok: true, value: m.t === "read" ? this.read(b, String(m.what)) : m.t === "since" ? this.past(b, m.from, m.kinds) : this.write(b, String(m.what), m.value) }; }
         catch (e) { a = { ok: false, why: (e as Error).message }; }
         life.reply?.postMessage(a);
         if (life.flag) { Atomics.store(life.flag, 0, 1); Atomics.notify(life.flag, 0); }
@@ -815,6 +1034,41 @@ export class Kernel {
     return null;
   }
 
+  /** sol.since (step A3): the log's past after `from` (a seq; 0 is the start), of the kinds asked (not given: every kind
+   *  its record names), at most SINCE_BATCH events, looking through at most SINCE_SCAN, and `next` to ask from for the
+   *  rest (null: it reached the end). A kind its record does not name in needs.history, or a record that names none, is
+   *  refused and logged, as the door does; checked here, never in the room. Its switch off: there is no past to read */
+  private past(b: Block, from: unknown, kinds: unknown): Past {
+    if (!b.life.live) throw new Error(`${b.id} is unloaded: since is refused`);
+    if (!historyOn()) throw new Error("sol.since is not on this engine");
+    if (!Number.isInteger(from) || (from as number) < 0) throw new Error("sol.since(from, kinds): from is a seq on the log, a whole number from 0");
+    if (kinds !== undefined && (!Array.isArray(kinds) || !kinds.every((k) => typeof k === "string"))) throw new Error("sol.since(from, kinds): kinds is a list of kinds");
+    const h = b.columns?.needs?.history ?? null;
+    const asked = (kinds as string[] | undefined) ?? h?.kinds ?? [];
+    const not = h ? asked.filter((k) => !h.kinds.includes(k)) : asked;
+    if (!h || not.length) {
+      const said = not.slice(0, 5).map((k) => (k.length > 64 ? `${k.slice(0, 64)}…` : k)).join(", ");   // a made-up kind is the block's words: a short line of them
+      const what = not.length > 5 ? `${said} and ${not.length - 5} more` : said || "the past", why = h ? `not among the kinds its record names in needs.history (${h.kinds.join(", ")})` : "its record names no kinds in needs.history";
+      this.refusedOne(b, { op: "since", what, why }, { person: "engine", agent: b.id });
+      throw new GateError(`refused: ${b.id} may not read the past ${what}: ${why}`);
+    }
+    this.passed(b.id);
+    const want = new Set(asked.length ? asked : h.kinds), end = this.last, events: Record<string, unknown>[] = [];
+    let at = from as number, looked = 0;
+    while (at < end && events.length < SINCE_BATCH && looked < SINCE_SCAN) {
+      const page = this.log.since(LOG_PROJECT, at);
+      if (!page.length) { at = end; break; }
+      for (const e of page) {
+        if (e.seq > end) { at = end; break; }   // written since this call began: the next call has it
+        at = e.seq;
+        looked++;
+        if (want.has(e.kind)) events.push(pastOf(e, h.text));
+        if (events.length >= SINCE_BATCH || looked >= SINCE_SCAN) break;
+      }
+    }
+    return { events, next: at < end ? at : null };
+  }
+
   /** a loaded block's worker threw or ended on its own: the block is broken, with why; nothing else is touched */
   private crash(b: Block, why: string) {
     const life = b.life;
@@ -841,6 +1095,13 @@ export class Kernel {
     life.stop.abort();   // a request a big room asked for, still on its way, ends with it
     const room = life.room;
     if (room) await room.close("its block ended");
+    const seat = life.seat;
+    life.seat = null;
+    if (seat) {   // the seat's program asked to stop, then killed; its proxy and its scratch folder go with it
+      await seat.acp.close().catch(() => {});   // each on its own: a crash's end is not awaited (crash), and must not throw
+      await seat.proxy.close().catch(() => {});
+      dropScratch(seat.own);
+    }
     const w = life.worker;
     life.worker = null;
     life.reply?.close();
@@ -873,7 +1134,9 @@ export class Kernel {
     }
     await this.end(life);
     b.state = { ...b.state, state: was === "broken" ? "broken" : "none", tools: [], ...(b.state.awake !== undefined ? { awake: false } : {}) };
-    if (was !== "broken") this.append("plugin.unload", b.id, { why });
+    // a broken one going (gone from the home, or loaded again) said nothing, since nothing of it ran; with the narrow
+    // look on it is said too, as GET /things changes with it (#691 step 3)
+    if (was !== "broken" || this.edits()) this.append("plugin.unload", b.id, { why });
   }
 
   /** a seat's step through a block's tool: logged, run in its worker, its answer handed back only if the block is still the same live one */
@@ -966,7 +1229,7 @@ export class Kernel {
       writePress(this.app, this.home, pressId(b), a, print, this.now());
       for (const k of a.keys) noteUser(this.app, k, id);
       this.refusals.delete(id);
-      this.append("plugin.approve", id, { print, asks: Object.fromEntries([...OUTWARD, "hears"].map((k) => [k, (a as Record<string, unknown>)[k]]).filter(([, v]) => (v as string[]).length)), ...(a.screen ? { screen: true } : {}) }, { person: "person" });
+      this.append("plugin.approve", id, { print, asks: { ...Object.fromEntries([...OUTWARD, "hears", "history", "seat", "seatKey"].map((k) => [k, (a as Record<string, unknown>)[k]]).filter(([, v]) => Array.isArray(v) && v.length)), ...(a.historyText ? { historyText: true } : {}), ...(a.seatChildren ? { seatChildren: true } : {}) }, ...(a.screen ? { screen: true } : {}) }, { person: "person" });
       await this.syncNow();
       const now = this.blocks.get(id);
       out = { ok: true, ...(now ? { state: now.state } : {}), waiting: now?.waiting ?? null };
@@ -1136,7 +1399,7 @@ function startedBy(): { release?: string; commit?: string; mine?: number; head?:
 export async function syncKernel(home: string, on: boolean): Promise<void> {
   if (on && !kernel) {
     // the places on this machine are decided here, with the frame on, and nowhere else: off, nothing names them
-    const k = new Kernel(home, { stable: STABLE_DIR, logDir: logDir(home), appDir: appDir() });
+    const k = new Kernel(home, { stable: STABLE_DIR, logDir: logDir(home), appDir: appDir(), edits: logKinds });
     kernel = k;
     for (const f of starts) { try { f(k); } catch { /* its own trouble */ } }   // before the first load: its ear hears it
     // the log's first lines of a start say which engine writes what follows, and its timezone (started()). Nothing
@@ -1146,6 +1409,14 @@ export async function syncKernel(home: string, on: boolean): Promise<void> {
     k.watch();
   }
   else if (!on && kernel) { const k = kernel; kernel = null; await k.stop(); }
+}
+/** the kernel follows the frame's switch from the engine's start (index.ts): synced now, and again each time the reading
+ *  turns (settings.ts onFrame): a setting, or the version once Ship has read the channel (versions.ts) */
+export function kernelFollows(home: string): void {
+  const sync = (on: boolean) => void syncKernel(home, on).catch((e) => console.error("the kernel:", e));
+  onFrame(sync);
+  onPatch(() => sync(frameOn()));   // every settings.set, as before: a kernel that did not start is tried again
+  sync(frameOn());
 }
 
 /** the blocks' tools as the seats' MCP servers want them: a name, a description and a zod shape */

@@ -1,5 +1,5 @@
 // The frame (#630, freeform #629): the registry of places a thing may render into, in the spirit of a slot registry.
-// The face declares a place (pane, card, sheet, notch) and owns everything around a thing there: the edges, the
+// The face declares a place (pane, card, sheet) and owns everything around a thing there: the edges, the
 // padding, the title row, close, pin, the state (loading, broken, stale), the arrival and the exit (Frame.tsx). The thing
 // owns only the inside. Declaring a place is claiming it: a thing asking for a place nobody declared is refused at load,
 // and so is a second owner. A declaration unwinds when its owner goes. A thing that fails to render shows broken in its
@@ -168,6 +168,31 @@ export function stateOf(o: { fault: Fault | null; loaded: boolean; made: number;
 export const engineFault = (e: EngineHalf | undefined): Fault | null => (e?.state === "broken" ? { why: e.why ?? "its engine half is broken", line: null } : null);
 /** undo has somewhere to go: a version before the current one (pure; POST /things/:id/undo, #633) */
 export const canUndo = (r: Pick<ThingRecord, "versions" | "current">): boolean => r.versions.some((v) => v.v < r.current);
+/** the kinds of the log that can change GET /things (#691 step 3): a block loaded, broken, unloaded, written, its page
+ *  or ask edited in place, a tool it registered after its load (plugin.*), an undo, a key. A seat's steps, a tool's call, the engine's own lines never do */
+export const THINGS_KINDS = "plugin,undo,key";
+/** one answer of GET /log (engine/src/log.ts logAnswer): `kinds` when the engine narrowed it (its switch log.kinds) */
+export type LogLook = { off?: boolean; last?: number; events?: unknown[]; next?: number; kinds?: string[] };
+/** what the frame does with one answer of the log, from the seq it last saw (pure; -1 before the first answer, -2 off):
+ *  read /things again or not, the seq to ask from next, and whether to ask again at once (the page was cut there).
+ *  A narrowed answer reads again only when it holds an event; one that was not (an engine with the switch off, or an
+ *  older one) reads again whenever the log grew, as it always did. The first answer never reads: the frame read on mount */
+export function logStep(last: number, j: LogLook | null): { read: boolean; last: number; more: boolean } {
+  if (!j || j.off) return { read: false, last: -2, more: false };
+  const top = j.last ?? 0;
+  if (!j.kinds) return { read: last >= 0 && top > last, last: top, more: false };
+  const more = typeof j.next === "number" && j.next > Math.max(0, last);
+  return { read: last >= 0 && (j.events?.length ?? 0) > 0, last: more ? (j.next as number) : top, more };
+}
+/** with the narrow look, the slow read: once SLOW_MS have gone since the last read of /things, and only when the log grew
+ *  since it (pure). What changes the things without a line of its own (the after-release card) comes with other lines,
+ *  an engine's start among them; a log that did not move reads nothing, so a quiet window costs no reads */
+export const slowDue = (o: { now: number; readAt: number; seqAtRead: number; last: number }, ms = 30000): boolean =>
+  o.now - o.readAt >= ms && o.last > o.seqAtRead;
+/** the frame's ask of the log from a seq: the first one (-1) asks the newest seq alone, which an engine without the
+ *  narrow look reads as from the start, as before */
+export const logAsk = (last: number): string => `since=${last < 0 ? -1 : last}&kinds=${THINGS_KINDS}`;
+
 /** the write to show on the frame, while it is fresh (pure; the engine logs every write that passed the gate, #633) */
 export const wroteNow = (e: EngineHalf | undefined, now: number, ms = 4000): string | null =>
   e?.wrote && now - e.wrote.at >= 0 && now - e.wrote.at < ms ? e.wrote.what : null;

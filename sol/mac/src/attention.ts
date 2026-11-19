@@ -1,5 +1,5 @@
 // One thing at a time asks for the eye (#891, the night brief's human check 3: "more than one thing moves or glows for
-// attention at once" fails a person). Behind the run's switches (stage.whole, sol.home.whole), what moves at rest is
+// attention at once" fails a person). Behind the run's switch (stage.whole), what moves at rest is
 // chosen by one written order, and everything below the first one present rests:
 //   asks      a block or a card waits on you (its rim, its "when" in yellow): the only thing that needs the person
 //   running   work going on by itself (a list's running step turning, the ribbon's thread)

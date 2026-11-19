@@ -1,10 +1,15 @@
 // Work mode's state: every Claude Code session on the machine (the side), the one open (its items), and the live
 // runs. It rides on useEngine's socket (work.* messages, PROTOCOL.md round 11).
+import { takePieces } from "../cross/store";   // #1031
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FileOut } from "../useEngine";
 import type { Aside } from "./Cards";
-import { applyDeltas, buffer, settle, upsert, type Pending } from "./threads";
+import type { PartId, PartReading } from "./contextReading";   // the context card's part, hovered (#1519)
+import { follow } from "../models";
+import { applyDeltas, buffer, landed, settle, withSending, type Pending } from "./threads";
 import { homeSession } from "../migrate";
+import { pressFirst } from "./press";
+import { tooLarge } from "../socket";
 
 export type Item = { id: string; kind: string; [k: string]: any };
 export type WorkSession = {
@@ -13,6 +18,9 @@ export type WorkSession = {
   updatedAt: number; createdAt?: number; size?: number; tag?: string;
   gone?: boolean; failed?: boolean; pinned?: boolean; done?: boolean; unread?: boolean; archived?: boolean; group?: string; parent?: string; seen?: number;
   card?: string; mode?: "life" | "work" | "cowork";
+  under?: string;                      // the orchestration session that runs it: the side folds it there (2026-11-14)
+  grouped?: "start" | "card" | "send" | "read";   // put there by the engine on what was done (#1336), till taken back
+  kind?: "orchestration";              // an orchestration session: runs other sessions; absent = a normal session
   roomId?: string;                     // a cowork session's group: the id of the room it was started under (#314)
   held?: Holder;                       // open in another live process: read-only here (PROTOCOL.md round 11, the lock)
   settled?: Record<string, string>; moved?: string;   // thread map ends already reconciled; where its kept end went on
@@ -21,7 +29,7 @@ export type WorkSession = {
   running?: boolean;                   // a GPT talk with a turn going (a Claude session's runs say so)
 };
 export type Holder = { pid: number; who: "desktop" | "sol" | "sol-other" | "terminal" | "other"; status: string; waitingFor?: string; name?: string; since: number };
-export type Project = { path: string; name: string; count: number; added?: boolean; group?: string };   // group: the group the folder sits in
+export type Project = { path: string; name: string; count: number; added?: boolean; group?: string; latest?: number };   // group: the group the folder sits in; latest: its last activity, over every session in it (#1179)
 // folders: whole folders in it; in: a topic group inside that folder (its sessions only); about: what it is for
 export type Group = { id: string; name: string; at: number; folders?: string[]; in?: string; about?: string };
 // the engine's prefs the side acts on: show stale folders, the folder a fresh session starts in (work.prefs)
@@ -57,7 +65,11 @@ const seen: { sessions: WorkSession[]; projects: Project[]; groups: Group[]; ord
 // solo: a window of its own showing one session (a pop-out); it keeps nothing in this machine's Work state.
 // store: where Cowork keeps its open session, so the two modes do not open each other's; Home keeps none here, its
 // open talk is `sol.home.open` (WorkApp.tsx, migrate.ts), and its session starts from it
-export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: string } } | null; send: (o: object) => boolean; subscribe: (f: (m: any) => void) => () => void }, solo?: string, store?: string) {
+const SENDING_MS = 30_000;       // a message the engine has not taken by then is taken back when the socket is down (#917)
+const SENDING_MAX_MS = 120_000;  // and, the socket up, by then
+const dropLine = (t: Record<string, Thread>, sid: string, mid: string) => (t[sid] ? { ...t, [sid]: { ...t[sid], items: t[sid].items.filter((x) => x.id !== mid) } } : t);
+
+export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: string } } | null; models?: { seats: { seat: string; models: string[]; default?: string }[] }; send: (o: object) => boolean; subscribe: (f: (m: any) => void) => () => void }, solo?: string, store?: string) {
   const [sessions, setSessions] = useState<WorkSession[]>(seen.sessions);
   const [projects, setProjects] = useState<Project[]>(seen.projects);
   const [groups, setGroups] = useState<Group[]>(seen.groups);
@@ -65,8 +77,24 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
   const [roomNames, setRoomNames] = useState<Record<string, string>>(seen.roomNames);   // my rooms' names by id (#314)
   const [runs, setRuns] = useState<Record<string, RunInfo>>(seen.runs);
   const [threads, setThreads] = useState<Record<string, Thread>>(seen.threads);
+  const threadsNow = useRef(threads);
+  threadsNow.current = threads;
+  const upNow = useRef(e.up);
+  upNow.current = e.up;
+  // a line shown on the press that did not go: off the thread, and its words back in the box when that session is the
+  // open one (a message from the pane beside it says so and is not put in another session's box)
+  // (#1448: its files come back with them; they are held by the line's id until it lands or is taken back)
+  const takeBack = (sid: string, mid: string) => {
+    const files = sentFiles.current.get(mid)?.files;
+    sentFiles.current.delete(mid);
+    const it = threadsNow.current[sid]?.items.find((x) => x.id === mid && x.sending);
+    if (!it) return;
+    setThreads((t) => dropLine(t, sid, mid));
+    if (cur.current === sid) setUnsent((u) => ({ text: String(it.text ?? ""), ...(files?.length ? { files } : {}), n: (u?.n ?? 0) + 1 }));
+  };
   const [current, setCurrent] = useState<string | null>(() => solo ?? (store ? load<string | null>(store, null) : homeSession()));
   const [terms, setTerms] = useState<TermInfo[]>(seen.terms);
+  const [privates, setPrivates] = useState<string[]>([]);   // the sessions turned private (#1242): nothing from them is counted
   const dropped = useRef(new Set<string>()); // asides closed or replaced: their late words are ignored
   const asks = useRef(new Map<string, (r: any) => void>()); // questions asked of the engine (files, diff, pr…), by request id
   const [freshCwd, setFreshCwd] = useState<string>(() => load("sol.work.cwd", ""));
@@ -82,6 +110,16 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
     if (e.up) e.send({ type: "settings.get" });
     return off;
   }, [e.subscribe, e.send, e.up]);
+  // Claude's list, as the engine hook keeps it: a saved pick of an older version moves to its family's newest, and a
+  // pick with no family in the list to Claude's default (#863)
+  const claudeSeat = e.models?.seats.find((x) => x.seat === "claude");
+  const claudeList = claudeSeat?.models, claudeDef = claudeSeat?.default;
+  useEffect(() => {
+    if (!claudeList?.length) return;
+    const f = follow(model, claudeList);
+    const n = claudeList.includes(f) || /\[.*\]$/.test(f) ? f : claudeDef && claudeList.includes(claudeDef) ? claudeDef : claudeList[0];
+    if (n !== model) { setModel(n); keep("sol.work.model", n); }
+  }, [claudeList, claudeDef, model]);
   // the engine hook keeps the settings it was sent; they may have come before this hook listened (#647)
   const defMode = e.settings?.defaults?.mode as Mode | undefined;
   useEffect(() => { if (defMode && !modePicked.current) setMode(defMode); }, [defMode]);
@@ -89,10 +127,16 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
   const [copy, setCopyS] = useState(() => load("sol.work.copy", false));   // a new session starts in a side copy
   const setCopy = useCallback((v: boolean) => { setCopyS(v); keep("sol.work.copy", v); }, []);
   const [error, setError] = useState("");
+  const errorTimer = useRef(0);
+  // a line under the box for a while (the engine's refusals, #1448's too-large)
+  const warn = (t: string, ms = 4000) => { setError(t); window.clearTimeout(errorTimer.current); errorTimer.current = window.setTimeout(() => setError(""), ms); };
   // a new session's first words, until its run exists: a side copy git refused gives them back to the box
-  const firstSay = useRef<{ id: string; text: string } | null>(null);
+  const firstSay = useRef<{ id: string; text: string; files?: FileOut[] } | null>(null);
+  const sentFiles = useRef(new Map<string, { sid: string; files: FileOut[] }>());   // a line's files while it is sending (#1448)
+  // the session the last say went to (a new one's id is made in say): the box tells Build's yours after it (#1089)
+  const saidIn = useRef<string | null>(null);
   const forkSay = useRef<{ from: string; rid: string; say: object } | null>(null);
-  const [unsent, setUnsent] = useState<{ text: string; n: number } | null>(null);
+  const [unsent, setUnsent] = useState<{ text: string; files?: FileOut[]; n: number } | null>(null);
   const [asides, setAsides] = useState<Record<string, Aside>>({});   // per session: the latest side answer
   const [loaded, setLoaded] = useState(seen.loaded);
   const [prefs, setPrefsS] = useState<SidePrefs>(() => load("sol.work.prefs", {}));
@@ -109,6 +153,27 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
     pending.current = new Map();
     setThreads((t) => applyDeltas(t, p));
   }, []);
+  // a new session that never started: back to a new session, its words and files back in the box
+  const giveBackFirst = () => {
+    const f = firstSay.current;
+    if (!f) return;
+    firstSay.current = null;
+    flush();
+    setThreads((t) => { const n = { ...t }; delete n[f.id]; return n; });
+    if (cur.current === f.id) setCurrent("new:" + f.id);
+    setUnsent((u) => ({ text: f.text, ...(f.files?.length ? { files: f.files } : {}), n: (u?.n ?? 0) + 1 }));
+  };
+  // the engine closed the socket on a message over its cap (1009, socket.ts): whatever was still sending with files
+  // was that message; it comes back to the box and a line says so, rather than a quiet reconnect (#1448)
+  useEffect(() => {
+    const f = () => {
+      for (const [mid, { sid }] of [...sentFiles.current]) takeBack(sid, mid);
+      if (firstSay.current?.files?.length) giveBackFirst();
+      warn("That message was too large for the engine. Nothing was sent; it is back in the box.", 8000);
+    };
+    window.addEventListener("sol:too-large", f);
+    return () => window.removeEventListener("sol:too-large", f);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const beside = useRef(new Set<string>());   // sessions shown beside the open one (peek): their items stay
   const runsNow = useRef(runs);
   runsNow.current = runs;
@@ -134,13 +199,13 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
       setRuns(Object.fromEntries((m.runs ?? []).map((r: RunInfo) => [r.sessionId, r])));
     } else if (m.type === "work.thread") {
       flush();
-      setThreads((t) => ({ ...t, [m.sessionId]: { sessionId: m.sessionId, items: m.items ?? [], cwd: m.cwd, branch: m.branch, title: m.title } }));
+      setThreads((t) => ({ ...t, [m.sessionId]: { sessionId: m.sessionId, items: withSending(m.items ?? [], t[m.sessionId]?.items), cwd: m.cwd, branch: m.branch, title: m.title } }));
       if (m.run) setRuns((r) => ({ ...r, [m.sessionId]: m.run }));
     } else if (m.type === "work.item") {
       flush();   // the words before it land first: an item's final text replaces what streamed
       setThreads((t) => {
         const th = t[m.sessionId] ?? { sessionId: m.sessionId, items: [] };
-        return { ...t, [m.sessionId]: { ...th, items: upsert(th.items, m.item) } };
+        return { ...t, [m.sessionId]: { ...th, items: landed(th.items, m.item) } };
       });
     } else if (m.type === "work.delta") {
       buffer(pending.current, m.sessionId, m.id, String(m.text ?? ""));
@@ -171,6 +236,8 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
       });
     } else if (m.type === "work.terms") {
       setTerms(m.terms ?? []);
+    } else if (m.type === "work.privates" && !m.rid) {   // a session turned private or back, from any face (#1242)
+      setPrivates(Array.isArray(m.ids) ? m.ids : []);
     } else if (m.type === "work.prefs" && !m.rid) {   // another face changed them
       keepPrefs(m.prefs);
     } else if (m.rid && asks.current.has(m.rid)) {
@@ -178,16 +245,10 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
       asks.current.delete(m.rid); f(m);
     } else if (m.type === "work.error") {
       setError(m.message); window.setTimeout(() => setError(""), 4000);
+      // a message shown on the press that the engine did not take: that line off the thread (#917)
+      if (typeof m.id === "string") takeBack(m.sessionId, m.id);
       if (forkSay.current && forkSay.current.from === m.sessionId) forkSay.current = null;   // a "fork here" that failed keeps nothing waiting (its words stay in the box)
-      // a new session that never started: back to a new session, its words back in the box
-      const f = firstSay.current;
-      if (f && f.id === m.sessionId) {
-        firstSay.current = null;
-        flush();
-        setThreads((t) => { const n = { ...t }; delete n[f.id]; return n; });
-        if (cur.current === f.id) setCurrent("new:" + f.id);
-        setUnsent((u) => ({ text: f.text, n: (u?.n ?? 0) + 1 }));
-      }
+      if (firstSay.current?.id === m.sessionId) giveBackFirst();
     }
   }), [e.subscribe]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => flush(), [flush]);
@@ -202,6 +263,7 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
     if (!e.up) return;
     send({ type: "work.list" }); send({ type: "work.term.list" });
     void ask<{ prefs?: SidePrefs }>("work.prefs", {}).then((r) => keepPrefs(r.prefs));
+    void ask<{ ids?: string[] }>("work.privates", {}).then((r) => { if (Array.isArray(r.ids)) setPrivates(r.ids); });
     if (cur.current && !cur.current.startsWith("new:")) send({ type: "work.open", sessionId: cur.current });
   }, [e.up, send]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -228,34 +290,63 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
     send({ type: "work.view", sessionId: null });
   }, [send, freshCwd, prefs.newIn]);
 
+  // the words show the moment they are sent (#917, behind `work.press`, press.ts): the line is the face's until the engine's, with the same id, lands
+  // on it (threads.ts landed); a send the socket refused takes it back and leaves the words in the box
+  const sayNow = useCallback((id: string, text: string, msg: object) => {
+    if (!pressFirst()) { send(msg); return true; }   // the switch off (#1272): the engine's echo puts the line up
+    const mid = uuid();
+    setThreads((t) => { const th = t[id] ?? { sessionId: id, items: [] }; return { ...t, [id]: { ...th, items: [...th.items, { id: mid, kind: "me", text, at: Date.now(), sending: true }] } }; });
+    const files = (msg as { files?: FileOut[] }).files;
+    if (files?.length) sentFiles.current.set(mid, { sid: id, files });
+    if (!send({ ...msg, id: mid })) { sentFiles.current.delete(mid); setThreads((t) => dropLine(t, id, mid)); return false; }
+    // an engine that never answers (a socket half open): the line does not stay looking sent. A slow one, still
+    // connected (a large transcript reopened), is given longer before its words go back to the box
+    const since = Date.now();
+    const check = () => {
+      if (!threadsNow.current[id]?.items.some((x) => x.id === mid && x.sending)) { sentFiles.current.delete(mid); return; }
+      if (upNow.current && Date.now() - since < SENDING_MAX_MS) { window.setTimeout(check, SENDING_MS); return; }
+      takeBack(id, mid);
+      setError("the engine did not take that message"); window.setTimeout(() => setError(""), 4000);
+    };
+    window.setTimeout(check, SENDING_MS);
+    return true;
+  }, [send]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // `stage`: the stage's bar (#698): its chips and what the person points at, sent beside the words (engine runs.ts)
   const say = useCallback((text: string, files: FileOut[] = [], stage?: object) => {
     if (!text.trim() && !files.length) return false;
+    const big = tooLarge(files);   // #1448: not sent; false keeps the words and files in the box
+    if (big) { warn(big, 8000); return false; }
     let id = cur.current;
     const isFresh = !id || id.startsWith("new:");
     if (isFresh) {
       id = id?.slice(4) || uuid();
       setThreads((t) => ({ ...t, [id!]: { sessionId: id!, items: [], cwd: freshCwd, fresh: true } }));
       setCurrent(id);
-      firstSay.current = { id: id!, text };
+      firstSay.current = { id: id!, text, ...(files.length ? { files } : {}) };
     }
+    saidIn.current = id;
     // a session keeps its own picks: a message carries the run's model, effort, mode and fast, and the window's only for
     // a fresh one or a run the engine closed (#111: a stale window once sent its own "auto" with every message)
     const r = isFresh ? undefined : runsNow.current[id!];
     const parent = isFresh ? parentNext.current : undefined;
     if (isFresh) parentNext.current = undefined;
-    send({ type: "work.say", sessionId: id, fresh: isFresh, cwd: isFresh ? freshCwd || undefined : undefined, ...(isFresh && copy ? { worktree: true } : {}), ...(parent ? { parent } : {}), ...(isFresh ? { opening: true } : {}), text, files, ...(stage ? { stage } : {}),
-      model: r?.model ?? model, effort: r?.effort ?? effort, mode: r?.mode ?? mode, fast: r?.fast ?? fast });
+    const msg = { type: "work.say", sessionId: id, fresh: isFresh, cwd: isFresh ? freshCwd || undefined : undefined, ...(isFresh && copy ? { worktree: true } : {}), ...(parent ? { parent } : {}), ...(isFresh ? { opening: true } : {}), text, files, ...(stage ? { stage } : {}),
+      ...((home) => (home.length ? { home } : {}))(takePieces()),   // #1031: the pieces a Home folder handed this talk
+      model: r?.model ?? model, effort: r?.effort ?? effort, mode: r?.mode ?? mode, fast: r?.fast ?? fast };
+    if (!isFresh) return sayNow(id!, text, msg);
+    send(msg);
     return true;
-  }, [send, freshCwd, model, effort, mode, fast, copy]);
+  }, [send, sayNow, freshCwd, model, effort, mode, fast, copy]);
 
   // a message to a session that is not the open one (the one beside it)
   const sayTo = useCallback((id: string, text: string, files: FileOut[] = []) => {
     if (!text.trim() && !files.length) return false;
+    const big = tooLarge(files);
+    if (big) { warn(big, 8000); return false; }
     const r = runs[id];
-    send({ type: "work.say", sessionId: id, text, files, model: r?.model ?? model, effort: r?.effort ?? effort, mode: r?.mode ?? mode, fast: r?.fast ?? fast });
-    return true;
-  }, [send, runs, model, effort, mode, fast]);
+    return sayNow(id, text, { type: "work.say", sessionId: id, text, files, model: r?.model ?? model, effort: r?.effort ?? effort, mode: r?.mode ?? mode, fast: r?.fast ?? fast });
+  }, [sayNow, runs, model, effort, mode, fast]);
 
   const live = current && !current.startsWith("new:") ? current : null;
   const adjust = useCallback((p: Partial<{ model: string; effort: string; mode: Mode; fast: boolean }>) => {
@@ -277,9 +368,28 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
 
   const act = useMemo(() => ({
     stop: (id = live) => id && send({ type: "work.stop", sessionId: id }),
-    perm: (id: string, a: object, sid = live) => sid && send({ type: "work.perm", sessionId: sid, id, ...a }),
+    // the answer shows on the press (#917, behind `work.press`), as the engine words it (runs.ts ask); its own line replaces it when it lands
+    perm: (id: string, answer: object, sid = live) => {
+      if (!sid || !send({ type: "work.perm", sessionId: sid, id, ...answer })) return false;
+      if (!pressFirst()) return true;   // the switch off (#1272): the card changes when the engine's own lands
+      const a = answer as { allow?: boolean; always?: boolean; note?: string };
+      setThreads((t) => {
+        const th = t[sid], it = th?.items.find((x) => x.id === id);
+        if (!it || it.state !== "ask") return t;
+        const state = it.tool === "AskUserQuestion" && a.allow ? "answered" : a.allow ? (a.always ? "always" : "allow") : "deny";
+        return { ...t, [sid]: { ...th, items: th.items.map((x) => (x.id === id ? { ...x, state, ...(a.note ? { note: a.note } : {}), sending: true } : x)) } };
+      });
+      return true;
+    },
     mark: (ids: string | string[], patch: object) => send({ type: "work.mark", ...(Array.isArray(ids) ? { sessionIds: ids } : { sessionId: ids }), patch }),
     rename: (id: string, title: string) => send({ type: "work.rename", sessionId: id, title }),
+    // the orchestration session that runs this one (2026-11-14): a drop on its row sets it, "release" clears it (null)
+    // answered by rid (the fix round of 2026-11-14): { ok, under }, or { error } when the engine refuses it (a session under
+    // itself, or under one that is not an orchestration session), so the face can say so
+    // `undo`: the move taken back (⌘Z): the engine moves the row and its block, and sends no joined summary again (G7)
+    under: (id: string, under: string | null, undo?: boolean) => ask<{ ok?: boolean; under?: string | null; error?: string }>("work.under", { sessionId: id, under, ...(undo ? { undo: true } : {}) }),
+    // two kinds of session (2026-11-14): promote to an orchestration session, or demote back (engine one.ts promote, demote)
+    kind: (id: string, kind: "orchestration" | null) => ask<{ promoted?: boolean; demoted?: boolean; loose?: string[]; error?: string }>("work.kind", { sessionId: id, kind }),
     group: (op: "add" | "rename" | "delete" | "move", a: { id?: string | null; name?: string; sessions?: string[]; folders?: string[]; folder?: string; in?: string; about?: string }) => send({ type: "work.group", op, ...a }),
     // the order is shown at once; the engine's list comes back with the next work.sessions
     setOrder: (keys: string[]) => { setOrderS(keys); send({ type: "work.order", keys }); },
@@ -298,7 +408,7 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
       send({ type: "work.forkhere", sessionId: id, rid });
     },
     reconcile: (id: string, keep: string, other: string, how: "fold" | "fork") => send({ type: "work.reconcile", sessionId: id, keep, other, how }),
-    // a proposal card's session, started now (nested under the one that proposed it)
+    // a proposal card's session, started now (marked as started from the one that proposed it)
     start: (a: { from: string; title?: string; prompt?: string; cwd?: string; fork?: boolean; worktree?: boolean; card?: string }) =>
       ask<{ sessionId?: string; error?: string }>("work.start", a, 60_000),
     view: (id: string | null) => { send({ type: "work.view", sessionId: id }); },   // void: an effect cleanup calls it
@@ -310,6 +420,10 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
       return true;
     },
     // the paths under a folder that fit what follows @ (q "" checks that the folder is there)
+    // one part of the context card, hovered (#683, #1519): what fills it, from the engine's count; null when it cannot say
+    // (work.liveContext off, no count yet), and the card keeps its own reading
+    contextPart: (part: PartId, id = live): Promise<PartReading | null> =>
+      id ? ask<{ reading?: PartReading }>("work.context.part", { sessionId: id, part }, 25_000).then((r) => r.reading ?? null) : Promise.resolve(null),
     files: (cwd: string, q: string): Promise<Files> => ask<any>("work.files", { cwd, q }, 6000).then((r) => ({ files: r.files ?? [], missing: !!r.missing, cwd: r.cwd })),
     peek: (id: string) => { beside.current.add(id); retrim(); send({ type: "work.peek", sessionId: id }); },
     unpeek: (id: string) => { beside.current.delete(id); retrim(); },   // its items go now
@@ -350,15 +464,17 @@ export function useWork(e: { up: boolean; settings?: { defaults?: { mode?: strin
       return ask<{ ok?: true; line?: string; error?: string }>("team.checkpoint.press", { sessionId: id, id: card, key: k.key }, 30_000);
     },
     dropAside: (id = live) => id && setAsides((a) => { if (a[id]) dropped.current.add(a[id].id); const n = { ...a }; delete n[id]; return n; }),
+    // turn private (#1242): the engine keeps the list and tells every face; an answer that did not go says why
+    setPrivate: (id: string, on: boolean) => ask<{ private?: boolean; error?: string }>("work.private", { sessionId: id, on }),
     setPref: (patch: SidePrefs) => { setPrefsS((p) => ({ ...p, ...patch })); void ask<{ prefs?: SidePrefs }>("work.prefs", { patch }).then((r) => keepPrefs(r.prefs)); },
   }), [send, live, ask, model, effort, mode, fast, keepPrefs, retrim]);
 
   const thread = live ? threads[live] : undefined;
   const run = live ? runs[live] : undefined;
   return {
-    loaded, sessions, projects, groups, order, roomNames, prefs, runs, threads, current, live, thread, run, freshCwd, setFreshCwd, terms, ask, sayTo, solo, copy, setCopy,
+    loaded, sessions, projects, groups, order, roomNames, prefs, runs, threads, current, live, thread, run, freshCwd, setFreshCwd, terms, privates, ask, sayTo, solo, copy, setCopy,
     model: run?.model ?? model, effort: run?.effort ?? effort, mode: run?.mode ?? mode, fast: run?.fast ?? fast,
-    send2adjust, error, unsent, sideAnswer: live ? asides[live] : undefined, open: openId, fresh, say, adjust, ...act,
+    send2adjust, error, warn, unsent, sideAnswer: live ? asides[live] : undefined, open: openId, fresh, say, saidIn: () => saidIn.current, adjust, ...act,
   };
 }
 export type Work = ReturnType<typeof useWork>;

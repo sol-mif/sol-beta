@@ -12,6 +12,7 @@
 // whether it is frozen, the maker's freeze, and who its maker is. A write the cloud answered with `warn` or 423 is told
 // to `onWrite`, so the faces hear how full the group is at once.
 import type { RoomRecord, FileWrite } from "../record.js";
+import { quietFetch } from "../../quiet.js";
 
 export type CloudRecordDeps = {
   /** where a cloud room meets, by its code: its hub's http address (relay.ts hubHttp), "" when no room of mine has it */
@@ -53,6 +54,7 @@ function caller(d: CloudRecordDeps) {
   const f = d.fetch ?? globalThis.fetch;
   return async (repo: string, route: string, method: string, qs: string, body?: unknown) => {
     const w = await locate(d, repo);
+    if (method !== "GET") quietFetch(w.base);   // a quiet Sol writes nothing to a cloud room (#1293); reads go
     let r: Response;
     try {
       r = await f(`${w.base}/${route}${qs}`, { method, headers: { ...w.auth, ...(body ? { "content-type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(WAIT) });

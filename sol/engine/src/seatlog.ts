@@ -12,13 +12,16 @@
 //          step (tool.call)
 //   seat.sent   a thing Sol itself handed to the seat: { session, what: "attachment" | "desk" | "mention" | "stage", name?, bytes? }
 //          stage: the paragraph under a Work message that says what the person pointed at on the stage (work/blocks.ts askLine)
-// Nothing here runs with the frame off (kernelNow() is null then): no log, no line, no reading of the message. A line
+// Nothing here runs with the frame off (kernelNow() is null then): no log, no line, no reading of the message, and the
+// callers ask logging() before they measure what they would hand in (#1270). A line
 // that cannot be written is said on the engine's output; it never ends a seat's turn. The callers are index.ts (Home's
-// two seats) and work/runs.ts (Work). What a seat loads on its own (CLAUDE.md, skills, its memory) is not seen here:
+// two seats), work/runs.ts (Work) and agent/run.ts (a folder agent's ticket turn, seat codex, session agent:<folder>). What a seat loads on its own (CLAUDE.md, skills, its memory) is not seen here:
 // the design's known gap.
 import { kernelNow, type SeatKind, type SeatName, type Tokens } from "./kernel.js";
 export { SEAT_KINDS as KINDS } from "./contract/kinds.js";   // the seats' four kinds on the log
 
+/** whether a seat's steps go on the log now (the frame on, its kernel there): ask before measuring what to hand in */
+export const logging = (): boolean => kernelNow() !== null;
 function line(kind: SeatKind, seat: SeatName, value: Record<string, unknown>): void {
   const k = kernelNow();
   if (!k) return;

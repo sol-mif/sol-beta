@@ -33,6 +33,22 @@
 .sp-tag em { font-style: normal; color: #fcd50a; }
 .sp-m:hover .sp-tag { opacity: 1; filter: blur(0); transform: translateY(-50%) scale(1); transition-delay: .22s; }
 .sp-foot { margin-top: auto; display: flex; flex-direction: column; }
+/* the views' tray: the pearl lives in it, so it travels in the tray's own box (plain look: no glass, the old sizes) */
+.sp-tray { position: relative; display: flex; flex-direction: column; align-items: center; }
+/* "hold it" on the spine (Spine.tsx holdLook): the views held in one tray of the kit's glass, find and settings in a
+   second at the foot; rows 36, marks 30 in the kit's 2 px weight and nearer ink, so the column reads as two held things */
+.spine.hold { padding: var(--s2) 0 var(--s2); }
+.spine.hold .sp-sol { height: 48px; margin-bottom: var(--s2); }
+.spine.hold :is(.sp-tray, .sp-foot) { position: relative; isolation: isolate; width: 40px; padding: 5px 0; align-items: center; }
+.spine.hold .sp-m { width: 40px; height: 36px; color: color-mix(in srgb, var(--ink) 72%, transparent); }
+.spine.hold .sp-m i { width: 30px; height: 30px; border-radius: 10px; }
+.spine.hold .sp-m:hover { color: var(--ink); }
+.spine.hold .sp-m.on { color: var(--c-deep); }
+.spine.hold .spn-mark { width: 20px; height: 20px; }
+.spine.hold .sp-thread { display: none; }
+.spine.hold .sp-pearl { left: 5px; }
+.spine.hold .sp-m.wait i::after { border-radius: 12px; }
+.spine.hold .sp-tag { left: calc(100% + var(--s2)); }
 /* the app beside the spine */
 html[data-spine="on"] #root { padding-left: var(--f-spine); box-sizing: border-box; }
 @media (prefers-reduced-motion: reduce) { .sp-sol.needs::before, .sp-m.wait i::after { animation: none; } .sp-thread, .sp-tag { transition: none; } }
@@ -42,9 +58,8 @@ html[data-spine="on"] #root { padding-left: var(--f-spine); box-sizing: border-b
 .ev-h { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); margin: var(--s3) var(--s2) 2px; }
 .ev-row { min-height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-row); display: flex; align-items: center; gap: var(--s2); color: var(--ink); }
 .ev-row i { width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--dim); }
-.ev-foot { margin-top: auto; color: var(--dim); padding: var(--s2); }
 .ev-none { color: var(--dim); opacity: .6; padding: 0 var(--s2); min-height: var(--h-row); display: flex; align-items: center; }
-.ev-core { flex: 1; min-height: 0; overflow: auto; padding: var(--s6); }   /* 24px all round, what it drew before: --s6 is 24 in tokens.json, and the old second step was not a token (#912) */
+.ev-core { flex: 1; min-height: 0; overflow: auto; padding: var(--s6); }
 .ev-crumb { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); margin-bottom: var(--s3); } .ev-crumb b { color: var(--ink); font-weight: 500; }
 .ev-lead { max-width: 60ch; margin: 0 0 var(--s4); }
 .ev-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); max-width: 640px; }
@@ -54,6 +69,9 @@ html[data-spine="on"] #root { padding-left: var(--f-spine); box-sizing: border-b
    its rows answer the lamp (spine/lamp.ts) instead of lighting themselves. Only with the spine on: off, main's numbers. */
 html[data-spine="on"] .bar { height: var(--f-row); padding-left: var(--f-head-pad); }
 html[data-spine="on"] .side { left: var(--f-spine); top: var(--f-row); }
+/* the older sides (Build's WorkSidebar, Cowork's) draw no head with the spine on (the modes are the spine's): a step of
+   room keeps their first button off the panel's top edge */
+html[data-spine="on"] .wside { padding-top: var(--s2); }
 html[data-spine="on"] .hc-list { position: relative; }
 .hc-lamp { position: absolute; left: 0; right: 0; top: 0; height: var(--h-row); border-radius: var(--r-row); background: var(--hc-faint); opacity: 0; pointer-events: none; will-change: transform, opacity; transition: opacity .12s; }
 html[data-spine="on"] .hc-list :is(.hc-row:hover, .hc-fhead:hover, .hc-head:hover) { background: transparent; }

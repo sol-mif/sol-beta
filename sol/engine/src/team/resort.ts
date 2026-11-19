@@ -35,6 +35,7 @@ import { tableOf } from "./codeowners.js";
 import { Store, type Applied } from "./kit.js";
 import type { ThingsDeps } from "./things.js";
 import type { RoomRecord } from "./record.js";
+import { quietGh } from "../quiet.js";
 
 export const RESORTS_PATH = ".sol/resorts.json";
 /** the runs the file keeps, newest last; the PRs a person put back are kept apart and never dropped (up to KEPT_MAX) */
@@ -373,6 +374,7 @@ export async function devsOnGithub(gh: Gh, record: string, code: string): Promis
 const claude = (prompt: string) => new Promise<string>((ok) => execFile("claude", ["-p", prompt], { timeout: 180_000, maxBuffer: 4 << 20 }, (e, out) => ok(e ? "" : out)));
 /** gh with a body on stdin (a record's file is too big for an argument) */
 const ghStdin = (args: string[], body: string) => new Promise<string>((ok, no) => {
+  quietGh(args);
   const c = execFile("gh", args, { maxBuffer: 16 << 20, timeout: 60_000 }, (e, out, err) => (e ? no(Object.assign(new Error(String(err || e.message).trim()), { full: String(err || e.message).trim() })) : ok(out)));
   c.stdin?.end(body);
 });

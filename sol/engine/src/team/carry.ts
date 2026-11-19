@@ -14,6 +14,9 @@
 //                 changes that still go on by themselves.
 //      stay:      nothing moves; this release is not offered again, the next one is, with "N behind".
 //   bring back: an aside's changes carried onto the Sol as it is now, by the same steps 2 and 3.
+//   by itself (#1150): a dev release a */mine Sol installs by itself (ship.ts installDev) carries `auto`: once the copy
+//                 is ready the live folder moves to it at a quiet moment with no "Use it", so the person sees one line
+//                 and presses nothing. Step 3 still asks them: a change that cannot be carried is theirs to choose.
 //
 // The words people see never say commits, rebase or conflict: "3 of your own changes clash with today's release".
 // What is going on is kept in the repo's git folder (sol-carry.json, beside git's own working files, never committed),
@@ -27,6 +30,7 @@ import { dirname, join, resolve } from "node:path";
 import { join as joinBusy } from "../busy.js";   // a move holds the renew off until the folder and the state agree
 
 const run = promisify(execFile);
+import { isQuiet } from "../quiet.js";
 const ENV = () => ({ ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_EDITOR: "true" });
 type Out = { code: number; out: string };
 /** git, answered with its exit code: a clash is an answer here, not an error */
@@ -48,6 +52,7 @@ export type Carry = {
   onto: string;              // the release (update), the Sol's own tip when it began (back)
   tag?: string;
   follow?: string;           // the branch that follows the release here once it is used: dev or stable (#418)
+  auto?: true;               // #1150: the release came by itself; ready moves the Sol with no press
   from: string;              // the live folder's tip when it began: "Use it" is refused if it moved since
   source: string;            // what is carried: the live tip (update), the aside's tip (back)
   aside?: string;            // back: which aside
@@ -85,12 +90,12 @@ const whatOf = (subject: string) => subject.replace(/^mine:\s*/i, "").trim() || 
 const day = (d: Date) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
 const stampOf = (d: Date) => `${day(d)}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}${String(d.getSeconds()).padStart(2, "0")}`;
 const releaseWord = (c: Pick<Carry, "kind" | "tag">) => c.kind === "back" ? "your Sol as it is now" : "today's release";
-export function saidOf(c: Pick<Carry, "kind" | "stage" | "changes" | "tag" | "aside">): string {
+export function saidOf(c: Pick<Carry, "kind" | "stage" | "changes" | "tag" | "aside" | "auto">): string {
   const clash = c.changes.filter((x) => x.state === "clash").length, gone = c.changes.filter((x) => x.state === "in-release").length;
   const whose = c.kind === "back" ? `of the changes you set aside` : "of your own changes";
   const n = (k: number) => `${k} ${whose}`;
   const left = gone && c.kind === "update" ? `; ${gone} ${gone === 1 ? "is" : "are"} in the release already and left out` : "";
-  if (c.stage === "ready") return `${c.kind === "back" ? "the changes you set aside are" : "your own changes are"} carried over onto ${releaseWord(c)}${left}. Use it when you like`;
+  if (c.stage === "ready") return `${c.kind === "back" ? "the changes you set aside are" : "your own changes are"} carried over onto ${releaseWord(c)}${left}. ${c.auto ? "Your Sol moves over to it as soon as nothing is at work in it" : "Use it when you like"}`;
   if (c.stage === "moving") return `moving your Sol over as soon as nothing is at work in it…`;
   if (c.stage === "session") return `${n(clash || 1)} clash${clash === 1 || !clash ? "es" : ""} with ${releaseWord(c)}; a session is carrying ${clash === 1 || !clash ? "it" : "them"} over`;
   return `${n(clash || 1)} could not be carried over onto ${releaseWord(c)}. Set ${clash === 1 || !clash ? "it" : "them"} aside and update, or stay as you are`;
@@ -268,7 +273,7 @@ function prompt(c: Carry, live: string): string {
 }
 
 /** steps 2 and 3 begin: called by ship.ts update when sol/mine/rebase stopped on a clash, and by bring back */
-export async function carryOver(a: { kind: "update" | "back"; onto: string; source: string; tag?: string; follow?: string; aside?: string; base?: string; back?: { tag: string; version: number; data?: string } }): Promise<Carry> {
+export async function carryOver(a: { kind: "update" | "back"; onto: string; source: string; tag?: string; follow?: string; aside?: string; base?: string; back?: { tag: string; version: number; data?: string }; auto?: boolean }): Promise<Carry> {
   if (!D) throw new Error("carrying over is not set up here");
   if (moving) throw new Error("your Sol is moving over already");
   const d = D, root = d.root;
@@ -286,7 +291,7 @@ export async function carryOver(a: { kind: "update" | "back"; onto: string; sour
   if (was) await dropCopy(was);   // a new carry replaces the last one
   const branch = await freeBranch(root, prefix, d.now());
   const copy = await makeCopy(root, branch, source);
-  const base: Omit<Carry, "stage" | "said"> = { kind: a.kind, onto, ...(a.tag ? { tag: a.tag } : {}), ...(a.follow ? { follow: a.follow } : {}), from, source, ...(a.aside ? { aside: a.aside } : {}), ...(base0 ? { base: base0 } : {}), ...(a.back ? { back: a.back } : {}), changes: list, copy, branch, at: d.now().getTime() };
+  const base: Omit<Carry, "stage" | "said"> = { kind: a.kind, onto, ...(a.tag ? { tag: a.tag } : {}), ...(a.follow ? { follow: a.follow } : {}), from, source, ...(a.aside ? { aside: a.aside } : {}), ...(base0 ? { base: base0 } : {}), ...(a.back ? { back: a.back } : {}), ...(a.auto ? { auto: true as const } : {}), changes: list, copy, branch, at: d.now().getTime() };
   // the order of picks: every change but the ones the release has; git leaves out the ones that end up empty
   const todo = list.filter((x) => x.state !== "in-release").map((x) => `pick ${x.sha}`).join("\n") + "\n";
   const tmp = mkdtempSync(join(tmpdir(), "sol-carry-"));
@@ -306,6 +311,7 @@ export async function carryOver(a: { kind: "update" | "back"; onto: string; sour
     const c: Carry = { ...base, stage: "ready", said: "" };
     c.said = saidOf(c);
     set(c);
+    if (c.auto) void useIt();   // #1150: no press; it moves at a quiet moment
     return c;
   }
   if (!(await busyGit(copy))) {   // git would not even start: nothing for a session to do
@@ -338,13 +344,14 @@ export async function check(): Promise<Carry | null> {
     if (current(c) && !moving) { await set(null); await dropCopy(c); }
     return S.carry;
   }
-  if (c.stage === "ready") return c;
+  if (c.stage === "ready") { if (c.auto && !moving) void useIt(); return c; }   // #1150: a move that did not happen (a renew, a refusal) is tried again
   if (!c.copy || !existsSync(c.copy)) { if (c.stage !== "failed") await set({ ...c, stage: "failed", said: saidOf({ ...c, stage: "failed" }) }); return S.carry; }
   if (await doneIn(c)) {
     if (!current(c)) return S.carry;   // a choice was made while git was asked
     const done: Carry = { ...c, stage: "ready", said: "" };
     done.said = saidOf(done);
     await set(done);
+    if (done.auto && !moving) void useIt();   // #1150: the session finished it; no press
     return done;
   }
   if (!current(c)) return S.carry;
@@ -449,7 +456,7 @@ async function asideNow(release: { onto: string; tag?: string; follow?: string }
   if (c && c.kind === "update" && c.from !== head) return { error: "your Sol changed since this began; press Update again" };
   const aside = await asideName(root, prefix, d.now());
   await git(root, ["branch", aside, head]);
-  const pushed = (await gitRun(root, ["push", "-q", "origin", `refs/heads/${aside}:refs/heads/${aside}`])).code === 0;
+  const pushed = !isQuiet() && (await gitRun(root, ["push", "-q", "origin", `refs/heads/${aside}:refs/heads/${aside}`])).code === 0;
   // the release plus the `mine:` changes that go on by themselves, built in a copy of its own
   const branch = await freeBranch(root, prefix, d.now());
   const copy = await makeCopy(root, branch, onto);

@@ -1,5 +1,4 @@
 import { memo, useLayoutEffect, useRef, useState } from "react";
-import { pingKey } from "./land";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { Kind, Msg } from "./useEngine";
@@ -125,7 +124,7 @@ function decorate(el: HTMLElement, key: string) {
       cell = document.createElement("button");
       cell.className = "run"; cell.type = "button"; cell.title = "run it here";
       cell.innerHTML = "<i></i><span>run</span>";
-      cell.addEventListener("click", (ev) => { ev.stopPropagation(); const r = ranOf(rid); if (r && !r.done) stopRun(rid); else request(rid, cmd); });
+      cell.addEventListener("click", (ev) => { ev.stopPropagation(); const r = ranOf(rid); if (r && !r.done) stopRun(rid); else request(rid, cmd, (cell!.closest("[data-run-session]") as HTMLElement | null)?.dataset.runSession); });
       pre.appendChild(cell);
     }
     const r = ranOf(rid);
@@ -168,11 +167,15 @@ function Mine({ m }: { m: Msg }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // a long one (a paste) shows its first lines and a quiet foot that unfolds it in place; unfolded, it stays so
   const [all, setAll] = useState(false);
-  const fold = !all && longText(m.text);
-  const shown = fold ? firstOf(m.text) : m.text;
-  const n = m.text.split("\n").length;
+  // what was attached reads as its names under the words, never as "Attached: /Users/…" lines inside them (Marco 2026-11-12)
+  const att = m.text.split("\n").map((l) => /^Attached: (.+)$/.exec(l.trim())?.[1]).filter(Boolean) as string[];
+  const text = att.length ? m.text.split("\n").filter((l) => !/^Attached: .+$/.test(l.trim())).join("\n").trim() : m.text;
+  const fold = !all && longText(text);
+  const shown = fold ? firstOf(text) : text;
+  const n = text.split("\n").length;
   return <div ref={ref} data-item={m.id} className="me-row"><div className={`msg me ${m.call ? "call" : ""}`}><Files files={m.files} />{shown}
-    {fold && <button className="more" onClick={() => setAll(true)}>show all · {n > 1 ? `${n} lines` : `${m.text.length.toLocaleString()} characters`}</button>}
+    {fold && <button className="more" onClick={() => setAll(true)}>show all · {n > 1 ? `${n} lines` : `${text.length.toLocaleString()} characters`}</button>}
+    {att.length > 0 && <span className="matts" title={att.join("\n")}>{att.length === 1 ? att[0].split("/").pop() : `${att.length} files attached`}</span>}
   </div></div>;
 }
 const FOLD_LINES = 12, FOLD_CHARS = 1200, SHOW_LINES = 8, SHOW_CHARS = 600;
@@ -218,10 +221,10 @@ export const GLYPH: Record<Kind, React.ReactNode> = {
 
 // A step row: arrives sliding in from the left while its height opens (once the card is already there); its
 // detail is a Fold, so it opens and closes on a height spring and keeps its content once loaded.
-// a Life ping's step (ping.ts: "pinging Marco: <line>"): the notch's Open lands on it (land.ts)
-const PINGING = "pinging Marco: ";
 // the one line a failure is said in (c-today scene 4): the first line of what came back that carries a word, at most 160 chars
-export const reason = (out: string) => (out.split("\n").map((l) => l.trim()).find((l) => /[a-z]/i.test(l)) ?? "").replace(/^(error|Error|ERROR)[:\s]+/, "").slice(0, 160);
+// the harness's own words for a turn Marco stopped (a tool refused by the interrupt) read as his act, not an error (2026-11-08)
+const STOPPED = /^The user doesn't want to proceed with this tool use|^\[Request interrupted/;
+export const reason = (out: string) => STOPPED.test(out.trim()) ? "stopped by you" : (out.split("\n").map((l) => l.trim()).find((l) => /[a-z]/i.test(l)) ?? "").replace(/^(error|Error|ERROR)[:\s]+/, "").slice(0, 160);
 function StepRow({ s, k, shown, can, arrive, onToggle, ran }: {
   s: Msg; k: Kind; shown: boolean; can: boolean; arrive: boolean; onToggle: () => void; ran: boolean;
 }) {
@@ -229,7 +232,7 @@ function StepRow({ s, k, shown, can, arrive, onToggle, ran }: {
   useLayoutEffect(() => { if (ref.current && arrive) { enter(ref.current, { x: -16, cfg: CFG.travel }); growTo(ref.current, 0); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const running = s.done === false;
   return (
-    <div ref={ref} data-item={s.id} data-ping={s.text?.startsWith(PINGING) ? pingKey(s.text.slice(PINGING.length)) : undefined}
+    <div ref={ref} data-item={s.id}
       className={`step ${k} ${running ? "running" : ""} ${s.ok === false ? "failed" : ""} ${can ? "can" : ""} ${shown ? "open" : ""}`}>
       <div className="step-row" onClick={can ? onToggle : undefined}>
         {/* the runner leaves upward as the glyph comes in from below: a step finishing */}
@@ -237,7 +240,8 @@ function StepRow({ s, k, shown, can, arrive, onToggle, ran }: {
         <span className="step-text">{k === "reasoning" ? <><span className="pre">thinking… </span>{s.text}</> : s.text}</span>
         <span className="step-state">{running ? null : s.ok === false || k === "error" ? <i className="bad" /> : s.ok === true ? <CellCheck land={ran} /> : null}</span>
       </div>
-      {s.ok === false && !running && s.detail && <div className="step-why" title={reason(s.detail)}>{reason(s.detail)}</div>}
+      {/* a failed turn (kind error) is already said in its own short words (failed.ts, #1125): its full text stays folded */}
+      {s.ok === false && !running && s.detail && k !== "error" && <div className="step-why" title={reason(s.detail)}>{reason(s.detail)}</div>}
       {can && <Fold open={shown} lazy from={{ y: 8 }} gap={0}><pre className={`step-detail ${k === "reasoning" ? "prose" : ""}`}>{s.detail}</pre></Fold>}
     </div>
   );

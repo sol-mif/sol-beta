@@ -2,7 +2,7 @@
 // and keeps nothing, except here: on the hub (the engine whose relay.host is true, the NucBox in practice, and the cloud
 // box), the `talk` and `ping` messages a person could not hear because none of their Sols was on the relay are kept for
 // them, and handed over the next time one of their Sols says hello. At most 500 messages a person and 7 days, trimmed on
-// every add. The spool holds only what the relay already carried: never a prompt, a file or home data. The logins the
+// every add; an `ask` for a session (#335) is handed over for a day only. The spool holds only what the relay already carried: never a prompt, a file or home data. The logins the
 // hub has ever heard say hello are kept beside them.
 // Rooms on one hub (#157): a kept message carries the room it passed in (its share code, "" or none the common space)
 // and is handed back only on a hello in that room; the rest stay for a later hello in theirs.
@@ -14,7 +14,7 @@
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 import { chmodSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { RelayMsg } from "./hub-types.js";
+import { ASK_MS, type RelayMsg } from "./hub-types.js";
 
 export const SPOOL_MAX = 500;
 export const SPOOL_DAYS = 7;
@@ -111,8 +111,10 @@ export class Spool {
 
   private kept(login: string): (Row & { m: RelayMsg })[] {
     const d = this.open(), out: (Row & { m: RelayMsg })[] = [];
-    for (const r of d.rows.all(login.toLowerCase(), this.now() - SPOOL_DAYS * DAY) as Row[]) {
-      try { const m = JSON.parse(r.body); if (isMsg(m)) out.push({ ...r, m }); } catch { /* not one */ }
+    const now = this.now();
+    for (const r of d.rows.all(login.toLowerCase(), now - SPOOL_DAYS * DAY) as Row[]) {
+      // an ask (#335) lives a day, not seven: one older is never handed back, and the 7-day sweep takes its row
+      try { const m = JSON.parse(r.body); if (isMsg(m) && !(m.kind === "ask" && now - atOf(m) > ASK_MS)) out.push({ ...r, m }); } catch { /* not one */ }
     }
     return out;
   }

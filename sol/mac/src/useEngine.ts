@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { openMic, Player, base64ToInt16, int16ToBase64, type Capture } from "./voice";
 import { link, type Link } from "./socket";
+import { follow } from "./models";
 import { ENGINE, ENGINE_HTTP } from "./engine";
 import { homeChat } from "./migrate";
 import { sendUsage } from "./buttons/usage";
 import { heard, turnOf, type Offers } from "./homeSuggest";
+import { withFailure } from "./failed";
+import { markMine } from "./flag";   // #1224: Marco's own window, marked once by the engine's login
+import { tooLarge } from "./socket";
 
 // The wire to the engine, as written in sol/PROTOCOL.md.
 
@@ -58,6 +62,7 @@ export type Settings = {
   errorCounts?: boolean;
   // the frame's switch as the engine was told it (#633): its blocks' engine halves load only with it on; absent until turned
   frame?: boolean;
+  notify?: { moments?: Partial<Record<import("./notify/moments").Kind, boolean>> };   // the one notification (#845, engine settings.ts): each kind on or off; absent is on
 };
 // the person's arrangement (engine/src/arrange.ts, PROTOCOL.md round 31): their rails, presets and layout
 export type Arrangement = {
@@ -83,22 +88,12 @@ export type Card = { id: string; kind: "note" | "flashcards" | "question" | "exa
   path?: string; page?: number; pages?: number; image?: string;        // page
   seconds?: number; left?: number;                                     // timer (startedAt while running)
 };
-// a timer's seconds left now; the engine keeps whether it runs, so the desk and the notch count the same
+// a timer's seconds left now; the engine keeps whether it runs, so every desk counts the same
 export const timerLeft = (c: Card, now: number) => (c.startedAt ? Math.max(0, (c.left ?? c.seconds ?? 0) - (now - c.startedAt) / 1000) : c.left ?? c.seconds ?? 0);
 export const mmss = (s: number) => { const v = Math.max(0, Math.round(s)); return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}`; };
-// the one line the notch shows for a pinned card
-export function pinLine(c: Card, now: number): string {
-  if (c.kind === "timer") return `${mmss(timerLeft(c, now))}${c.title ? ` · ${c.title}` : ""}${c.startedAt ? "" : " · paused"}`;
-  if (c.kind === "flashcards") { const all = c.cards ?? []; const cur = all[Math.min(c.at ?? 0, all.length - 1)]; const got = all.filter((x) => x.state === "got").length; return cur ? `${cur.front}  ·  ${got}/${all.length}` : c.title ?? "cards"; }
-  if (c.kind === "exam") { const qs = c.questions ?? [], g = Array.isArray(c.given) ? c.given.filter(Boolean).length : 0; const left = c.minutes && c.startedAt && !c.doneAt ? mmss(c.minutes * 60 - (now - c.startedAt) / 1000) + " · " : ""; return `${left}${g}/${qs.length} answered${c.title ? ` · ${c.title}` : ""}`; }
-  if (c.kind === "question") return c.prompt ?? "a question";
-  return c.title ?? c.kind;
-}
 
 // Which engine (this Mac, the NucBox, a machine of the list, or the one that served the away page): engine.ts.
 export { LIVE, NEXT, FAR_NAME, ENGINE, WHICH, sameEngine, pickEngine, keptMachines, keepMachines, type Which, type Machine } from "./engine";
-/** the seat the first run picked, for the engine's first settings (FirstRun.tsx Minds) */
-export const FIRST_SEAT = "sol.firstrun.seat";
 export const fileUrl = (u?: string) => (!u ? u : /^(https?|data|blob):/.test(u) ? u : ENGINE_HTTP + (u.startsWith("/") ? "" : "/") + u);
 
 const EFFORTS: Effort[] = ["low", "medium", "high", "max"];
@@ -159,7 +154,6 @@ export function useEngine() {
   const [parts, setParts] = useState<Part[] | undefined>();
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [desks, setDesks] = useState<Record<string, Card[]>>({}); // every conversation's desk, by sessionId (the draft id until named)
-  const [pin, setPin] = useState<Card | null>(null);
   const [offers, setOffers] = useState<Offers>({});   // Home's group card (#321), one per conversation, by sessionId
   const [notice, setNotice] = useState("");
   const noticeTimer = useRef<number | undefined>(undefined);
@@ -285,7 +279,7 @@ export function useEngine() {
   const applyDefaults = useCallback((st: Settings | null, to: Seat, own = false) => {
     setSeatState(to); save("sol.seat", to);
     const seatInfo = modelsRef.current.seats.find((x) => x.seat === to);
-    const want = own ? seatInfo?.default : st?.defaults.model[to];
+    const want = own ? seatInfo?.default : st?.defaults.model[to] && follow(st.defaults.model[to], seatInfo?.models ?? []);
     // only ever a model this seat really offers (a Codex name under Work was the bug)
     const m = want && seatInfo?.models.includes(want) ? want : seatInfo?.default ?? seatInfo?.models[0];
     if (m) setModelPick((p) => { const n = { ...p, [to]: m }; save("sol.model", n); return n; });
@@ -347,8 +341,9 @@ export function useEngine() {
       landWords();   // whatever comes next comes after the words before it
       // browser.inspected / browser.located: questions about a tab, answered by rid.
       // A team.* answer with a rid goes too (#579): Work's card presses ask for a key and press by rid (work/useWork.ts),
-      // and without it every keyed press in Work (hand-in, tonight, checkpoint, the box's merge) waited out its timeout
-      if (typeof m.type === "string" && (m.type.startsWith("work.") || m.type.startsWith("browser.") || m.type === "ran" || (m.type.startsWith("team.") && typeof m.rid === "string"))) { rawSubs.current.forEach((f) => f(m)); return; }
+      // and without it every keyed press in Work (hand-in, tonight, checkpoint, the box's merge) waited out its timeout.
+      // An onboard.* answer is by rid as well (#1195: whether the engine reads their sentences, and the reading)
+      if (typeof m.type === "string" && (m.type.startsWith("work.") || m.type.startsWith("browser.") || m.type.startsWith("sticky") || m.type === "ran" || m.type.startsWith("agent.") || m.type.startsWith("agents.") || m.type.startsWith("onboard.") || (m.type.startsWith("home.") && m.type !== "home.suggest") || (m.type.startsWith("team.") && typeof m.rid === "string"))) { rawSubs.current.forEach((f) => f(m)); return; }
       if (m.type === "engine.renewing") { setNotice("engine renewing"); return; }   // a new build going live; back in a few seconds
       if (m.type === "engine.reverted") { setNotice("engine went back to its last good build"); window.clearTimeout(noticeTimer.current); noticeTimer.current = window.setTimeout(() => setNotice(""), 60_000); return; }   // the keeper put the last good build back after a bad one
       if (m.type === "face.reverted") { flash(`face went back: ${m.line}`); return; }   // an edit that did not compile was taken back (engine/src/changing.ts)
@@ -356,13 +351,13 @@ export function useEngine() {
       if (m.type === "goback.plan") { setGoBackPlan({ engine: m.engine ?? null, face: m.face ?? null, line: String(m.line ?? "") }); return; }
       if (m.type === "goback.done") { setNotice(m.ok ? "going back to the last good Sol" : "could not go back: " + String((m.lines ?? []).slice(-1)[0] ?? "")); window.clearTimeout(noticeTimer.current); noticeTimer.current = window.setTimeout(() => setNotice(""), 60_000); return; }   // Marco pressed go back (#18)
       // suggest_group (#321): the card goes under the open talk's current answer; another talk's, at its end when opened
+      if (m.type === "open.for") { window.dispatchEvent(new CustomEvent("sol:open-for", { detail: m })); return; }   // #1521: App opens it (spine/openFor.ts)
       if (m.type === "home.suggest") { setOffers((o) => heard(o, m, m.sessionId === sessionRef.current ? turnOf(msgsRef.current) : -1)); return; }
       if (m.type === "start") { if (m.sessionId) setSession(m.sessionId); if (m.cwd) setCwd(m.cwd); parentRef.current = undefined; }
       else if (m.type === "tool") setMsgs((prev) => withStep(prev, m));
       else if (m.type === "usage") { setContext(m.context ?? 0); if (m.window) setWin(m.window); setParts(m.parts); }
       else if (m.type === "tabs") setTabs(m.tabs ?? []);
       else if (m.type === "desk") setDesks((d) => ({ ...d, [String(m.sessionId ?? "")]: (m.cards ?? []) as Card[] }));
-      else if (m.type === "pin") setPin((m.card as Card) ?? null);
       else if (m.type === "frame") frameSubs.current.forEach((f) => f(m as Frame));
       else if (m.type === "heard") {
         if (m.partial) partialCb.current(String(m.text ?? ""), Number(m.tag ?? 0));
@@ -374,13 +369,8 @@ export function useEngine() {
         setEngineInfo({ haveVoiceKey: !!m.haveVoiceKey, dictationModel: String(m.dictationModel ?? ""), since: m.up?.since, port: m.up?.port });
         if (m.up?.health) setHealth(m.up.health as Health);
         seed(st);
-        // the first run's pick (FirstRun.tsx Minds): signed in to only one of Claude and ChatGPT, a new chat starts on
-        // that one; told once, to team.json's seats, which carries defaults.seat with it (team/settings.ts)
-        const seat = localStorage.getItem(FIRST_SEAT);
-        if (seat === "claude" || seat === "codex") {
-          localStorage.removeItem(FIRST_SEAT);
-          send({ type: "team.settings", rid: `first-seat-${Date.now()}`, patch: { seats: { life: seat } } });
-        }
+        // whose Sol this is (#1224): Marco's own window marked once; what is drawn for him alone was read before, so read again
+        if (markMine(m.login)) location.reload();
       } else if (m.type === "arrange.changed") {
         setArrangement(m.arrangement as Arrangement);
         if (m.refused) setRefused({ line: String(m.refused), n: Date.now() });
@@ -403,7 +393,7 @@ export function useEngine() {
         setBusy(false);
         send({ type: "list" });
       } else if (m.type === "error") {
-        setMsgs((prev) => [...settle(prev), { who: "tool", kind: "error", text: String(m.message ?? "something went wrong"), done: true, ok: false }]);
+        setMsgs((prev) => withFailure(settle(prev), String(m.message ?? "something went wrong")));   // once, in short words (#1125)
         setBusy(false);
       } else if (m.type === "threads") setThreads(m.threads ?? []);
       else if (m.type === "thread") {
@@ -432,7 +422,8 @@ export function useEngine() {
 
   const info = models.seats.find((x) => x.seat === seat);
   const list = info?.models ?? [];
-  const model = modelPick[seat] && list.includes(modelPick[seat]!) ? modelPick[seat]! : info?.default && list.includes(info.default) ? info.default : list[0];
+  const picked = modelPick[seat] ? follow(modelPick[seat]!, list) : undefined;
+  const model = picked && list.includes(picked) ? picked : info?.default && list.includes(info.default) ? info.default : list[0];
 
   // asked while a turn or a call runs: one word on the notice line, not silence
   const BUSY = "a turn is running: stop it first (Esc)", ON_CALL = "a call is on: hang up first";
@@ -471,6 +462,8 @@ export function useEngine() {
   // still ends with a stopped "done"; that one must not read as the new turn being over.
   const say = (text: string, files: (FileOut & { thumb?: string })[], lead = "") => {
     if ((!text && !files.length) || !up) return false;
+    const big = tooLarge(files);   // #1448: not sent, and the box keeps it
+    if (big) { flash(big); return false; }
     landWords();
     if (busy) { interrupting.current++; setMsgs(settle); }
     setMsgs((prev) => [...prev, { who: "me", text, files: files.map((f) => ({ name: f.name, url: f.thumb })) }]);
@@ -530,7 +523,7 @@ export function useEngine() {
   const desk = desks[sessionId ?? draft] ?? NO_CARDS;
   const arrange = useCallback((patch: object) => { setRefused(null); send({ type: "arrange.set", patch }); }, [send]);
   const undo = useCallback(() => { setUndoNote(null); send({ type: "arrange.undo" }); }, [send]);
-  return { msgs, busy, up, context, win, parts, threads, models, info, efforts, seat, model, effort, sessionId, draft, cwd, freshIn, tabs, desk, pin, deskAct, offers, notice, callState,
+  return { msgs, busy, up, context, win, parts, threads, models, info, efforts, seat, model, effort, sessionId, draft, cwd, freshIn, tabs, desk, deskAct, offers, notice, callState,
     settings, engineInfo, health, arrangement, arrange, refused, undoNote, undo, goBackPlan, sampling, setSettings, hearVoice, rename,
     say, stop, open, fresh, pickSeat, pickModel, pickSeatModel, pickEffort, hear, call, flash, send, subscribe, subscribeFrames, heardCb, partialCb };
 }

@@ -1,5 +1,4 @@
 import { memo, useLayoutEffect, useRef, useState } from "react";
-import { pingKey } from "../land";
 import { CellCheck, Runner } from "../creature/indicators";
 import { GLYPH, html, reason } from "../Message";
 import { CFG, enter, growTo, useSpring } from "../motion";
@@ -8,6 +7,7 @@ import type { Kind } from "../useEngine";
 import type { Item } from "./useWork";
 import { Diff, diffStat, editDiff } from "./Diff";
 import { Elapsed } from "./Elapsed";
+import { stageWhole } from "../flag";
 
 // Claude's work between two messages, as one card of rows. Each kind of tool has its own row: a shell command shows
 // the command, an edit its +/− count and the diff, a run of reads and searches folds into one quiet row, a helper
@@ -107,20 +107,48 @@ function groupLine(g: Item[]) {
   return [reads && `read ${reads} file${reads > 1 ? "s" : ""}`, looks && `searched ${looks} time${looks > 1 ? "s" : ""}`].filter(Boolean).join(", ");
 }
 
+// how many steps stay under a folded run's line while it works (Marco: "the latest 3 things")
+const KEEP = 3;
+const bad = (items: Item[]) => items.filter((x) => x.kind === "tool" && x.done && x.ok === false).length;
+const many = (n: number, one: string, more: string) => `${n} ${n === 1 ? one : more}`;
+/** a run of steps in plain words: what kind of work it was, counted ("ran 6 commands, read 3 files, changed 2 files") */
+export function sumLine(items: Item[], live: boolean) {
+  const t = items.filter((x) => x.kind === "tool");
+  const n = (f: (name: string) => boolean) => t.filter((x) => f(String(x.name))).length;
+  const reads = n((x) => QUIET.has(x)), runs = n((x) => KIND[x] === "command"), edits = n((x) => KIND[x] === "write");
+  const web = n((x) => KIND[x] === "browse" || /browser_/.test(x)), help = n((x) => KIND[x] === "desk");
+  const rest = t.length - reads - runs - edits - web - help;
+  const parts = [edits && `changed ${many(edits, "file", "files")}`, runs && `ran ${many(runs, "command", "commands")}`, reads && `looked through ${many(reads, "file", "files")}`,
+    web && `opened ${many(web, "page", "pages")}`, help && `asked ${many(help, "helper", "helpers")}`, rest && `used ${many(rest, "tool", "tools")}`].filter(Boolean) as string[];
+  const said = parts.length ? parts.join(", ") : many(items.length, "step", "steps");
+  return live ? `working: ${said} so far` : said.charAt(0).toUpperCase() + said.slice(1);
+}
+
 export function WorkSteps({ items, all, view, old, nested }: { items: Item[]; all: Item[]; view: TalkView; old?: boolean; nested?: boolean }) {
   const list = rows(items, view);
   const live = items.some((s) => (s.kind === "tool" || s.kind === "think") && s.done === false);
   const ran = useRef(new Set<string>());
   const card = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
+  const [openAll, setOpenAll] = useState(false);
   useLayoutEffect(() => {
     if (card.current && !old && !nested) { enter(card.current, { y: 14, cfg: CFG.travel }); growTo(card.current, 0); }
     mounted.current = true;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!list.length) return null;
+  // the space (Marco 2026-11-12: "looks cramped"; "more interpretable for everyone in layman's"): a run of more than
+  // three steps is one plain line saying what was done, with the latest three under it while it works and nothing
+  // under it once done; a press opens every step, technical as before
+  const fold = stageWhole() && !nested && view !== "verbose" && list.length > KEEP;
+  const shown = fold && !openAll ? (live ? list.slice(-KEEP) : []) : list;
   return (
-    <div ref={card} className={`steps wsteps ${live && !nested ? "live" : ""} ${nested ? "nested" : ""}`}>
-      {list.map((r) => {
+    <div ref={card} className={`steps wsteps ${live && !nested ? "live" : ""} ${nested ? "nested" : ""} ${fold ? "folds" : ""}`}>
+      {fold && <button type="button" className={`wsum ${openAll ? "open" : ""}`} aria-expanded={openAll} onClick={() => setOpenAll(!openAll)} title={openAll ? "fold the steps" : "show every step"}>
+        <span className="wsum-t">{sumLine(items, live)}</span>
+        {bad(items) > 0 && <span className="wsum-bad">{bad(items)} did not work{live ? "" : ", it went on"}</span>}
+        <span className="wsum-n">{openAll ? "fold" : live ? `${list.length - shown.length} earlier` : "show"}</span>
+      </button>}
+      {shown.map((r) => {
         if (r.it && r.it.done === false) ran.current.add(r.key);
         return <StepRow key={r.key} r={r} all={all} view={view} arrive={mounted.current && !old} ran={ran.current.has(r.key)} />;
       })}
@@ -195,7 +223,7 @@ const StepRow = memo(function StepRow({ r, all, view, arrive, ran }: { r: Row; a
   const can = !!detail;
   const open = can && (mine ?? (view === "verbose"));
   return (
-    <div ref={ref} data-item={r.it?.id} data-ping={r.it && /__ping$/.test(String(r.it.name)) ? pingKey(String(r.it.input?.line ?? "")) : undefined} className={`step wstep ${k} ${cls} ${running ? "running" : ""} ${ok === false ? "failed" : ""} ${can ? "can" : ""} ${open ? "open" : ""}`}>
+    <div ref={ref} data-item={r.it?.id} className={`step wstep ${k} ${cls} ${running ? "running" : ""} ${ok === false ? "failed" : ""} ${can ? "can" : ""} ${open ? "open" : ""}`}>
       <div className="step-row" onClick={can ? () => setOpen(!open) : undefined}>
         <span className="glyph"><Swap k={running ? "run" : "glyph"} dist={14} cfg={CFG.settle}>{running ? <Runner /> : GLYPH[k]}</Swap></span>
         <span className="step-text">{k === "reasoning" ? <><span className="pre">{running ? "thinking… " : "thought: "}</span>{text}</> : text}</span>

@@ -127,7 +127,7 @@ export function featuresOf(v: unknown): FeaturesData | null {
 
 /** the group of the features with no area label (pure word) */
 export const NO_AREA = "no area yet";
-/** where a feature lives as a Sol user sees it (pure): its `where` up to the first colon ("Home", "the notch") */
+/** where a feature lives as a Sol user sees it (pure): its `where` up to the first colon ("Home", "Build") */
 export const placeOf = (f: Pick<FeatureRow, "where">) => (f.where.split(":")[0] || "somewhere").trim();
 /** a feature's row on the board (pure): the cells the tables' board draws (#434, tables/views.ts) */
 export const rowOf = (f: FeatureRow) => ({ id: f.id, title: f.name, place: placeOf(f), label: f.label || NO_AREA, type: f.type, evals: f.evals, who: f.lead });

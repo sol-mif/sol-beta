@@ -20,6 +20,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Item } from "../work/items.js";
 import { makeGithubRecord } from "./record.js";
+import { quietPush } from "../quiet.js";
 
 const run = promisify(execFile);
 const ENV = () => ({ ...process.env, GIT_TERMINAL_PROMPT: "0" });
@@ -72,9 +73,11 @@ export function handBody(h: HandText): string {
 export const takenBody = (by: string, date: string) => `**taken** by ${by} · ${date}`;
 export const passedBody = (by: string, date: string, line: string) => `**passed** by ${by} · ${date}: ${oneLine(line, 300)}`;
 export const REVIEW_ASKED = "review asked";
+// pulled back (#1002, the one session at team size): the hander takes a hand back before its receiver acted on it
+export const backBody = (by: string, date: string) => `**back** by ${by} · ${date}: pulled back before it was taken`;
 
 export type Comment = { repo: string; number: number; at: string; author: string; body: string; url?: string };
-export type How = "hand" | "taken" | "passed" | "review";
+export type How = "hand" | "taken" | "passed" | "review" | "back";
 export type Row = {
   repo: string; number: number; at: string; how: How; from: string; to: string;
   line?: string; brief?: string; branch?: string; url?: string; sign: { login: string; agent: boolean };
@@ -82,6 +85,7 @@ export type Row = {
 
 const HAND = /^\*\*hand\*\* from ([A-Za-z0-9-]{1,39}) to ([A-Za-z0-9-]{1,39})(?: · [^\n]*)?\n?([\s\S]*)$/;
 const TAKEN = /^\*\*taken\*\* by ([A-Za-z0-9-]{1,39})/;
+const BACK = /^\*\*back\*\* by ([A-Za-z0-9-]{1,39})/;
 const PASSED = /^\*\*passed\*\* by ([A-Za-z0-9-]{1,39})(?: · [^:\n]*)?(?::\s*([^\n]*))?/;
 
 /** the issues' comments made into the hands record: one row per **hand** / **taken** / **passed** line, newest first
@@ -108,6 +112,10 @@ export function parseRecord(comments: Comment[]): Row[] {
     } else if ((m = PASSED.exec(body))) {
       const h = lastHand.get(key);
       rows.push({ ...base, how: "passed", from: m[1], to: h?.from ?? "", ...(m[2] ? { line: m[2].trim() } : {}), ...(h?.branch ? { branch: h.branch } : {}) });
+    } else if ((m = BACK.exec(body))) {
+      // only the hand's own sender pulls it back; anyone else's **back** line is not a hands line
+      const h = lastHand.get(key);
+      if (h && h.from.toLowerCase() === m[1].toLowerCase()) rows.push({ ...base, how: "back", from: m[1], to: h.to, ...(h.branch ? { branch: h.branch } : {}) });
     }
   }
   return rows.reverse();
@@ -200,7 +208,7 @@ export async function hand(d: Hand, a: HandAsk): Promise<Handing> {
       const there = await d.git(s.cwd, ["ls-remote", "--heads", "origin", branch]).catch(() => null);
       if (there === null) return { error: "GitHub could not be reached to check the session's branch" };
       if (!there.trim()) {
-        try { await d.git(s.cwd, ["push", "-q", "origin", `refs/heads/${branch}:refs/heads/${branch}`]); }
+        try { quietPush(); await d.git(s.cwd, ["push", "-q", "origin", `refs/heads/${branch}:refs/heads/${branch}`]); }
         catch (e) { return { error: `the session's branch ${branch} is not on GitHub and could not be pushed: ${firstLine(e)}` }; }
       }
     }
@@ -243,11 +251,12 @@ export async function answer(d: Hand, h: Handed, how: unknown, line?: unknown, s
   const rec = makeGithubRecord(d.gh);
   if (how === "take") {
     const cwd = (await d.folders())[h.repo];
-    if (!cwd) return { error: `no folder on this machine holds ${h.repo}; add it in Work first` };
+    // just taking (start false) needs no folder: only the take is written (#1002, the one session's "no session yet")
+    if (!cwd && start) return { error: `no folder on this machine holds ${h.repo}; add it in Work first` };
     try { await rec.notes.add(h.issue, takenBody(me, date), h.repo); }
     catch (e) { return { error: `the take was not written on #${h.issue}: ${firstLine(e)}` }; }
     let note: string | undefined;
-    if (h.branch) {
+    if (h.branch && cwd) {
       try { await d.git(cwd, ["fetch", "-q", "origin", `+refs/heads/${h.branch}:refs/remotes/origin/${h.branch}`]); }
       catch (e) { note = `taken; the branch ${h.branch} was not fetched: ${firstLine(e)}`; }
     }
@@ -258,7 +267,7 @@ export async function answer(d: Hand, h: Handed, how: unknown, line?: unknown, s
       ...(h.branch ? ["", `branch: \`${h.branch}\`${note ? " (not fetched)" : ` (fetched: origin/${h.branch})`}`] : []),
     ].join("\n");
     // just taken (#234: for you asks first): the take is written, no agent runs
-    if (!start) return { ok: true, note: note ?? `taken #${h.issue}; no session started` };
+    if (!start || !cwd) return { ok: true, note: note ?? `taken #${h.issue}; no session started` };
     // the take is written: a session that does not start is said, never thrown, and nothing more is written
     try {
       const sessionId = await d.start({ repo: h.repo, cwd, issue: h.issue, title: h.title, text });
@@ -280,6 +289,25 @@ export async function answer(d: Hand, h: Handed, how: unknown, line?: unknown, s
   return { error: "take, pass or later" };
 }
 
+/** team.hand.back (#1002): the hander pulls a hand back while its receiver has not acted on it (pure but for the deps).
+ * The record decides: the issue's last hands line must be my own hand, untaken. The issue goes back to me on GitHub,
+ * the **back** line is written, and the receiver's card goes at their next read of the record. Nothing goes on the
+ * relay: its word is a hand's, and a hand word would show the card again */
+export async function pullBack(d: Hand, rows: Row[], repo: string, issue: number): Promise<{ ok: true } | { ok?: false; error: string }> {
+  const me = await d.me();
+  if (!me) return { error: "who you are on GitHub is not known yet" };
+  const last = rows.find((r) => r.repo === repo && r.number === issue);
+  if (!last || last.how !== "hand" || last.from.toLowerCase() !== me.toLowerCase()) {
+    return { error: last?.how === "taken" ? `${last.to} already took it` : last?.how === "passed" ? `${last.from} already passed it back` : "that is not a hand of yours to pull back" };
+  }
+  const rec = makeGithubRecord(d.gh);
+  try {
+    await rec.cards.passBack(repo, issue, last.to, me);
+    await rec.notes.add(issue, backBody(me, day(d.now())), repo);
+  } catch (e) { return { error: `the pull back was not written on #${issue}: ${firstLine(e)}` }; }
+  return { ok: true };
+}
+
 // ---- reading the record ----
 
 /** the hands lines of a repo: its issues' comments that start with **hand**, **taken** or **passed** */
@@ -287,7 +315,7 @@ export async function readRecord(gh: Hand["gh"], repo: string): Promise<Comment[
   const raw = await makeGithubRecord(gh).notes.recent(repo, "created");
   return raw
     .map((c) => ({ repo, number: Number(String(c.issue_url ?? "").split("/").pop()), at: String(c.created_at ?? ""), author: String(c.user?.login ?? ""), body: String(c.body ?? ""), url: String(c.html_url ?? "") }))
-    .filter((c) => c.number > 0 && /^\*\*(hand|taken|passed)\*\*/.test(c.body.trim()));
+    .filter((c) => c.number > 0 && /^\*\*(hand|taken|passed|back)\*\*/.test(c.body.trim()));
 }
 
 export const gitCli: Hand["git"] = (cwd, args) => run("git", args, { cwd, env: ENV(), timeout: 120_000, maxBuffer: 16 << 20 }).then((r) => r.stdout);
@@ -366,6 +394,12 @@ export async function handNow(a: HandAsk): Promise<Handing> {
   if (r.ok) void push(true);
   return r;
 }
+export async function backNow(repo: unknown, issue: unknown): Promise<{ ok: true } | { ok?: false; error: string }> {
+  if (!L) return { error: "the team is not set up here" };
+  const r = await pullBack(L.d, await record(true), String(repo ?? ""), numOf(issue));
+  if (r.ok) void push(true);
+  return r;
+}
 export async function answerNow(id: unknown, how: unknown, line?: unknown, start = true): Promise<Answered> {
   if (!L) return { error: "the team is not set up here" };
   if (how === "later") return { ok: true };   // nothing is written; the face keeps it under its repo
@@ -389,7 +423,7 @@ export async function answerNow(id: unknown, how: unknown, line?: unknown, start
   }
 }
 
-/** started once (team/wire.ts): the deeds, and who to tell (every face, the notch's too) */
+/** started once (team/wire.ts): the deeds, and who to tell (every face) */
 export function startHand(d: Hand, tell: (m: object) => void) {
   L = { d, tell, rows: [], at: 0, reading: null, heard: new Map(), answering: new Set(), done: new Map() };
 }

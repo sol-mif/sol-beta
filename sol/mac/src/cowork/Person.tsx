@@ -1,20 +1,21 @@
 // A person (#238; the studio PRD §5, frame s3 of vM.html): click a worker and see what they did in this room, newest
 // first, and the things they are in now; their conversation with their agent comes in on the right, read-only and live
 // (a session started under the room shows to it while it runs, #189 option 2; never kept off their Mac). At its foot:
-// a line to them (a ping), "hand them something" and "watch their agent live" (Show, #101). Nothing here changes their work.
+// a line to them (a ping), "hand them something" and "watch their agent live" (Show, #101), and "ask for it" beside a
+// session of theirs (#335: their press gives it to my agent). Nothing here changes their work.
 import { useEffect, useMemo, useState } from "react";
 import type { Team, Member, ShownLine } from "./useTeam";
 
 /** one person's roster entries (one a machine) as one (#238): their state from the newest, every machine's room sessions,
- *  their thing from the one that has it, and quiet only when every machine of theirs says it */
+ *  their thing from the one that has it, and quiet (and never, #335) only when every machine of theirs says it */
 export function personOf(roster: Member[], login: string): Member | undefined {
   const all = roster.filter((m) => m.who === login);
   if (all.length <= 1) return all[0];
   const top = [...all].sort((a, b) => (a.state === "working" ? -1 : 0) - (b.state === "working" ? -1 : 0) || b.since - a.since)[0];
   const sessions = all.flatMap((m) => (m.quiet ? [] : m.sessions ?? []));
   const thing = all.map((m) => m.thing).filter(Boolean).sort((a, b) => b!.at - a!.at)[0];
-  const { sessions: _s, thing: _t, quiet: _q, ...rest } = top;
-  return { ...rest, ...(sessions.length ? { sessions } : {}), ...(thing ? { thing } : {}), ...(all.every((m) => m.quiet) ? { quiet: true as const } : {}) };
+  const { sessions: _s, thing: _t, quiet: _q, never: _n, ...rest } = top;
+  return { ...rest, ...(sessions.length ? { sessions } : {}), ...(thing ? { thing } : {}), ...(all.every((m) => m.quiet) ? { quiet: true as const } : {}), ...(all.every((m) => m.never) ? { never: true as const } : {}) };
 }
 import type { Room as RoomData, Thing, FeedLine } from "./useRoom";
 import { Glyph } from "./Room";
@@ -22,6 +23,7 @@ import { useWatch } from "./Watch";
 import { since, STATE_WORD, Who, useBand } from "./bits";
 import { hhmm } from "./util";
 import { Droplet } from "../creature/goo";
+import { canAsk } from "./asks";   // ask for a session (#335)
 
 type Row = { id: string; at: string; text: string; sub?: string; agent: boolean };
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -132,6 +134,16 @@ export function PersonSide({ team, login, entry, roomName, onClose, onHand, flas
   const ids = [...rooms.map((s) => s.id), ...issues.map((x) => x.session.id)];
   const id = ids.includes(pick) ? pick : rooms[0]?.id ?? "";
   const [line, setLine] = useState("");
+  // "ask for it" (#335): one of their group sessions, given by their press; what came of it shows on my bar
+  const [asked, setAsked] = useState<Record<string, "asking" | "asked">>({});
+  const askable = canAsk({ mine, never: entry?.never, quiet: entry?.quiet, up: !!team.state?.relay.up, room: rooms.some((s) => s.id === id) });
+  const askFor = async () => {
+    const sid = id;
+    setAsked((a) => ({ ...a, [sid]: "asking" }));
+    const r = await team.ask<{ ok?: boolean; said?: string; error?: string }>("team.session.ask", { login, id: sid });
+    setAsked((a) => { const n = { ...a }; if (r.ok) n[sid] = "asked"; else delete n[sid]; return n; });
+    flash(r.error ?? r.said ?? "asked");
+  };
   const say = async () => {
     const text = line.trim();
     if (!text) return;
@@ -144,6 +156,8 @@ export function PersonSide({ team, login, entry, roomName, onClose, onHand, flas
       <div className="rm-cv-head">
         <div><b>{mine ? "your conversation with your agent" : "their conversation with their agent"}</b>
           <small>on {roomName} · {mine ? "as the project sees it" : entry?.quiet ? "not showing" : id ? "you are watching, read-only" : "read-only, live"}</small></div>
+        {askable && <button className="rm-th-link u" disabled={!!asked[id]} onClick={() => void askFor()}
+          title={`ask ${login} for this session; they give it or say not now, and its lines go to your agent`}>{asked[id] === "asked" ? "asked" : asked[id] === "asking" ? "asking…" : "ask for it"}</button>}
         <button className="rm-th-link" onClick={onClose}>close ›</button>
       </div>
       {tabs.length > 1 && (

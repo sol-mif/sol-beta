@@ -16,9 +16,9 @@
 // left the side: the people strip, the connectors tab and the bar's buttons hold them now (the PRD §5). On screen a room
 // is a group; the engine's messages still say team.room.*.
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { SeatScene } from "../SeatScene";
 import type { AppMode } from "../ModeSwitch";
 import { ModeWheel } from "../ModeWheel";
+import { useSpine } from "../spine/flag";   // with the spine on, the modes are the spine's
 import { useSideFloat } from "../sideFloat";
 import { useCover } from "./thingView";
 import { Fold, Pill, Turn } from "../MotionKit";
@@ -75,6 +75,7 @@ export function CoworkSidebar({ team, w, pinned, stage, onMode, onStage, onNew, 
   /** "+ new session": a new session of the group in use, its first line starts it; in one of its repositories when picked */
   onNew: (repo?: string) => void;
 }) {
+  const spine = useSpine();
   const [making, setMaking] = useState<"" | "new" | "join">("");
   const [note, setNote] = useState("");   // a group made without its code: the engine's warning, until the next press
   const [joining, setJoining] = useState(false);   // GitHub's sign-up pane is up (#252): the side, with its code and buttons, stays open
@@ -137,10 +138,10 @@ export function CoworkSidebar({ team, w, pinned, stage, onMode, onStage, onNew, 
   return (
     <aside ref={f.ref} className={`side wside cside ${f.open ? "open" : ""} ${pinned ? "pinned" : ""}`} onMouseEnter={f.onMouseEnter} onMouseLeave={f.onMouseLeave}
       aria-hidden={!f.open} inert={!f.open}>
-      <div className="side-head" data-s>
-        <SeatScene mode="cowork" />
+      {/* with the spine on, the modes are the spine's alone (2026-11-11), and the head held nothing else */}
+      {!spine && <div className="side-head" data-s>
         <ModeWheel mode="cowork" onPick={onMode} />
-      </div>
+      </div>}
       {making === "new" ? <RoomForm team={team} initial={named ?? ""} onPane={setJoining} onDone={(m) => { setMaking(""); setNamed(null); setNote(m?.warn ?? ""); }} />
         : making === "join" ? <JoinForm team={team} onDone={() => setMaking("")} />
         : <>

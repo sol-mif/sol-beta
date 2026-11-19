@@ -1,0 +1,199 @@
+/* The groups home (#1537): docs/cowork-ui-2026-11-18/kit.css and a.html's first two screens, ported as drawn (Frank
+   2026-11-18: one to one). The values are Marco's system's (sol/design/system/tokens.json: depths, strengths, sizes,
+   curves, motion), as the design read them. Scoped under .gh-home so nothing else is touched. */
+.gh-home{
+  --well:#0c0c0e;--card:#1b1b1e;--control:#2a2a2f;--lifted:#222226;
+  --ink:rgba(235,235,232,.92);--dim:rgba(235,235,232,.58);--mute:rgba(235,235,232,.34);
+  --line:rgba(255,255,255,.06);--flat:rgba(255,255,255,.07);
+  --pearl:#e6e1d8;--deep:#0a0a0b;
+  --green:#a1dbb4;--yellow:#eed592;--red:#e3928b;
+  --bands:linear-gradient(90deg,#ff2e4e 0 16.67%,#ff4888 16.67% 33.33%,#fb7129 33.33% 50%,#f89b2a 50% 66.67%,#f4c82a 66.67% 83.33%,#70df45 83.33% 100%);
+  --nacre:radial-gradient(120% 120% at 18% 0%,rgba(255,255,255,.75),rgba(255,255,255,0) 55%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0)),repeating-linear-gradient(104deg,rgba(255,46,78,.16) 0,rgba(255,72,136,.16) 26px,rgba(251,113,41,.16) 52px,rgba(248,155,42,.18) 78px,rgba(244,200,42,.20) 104px,rgba(112,223,69,.18) 130px,rgba(255,46,78,.16) 156px),#e6e1d8;
+  --d-well:inset 0 1px 3px rgba(0,0,0,.6),inset 0 -1px 0 rgba(255,255,255,.05);
+  --d-card:inset 0 1px 0 rgba(255,255,255,.14),0 14px 36px rgba(0,0,0,.55);
+  --d-control:inset 0 1px 0 rgba(255,255,255,.12),0 2px 6px rgba(0,0,0,.45);
+  --d-lifted:inset 0 1px 0 rgba(255,255,255,.24),0 28px 60px rgba(0,0,0,.7);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Helvetica Neue",sans-serif;
+  --disp:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  position:absolute;inset:0;overflow:auto;display:flex;flex-direction:column;padding:16px 24px 16px 8px;
+  font:13px/20px var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;
+  background:
+   radial-gradient(620px 420px at 12% 104%,rgba(64,56,150,.50),transparent 70%),
+   radial-gradient(700px 440px at 58% 112%,rgba(128,36,52,.46),transparent 70%),
+   radial-gradient(560px 400px at 98% 100%,rgba(30,104,62,.42),transparent 70%),
+   radial-gradient(900px 500px at 50% -20%,rgba(60,60,72,.35),transparent 70%),
+   #08080a;
+}
+html[data-spine="on"] .gh-home{left:var(--f-spine)}
+.gh-home *{box-sizing:border-box;margin:0;padding:0}
+.gh-home button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.gh-home button:disabled{cursor:default}
+.gh-home button:focus-visible{outline:none;box-shadow:0 0 0 1.5px var(--pearl)}
+
+/* depths */
+.gh-card{background:var(--card);box-shadow:var(--d-card);border-radius:20px}
+.gh-well{background:var(--well);box-shadow:var(--d-well);border-radius:18px}
+
+/* type */
+.gh-disp{font-family:var(--disp);font-weight:900;letter-spacing:-.04em;color:var(--ink)}
+.gh-disp.d28{font-size:28px;line-height:34px}
+.gh-hd{padding:20px 0 0 24px}
+.gh-title{font:900 44px/48px var(--disp);letter-spacing:-.04em;color:var(--ink)}
+.gh-read{font-size:15px;line-height:24px}
+.gh-names{font-size:11.5px;line-height:16px;color:var(--dim)}
+.gh-num{font-size:15px;line-height:20px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--ink)}
+.gh-num.big{font-family:var(--disp);font-weight:900;font-size:28px;line-height:30px;letter-spacing:-.04em}
+.gh-row{display:flex;align-items:center;gap:8px}.gh-col{display:flex;flex-direction:column;align-items:flex-end}.gh-grow{flex:1;min-width:0}
+.gh-cut{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* pill */
+.gh-pill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:16px;font-size:11.5px;line-height:16px;color:var(--dim);white-space:nowrap}
+.gh-pill.ctl{background:var(--control);box-shadow:var(--d-control);color:var(--ink)}
+.gh-pill.on{background:var(--nacre);color:var(--deep);font-weight:500;box-shadow:var(--d-control)}
+
+/* sticker */
+.gh-stk{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:4px;background:var(--pearl);color:rgba(10,10,11,.88);
+  font:600 11px/20px var(--mono);letter-spacing:.06em;text-transform:uppercase;box-shadow:0 1px 2px rgba(0,0,0,.5);transform:rotate(-2deg);white-space:nowrap}
+.gh-stk.y{background:var(--yellow)}.gh-stk.g{background:var(--green)}
+.gh-stk.xl{height:26px;padding:0 10px;font-size:12px;line-height:26px}
+
+/* coin */
+.gh-coin{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--flat);flex:none;color:var(--deep)}
+.gh-coin svg{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gh-coin.g{background:var(--green)}.gh-coin.y{background:var(--yellow)}.gh-coin.idle{background:#3a3a40}
+.gh-coin.sol{background:var(--bands);background-size:200% 100%;animation:gh-drift 2400ms linear infinite}
+.gh-coin.s18{width:18px;height:18px}.gh-coin.s18 svg{width:12px;height:12px}
+.gh-coin.s22{width:22px;height:22px}.gh-coin.s22 svg{width:14px;height:14px}
+.gh-coin em{font:700 12px/1 var(--sans);font-style:normal;color:var(--deep)}
+@keyframes gh-drift{to{background-position:-200% 0}}
+
+/* jelly */
+.gh-j{display:inline-block;position:relative;flex:none;line-height:0}
+.gh-j svg{display:block;overflow:visible;transform-origin:50% 100%;animation:gh-breath 4800ms ease-in-out infinite}
+.gh-j.up svg{animation:none;transform:translateY(-7px)}
+.gh-j .gh-coin{position:absolute;right:-4px;bottom:-2px;box-shadow:0 0 0 2.5px var(--ring,#1b1b1e)}
+@keyframes gh-breath{50%{transform:scale(1.015,1.03)}}
+
+/* the tables */
+.gh-tables{flex:1;display:flex;align-items:flex-start;padding-top:150px;justify-content:center;gap:40px;padding-bottom:8px;flex-wrap:wrap}
+.gh-tb{width:416px;position:relative;display:flex;flex-direction:column;align-items:center;transition:opacity .2s}
+.gh-seats{display:flex;align-items:flex-end;gap:16px;height:124px;position:relative;z-index:2;margin-bottom:-34px}
+.gh-seat{display:inline-flex;flex:none}
+.gh-who{display:flex;gap:16px;justify-content:center;width:100%}
+.gh-who span{width:96px;text-align:center;font-size:11.5px;line-height:16px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-who .gh-more{width:auto}
+.gh-top{width:100%;border-radius:56px;background:var(--card);box-shadow:var(--d-card);padding:42px 32px 28px;display:flex;flex-direction:column;gap:20px}
+.gh-r{display:flex;align-items:center;gap:16px;width:100%;min-width:0;text-align:left}
+.gh-r .gh-disp{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-kind{width:44px;height:44px;border-radius:14px;background:var(--well);box-shadow:var(--d-well);display:grid;place-items:center;color:var(--dim);flex:none}
+.gh-kind svg{width:26px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gh-now{height:40px;border-radius:14px;padding:0 12px;display:flex;align-items:center;gap:8px;color:var(--dim);background:var(--well);box-shadow:var(--d-well);width:100%;min-width:0}
+.gh-tb.quiet{opacity:.5}
+.gh-tb.call .gh-top{background:var(--lifted);box-shadow:var(--d-lifted);padding:42px 24px 24px;transform:scale(1.02)}
+.gh-tb.call .gh-stk{position:absolute;left:-10px;top:78px;z-index:3}
+.gh-ask{width:100%;padding:16px;border-radius:14px;display:flex;flex-direction:column;gap:12px}
+.gh-ask .gh-row{margin-top:4px}
+.gh-none{padding:0 24px;color:var(--dim)}
+
+/* chat bar */
+.gh-bar{display:flex;align-items:center;gap:8px;padding:8px;border-radius:26px;width:760px;max-width:100%;margin:0 auto;flex:none}
+.gh-picks{display:flex;gap:0;flex:none;max-width:45%;overflow:hidden}
+.gh-in{flex:1;height:40px;border-radius:20px;background:var(--well);box-shadow:var(--d-well);display:flex;align-items:center;gap:8px;padding:0 18px;color:var(--mute);font-size:13px;min-width:0;cursor:text}
+.gh-in input{all:unset;flex:1;min-width:0;color:var(--ink);font:13px/20px var(--sans)}
+.gh-in input::placeholder{color:var(--mute)}
+.gh-said{flex:none;font-size:11.5px;line-height:16px;color:var(--dim);white-space:nowrap}
+.gh-send{width:40px;height:40px;border-radius:50%;background:var(--nacre);box-shadow:var(--d-control);display:grid;place-items:center;color:var(--deep);flex:none}
+.gh-send:disabled{background:var(--flat);color:var(--mute);box-shadow:none}
+.gh-send svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* the way back from an opened table (until the group's own page lands) */
+.gh-back{all:unset;position:absolute;z-index:5;top:12px;left:12px;cursor:pointer;height:24px;padding:0 12px;border-radius:12px;font-size:11.5px;line-height:16px;display:inline-flex;align-items:center;color:rgba(235,235,232,.58)}
+.gh-back:hover{color:rgba(235,235,232,.92);background:rgba(255,255,255,.07)}
+html[data-spine="on"] .gh-back{left:calc(var(--f-spine) + 12px)}
+
+@media (prefers-reduced-motion:reduce){.gh-j svg,.gh-coin.sol{animation:none}.gh-tb{transition:none}}
+
+/* a table sat at (a3 to a11): the left column, the body, the big table, the sheets */
+.gh-home.sw{flex-direction:row;gap:16px;padding-left:0}
+.gh-body{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.gh-side{width:264px;flex:none;padding:12px;display:flex;flex-direction:column;gap:4px;align-self:stretch}
+.gh-grw{position:relative}
+.gh-grw .gh-dots{position:absolute;right:8px;top:0;height:56px;padding:0 6px;color:var(--mute);opacity:0;font-size:13px;letter-spacing:.08em}
+.gh-grw:hover .gh-dots,.gh-grw .gh-dots:focus-visible{opacity:1}
+.gh-gr{height:56px;width:100%;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 10px;color:var(--ink);text-align:left}
+.gh-gr.home{height:44px;color:var(--dim);margin-bottom:4px}
+.gh-k{width:28px;height:28px;border-radius:9px;background:var(--well);box-shadow:var(--d-well);display:grid;place-items:center;color:var(--dim);flex:none}
+.gh-k svg{width:18px;height:12px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.gh-gr.home .gh-k svg{width:14px;height:14px;stroke-width:1.8}
+.gh-js{margin-left:auto;display:flex}.gh-js .gh-j{margin-left:-4px}
+.gh-gr.on{background:var(--nacre);color:var(--deep);font-weight:500;box-shadow:var(--d-control)}
+.gh-gr.on .gh-k{background:rgba(10,10,11,.1);box-shadow:none;color:var(--deep)}
+.gh-gr.held{box-shadow:var(--d-lifted);transform:translateX(4px)}
+.gh-gn{display:flex;flex-direction:column;line-height:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-gn small{font-size:11px;font-weight:400;opacity:.62}
+.gh-lo{height:32px;border-radius:12px;display:flex;align-items:center;padding:0 10px;color:var(--dim);font-size:11.5px;width:100%;text-align:left}
+.gh-lo.on{background:var(--nacre);box-shadow:var(--d-control);color:var(--deep);font-weight:500}
+.gh-lifted{background:var(--lifted);box-shadow:var(--d-lifted);border-radius:20px}
+.gh-menu{position:absolute;left:-4px;top:72px;width:248px;padding:8px;border-radius:18px;display:flex;flex-direction:column;gap:2px;z-index:5}
+.gh-mi{height:36px;width:100%;border-radius:12px;display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--ink);font-size:13px;text-align:left}
+.gh-mi:hover{background:var(--control)}
+.gh-mi .gh-stk{margin-left:auto;font-size:10px;height:18px;line-height:18px;transform:rotate(-2deg)}
+.gh-menu .gh-sep{height:1px;background:var(--well);margin:4px 8px}
+.gh-mute{color:var(--mute)}
+/* the big table */
+.gh-tbl{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;align-items:center}
+.gh-tbl.back{filter:brightness(.38) saturate(.7);pointer-events:none}
+.gh-tname{position:absolute;left:20px;top:26px;display:flex;align-items:center;gap:12px;z-index:3}
+.gh-disp.d44{font-size:44px;line-height:48px}
+.gh-seats.big{gap:28px;height:110px;margin-bottom:-30px;margin-top:132px}
+.gh-seatb{width:96px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;line-height:16px;color:var(--dim)}
+.gh-hole{display:block;width:88px;height:82px;border-radius:44px 44px 16px 16px;background:var(--control);box-shadow:var(--d-control)}
+.gh-top.big{flex:1;min-height:0;border-radius:56px;padding:40px 28px 20px;gap:14px;align-items:center;width:100%}
+.gh-top.big .gh-who{gap:0!important}.gh-top.big .gh-who span{width:124px;line-height:16px;white-space:normal}.gh-top.big .gh-who b{color:var(--ink);font-weight:500;font-size:13px}
+.gh-top.big .gh-r{padding:0 12px;gap:10px;flex:none}
+.gh-stk.code{position:absolute;right:56px;top:70px;z-index:3;transform:rotate(3deg)}
+.gh-stkbtn{cursor:pointer}
+.gh-stage{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-radius:26px;width:100%}
+.gh-ghosts{display:flex;gap:16px}
+.gh-ghost{width:150px;height:96px;border-radius:14px;background:rgba(255,255,255,.035);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--mute);font-size:11.5px}
+.gh-ghost svg{width:44px;height:28px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.gh-pill.tint{background:var(--flat);color:var(--ink)}
+.gh-pill.gh-sm{height:24px;padding:0 10px;border-radius:12px}
+.gh-pill.gh-lg{height:40px;padding:0 22px;border-radius:20px;font-size:13px}
+.gh-seg{display:inline-flex;background:var(--well);box-shadow:var(--d-well);border-radius:18px;padding:2px}
+.gh-mark{width:32px;height:32px;border-radius:9px;background:var(--control);box-shadow:var(--d-control);display:grid;place-items:center;color:var(--dim);flex:none;position:relative}
+.gh-mark[data-on="0"]{color:var(--mute);background:var(--well);box-shadow:var(--d-well)}
+.gh-mark svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.gh-mark i{position:absolute;right:-3px;bottom:-3px;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--card)}
+.g8{gap:8px}.g12{gap:12px}.gh-col{display:flex;flex-direction:column}.gh-mid{flex:1;min-width:0;display:flex;flex-direction:column}
+/* the ask between the table and the bar (a5) */
+.gh-askbar{margin-top:18px;border-radius:26px;padding:16px 16px 16px 20px;display:flex;align-items:center;gap:14px;position:relative;flex:none}
+.gh-askbar .gh-stk{position:absolute;left:-8px;top:-12px;z-index:3}
+/* hand the table a thing (a6) */
+.gh-hand{margin-top:12px;border-radius:26px;padding:8px;display:flex;flex-direction:column;gap:8px;flex:none}
+.gh-hand .gh-bar{width:100%;margin:0}
+.gh-chip i{font-style:normal;color:var(--dim);margin-left:2px;cursor:pointer}
+.gh-send.go{background:var(--bands)}
+.gh-home.sw .gh-bar{margin:12px 0 0;width:100%}
+/* a new table, a code (a7, a9) */
+.gh-namein{color:var(--ink);font-size:16px;width:360px;height:48px;border-radius:24px;text-align:center;border:0;outline:none;font-family:var(--sans)}
+.gh-namein::placeholder{color:var(--mute)}
+.gh-codebox{position:relative;width:360px;height:72px;border-radius:26px;display:flex;align-items:center;justify-content:center;font:900 32px/1 var(--disp);letter-spacing:.04em;color:var(--ink);cursor:text}
+.gh-codebox .gh-stk{position:absolute;right:-18px;top:-9px}
+.gh-codebox u{display:inline-block;width:2px;height:30px;background:var(--ink);margin-left:6px;animation:gh-blink 1s steps(1) infinite}
+.gh-codebox input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;cursor:text}
+@keyframes gh-blink{50%{opacity:0}}
+/* the sheets (a4, a8, a11) */
+.gh-sheet{position:absolute;left:50%;top:50%;width:560px;transform:translate(-50%,-46%);padding:64px 40px 32px;display:flex;flex-direction:column;align-items:center;gap:20px;border-radius:26px;z-index:6}
+.gh-sheet>.gh-j{position:absolute;top:-46px}
+.gh-sheet>.gh-stk{position:absolute;right:28px;top:-9px}
+.gh-stk.r3{transform:rotate(3deg)}
+.gh-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+.gh-sheet.mine{width:600px;gap:16px;transform:translate(-50%,-48%)}
+.gh-set{display:flex;align-items:center;gap:14px;width:100%}.gh-set>.gh-dim{width:64px;text-align:right;flex:none}
+.gh-sheet.leave{width:520px;gap:20px;padding-top:60px}
+.gh-what{display:flex;flex-direction:column;width:100%;padding:0 12px;font-size:13px;line-height:20px;color:var(--ink)}
+.gh-what .gh-row{align-items:flex-start}.gh-what .gh-coin{margin-top:-1px}
+.gh-dim{color:var(--dim)}
+.gh-note{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);padding:0 14px;height:32px;line-height:32px;border-radius:16px;background:var(--control);box-shadow:var(--d-control);color:var(--ink);font-size:11.5px;z-index:7;white-space:nowrap}

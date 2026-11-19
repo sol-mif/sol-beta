@@ -1,7 +1,7 @@
 // Cowork v3, slice 7 (fr-30, #560): the floor of a project, under its rooms. On top, only when there is one: a conflict
 // card (two Sols changed one thing without seeing each other: both versions, one press keeps one, the other stays on
 // the trail) and the waiting-to-send card (what this Sol wrote that the cloud has not kept). Then mine: what may
-// interrupt me and my quiet hours as one picture (the day as a band, the quiet part dark as the notch, now as a glow;
+// interrupt me and my quiet hours as one picture (the day as a band, the quiet part dark, now as a glow;
 // press a word to change it), and my devices (a key per machine under my one key; one press says which answers for
 // me; another machine paired by a one-time code through Sol's cloud, or vouched for by pasting its key). Then the people: press a face for what breaks if they leave,
 // one line each, one press a line. Every press is one trail event (team/v3/floor.ts).
@@ -102,7 +102,7 @@ export function Floor({ project, name, me }: { project: string; name: string; me
   );
 }
 
-/** the day as a band: midnight to midnight, the quiet hours as the notch's dark slab, now as the seat's glow */
+/** the day as a band: midnight to midnight, the quiet hours as a dark slab, now as the seat's glow */
 function Day({ quiet, quietNow, zone }: { quiet: FloorT["interrupt"]["quiet"]; quietNow: boolean; zone: string }) {
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
   const now = Number(parts.find((p) => p.type === "hour")?.value ?? 0) * 60 + Number(parts.find((p) => p.type === "minute")?.value ?? 0);

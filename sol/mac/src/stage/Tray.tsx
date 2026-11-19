@@ -28,7 +28,7 @@ export function Tray({ groups, open, over, dragging, onToggle, onPick, onLift }:
   if (!n && !over && !dragging) return null;
   return (
     <div className={`st-tray ${open || over ? "open" : ""} ${over ? "over" : ""}`} data-tray data-part="the tray">
-      <button className="st-trayline" tabIndex={-1} onClick={onToggle} aria-expanded={open} aria-label={`the tray, ${n} block${n === 1 ? "" : "s"}`}>
+      <button className="st-trayline" tabIndex={-1} onClick={onToggle} aria-expanded={open} aria-label={`the tray, ${n} artifact${n === 1 ? "" : "s"}`}>
         <span className="st-trayhair" aria-hidden /><span className="st-traycount">{n}</span><span className="st-trayhair" aria-hidden />
       </button>
       {(open || over) && (

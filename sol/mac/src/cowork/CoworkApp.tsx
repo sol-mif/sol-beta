@@ -8,11 +8,10 @@ import type { useEngine } from "../useEngine";
 import type { AppMode } from "../ModeSwitch";
 import { Space } from "../creature/Space";
 import { useCreatureDriver } from "../creature/state";
-import { BarCells } from "../BarCells";
 import { Mark } from "../Mark";
 import { CFG, enter, follow, type Follow } from "../motion";
 import { fitRow, useDock, useWidth } from "../fit";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Head } from "../kit/Chrome";
 import { useWork, working as isWorking, type Work } from "../work/useWork";
 import { WorkTalk } from "../work/WorkTalk";
 import { Composer, type Draft } from "../work/Composer";
@@ -30,6 +29,7 @@ import { useRoom, type Thing } from "./useRoom";
 import { ActionBoard, ACTIONS_HOWTO, openInHome } from "./ActionBoard";
 import { MeCtx, Sig } from "./bits";
 import { BarCard } from "./BarCard";
+import { askLine, givenLine, WHERE_IT_GOES } from "./asks";   // ask for a session (#335)
 import { Talk } from "./Talk";   // Talk (#37)
 // --- Hand (#34)
 import { HandLine } from "./Hands";
@@ -283,11 +283,6 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
   // a ping that just reached me is in for you at once, not at the next minute's read
   useEffect(() => { if (team.pings.length) void room.read(); }, [team.pings.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onBar = (ev: React.MouseEvent) => {
-    if (ev.button !== 0 || (ev.target as HTMLElement).closest("button")) return;
-    const win = getCurrentWindow();
-    if (ev.detail === 2) void win.toggleMaximize().catch(() => {}); else void win.startDragging().catch(() => {});
-  };
   const live = stage.k === "session" ? raw.sessions.find((s) => s.id === raw.live) : undefined;
   // the page names itself in its own head; the bar says where you are, and a session's own title
   // a fresh Sol's made-up default room (rooms.ts madeUp) is no group: the bar says only "cowork" then (the e2e of 10/28 saw "cowork · sol-dev")
@@ -304,16 +299,12 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
     <MeCtx.Provider value={team.me}>
     <div className="face wface cface">
       <Space empty={stage.k !== "session" || items.length === 0} />
-      <div className="bar" data-tauri-drag-region onMouseDown={onBar}>
-        <button className={`barbtn ${pinned ? "on" : ""}`} onClick={toggleSide} aria-pressed={pinned} title={pinned ? "unpin the side (cmd+\\)" : "pin the side (cmd+\\)"}>
-          <BarCells kind="side" on={pinned} />
-        </button>
+      <Head className="bar" side={{ open: pinned, onFlip: toggleSide }} title={title || "untitled"}>
         <div className="wtitle" data-tauri-drag-region>
-          <span className="tt">{title || "untitled"}</span>
           {cwd && <span className="where" title={cwd}>{base(cwd)}{raw.thread?.branch ? ` · ${raw.thread.branch}` : ""}</span>}
           {stage.k !== "session" && <span className="where">{stage.k === "thing" ? room.things.find((t) => t.id === stage.id)?.name ?? WHERE.thing : stage.k === "member" ? stage.login : stage.k === "v3room" ? `${v3names[stage.project] && stage.project !== team.state?.settings.room ? `${v3names[stage.project]} · ` : ""}${V3_WORD[stage.room]}` : stage.k === "tool" ? (({ calendar: "the calendar", decisions: "decisions", polls: "polls", settings: "project settings" } as Record<string, string>)[stage.id] ?? blocksOf("tool").find((b) => b.id === stage.id)?.name ?? "") : WHERE[stage.k] ?? ""}</span>}
         </div>
-        <div className="spacer" data-tauri-drag-region />
+        <div className="f-space" data-tauri-drag-region />
         {/* Cowork v3 (fr-30): one search over all of mine, in the bar */}
         {v3 && !firstTime && <Suspense fallback={null}><V3Search project={team.state?.settings.room} projectName={roomNow?.name} names={v3names} me={team.me} onOpen={v3hit} /></Suspense>}
         {(stage.k === "repo" || stage.k === "actions") && <button className="wbtn ghost" onClick={() => void team.refresh()} title="read the board again">read again</button>}
@@ -347,7 +338,7 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
         </div>}
         <span className="rm-who" title="who you are in this project, and which machine this Sol runs on">{team.me || "not signed in"} · this Mac</span>
         {!firstTime && !v3 && <Rail c={ctx} on={Object.keys(STAGE).find((id) => STAGE[id] === stage.k) ?? null} onPane={ctx.open} />}
-      </div>
+      </Head>
       <div className="shell">
         <CoworkSidebar team={team} w={DEV_SESSIONS.length ? { ...raw, sessions: [...raw.sessions, ...DEV_SESSIONS] } : raw} pinned={lay.docked} stage={stage} onMode={onMode} onStage={(s) => { if (s.k === "session") setIssue(null); setStage(s); }}
           onNew={newGroupSession} v3={v3} />
@@ -374,6 +365,23 @@ export function CoworkApp({ e, onMode }: { e: ReturnType<typeof useEngine>; onMo
             ...(room.movedAway && !firstTime && !notNow(team.state?.settings.room ?? "", room.movedAway.repo) ? [{ key: `moved ${room.movedAway.repo}`, on: true, node: (
               <MovedAwayLine team={team} roomId={team.state?.settings.room ?? ""} moved={room.movedAway} flash={e.flash} onGone={() => setGone((n) => n + 1)} />
             ) }] : []),
+            /* a teammate's ask for one of my group sessions (#335): give · not now, and where what I give goes */
+            ...team.asks.map((a) => ({ key: `ask ${a.key}`, on: true, node: (
+              <div className="gline" role="status">
+                <span className="from">asks</span>
+                <span className="t"><b>{askLine(a)}</b><small>{WHERE_IT_GOES}</small></span>
+                <button className="wbtn" onClick={() => void team.answerAsk(a, true).then((r) => e.flash(r.error ?? `giving ${a.title || "it"} to ${a.from.login}${r.lines ? ` · ${r.lines} lines` : ""}`))}>give</button>
+                <button className="wbtn ghost" onClick={() => void team.answerAsk(a, false).then((r) => r.error && e.flash(r.error))}>not now</button>
+              </div>
+            ) })),
+            /* what came of an ask of mine (#335): given, or not now; or a give of mine that stopped on the way */
+            ...team.given.flatMap((g) => { const l = givenLine(g); return l ? [{ key: `given ${g.key}`, on: true, node: (
+              <div className="gline" role="status">
+                <span className="from">{g.error ? "stopped" : g.of === 0 ? "not now" : "given"}</span>
+                <span className="t"><b>{l.line}</b>{l.sub && <small>{l.sub}</small>}</span>
+                <button className="gx" onClick={() => team.closeGiven(g.key)} aria-label="close">×</button>
+              </div>
+            ) }] : []; }),
             ...(stage.k !== "dashboard" && stage.k !== "thing" && stage.k !== "member" && stage.k !== "goal" && stage.k !== "tool" ? team.pings : []).map((p) => ({ key: `ping ${p.id}`, on: true, node: (
               <div className="gline" role="status">
                 <span className="from">{PING_WORD[p.kind] ?? "asked"}{p.issue ? ` #${p.issue}` : ""}</span>

@@ -4,7 +4,7 @@
 //
 // Two Sols (2026-10-15): "next" is this Mac's own engine, "live" is the NucBox over the tailnet (behind tailscale serve,
 // which adds the owner header the engine checks). Settings picks; the pick is kept in localStorage and a reload applies it.
-// Every window of the app (main, notch, island) reads the same key.
+// Every window of the app reads the same key.
 // My machines (Control, #32): any other Sol in the person's list is kept as "at:<address>"; WHICH stays "next" for an
 // address on this Mac and "live" for one elsewhere, so what reads WHICH (banners, files) keeps its meaning. The list
 // itself lives in the engine's team.json; the window keeps a copy (sol.machines) to pick from before it connects.

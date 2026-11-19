@@ -4,7 +4,7 @@
 import { execFile } from "node:child_process";
 import { join as joinBusy } from "../busy.js";
 import { promisify } from "node:util";
-import { chmodSync, existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { accessSync, chmodSync, constants, existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, extname, join, resolve } from "node:path";
 import { homedir } from "node:os";
@@ -60,7 +60,8 @@ export async function changes(cwd: string, scope: string) {
   try { await git(cwd, ["rev-parse", "--is-inside-work-tree"]); } catch { return { notGit: true, files: [] as DiffFile[] }; }
   // paths come back from the repository's top (a session can sit in a subfolder), with root to resolve them
   const root = (await git(cwd, ["rev-parse", "--show-toplevel"])).trim();
-  const flags = ["--no-color", "--no-ext-diff", "-M", "-U3"];
+  // a/ and b/ named, so diff.mnemonicPrefix or diff.noprefix in the person's git config cannot hide a path (#1538, N6)
+  const flags = ["--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", "-M", "-U3"];
   let files: DiffFile[];
   let base: string | undefined;
   if (scope === "last") files = split(await git(cwd, ["-c", "core.quotePath=false", "show", ...flags, "--format=", "HEAD"]).catch(() => ""));
@@ -100,7 +101,9 @@ export function readText(abs: string) {
 const hashOf = (b: Buffer | string) => createHash("sha1").update(b).digest("hex");
 
 // a save over a file changed (or removed) since the pane read it says so instead: the pane sends the hash it read
+// an empty hash is a create: written only if the file is still not there (one made meanwhile is never written over)
 export function writeText(abs: string, text: string, hash?: string) {
+  if (hash === "") { try { writeFileSync(abs, text, { flag: "wx" }); } catch (e: any) { if (e?.code === "EEXIST") return { changed: true }; throw e; } return { ok: true, mtime: statSync(abs).mtimeMs, hash: hashOf(text) }; }
   if (hash !== undefined && (!existsSync(abs) || hashOf(readFileSync(abs)) !== hash)) return { changed: true };
   writeFileSync(abs, text);
   return { ok: true, mtime: statSync(abs).mtimeMs, hash: hashOf(text) };
@@ -146,9 +149,11 @@ export const termInfo = (t: Term) => ({ tid: t.tid, cwd: t.cwd, title: t.title, 
 export const allTerms = () => [...terms.values()].map(termInfo);
 
 export function openTerm(cwd: string, cols: number, rows: number, out: (m: object) => void) {
+  const shell = process.env.SHELL || (existsSync("/bin/zsh") ? "/bin/zsh" : "/bin/bash");   // no zsh on Linux and WSL (#22)
+  // node-pty starts a shell that is not there and lets it end at once: asked first, so the pane says why (#1538, F13)
+  if (shell.startsWith("/")) { try { accessSync(shell, constants.X_OK); } catch { throw new Error(`${shell} cannot be run`); } }
   const pty = loadPty();
   if (!pty) throw new Error("the terminal needs node-pty in the engine (npm install in sol/engine)");
-  const shell = process.env.SHELL || (existsSync("/bin/zsh") ? "/bin/zsh" : "/bin/bash");   // no zsh on Linux and WSL (#22)
   const p = pty.spawn(shell, ["-l"], { name: "xterm-256color", cwd, cols: Math.max(20, cols | 0) || 80, rows: Math.max(5, rows | 0) || 24, env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" } });
   const t: Term = { tid: randomUUID().slice(0, 8), cwd, title: shell.split("/").pop()!, pty: p, buf: "", seq: 0, alive: true, at: Date.now() };
   terms.set(t.tid, t);

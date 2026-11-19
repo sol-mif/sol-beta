@@ -39,8 +39,8 @@ export type Metas = Record<string, Meta>;
 // `v1.html`, `v2.html`… The frame (frameRules.ts) renders it; the atlas (sol/design/atlas/build.mjs) draws it beside ours.
 
 /** the places of the frame: a thing renders only inside one the face has declared */
-export type FramePlace = "pane" | "card" | "sheet" | "notch";
-export const FRAME_PLACES: readonly FramePlace[] = ["pane", "card", "sheet", "notch"];
+export type FramePlace = "pane" | "card" | "sheet";
+export const FRAME_PLACES: readonly FramePlace[] = ["pane", "card", "sheet"];
 /** the functional colours (#634, the meaning channel): contract names with fixed values in tokens.json; a thing may read
  *  them and never set them */
 export const FIXED_COLOURS = ["error", "write", "live"] as const;

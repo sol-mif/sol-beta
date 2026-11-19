@@ -1,0 +1,44 @@
+/* World inside a Home block (ShapeWorld.tsx, #692 suite step 2): on the frame's pearl, the deep ink. The map: a pearl at
+   the middle, a line per stream as thick as its weight (dashed when off), its node a small label. Under it a row per
+   stream: name, weight (kit Pill), this week's use (kit Meter), what it read. The scale's values only (the layout skill). */
+.ww { container: ww / inline-size; display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); min-width: 0;
+  font-size: var(--t-label); line-height: var(--t-label-line); }
+.ww button { font: inherit; color: inherit; }
+
+.ww-head { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.ww-week { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ww-what { flex: 1; min-width: 0; opacity: 0.65; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the map */
+.ww-map { position: relative; height: calc(var(--s12) * 4); min-width: 0; overflow: hidden; border-radius: calc(var(--r-row) - var(--s1)); background: color-mix(in srgb, var(--c-deep) 4%, transparent); }
+.ww-lines { position: absolute; inset: 0; }
+.ww-ln { stroke: var(--c-deep); stroke-linecap: round; opacity: 0.55; }
+.ww-ln.w0 { stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.35; }
+.ww-ln.w1 { stroke-width: 1; }
+.ww-ln.w2 { stroke-width: 3; }
+.ww-ln.w3 { stroke-width: 5; opacity: 0.7; }
+.ww-jelly { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: var(--r-pill); overflow: hidden; box-shadow: 0 0 0 var(--hair) var(--c-pearl-line); }
+.ww-node { all: unset; position: absolute; transform: translate(-50%, -50%); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--c-pearl); box-shadow: 0 0 0 var(--hair) var(--c-deep);
+  color: var(--c-deep); white-space: nowrap; cursor: pointer; }
+.ww-node:hover { background: var(--c-deep); color: var(--c-pearl); }
+.ww-node.off { box-shadow: 0 0 0 var(--hair) var(--c-pearl-line); opacity: 0.55; text-decoration: line-through; }
+
+/* a row per stream */
+.ww-rows { display: flex; flex-direction: column; min-width: 0; }
+.ww-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name weight" "read use"; gap: 0 var(--s2); align-items: center; min-width: 0;
+  padding: var(--s1) 0; border-top: var(--hair) solid var(--c-pearl-line); }
+.ww-row:first-child { border-top: 0; }
+.ww-row.off .ww-name, .ww-row.off .ww-read { opacity: 0.5; }
+.ww-name { grid-area: name; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ww-name small { margin-left: var(--s1); font-size: var(--t-label); font-weight: 400; opacity: 0.55; }
+.ww-weight { grid-area: weight; display: flex; gap: 0; }
+.ww-weight .pc-act { padding: 0 var(--s2); }
+.ww-use { grid-area: use; justify-self: end; display: flex; align-items: center; gap: var(--s1); font-variant-numeric: tabular-nums; }
+.ww-use b { font-weight: 600; }
+.ww-read { grid-area: read; min-width: 0; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* wide: one line a stream */
+@container ww (min-width: 600px) {
+  .ww-row { grid-template-columns: minmax(0, 0.8fr) auto auto minmax(0, 2fr); grid-template-areas: "name weight use read"; gap: 0 var(--s3); }
+  .ww-map { height: calc(var(--s12) * 5); }
+}

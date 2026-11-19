@@ -1,0 +1,108 @@
+/* The whole of Jelly (#1193): the cluster map on the kit, black, white and pearl; yellow only for a change, red only for
+   what is broken. Glass islands, thin wires; motion only when something changed (a zoom, a new change). */
+.ss { position: relative; width: 100%; height: 100%; overflow: hidden; user-select: none; isolation: isolate; color: var(--ink);
+      background-image: radial-gradient(rgb(255 255 255 / .05) 1px, transparent 1px); background-size: 24px 24px; }
+.ss-none { padding: var(--s3); color: var(--dim); font-size: var(--t-body); }
+.ss-dim { color: var(--mute); }
+
+/* the top line: where you are, and what the last change reached */
+.ss-top { position: absolute; left: 0; right: 0; top: 0; height: 48px; display: flex; align-items: center; gap: 16px; padding: 0 18px; z-index: 3;
+          border-bottom: 1px solid rgb(255 255 255 / .06); background: rgb(0 0 0 / .35); backdrop-filter: blur(12px); }
+.ss-crumb { font-size: 13px; white-space: nowrap; }
+.ss-crumb b { font-weight: 600; }
+.ss-crumb button { all: unset; cursor: pointer; color: var(--dim); }
+.ss-crumb button:hover { color: var(--ink); }
+.ss-last { margin-left: auto; min-width: 0; font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-last b { color: var(--ink); font-weight: 500; }
+.ss-reach { color: var(--c-pearl); }
+
+/* the whole: bands, wires, islands */
+.ss-whole { position: absolute; inset: 0; transition: transform .42s cubic-bezier(.32, .72, 0, 1), opacity .3s; }
+.ss.zoomed .ss-whole { transform: scale(1.6); opacity: 0; pointer-events: none; }
+.ss-map { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.ss-band { position: absolute; border-radius: 22px; border: 1px dashed rgb(255 255 255 / .06); background: rgb(255 255 255 / .012); }
+.ss-band span { position: absolute; top: 10px; left: 14px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); }
+.ss-wires { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.ss-wires path { fill: none; stroke: rgb(255 255 255 / .16); stroke-linecap: round; pointer-events: stroke; }
+.ss-wires path:hover { stroke: var(--c-pearl); }
+.ss-wires path.rip { stroke: var(--write); stroke-width: 2.2; stroke-dasharray: 6 6; animation: ss-flow .9s linear infinite, ss-fade 2.4s ease-out forwards; }
+@keyframes ss-flow { to { stroke-dashoffset: -12; } }
+@keyframes ss-fade { 0% { opacity: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+
+.ss-is { all: unset; box-sizing: border-box; position: absolute; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 12px;
+         border-radius: 20px; isolation: isolate; cursor: pointer; background: #0b0b0c; transition: box-shadow .25s, transform .3s cubic-bezier(.34, 1.12, .64, 1); }
+.ss-is:hover { box-shadow: 0 0 0 1px rgb(255 255 255 / .2); transform: translateY(-1px); }
+.ss-is.dim { opacity: .5; }
+.ss-is.rch { box-shadow: 0 0 0 1px rgb(233 228 218 / .28); }
+.ss-is.lit { box-shadow: 0 0 0 1.5px var(--write), 0 0 0 8px rgb(244 200 42 / .14); }
+.ss-is.reach { box-shadow: 0 0 0 1.5px var(--c-pearl), 0 0 0 7px rgb(233 228 218 / .12); }
+.ss-is-hd { display: flex; align-items: center; gap: 8px; }
+.ss-is-hd b { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-is-ln { font-size: 12px; line-height: 1.35; color: var(--dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ss-bar { margin-top: auto; display: flex; height: 3px; border-radius: 2px; overflow: hidden; background: rgb(255 255 255 / .06); }
+.ss-bar i { display: block; height: 100%; }
+
+/* who is here: a person's initial on pearl; the dot says it is their agent */
+.ss-who { display: inline-flex; gap: 3px; }
+.ss-av { position: relative; width: 20px; height: 20px; border-radius: 50%; background: var(--c-pearl); color: #000; font-size: 11px; font-weight: 700;
+         display: inline-grid; place-items: center; }
+.ss-av i { position: absolute; right: -2px; bottom: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px #000; }
+
+/* one cluster, in its own drawing */
+.ss-zoom { position: absolute; left: 0; right: 0; top: 48px; bottom: 0; overflow: auto; animation: ss-in .42s cubic-bezier(.32, .72, 0, 1); }
+@keyframes ss-in { from { transform: scale(.6); opacity: 0; } }
+.ss-zoom.d-system { overflow: hidden; }
+.ss-sys { position: absolute; inset: 0; }
+.ss-zoom-in { padding: 18px 22px 40px; min-height: 100%; box-sizing: border-box; }
+.ss-zh { max-width: 900px; margin-bottom: 18px; }
+.ss-zh h2 { display: inline; margin: 0 12px 0 0; font-size: 20px; font-weight: 650; }
+.ss-zh p { margin: 6px 0 0; font-size: 13px; color: var(--dim); }
+.ss-here button { all: unset; cursor: pointer; margin-right: 10px; color: var(--ink); border-bottom: 1px solid rgb(255 255 255 / .2); }
+
+.ss-t { box-sizing: border-box; padding: 7px 10px; border-radius: 12px; background: rgb(255 255 255 / .05); border: 1px solid rgb(255 255 255 / .07);
+        display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.ss-t:hover { border-color: rgb(255 255 255 / .2); }
+.ss-t.busy { border-color: rgb(233 228 218 / .5); }
+.ss-t.s-legacy, .ss-t.s-parked { opacity: .45; }
+.ss-t.s-building .ss-t-k { color: var(--write); }
+.ss-t.s-broken .ss-t-k { color: var(--error); }
+.ss-t > * { flex-shrink: 0; }
+.ss-t-hd { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ss-t-hd .ss-av { all: unset; flex-shrink: 0; position: relative; width: 16px; height: 16px; border-radius: 50%; background: var(--c-pearl); color: #000;
+                  font-size: 9.5px; font-weight: 700; display: inline-grid; place-items: center; cursor: pointer; }
+.ss-t-hd .ss-av i { position: absolute; right: -2px; bottom: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px #000; }
+.ss-t-nm { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-t-k { font-size: 11px; color: var(--mute); white-space: nowrap; }
+.ss-units { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ss-units code { font-size: 10.5px; padding: 1px 6px; border-radius: 6px; background: rgb(255 255 255 / .06); color: var(--dim); }
+
+/* the engine: in → inside → out */
+.ss-flow { position: relative; }
+.ss-col-h { position: absolute; top: 0; }
+.ss-col-h b { display: block; font-size: 14px; font-weight: 600; }
+.ss-col-h span { font-size: 11.5px; color: var(--mute); }
+.ss-flow-in { position: absolute; left: 0; top: 48px; }
+.ss-fw { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.ss-fw path { fill: none; stroke: rgb(255 255 255 / .1); stroke-width: 1.2; transition: stroke .2s, opacity .2s; }
+.ss-fw path.hot { stroke: var(--c-pearl); stroke-width: 1.8; }
+.ss-fw path.faint { opacity: .25; }
+.ss-side { position: absolute; box-sizing: border-box; padding: 9px 12px; border-radius: 14px; border: 1px dashed rgb(255 255 255 / .12); overflow: hidden; }
+.ss-side b { display: block; font-size: 12.5px; font-weight: 600; }
+.ss-side b i { font-style: normal; color: var(--mute); font-weight: 400; margin-left: 4px; }
+.ss-side span { display: block; margin-top: 4px; font-size: 11.5px; line-height: 17px; color: var(--dim); }
+
+/* the machines: one column each */
+.ss-cols { display: grid; gap: 14px; align-items: start; }
+.ss-col { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: rgb(255 255 255 / .02); border: 1px solid rgb(255 255 255 / .05); min-height: 120px; }
+.ss-col-hh b { display: block; font-size: 14px; font-weight: 600; }
+.ss-col-hh span { font-size: 11.5px; color: var(--mute); }
+
+/* the app: its parts */
+.ss-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-whole, .ss-is { transition: none; }
+  .ss-zoom { animation: none; }
+  .ss-wires path.rip { animation: ss-fade 2.4s step-end forwards; }
+}
+.ss-t.on { border-color: var(--c-pearl-line); box-shadow: inset 0 0 0 1px var(--c-pearl-line); }

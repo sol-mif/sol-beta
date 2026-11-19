@@ -5,7 +5,8 @@
 // and from then they count in the project. What they see first is drawn per role: an owner the setup, an editor three
 // things (what it is, how things get in and out, what their agent may do), a guest what it is, view only, no agent.
 import { createHash, randomBytes } from "node:crypto";
-import { ensureOwner, inProject, recordOf, roleOf, ROLES, type By, type Ev, type Port, type Rec, type Role } from "./port5.js";
+import { ensureOwner, inProject, lastMemberAt, recordOf, roleOf, ROLES, type By, type Ev, type Port, type Rec, type Role } from "./port5.js";
+import { dateAfter } from "./standing.js";
 import { CORE, PLACE_NAME, ROOM_NAME, shapeOf } from "./setup.js";
 
 export const LINK_TTL = 7 * 24 * 3600_000;
@@ -79,7 +80,7 @@ export function letIn(port: Port, o: { project: string; who: string; by: By; rol
   const w = waitingOf(evs).find((x) => same(x.who, o.who));
   if (!w) return roleOf(rec, o.who) ? { error: `${o.who} is in already` } : { error: `${o.who} has not opened the join link` };
   const role: Role = o.role && ROLES.includes(o.role) ? o.role : w.role;
-  const event = port.append({ project: o.project, by: o.by, kind: "member", item: w.who, value: { role, in: true, letInBy: o.by.person } });
+  const event = port.append({ project: o.project, by: o.by, kind: "member", item: w.who, value: { role, in: true, letInBy: o.by.person }, ...dateAfter(lastMemberAt(evs)) });
   return { member: { who: w.who, role }, count: inProject(recordOf(port.since(o.project))).length, event };
 }
 

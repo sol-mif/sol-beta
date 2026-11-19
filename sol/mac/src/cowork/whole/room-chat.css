@@ -1,0 +1,51 @@
+/* Cowork › Agents' room as the group's chat (#1417). From the scale and the material only (the layout skill); a
+   member's colour is --ring, set from the palette set's six through the kit (RoomChat.tsx). */
+.rc { position: absolute; inset: 0; display: flex; flex-direction: column; min-width: 0; }
+
+/* the members: each person and their agent, an agent ringed in its person's colour */
+.rc-members { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s8) var(--s6) var(--s3); border-bottom: 1px solid var(--c-on-line); }
+.rc-member { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2) 0 var(--s1); border-radius: var(--r-pill); background: var(--surface); min-width: 0; }
+.rc-member-name { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-face { flex: none; display: inline-grid; place-items: center; width: var(--s4); height: var(--s4); border-radius: var(--r-pill); }
+.rc-member.agent .rc-face, .rc-line.agent .rc-face { border: 1px solid var(--ring); }
+.rc-count { margin-left: auto; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); font-variant-numeric: tabular-nums; }
+
+/* what waits on me: slim, above the chat */
+.rc-strip { flex: none; display: flex; gap: var(--s3); overflow-x: auto; padding: var(--s3) var(--s6); border-bottom: 1px solid var(--c-on-line); }
+.rc-wait { flex: none; display: flex; flex-direction: column; gap: var(--s1); max-width: var(--col); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--surface); }
+.rc-wait-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the chat */
+.rc-scroll { flex: 1; min-height: 0; overflow: auto; }
+.rc-lines { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4) var(--s6); max-width: var(--col); }
+.rc-empty { margin: var(--s8) 0; }
+.rc-line { display: flex; align-items: flex-start; gap: var(--s2); min-width: 0; }
+.rc-line .rc-face { margin-top: var(--s1); }
+.rc-col { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.rc-who { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.rc-name { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); font-weight: 500; }
+.rc-at, .rc-re { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); font-variant-numeric: tabular-nums; }
+.rc-text { margin: 0; padding: var(--s2) var(--s3); border-radius: var(--r-card); background: var(--surface); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.rc-line.mine .rc-text { background: var(--c-picked); }
+.rc-rule { margin: 0; padding: 0 var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); }
+.rc-settled { margin: 0; padding-left: var(--s6); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-rest); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* an artifact on a line: a chip that opens, with review */
+.rc-art, .rc-chip { display: flex; align-items: center; gap: var(--s2); min-width: 0; max-width: 100%; margin: 0; padding: var(--s1) var(--s1) var(--s1) var(--s3); border-radius: var(--r-row); border: 1px solid var(--c-on-line); background: var(--base); }
+.rc-art-kind { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); text-transform: uppercase; letter-spacing: .06em; }
+.rc-art-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-art .cw-btn[aria-pressed="true"] { background: var(--c-picked); }
+
+/* the box */
+.rc-foot { flex: none; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s6) var(--s6); max-width: var(--col); }
+.rc-said { margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink); }
+.rc-box { display: flex; align-items: flex-end; gap: var(--s2); padding: var(--s2) var(--s2) var(--s2) var(--s3); border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--c-on-line); }
+.rc-box textarea { flex: 1; min-width: 0; field-sizing: content; resize: none; padding: var(--s1) 0; background: none; border: 0; outline: 0; font: inherit; color: var(--ink); }
+.rc-box textarea::placeholder { color: var(--c-on-dim); }
+.rc-att { all: unset; box-sizing: border-box; flex: none; height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); font-size: var(--t-label); color: var(--c-on-dim); cursor: pointer; }
+.rc-att:hover { color: var(--ink); background: var(--c-lift); }
+.rc-menu { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s1); border-radius: var(--r-row); background: var(--surface); border: 1px solid var(--c-on-line); }
+.rc-option { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-chip); cursor: pointer; min-width: 0; }
+.rc-option:hover, .rc-option.on { background: var(--c-picked); }
+.rc-add { display: flex; align-items: center; gap: var(--s2); }
+.rc-url { flex: 1; min-width: 0; height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); border: 1px solid var(--c-on-line); background: var(--base); color: var(--ink); font: inherit; outline: 0; }

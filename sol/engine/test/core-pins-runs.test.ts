@@ -156,8 +156,10 @@ test("idle: closed 15 minutes after the turn ends, not a minute before; agents a
     assert.equal(run.inbox.closed, false, "an agent at work keeps the run");
     assert.equal(B.busyCount(), 1, "and holds the counter");
     q.push({ type: "system", subtype: "task_notification", task_id: "bg1" }); await flush();
-    assert.equal(B.busyCount(), 0);
-    mock.timers.tick(15 * 60_000 - 1);
+    assert.deepEqual(B.turnsInFlight().map((j) => j.note), ["waking"], "the end may wake the main thread: held as a turn (#1566)");
+    mock.timers.tick(30_000);
+    assert.equal(B.busyCount(), 0, "no turn came: the wake lets go after 30 s");
+    mock.timers.tick(15 * 60_000 - 30_000 - 1);
     assert.equal(run.inbox.closed, false);
     mock.timers.tick(1);
     assert.equal(run.inbox.closed, true);
@@ -209,4 +211,23 @@ test("stopsEngine: the engine's own label or pid is refused; its build job, othe
 test("roleEnv: the role is set, or taken off; the rest of the environment is kept", () => {
   assert.deepEqual(roleEnv("builder", { A: "1", SOL_ROLE: "dev" }), { A: "1", SOL_ROLE: "builder" });
   assert.deepEqual(roleEnv(undefined, { A: "1", SOL_ROLE: "dev" }), { A: "1" });
+});
+
+test("#1566: background agents hold the counter as background work; a task's end holds it as a turn until the turn it wakes begins", async () => {
+  const { run, q } = open();
+  await run.say({ sessionId: run.id, text: "start a background wait" });
+  q.push(turnStarts);
+  q.push({ type: "system", subtype: "task_started", task_id: "t1", description: "Wait for CI" });
+  q.push(result()); await flush();
+  assert.equal(run.busy, false);
+  assert.deepEqual(B.busyList().map((j) => [j.note, !!j.background]), [["agents", true]], "resting: only background work");
+  assert.equal(B.betweenTurns(), true, "a renew may go");
+  q.push({ type: "system", subtype: "task_notification", task_id: "t1", status: "completed" }); await flush();
+  assert.equal(B.betweenTurns(), false, "the end woke the main thread: a turn is on its way, before its first frame");
+  assert.deepEqual(B.turnsInFlight().map((j) => j.note), ["waking"]);
+  q.push(turnStarts); await flush();
+  assert.deepEqual(B.turnsInFlight().map((j) => j.note), ["default"], "the turn holds it now, the wake let go");
+  q.push(result()); await flush();
+  assert.equal(B.busyCount(), 0);
+  run.end();
 });

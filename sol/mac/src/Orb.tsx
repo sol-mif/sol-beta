@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CFG, useSpring, type Follow } from "./motion";
 
-// The orb (notch buttons #6, "The scroll"): a small round button at the bottom centre of the talk, above the box.
+// The orb (#6, "The scroll"): a small round button at the bottom centre of the talk, above the box.
 // It shows when Marco has released the follow and the end is out of view, and hides at the end. New words while he
 // is away put a small dot on it, nothing else. A press glides the talk to its end on the spring and sticks it again.
 // It rises and fades on the companion's `arrive` spring, never pops; reduced motion: it is there or not, no fade.

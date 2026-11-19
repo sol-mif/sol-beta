@@ -1,0 +1,26 @@
+/* The draft's inside (Draft.tsx, #692 suite step 2): a page both write in, on the frame's pearl; a waved line is one
+   its run is unsure of (the kit's ink wave). The scale's values only (the layout skill). */
+.drf { container-type: inline-size; display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); min-width: 0; }
+.drf-head { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.drf-head b { flex: 0 1 auto; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drf-head span { flex: 1 1 0; min-width: 0; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drf-page { display: flex; flex-direction: column; padding: var(--s2) var(--s3); border: var(--hair) solid var(--c-pearl-line); border-radius: calc(var(--r-row) - var(--s1)); background: color-mix(in srgb, var(--c-pearl), var(--ink) 55%); color: var(--c-deep); cursor: text; }
+.drf-line { position: relative; display: flex; align-items: flex-start; gap: var(--s2); min-width: 0; margin: 0; padding: var(--s1) 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.drf-words { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; cursor: text; }
+.drf-words:focus { box-shadow: 0 var(--hair) 0 currentColor; }
+.drf-line[data-by="you"] .drf-words { font-weight: 500; }
+.drf-line.redo .drf-words { opacity: 0.4; }
+.drf-redoing { flex: none; font-size: var(--t-label); line-height: var(--t-body-line); opacity: 0.6; }
+.drf-line-acts { flex: none; display: flex; align-items: center; gap: var(--s1); height: var(--t-body-line); opacity: 0; transition: opacity var(--d-turn) var(--e-move); }
+.drf-line:hover .drf-line-acts, .drf-line:focus-within .drf-line-acts, .drf-line.unsure .drf-line-acts { opacity: 1; }
+.drf-line:not(:hover):not(:focus-within) [data-draft-redo] { display: none; }
+.drf .drf-unsure { all: unset; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--yellow-soft); font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; }
+.drf .drf-unsure[aria-expanded="true"] { background: var(--yellow-strong); }
+.drf-foot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1) var(--s2); min-width: 0; }
+.drf-said { flex: 1; min-width: 0; font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drf-acts { flex: none; display: flex; gap: var(--s1); }
+/* narrow (Home's side column, 480): the line's marks go under it, so the words keep the width */
+@container (max-width: 360px) { .drf-line { flex-wrap: wrap; } .drf-line-acts { order: 2; } .drf-words { flex-basis: 100%; } .drf-line:not(.unsure):not(:hover):not(:focus-within) .drf-line-acts { display: none; } }
+/* the moves keep their pill inside "what came out" (pass 2's .p2-stickies button strips a button bare) */
+.drf .pc-act { padding: 0 var(--s3); border: var(--hair) solid currentColor; }
+.drf .pc-act.quiet { border-color: transparent; }

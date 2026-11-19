@@ -1,0 +1,10 @@
+/* Home pass 2's layout (#692): the integrator's. Each part's own look lives in its part's css beside it, from the kit's
+   tokens; this file only places the parts. */
+.p2 { height:100%; overflow:auto; padding:16px 18px 24px; box-sizing:border-box; }
+.p2-main { display:grid; grid-template-rows:auto 1fr; gap:12px; }
+.p2-top { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr); gap:12px; }
+.p2-top:not(:has(.p2-since)) { grid-template-columns:minmax(0, 1fr); }
+.p2-bottom { display:grid; grid-template-columns:minmax(0, 2fr) minmax(0, 1fr); gap:12px; min-height:0; }
+.p2-bottom:not(:has(.p2-stickies)) { grid-template-columns:minmax(0, 1fr); }
+.p2-down { display:grid; place-items:center; color:rgba(255, 255, 255, .55); }
+@container (max-width: 900px) { .p2-top, .p2-bottom { grid-template-columns:minmax(0, 1fr); } }

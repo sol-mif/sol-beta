@@ -42,3 +42,19 @@ export function curve(w: number, h: number, r: number, s = 0.6, x = 0, y = 0): s
     "Z",
   ].join("");
 }
+
+/** The four corners of that curve as path pieces, for a shape that is not a rectangle (a block's tab, #766), each
+ *  going clockwise: `tl` from (x, y + p) up and right, `tr` from (x + w − p, y) right and down, `br` from
+ *  (x + w, y + h − p) down and left, `bl` from (x + p, y + h) left and up; `p` is how far from the corner each starts. */
+export function corners(r: number, s = 0.6, budget: number) {
+  r = Math.max(0, Math.min(r, budget));
+  const { a, b, c, d, p, L } = corner(r, s, budget);
+  const A = n(a), AB = n(a + b), ABC = n(a + b + c), BC = n(b + c), C = n(c), D = n(d), LL = n(L), RR = n(r);
+  return {
+    p,
+    tl: `c0 ${-A} 0 ${-AB} ${D} ${-ABC}a${RR} ${RR} 0 0 1 ${LL} ${-LL}c${C} ${-D} ${BC} ${-D} ${ABC} ${-D}`,
+    tr: `c${A} 0 ${AB} 0 ${ABC} ${D}a${RR} ${RR} 0 0 1 ${LL} ${LL}c${D} ${C} ${D} ${BC} ${D} ${ABC}`,
+    br: `c0 ${A} 0 ${AB} ${-D} ${ABC}a${RR} ${RR} 0 0 1 ${-LL} ${LL}c${-C} ${D} ${-BC} ${D} ${-ABC} ${D}`,
+    bl: `c${-A} 0 ${-AB} 0 ${-ABC} ${-D}a${RR} ${RR} 0 0 1 ${-LL} ${-LL}c${-D} ${-C} ${-D} ${-BC} ${-D} ${-ABC}`,
+  };
+}

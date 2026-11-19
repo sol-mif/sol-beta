@@ -5,7 +5,8 @@
 
 export type St = "needs" | "running" | "failed" | "unread" | "done" | "";
 export type Row = { id: string; title: string; cwd: string; project: string; folder?: string; machine?: string; updatedAt: number;
-  pinned?: boolean; done?: boolean; archived?: boolean; gone?: boolean; parent?: string };
+  pinned?: boolean; done?: boolean; archived?: boolean; gone?: boolean; parent?: string;
+  under?: string; kind?: "orchestration" };   // under: the orchestration session that runs it (sideSort folds by it alone)
 export type Folder<R extends Row = Row> = { key: string; name: string; rows: R[]; at: number };
 
 export const DAY = 86_400_000;

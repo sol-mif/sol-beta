@@ -402,6 +402,32 @@ pub fn block_allowed(u: &Url) -> bool {
     match u.scheme() { "https" => true, "http" => loopback(&host), _ => false }
 }
 
+/// A page Cowork opened as a layer of a place (sol/mac/src/cowork/whole/out.ts viewId): its view keeps to the site of
+/// the page it opened on (site_of), as a thing's tab does; a link off it is the face's note, never this view (#1464 review).
+const COWORK_OUT: &str = "cowork-out-";
+/// The site a block view keeps to: a Cowork page's own (site_of its first address), or None for a browser block, which
+/// goes wherever block_allowed lets it. Pure.
+pub fn view_site(id: &str, first: &Url) -> Option<Vec<String>> { id.starts_with(COWORK_OUT).then(|| site_of(first)) }
+/// The path words of a sign-in, a sign-out or a grant (cowork/whole/place.ts SIGN_IN, the same list): a Cowork page
+/// never goes to one, so a sign-in opens in the person's browser, not under Sol's logins.
+const SIGN_IN: &[&str] = &["login", "logout", "signin", "sign-in", "signout", "sign-out", "signup", "sign-up", "session", "sessions", "oauth", "authorize", "auth", "sso"];
+fn signs_in(u: &Url) -> bool {
+    u.path_segments().is_some_and(|mut s| s.any(|w| {
+        // a segment's %XX read as its byte, so /%6Cogin is /login
+        let (b, mut out, mut i) = (w.as_bytes(), Vec::new(), 0);
+        while i < b.len() {
+            let hex = (b[i] == b'%' && i + 2 < b.len()).then(|| std::str::from_utf8(&b[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok())).flatten();
+            match hex { Some(c) => { out.push(c); i += 3; } None => { out.push(b[i]); i += 1; } }
+        }
+        SIGN_IN.contains(&String::from_utf8_lossy(&out).to_ascii_lowercase().as_str())
+    }))
+}
+/// May a block view's frames go to `u`: a Cowork page within its site and off any sign-in path, any other block by
+/// block_allowed. Pure.
+pub fn view_allowed(site: &Option<Vec<String>>, u: &Url) -> bool {
+    match site { Some(s) => allowed(s, u) && !signs_in(u), None => block_allowed(u) }
+}
+
 fn block_views(app: &AppHandle) -> Vec<tauri::Webview> {
     app.webviews().into_values().filter(|w| w.label().starts_with(BLOCK)).collect()
 }
@@ -433,12 +459,15 @@ pub fn block_view_open(app: AppHandle, id: String, url: String, x: f64, y: f64, 
     let window = app.get_window(FACE).ok_or("no main window")?;
     let (a1, a2, a3, a4) = (app.clone(), app.clone(), app.clone(), app.clone());
     let (i1, i2, i3, i4) = (id.clone(), id.clone(), id.clone(), id.clone());
+    let site = view_site(&id, &to);
+    if site.as_ref().is_some_and(|s| !view_allowed(&Some(s.clone()), &to)) { return Err("this page opens in your browser, not inside Sol".into()); }
+    let (s1, s2) = (site.clone(), site);
     let b = WebviewBuilder::new(&label, WebviewUrl::External(to))
         .user_agent(SAFARI_UA)
         .data_store_identifier(STORE)
         .disable_drag_drop_handler()
         .on_navigation(move |u| {
-            let ok = block_allowed(u);
+            let ok = view_allowed(&s1, u);
             if !ok && gate(&format!("refused {BLOCK}{i1}"), Duration::from_secs(1)) { tell_block(&a1, serde_json::json!({ "id": i1, "refused": shown(u), "keep": keep(u) })); }
             ok
         })
@@ -446,7 +475,7 @@ pub fn block_view_open(app: AppHandle, id: String, url: String, x: f64, y: f64, 
             // a link that asks for a window: the same view goes there when it may (one every 1.5 s), else the face names it
             if !gate(&format!("new {BLOCK}{i2}"), Duration::from_millis(1500)) { return NewWindowResponse::Deny; }
             let u = unwrap_redirect(&u);
-            if block_allowed(&u) && u.scheme() != "about" {
+            if view_allowed(&s2, &u) && u.scheme() != "about" {
                 if let Some(wv) = a2.get_webview(&format!("{BLOCK}{i2}")) { let _ = wv.navigate(u); }
             } else if matches!(u.scheme(), "https" | "http") { tell_block(&a2, serde_json::json!({ "id": i2, "outside": shown(&u), "keep": keep(&u) })); }
             NewWindowResponse::Deny
@@ -487,6 +516,7 @@ pub fn block_view_nav(app: AppHandle, id: String, url: Option<String>, reload: O
     if reload == Some(true) { return wv.reload().map_err(|e| e.to_string()); }
     let to = Url::parse(url.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
     if !block_allowed(&to) { return Err("a browser block opens https pages, and http only on this machine".into()); }
+    if id.starts_with(COWORK_OUT) && !wv.url().ok().map_or(false, |at| view_allowed(&Some(site_of(&at)), &to)) { return Err("a Cowork page keeps to its own site; open the link in your browser".into()); }
     wv.navigate(to).map_err(|e| e.to_string())
 }
 
@@ -600,6 +630,21 @@ mod tests {
         assert_eq!(clip(Rect { x: 100.0, y: 100.0, w: 250.0, h: 300.0 }, stage), Some(Rect { x: 300.0, y: 100.0, w: 50.0, h: 300.0 }), "over the side: cut at the stage's left");
         assert_eq!(clip(Rect { x: 1300.0, y: 100.0, w: 480.0, h: 300.0 }, stage), None, "wholly off: hidden");
         assert_eq!(clip(Rect { x: 320.0, y: 100.0, w: 0.5, h: 300.0 }, stage), None, "less than a pixel: hidden");
+    }
+    #[test]
+    fn a_cowork_page_keeps_to_its_site_and_a_browser_block_does_not() {
+        let first = u("https://github.com/sol-mif/sol-dev/issues/1464");
+        let cowork = view_site("cowork-out-abc", &first);
+        for ok in ["https://github.com/sol-mif/sol-dev/pull/1", "https://github.githubassets.com/x.js", "about:blank"] {
+            assert!(view_allowed(&cowork, &u(ok)), "{ok}");
+        }
+        for bad in ["https://evil.example/", "http://127.0.0.1/x", "http://localhost:8080/", "https://github.com.evil.com/", "https://github.com:8443/",
+            "https://github.com/login", "https://github.com/login/oauth/authorize?client_id=x", "https://github.com/%6Cogin", "https://github.com/Sign-In"] {
+            assert!(!view_allowed(&cowork, &u(bad)), "{bad}");
+        }
+        let block = view_site("b1", &first);
+        assert!(block.is_none());
+        assert!(view_allowed(&block, &u("https://evil.example/")), "a browser block goes where block_allowed lets it");
     }
     #[test]
     fn a_block_view_goes_to_https_and_this_machine() {

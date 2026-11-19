@@ -4,6 +4,7 @@
 // before its fix in this PR (its commit names it); the rest are pins that passed as the code was. No DOM, no React.
 import { test, mock } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { fitInto, tile, overlaps, dockTo, dockBack, talkWidth, STAGE_FLOOR, MIN, PAD, type Place } from "./stage/model.ts";
 import { applySide, stepOf, History, walk, readingOrder } from "./stage/moving.ts";
 import { EngineStore } from "./stage/engineStore.ts";
@@ -20,9 +21,16 @@ const tick = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 // ── moving.ts: the history (⌘Z) ─────────────────────────────────────────────────────────────────────────────────
 // Promise: a step taken back puts back only the places that step changed; "a step taken back never touches a block
 // the agent composed after it"; a block comes back on the stage (back) only when the step itself took it off (a close).
-// The defect "⌘Z on a move never brings back a block closed since" and its fix land with the whole stage, behind
-// stage.whole / stage.said (#945), not here (#995): on main applySide still takes two sides, so these pins read the third
-// as nothing.
+
+test("defect: ⌘Z on a move never brings back a block closed since (applySide resurrected it)", () => {
+  const before = [P("a", 12, 12)], after = [P("a", 400, 12)];
+  const step = stepOf(before, after)!;
+  // the agent (or another window) closed "a" after the person moved it: it is no longer on the stage
+  const now: Place[] = [P("b", 12, 300)];
+  const r = applySide(now, step.before, step.after);
+  assert.deepEqual(r.back, [], "a move taken back must not reopen a closed block");
+  assert.deepEqual(r.blocks.map((p) => p.id), ["b"]);
+});
 
 test("pin: ⌘Z on a close brings the block back where it sat; ⇧⌘Z closes it again", () => {
   const step = stepOf([P("a", 12, 12), P("b", 400, 12)], [P("b", 400, 12)])!;
@@ -311,8 +319,49 @@ test("pin: a run with the socket down says so at once; nothing runs with no sess
   setRunner({ send: () => false, seat: "claude", sessionId: "s" });
   request("r2", "ls");
   assert.equal(ranOf("r2")!.why, "not connected");
-  setRunner({ send: () => true, seat: "claude", sessionId: null });
+  let sent = 0;
+  setRunner({ send: () => { sent++; return true; }, seat: "claude", sessionId: null });
   request("r3", "ls");
-  assert.equal(ranOf("r3"), undefined);
+  assert.equal(sent, 0);
   setRunner(null);
+});
+
+test("defect: a run with no session, or no runner at all, says why under the block (#1361: the press did nothing)", () => {
+  setRunner({ send: () => true, seat: "claude", sessionId: null });
+  request("r4", "ls");
+  assert.deepEqual([ranOf("r4")!.done, ranOf("r4")!.why], [true, "no session to run this in"]);
+  setRunner(null);
+  request("r5", "ls");
+  assert.deepEqual([ranOf("r5")!.done, ranOf("r5")!.why], [true, "no session to run this in"]);
+});
+
+// Promise: every page that draws a session's talk (its code blocks carry the run cell) sets the runner and feeds the
+// engine's "ran" pieces back. The clean Home drew the talk and did neither (#1361). That the press then runs is the
+// end-to-end path's to say (sol/test/e2e/run-cell.mjs); this only keeps a page from losing the wiring unseen.
+test("defect: both Build pages, the old Home and the clean one, wire the run cell", () => {
+  for (const p of ["./work/WorkApp.tsx", "./home/Home.tsx"]) {
+    // code only: wiring that is commented out does not count (#1500)
+    const src = readFileSync(new URL(p, import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    assert.match(src, /useEffect\(\(\) => \{[^\n]*\bsetRunner\(\{/, `${p} sets no runner`);
+    assert.match(src, /useEffect\(\(\) => e\.subscribe\(ran\)/, `${p} does not feed "ran" back`);
+  }
+});
+
+// Promise: a block in Home's pane beside runs for that pane's session, not the main one's, in its folder (#1500, #1373).
+// The pane says which session it is (data-run-session); the press carries it; and when the clean Home goes, so does
+// its runner, so a press elsewhere says there is no session instead of running in the last one (#1500).
+test("defect: a block in the pane beside runs for the pane's session; the clean Home clears its runner", () => {
+  const sent: { sessionId?: string }[] = [];
+  setRunner({ send: (o) => { sent.push(o as { sessionId?: string }); return true; }, seat: "claude", sessionId: "main" });
+  request("b1", "pwd", "beside");
+  request("b2", "pwd");
+  assert.deepEqual(sent.map((o) => o.sessionId), ["beside", "main"]);
+  setRunner(null);
+  request("b3", "pwd", "beside");
+  assert.deepEqual([sent.length, ranOf("b3")!.why], [2, "no session to run this in"]);
+  const home = readFileSync(new URL("./home/Home.tsx", import.meta.url), "utf8");
+  assert.match(home, /className="hc-pin" data-run-session=\{id\}/, "Home's pane beside does not say its session");
+  assert.match(home, /setRunner\(\{[^\n]*return \(\) => setRunner\(null\)/, "the clean Home leaves its runner set");
+  const msg = readFileSync(new URL("./Message.tsx", import.meta.url), "utf8");
+  assert.match(msg, /request\(rid, cmd, \(cell!\.closest\("\[data-run-session\]"\)/, "the run cell does not carry its pane's session");
 });

@@ -20,7 +20,8 @@ import { eventLine, sameAs, pollKey, pollEvents, myPolls, connectEvents, gitWith
 import { readPings } from "./pings.js";
 import { accounts, signinCommand, githubAccount, githubIn, noteGithub, onGithub } from "./control.js";
 import { startConnect, cancelConnect, onConnect } from "./gh.js";   // GitHub from a card (#174)
-import { update, offerNow, shipNow, answered, BRANCH, pinChanged } from "./ship.js";
+import { update, offerNow, shipNow, answered, BRANCH, pinChanged, channelState } from "./ship.js";
+import { countMsg } from "./runs.js";   // who has the release (#1150)
 import { startCarry, carryNow, msgOf as carryMsg, check as carryCheck, useIt as carryUse, setAside, stay as carryStay, asides, bringBack, carryOver } from "./carry.js";   // carrying own changes over (#425)
 import { startPin, view as pinView, pinHere, unpin, plan as pinPlan, goBack as pinBack, wentBack } from "./pin.js";   // pin and go back (#426)
 import { convertCtx } from "../convert/start.js";
@@ -30,11 +31,14 @@ import { getBoard, peekBoard, onBoard, member, forgetOwners, boardReason, boardW
 import { routeIssues } from "./leads.js";   // #118: routing on label
 import { pressLeads, candidates } from "./press.js";   // the owner's press (#117)
 import { relayPollers, sayPresence } from "./relay.js";   // build updates (#328): who polls what, my polls said again
-import { setTalkSince, onRelay, sendRelay, relayRoster, relayUp, relayHub, onRelayStatus, restartRelay, setPresence, setInside, setGithub, startRelayClient, hubTicket, hubLogin, onCloud, hubHttp, safeForToken, CLOUD_FILE, driveHub, driveDeps, DRIVE_FILE, cloudRoom, onCloudWrite, type RelayMsg } from "./relay.js";
-import { connectDrive, disconnectDrive, driveAccount, driveForFace, driveToken, staleDrive } from "./drive.js";   // a Drive room (#152)
+import { setTalkSince, onRelay, sendRelay, relayRoster, relayUp, relayHub, onRelayStatus, restartRelay, setPresence, setInside, setGithub, startRelayClient, hubTicket, hubLogin, onCloud, hubHttp, safeForToken, driveHub, grantDeps, DRIVE_FILE, cloudRoom, onCloudWrite, type RelayMsg } from "./relay.js";
+import * as grant from "./grant.js";   // a provider connected to this Sol (#1230)
+import { DRIVE, driveForFace } from "./drive.js";   // a Drive room (#152), the first row
 import { driveMembers, driveFolderWritable, folderOfRecord } from "./record/drive.js";
 import { here, onHereChanged, roomSessions, belongs, roomMark, FocusOrder } from "./here.js";   // who is in which thing (#230)
-import { accountOn, signIn as cloudSignIn } from "./cloud.js";
+import { identity } from "../seams/identity.js";   // sign-in and the Sol ID (#1320)
+import { groupChat } from "../seams/chat.js";   // group chat (#1320)
+import { wakeUp } from "../seams/wake.js";   // waking a teammate's Sol (#1320)
 import { teamMembers, refreshMembers, strictMembers, onMembers } from "./members.js";   // #102: who is on the team
 import { onCreature } from "../creature.js";
 import { mark, workState } from "../work/state.js";
@@ -42,6 +46,7 @@ import { allRuns } from "../work/runs.js";
 import { workSessions } from "../work/sessions.js";
 import { handleWork, nameWhenWritten, workBus, broadcastSessions } from "../work/wire.js";
 import { solWindowOn } from "../creature.js";
+import { heard as momentHeard } from "../notify.js";
 import { tick as tonightTick, press as tonightPress, openNow as tonightOpen, keyOf as tonightKey, rhythmOf, forgetRhythms, backupsOf, type TonightDeps, type Verdict } from "./tonight.js";   // the review session (#416)
 import { pressCheckpoint, checkpointKey, localDay } from "./checkpoint.js";   // Scoped and Approve (#482)
 import { sentBackTick } from "./sentback.js";   // the slight send back's re-check (#421)
@@ -50,9 +55,9 @@ import { tick as handInTick, openHandInNow, pick as handInPick, type HandInDeps 
 import { scan as handInScan, bring as handInBring, cardKeyOf as handInCardKey, mergePress as handInMerge, openedInFiles, type CardDeps } from "./handin.js";   // the hand-in card (#476), the box's merge (#579)
 import { transcriptFiles } from "../work/sessions.js";
 import { execFile } from "node:child_process";
-import { timelineNow, releasesNow, onTimeline, keepTimelineIn, type TimelineDeps } from "./timeline.js";   // the timeline (#424)
-import { typed, history, threadsWithLines, onTalkLine, hearRelay, watchBridges, threadOf, hearHistory, saidOf, readTalkFile, olderLines, setAttachDeps, talkSince, sweepCache, type AttachDeps, type OlderDeps } from "./talk.js";   // Talk (#37); kept on the cloud, attachments (#315)
-import { talkFileOf, TALK_HISTORY } from "../hub/index.js";
+import { timelineNow, releasesNow, keepTimelineIn, type TimelineDeps } from "./timeline.js";   // the timeline (#424)
+import { typed, history, threadsWithLines, onTalkLine, hearRelay, watchBridges, threadOf, hearHistory, saidOf, readTalkFile, olderLines, setAttachDeps, talkSince, sweepCache, setChatLogins, setAskAgent, type AttachDeps, type OlderDeps } from "./talk.js";   // Talk (#37); kept on the cloud, attachments (#315)
+import { talkFileOf } from "../hub/index.js";
 // --- Cowork v3 (fr-30): one switch (settings.ts coworkV3). Every v3 file is loaded only with it on, by the first
 // team.v3.* message it may answer (handleV3 below), never before; off, no v3 case answers and nothing of v3 loads (F7)
 import { coworkV3, onCoworkV3 } from "../settings.js";
@@ -61,7 +66,7 @@ let v3mod: typeof import("./v3/index.js") | null = null;
 export const v3Health = (): { projects: number } | null => (v3mod ? v3mod.v3Health() : null);
 // --- end Cowork v3
 // --- Hand (#34)
-import { startHand, heard, handNow, answerNow, handsNow, boardRead, gitCli } from "./hand.js";
+import { startHand, heard, handNow, answerNow, handsNow, boardRead, gitCli, backNow } from "./hand.js";
 import { myLogin } from "./settings.js";
 import { getRun } from "../work/runs.js";
 import { sessionItems, sessionInfo } from "../work/sessions.js";
@@ -77,7 +82,6 @@ import { record, runGh, runners, ghWithInput, makeGithubRecord, isGithubRecord, 
 import { moveRoom } from "./move.js";   // a GitHub room to the cloud (#216, C15)
 import { STATE_DIR } from "../work/state.js";
 import { startOnCall } from "./oncall.js";   // on-call (#225)
-import { accounts as cloudAccounts, cloudTicket } from "./cloud.js";
 // Claims, live (#202): the harness posts a hit to POST /claim (index.ts); it becomes a claim ping to the holder through
 // the same route and dials. Myself (another session of mine) hears it here, in my own spool; anyone else over the relay.
 export function hearClaim(h: ClaimHit): boolean {
@@ -86,25 +90,26 @@ export function hearClaim(h: ClaimHit): boolean {
   if (!m) return false;
   if (m.to === me) { const c = heardPing(m); if (c) everyoneTeam(c); return true; }
   if (onCloud()) return false;   // #214: a hub login there is a Sol name, never the GitHub login a claim names
-  return sendRelay("ping", m, true);
+  return wakeUp().send(m, true);
 }
 // on-call (#225): an admin's Sol (SOL_CLOUD_WATCH set) pulls the cloud's alerts and hears each as a ping of kind alert,
 // on the same path as any ping (kept for the agent, a card by the dial)
 // started a tick after load: index.ts reads sol/engine/.env after the imports, and SOL_CLOUD_WATCH usually lives there
 setTimeout(() => {
   if (!process.env.SOL_CLOUD_WATCH) return;
-  const hub = () => process.env.SOL_CLOUD_WATCH_HUB || cloudAccounts(CLOUD_FILE)[0]?.hub || "";
+  const hub = () => process.env.SOL_CLOUD_WATCH_HUB || identity().accounts()[0]?.hub || "";
   startOnCall({ watch: process.env.SOL_CLOUD_WATCH, file: join(STATE_DIR, "oncall.json"), fetch: globalThis.fetch, now: Date.now,
-    ticket: async () => { const h = hub(); return h ? cloudTicket(h, { file: CLOUD_FILE }) : ""; },
+    ticket: async () => { const h = hub(); return h ? identity().ticket(h) : ""; },
     // not through heardPing: that reads the relay, where a ping that says alert is a teammate's chat
     deliver: (p) => { keepPing(p); if (route("alert", getTeam().dials.alert).card) everyoneTeam({ type: "team.pinged", id: p.id, kind: p.kind, from: p.from, line: p.line, at: p.at }); } });
 }, 0).unref?.();
 // --- end Pings
 import { shows, setShowBus, roomShowsWanted } from "./show.js";   // Show to team (#101)
+import { Asks } from "./ask.js";   // ask for a session (#335)
+import { onTurnEnd } from "../work/runs.js";
 // --- Share code (#157)
-import { shareRoom, joinRoom, peekRoom, makeRoom, shareOnArrival, shareAgain, forgetGone, type RoomsDeps } from "./rooms.js";
+import { shareRoom, joinRoom, peekRoom, makeRoom, shareOnArrival, shareAgain, forgetGone, roomPeople, type RoomsDeps } from "./rooms.js";
 import type { Registry } from "../hub/index.js";
-import { ghToken } from "./identity.js";
 // --- end Share code
 // --- Let in (#162)
 import { askIn, cloneRoom, hearRoom, hearCloud, askCloud, askedNow, gitQuiet, remoteOf, roomFolders, letIn, waitingNow, groupClone, cloneAuth, type LetInDeps } from "./letin.js";
@@ -112,7 +117,6 @@ import { askIn, cloneRoom, hearRoom, hearCloud, askCloud, askedNow, gitQuiet, re
 // --- File it (#119)
 import { fileIt, takeShot, heldShot, drop as dropShot, healthLine } from "./file.js";
 import { kernelNow, runThingTool } from "../kernel.js";   // file it as Sol's own block (step 7), once it is loaded
-import { HIDDEN } from "../eye.js";
 import { healthNow } from "../health.js";
 // the room's own tools (ADDITIONS §1, #245): the calendar, the decision log, the polls, each a file in the room's record
 import { calendar, upcoming, remindersDue, icsOf, type Calendar } from "./calendar.js";
@@ -130,6 +134,7 @@ import { onboarded, walkOf } from "./onboard.js";   // onboarding into a project
 import { openTool } from "./teamtool.js";   // team tools (#436): the kind "tool"'s own fields, the members gate
 import { useFolds } from "./folds.js";   // the first team tool, this week's folds (#436)
 import { useAnalytics } from "./analytics.js";   // the second, the beta's counts from Sol's cloud (#437)
+import { useTesters } from "./testers.js";   // the per-tester list for Isaac's console, from Sol's cloud (#1355)
 import { useFeaturesTool, useArea, areaParagraph, devsIn } from "./area.js";   // the Features page and "your area", Sol developers only (#480)
 import { setOpening } from "../work/opening.js";
 import { useLive } from "./live.js";   // the live block (#485): the newest dev release, its morning run, error counts per feature
@@ -140,6 +145,7 @@ import { blockViewsIn } from "./project.js";
 // what a group is connected to, as one answer (#320): its repositories, things, tools, and Google and GitHub here
 import { connectors, connectRepo, repoFacts, connectorsMsg, toolLines, memberCount, forgetCounts, pruneMine, mineAfter, adminsAfter, liveOf, type ConnectDeps, type ConnectorsFile } from "./connectors.js";
 import { versionNow, refreshVersion, onVersion } from "../version.js";   // what this Sol runs (#417)
+import { isQuiet } from "../quiet.js";
 
 type Wire = { send: (m: object) => void };
 const faces = new Map<Wire, { cowork: boolean }>();
@@ -160,7 +166,7 @@ const stateMsg = () => {
  *  `gone` when the cloud said it has no room with the room's code (4404: a NucBox code the import never saw) */
 export function cloudNow(s = getTeam(), up = relayUp()): { hub: string; login: string; need: boolean; gone: boolean } {
   const hub = sharedHub(), http = hubHttp(hub);
-  const login = http.startsWith("https://") ? accountOn(http, CLOUD_FILE)?.login ?? "" : "";
+  const login = http.startsWith("https://") ? identity().on(http)?.login ?? "" : "";
   const room = activeRoom(s).hub;
   return { hub, login, need: isCloud(hub) && !login && !up && !!room && hubKey(room) === hubKey(hub), gone: relayHub().gone && isCloud(room) };
 }
@@ -207,13 +213,19 @@ let started = false;
 export function startTeam() {
   if (started) return;
   started = true;
-  // fr-30: the trail's sync, and the notch's one "needs me" count, from the start with the switch on, and from the
-  // moment it is turned on while the engine runs; turned off, the sync stops
+  // fr-30: the trail's sync, from the start with the switch on, and from the moment it is turned on while the engine
+  // runs; turned off, the sync stops
   let v3Started = false;
   const v3Start = () => {
     v3Started = true;
     void import("./v3/switchwire.js").then((x) => x.startV3Sync()).catch(() => {});
-    void import("./v3/planwire.js").then((x) => x.tellNotch()).catch(() => {});
+    // the ways' runner loop (#987), only with their own switch on too (SOL_COWORK_WAYS); a pull that brought events turns it soon
+    void import("./v3/way-switch.js").then(async (sw) => {
+      if (!sw.waysOn()) return;
+      const x = await import("./v3/way-wire.js");
+      x.startWays({ me: () => getTeam().me.login, push: everyoneTeam });
+      (await import("./v3/switchwire.js")).onPulled(x.pokeWays);
+    }).catch(() => {});
   };
   if (coworkV3()) v3Start();
   onCoworkV3((on) => { if (on) v3Start(); else if (v3Started) void import("./v3/switchwire.js").then((x) => x.stopV3Sync()).catch(() => {}); });
@@ -246,6 +258,7 @@ export function startTeam() {
   // and every ten minutes while it stays up, so an ask that was lost is asked again (askIn skips what is not due)
   setInterval(() => { if (relayUp() && !onCloud()) void askIn(letInDeps()).catch(() => {}); }, 10 * 60_000).unref();
   onTeam(sendState);
+  onTeam(() => sayInside());   // #335: "give my past group sessions" turned never is on my roster entry at once
   onRelay("changed", (m) => {
     if (m.leads) forgetOwners(typeof m.repo === "string" ? m.repo : undefined);
     connectors.forget();   // #320: a cloud group's board reads what its connectors.json lists now
@@ -259,7 +272,7 @@ export function startTeam() {
     }
   });
   // a ping to me heard live; one kept by the hub while I was away comes in `spooled` below, not here
-  onRelay("ping", (m) => { if (!m.spooled && m.to === hubLogin()) { const c = heardPing(m); if (c) everyoneTeam(c); } });
+  wakeUp().heard((m) => { if (!m.spooled && m.to === hubLogin()) { const c = heardPing(m); if (c) everyoneTeam(c); } });
   // --- the spool (#102): pings kept while no Sol of mine was on come back at once; more than 3 are one card. Each goes
   // to my agent and through my dial first (#100), like a live one
   onRelay("spooled", (all) => { for (const p of missedPings(all.messages, hubLogin(), heardPing)) everyoneTeam(p); });
@@ -283,9 +296,17 @@ export function startTeam() {
 // --- Talk (#37, PROTOCOL.md round 24): every new line (said here, heard on the relay, read from a bridge) to every
 // Cowork face; a teammate's line is heard from the moment this module loads, like the other relay kinds
 onTalkLine((l) => everyoneTeam({ type: "team.talk.line", ...l }));
-onRelay("talk", hearRelay);
+groupChat().hear(hearRelay);
+// the @ rule (#1417): a line may name the group's members; "@<login>'s agent" in a person's general line is an ask on
+// reach (loaded as team.room loads it), so that agent alone reads it, on its person's usage
+let reachNow: typeof import("./reach.js") | null = null;
+void import("./reach.js").then((r) => { reachNow = r; }, () => {});
+setChatLogins(() => teamMembers());
+/** where an artifact on a chat line may point (#1417): the group in use's repositories, and this checkout's */
+const chatRepos = () => [...new Set([...activeRoom(getTeam()).repos, ...getTeam().repos])];
+setAskAgent((to, question, id) => reachNow?.askFromChat(to, question, id) ?? false);
 // #315: the cloud's history of each thread on my hello, merged by id; attachments go to and come from the room's record
-onRelay(TALK_HISTORY, hearHistory);
+groupChat().heardBack(hearHistory);
 const attachNow = (): AttachDeps => ({ record, repo: () => recordOf(activeRoom(getTeam())), branch: (repo) => recordBranch(thingsDeps(), repo), up: relayUp });
 setAttachDeps(attachNow);
 // a hello says the newest line each thread has here, so the cloud sends only newer ones (#315, the review's P2-12)
@@ -293,8 +314,8 @@ setTalkSince(talkSince);
 // the copies made to open an attachment are gone a day after: at start, then once a day (the review's P2-11)
 setTimeout(() => sweepCache(), 5_000).unref?.();
 setInterval(() => sweepCache(), 86_400_000).unref();
-/** the room in use when it meets on a cloud I am signed in to, by its code: where its older talk is paged from */
-const olderNow = (): OlderDeps => ({ where: () => { const r = activeRoom(getTeam()); return r.code && onCloud() ? { hub: hubHttp(r.hub), code: r.code } : null; }, ticket: hubTicket });
+/** where the room in use pages its older talk from: the group chat seam's word (#1320) */
+const olderNow = (): OlderDeps => groupChat().older();
 // --- end Talk
 
 // --- Let in (#162): an ask in the room in use (I may be its maker), or an answer to me; live or kept by the hub
@@ -355,9 +376,9 @@ function askRecords(): Promise<void> {
 // --- Share code (#157): this engine's own registry, when it is a hub (index.ts hands it in), and the deps of share and join
 let local: Registry | null = null;
 export const setRegistry = (r: Registry | null) => { local = r; };
-const roomsDeps = (): RoomsDeps => ({ team: getTeam, patch: patchTeam, local, fetch: globalThis.fetch, token: ghToken, ticket: hubTicket, record, clone: (id) => cloneRoom(letInDeps(), id), cloudAt: (hub) => !!accountOn(hub, CLOUD_FILE),
+const roomsDeps = (): RoomsDeps => ({ team: getTeam, patch: patchTeam, local, fetch: globalThis.fetch, token: () => identity().github(), ticket: hubTicket, record, clone: (id) => cloneRoom(letInDeps(), id), cloudAt: (hub) => !!identity().on(hub),
   driveCheck: async (folder) => {
-    const why = await driveFolderWritable({ token: () => driveToken(driveDeps()), stale: staleDrive }, folder);
+    const why = await driveFolderWritable({ token: () => grant.token(DRIVE, grantDeps(DRIVE)), stale: () => grant.stale(DRIVE) }, folder);
     if (why) return why;
     // the maker writes the record's two files once, now, so the room's people later only update them and never race to
     // make them (the review of #152): an empty list of things and an empty goal, each only when not there
@@ -390,7 +411,7 @@ export const moveNow = (id: unknown, as?: unknown) => moveRoom({ ...roomsDeps(),
 /** my cloud groups' asks to be let in still out (#325, review P2-4), kept beside the engine's other state */
 const ASKS_FILE = join(STATE_DIR, "cloud", "letin-asks.json");
 // --- Let in (#162, PROTOCOL.md round 37): the friend's Sol asks the room to be let into its repository, the maker's
-// answers; a receipt to every face (the notch's too) says what came of it
+// answers; a receipt to every face says what came of it
 const letInDeps = (): LetInDeps => ({
   team: getTeam, patch: patchTeam, record, send: sendRelay, git: gitQuiet, exists: existsSync, now: Date.now,
   say: (lines) => everyFace({ type: "creature.receipt", lines }),
@@ -421,7 +442,7 @@ const letInDeps = (): LetInDeps => ({
 // --- The quota and the move to GitHub (#326, PROTOCOL.md round 58): how full a cloud group is, the maker's move of its
 // files to a private repository of theirs, and a member's press on "join it". My name on a group's hub is my account's
 // there, the name the cloud knows its maker by
-const nameOn = (r: Room) => accountOn(hubHttp(r.hub), CLOUD_FILE)?.login ?? "";
+const nameOn = (r: Room) => identity().on(hubHttp(r.hub))?.login ?? "";
 const usageDeps = () => ({ team: getTeam, cloud: cloudRoom, me: nameOn });
 const ghLogin = () => record().who.login();
 const takeDeps = (): TakeDeps => ({ ...usageDeps(), patch: patchTeam, files: record, git: gitQuiet, cloneArgs: cloneAuth, dir: join(STATE_DIR, "cloud", "takes"), roomsDir: ROOMS_DIR,
@@ -479,7 +500,7 @@ function sayInside() {
   const open = runs.map((r) => ({ id: r.id, room: marks[r.id]?.room, title: titles.get(r.id) ?? "", at: r.since }));
   const alive = (id: string) => allRuns().some((r) => r.id === id);
   const quiet = activeRoom(getTeam()).quiet === true;
-  setInside({ thing: here.thing(now, alive), sessions: roomSessions(open, room), quiet });
+  setInside({ thing: here.thing(now, alive), sessions: roomSessions(open, room), quiet, never: getTeam().leaves.give === "never" });
   showRoomSessions(open, room, quiet);
   clearTimeout(inTimer);
   const next = here.next(now);
@@ -508,6 +529,29 @@ function showRoomSessions(open: { id: string; room?: string; title: string }[], 
       still: () => markNow() === room && activeRoom(getTeam()).quiet !== true && workState().marks[o.id]?.room === room && workState().marks[o.id]?.mode === "cowork" && allRuns().some((r) => r.id === o.id) }).catch(() => {});
   }
 }
+// --- Ask for a session (#335, the Cowork PRD §9.8, PROTOCOL.md round 113): a teammate's agent asks for one of my group
+// sessions (a card, give · not now), or my agent or I ask for one of theirs; team/ask.ts holds both ends
+/** a session started under the group in use: marked cowork with the room's mark. Only such a session can be given, and
+ *  only such a session of mine may ask, so what is given lands in a group session. Work and Life never */
+export const inGroup = (id: string) => { const mk = workState().marks[id], room = markNow(); return mk?.mode === "cowork" && !!room && mk.room === room; };
+export const asks = new Asks({
+  send: (kind, m, agent) => sendRelay(kind, m, agent),
+  tell: (m) => everyoneTeam(m),
+  roster: () => relayRoster(),
+  me: () => hubLogin(),
+  setting: () => getTeam().leaves.give,
+  mine: (id) => (workState().marks[id] || getRun(id) ? { title: titles.get(id) || "", group: inGroup(id) } : null),
+  items: async (id) => (getRun(id)?.items.list ?? (await sessionItems(id)).list) as never,
+  msgMax: () => relayHub().info?.msgMax ?? 0,
+  now: () => Date.now(),
+  every: (ms, fn) => { const t = setInterval(fn, ms); t.unref?.(); return () => clearInterval(t); },
+  after: (ms, fn) => { const t = setTimeout(fn, ms); t.unref?.(); return () => clearTimeout(t); },
+  home: homedir(),
+});
+onRelay("ask", (m) => asks.heardAsk(m));     // live, or kept by the hub while I was away (spooled)
+onRelay("give", (m) => asks.heardGive(m));
+onTurnEnd((id) => asks.turnEnded(id));       // what a turn read is let go when it ends
+// --- end Ask for a session
 const pushThingsCached = async () => {
   if (![...faces.values()].some((f) => f.cowork)) return;
   const repo = recordOf(activeRoom(getTeam()));
@@ -557,7 +601,7 @@ onRelayStatus(() => {
   lastRoster = now;
 });
 // a talk line heard: once by its id (a line sent again is one line), cleaned, the first part of a long one only
-onRelay("talk", (m) => {
+groupChat().hear((m) => {
   if (m.spooled || (Array.isArray(m.part) && m.part[0] !== 1)) return;
   // an attachment is words to an agent, never bytes (#315): "[an image]", "[a file: <name>]"
   const text = saidOf(typeof m.text === "string" ? m.text.replace(/[\p{Cc}\p{Cf}]/gu, " ").replace(/\s+/g, " ").trim() : "", talkFileOf(m.file));
@@ -598,6 +642,7 @@ async function eventKeys(room: Room, repo: string, remove: boolean): Promise<Key
   if (!/^https:\/\/|^http:\/\/127\.0\.0\.1(:\d+)?\//.test(hub) || !room.code) return { error: "sign in to Sol's cloud first" };
   const t = await hubTicket(hub).catch(() => "");
   if (!t) return { error: "sign in to Sol's cloud first" };
+  if (isQuiet()) return { error: "this Sol is quiet (SOL_QUIET): it changes nothing on the cloud" };
   const base = `${hub.replace(/\/+$/, "")}/rooms/${room.code}/events/keys`;
   const r = await fetch(remove ? `${base}?repo=${encodeURIComponent(repo)}` : base, { method: remove ? "DELETE" : "POST", signal: AbortSignal.timeout(15_000),
     headers: { authorization: `Bearer ${t}`, ...(remove ? {} : { "content-type": "application/json" }) }, ...(remove ? {} : { body: JSON.stringify({ repo }) }) }).catch(() => null);
@@ -749,11 +794,19 @@ const trackHub = () => { const hub = hubHttp(sharedHub()); return safeForToken(`
 const trackTicket = async () => { const hub = trackHub(); return hub ? hubTicket(hub).catch(() => "") : ""; };
 const trackSummary = async (t: string) => {
   const hub = trackHub();
-  if (!hub) return { status: 0, body: null };
+  if (!hub || isQuiet()) return { status: 0, body: null };
   const r = await fetch(`${hub.replace(/\/+$/, "")}/track/summary`, { headers: { authorization: `Bearer ${t}` }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
   return r ? { status: r.status, body: await r.json().catch(() => null) } : { status: 0, body: null };
 };
 useAnalytics({ ticket: trackTicket, summary: trackSummary, releases: () => releasesNow(timelineDeps()) });
+// the per-tester list (#1355, for Isaac's console, #134): the same cloud and ticket, its rows placed on the releases
+const trackTesters = async (t: string) => {
+  const hub = trackHub();
+  if (!hub || isQuiet()) return { status: 0, body: null };
+  const r = await fetch(`${hub.replace(/\/+$/, "")}/track/testers`, { headers: { authorization: `Bearer ${t}` }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  return r ? { status: r.status, body: await r.json().catch(() => null) } : { status: 0, body: null };
+};
+useTesters({ ticket: trackTicket, testers: trackTesters, releases: () => releasesNow(timelineDeps()) });
 // the live block (#485): the same cloud summary (its byError), the timeline's newest dev release, the newest morning run
 // on Sol's own repository's open Night digest (read only), and the feature map of Sol's own checkout
 const REPO_ROOT = resolve(HERE, "..", "..", "..", "..");   // engine/{src,dist}/team -> the repository's root
@@ -850,7 +903,7 @@ async function cloudGet(code: string, path: string): Promise<unknown> {
   const hub = room ? hubHttp(room.hub) : "";
   if (!/^https:\/\/|^http:\/\/127\.0\.0\.1(:\d+)?\//.test(hub)) return null;
   const t = await hubTicket(hub).catch(() => "");
-  if (!t) return null;
+  if (!t || isQuiet()) return null;
   const r = await fetch(`${hub.replace(/\/+$/, "")}/rooms/${code}/${path}`, { headers: { authorization: `Bearer ${t}` }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
   return r?.ok ? await r.json().catch(() => null) : null;
 }
@@ -894,7 +947,7 @@ async function connectorsNow(rid?: unknown, refresh = false) {
     githubAccount().catch(() => ({ in: false, who: undefined })),
     liveKeys(room).catch(() => [] as string[]),
   ]);
-  const g = driveAccount(DRIVE_FILE);
+  const g = grant.readGrant(DRIVE_FILE);
   return connectorsMsg({ room, file, members, things, tools: toolLines({ calendar: tools[0], decisions: tools[1], polls: tools[2] }),
     me: { google: g ? { in: true, ...(g.email ? { email: g.email } : {}) } : { in: false }, github: gh.in ? { in: true, ...(gh.who ? { who: gh.who } : {}) } : { in: false } }, rid,
     asked: askedNow(letInDeps(), room.id), admins: room.admins ?? [], live });
@@ -974,12 +1027,22 @@ export async function handleTeam(w: Wire, m: any) {
       if (!onCloud()) void askIn(letInDeps(), r.room).catch(() => {});   // #162: let me into its repository (the relay may be down: then on connect)
       return w.send({ type: "team.room.join", rid, room: roomForFace(r.room), ...(r.already ? { already: true } : {}) });
     }
+    // #1537: who sits at each of my rooms, for the groups home's tables (me first; a room nothing here can read is me alone)
+    case "team.rooms.people": {
+      const s = getTeam();
+      return w.send({ type: "team.rooms.people", rid, rooms: await roomPeople(roomsDeps(), onCloud(s) ? hubLogin(s) : s.me.login, teamMembers) });
+    }
     // #327: a join link's code opened in the app: the group's name, asked before anyone presses join (PROTOCOL round 59)
     case "team.room.peek":
       return w.send({ type: "team.room.peek", rid, ...(await peekRoom(roomsDeps(), m.code)) });
     // the maker's one press (the review of #162): who waits to be let into a room of mine, and yes or not now
     case "team.letin.get":
       return w.send({ type: "team.letin", rid, asks: waitingNow() });
+    // Cowork › Room (#1298): the same blocks that ask, every project's: what waits on me, what settled by issue, the thread
+    case "team.room": {
+      const [{ roomRead, roomBlocks }, { threadNow }] = await Promise.all([import("../work/asks.js"), import("./reach.js")]);
+      return w.send({ type: "team.room", rid, ...roomRead(roomBlocks(), threadNow()) });
+    }
     case "team.letin.answer":
       // review P1-1: the card as the face showed it, so a press never lets in an ask that changed under it
       return w.send({ type: "team.letin.answer", rid, ...(await letIn(letInDeps(), String(m.room ?? ""), String(m.login ?? ""), m.yes === true,
@@ -1349,7 +1412,7 @@ export async function handleTeam(w: Wire, m: any) {
     }
     case "team.ping": {
       const to = String(m.to ?? "").slice(0, 39), line = String(m.line ?? "").slice(0, 300);
-      const ok = !!to && !!line && sendRelay("ping", { to, line, pingKind: kindOf(m.kind) });
+      const ok = !!to && !!line && wakeUp().send({ to, line, pingKind: kindOf(m.kind) });
       return w.send({ type: "team.ping", rid, ok });
     }
     case "team.session.start": {
@@ -1393,27 +1456,32 @@ export async function handleTeam(w: Wire, m: any) {
     case "team.cloud.signin": {   // S6b (#226): a Sol account on the shared hub, by Google in the system browser, from the face
       const hub = hubHttp(sharedHub());
       if (!hub.startsWith("https://")) return w.send({ type: "team.cloud.signin", rid, ok: false, error: "no cloud to sign in to (SOL_HUB is off or not wss://)" });
-      const out = await cloudSignIn(hub, { file: CLOUD_FILE });
+      const out = await identity().signIn(hub);
       if (out.ok) { restartRelay(); sendState(); }   // the next knock carries the new ticket
       return w.send({ type: "team.cloud.signin", rid, ...out });
+    }
+    case "team.cloud.me": {   // #1608 (decision #1606): whose Sol this is on the cloud, for the onboarding's gate before go: the name
+      // signed in there ("" when nobody), and whether there is a cloud to sign in to at all (none: a developer's own run, no gate)
+      const c = cloudNow();
+      return w.send({ type: "team.cloud.me", rid, login: c.login, hub: c.hub, cloud: hubHttp(sharedHub()).startsWith("https://") });
     }
     // --- end Control
     // --- Google Drive for a Drive room (#152, round 48): connect (Google in the system browser, through my cloud),
     // let go, and who the room's folder is shared with. A face hears whether it is connected, the email and the scope,
     // never a token
     case "team.drive": {
-      return w.send({ type: "team.drive", rid, ...driveForFace(driveAccount(DRIVE_FILE)), hub: driveHub() });
+      return w.send({ type: "team.drive", rid, ...driveForFace(grant.readGrant(DRIVE_FILE)), hub: driveHub() });
     }
     case "team.drive.connect": {
       const hub = driveHub();
       if (!hub) return w.send({ type: "team.drive.connect", rid, ok: false, error: "sign in to Sol first: Settings › me › Sol (Drive is connected through your Sol account)" });
-      const out = await connectDrive(hub, driveDeps());
-      if (out.ok) { forgetThings(); everyoneTeam({ type: "team.drive", ...driveForFace(driveAccount(DRIVE_FILE)), hub }); pushConnectors(); }
-      return w.send({ type: "team.drive.connect", rid, ...(out.ok ? { ok: true, ...driveForFace(driveAccount(DRIVE_FILE)) } : out) });
+      const out = await grant.connect(DRIVE, hub, grantDeps(DRIVE));
+      if (out.ok) { forgetThings(); everyoneTeam({ type: "team.drive", ...driveForFace(grant.readGrant(DRIVE_FILE)), hub }); pushConnectors(); }
+      return w.send({ type: "team.drive.connect", rid, ...(out.ok ? { ok: true, ...driveForFace(grant.readGrant(DRIVE_FILE)) } : out) });
     }
     case "team.drive.disconnect": {
-      const ok = await disconnectDrive(driveDeps());
-      staleDrive(); forgetThings();
+      const ok = await grant.disconnect(DRIVE, grantDeps(DRIVE));
+      grant.stale(DRIVE); forgetThings();
       everyoneTeam({ type: "team.drive", ...driveForFace(null), hub: driveHub() });
       pushConnectors();
       return w.send({ type: "team.drive.disconnect", rid, ok });
@@ -1421,8 +1489,8 @@ export async function handleTeam(w: Wire, m: any) {
     case "team.drive.members": {   // the room in use's folder: its people, and which of them I am; unknown is nobody
       const folder = folderOfRecord(recordOf(activeRoom(getTeam())));
       if (!folder) return w.send({ type: "team.drive.members", rid, known: false, people: [], anyone: false, domain: "", error: "this room's record is not a Drive folder" });
-      const got = await driveMembers({ token: () => driveToken(driveDeps()), stale: staleDrive }, folder);
-      const me = driveAccount(DRIVE_FILE)?.email ?? "";
+      const got = await driveMembers({ token: () => grant.token(DRIVE, grantDeps(DRIVE)), stale: () => grant.stale(DRIVE) }, folder);
+      const me = grant.readGrant(DRIVE_FILE)?.email ?? "";
       return w.send({ type: "team.drive.members", rid, folder, ...got, me });
     }
     // --- end Drive
@@ -1436,9 +1504,6 @@ export async function handleTeam(w: Wire, m: any) {
       return w.send({ type: "team.github.connect.cancel", rid, ok: true });
     // --- end GitHub from a card
 
-    // --- the timeline (#424, PROTOCOL.md round 68): every release, who runs which, what never made it
-    case "team.timeline":
-      return w.send({ type: "team.timeline", rid, ...(await timelineAsk(m.refresh === true)) });
     // --- ship (#33, #418, PROTOCOL.md rounds 19 and 67): the offer of a new release, update on yes
     case "team.update": {
       const d = shipNow();
@@ -1449,6 +1514,11 @@ export async function handleTeam(w: Wire, m: any) {
     }
     case "team.stable.get":
       return w.send({ type: "team.stable", ...(rid !== undefined ? { rid } : {}), ...(offerNow() ?? { sha: null }) });
+    case "team.runs.get":   // #1150: who has the release, for the release word
+      return w.send({ ...countMsg(), ...(rid !== undefined ? { rid } : {}) });
+    // the switch in Settings › me (#1150): which channel, the release this Sol runs, and whether it stays on it (beta behind)
+    case "team.channel.get":
+      return w.send({ type: "team.channel", rid, ...((await channelState().catch(() => null)) ?? { error: "updates are not set up here" }) });
     // --- carrying own changes over (#425, carry.ts, PROTOCOL.md round 70)
     case "team.carry.get":
       await carryCheck().catch(() => null);
@@ -1495,8 +1565,29 @@ export async function handleTeam(w: Wire, m: any) {
     // --- Talk (#37, PROTOCOL.md round 24): a line typed in the chat (a `/discord ` one goes out first), a thread's lines
     case "team.talk": {
       watchBridges();
-      const r = await typed(m.thread, m.text, getTeam(), m.file);   // file { name, bytes, kind } (#315): into the room's record first
-      return w.send({ type: "team.talk", rid, ...(r.ok ? { ok: true, id: r.line.id, sent: r.sent, ...(r.line.file ? { file: r.line.file } : {}) } : { ok: false, error: r.error }) });
+      // file { name, bytes, kind } (#315): into the room's record first. artifact { kind, ref, title } (#1417): checked
+      // against the group's repositories, its link put in the words
+      const r = await typed(m.thread, m.text, getTeam(), m.file, null, m.artifact, chatRepos());
+      return w.send({ type: "team.talk", rid, ...(r.ok ? { ok: true, id: r.line.id, sent: r.sent, ...(r.line.file ? { file: r.line.file } : {}), ...(r.line.woke ? { woke: r.line.woke } : {}), ...(r.line.pinged ? { pinged: r.line.pinged } : {}) } : { ok: false, error: r.error }) });
+    }
+    // Cowork › Agents' room as the group's chat (#1417): each person and their agent as members, the general thread and
+    // the agents' thread in time order, each line with its read rule in words, what waits on me. `open`: a person has the
+    // room open, so the group's store is read every 10 s for the next 30 (the face asks again while it stays open)
+    case "team.chat": {
+      if (m.open === true) groupChat().quick?.(30_000);
+      const [{ roomRead, roomBlocks }, { threadNow }, chat, stage] = await Promise.all([import("../work/asks.js"), import("./reach.js"), import("./chatline.js"), import("../work/blocks.js")]);
+      const s = getTeam(), me = onCloud(s) ? hubLogin(s) : s.me.login;
+      const r = roomRead(roomBlocks(), []);
+      // a block an artifact names opens in the session it sits in: every block on this machine's stage, by id
+      const blocks: Record<string, string> = {}, mine: { id: string; title: string; at: number }[] = [];
+      for (const p of stage.projects()) for (const b of stage.allBlocks(p)) if (b.sessions[0]) { blocks[b.id] = b.sessions[0]; if (b.state !== "dead") mine.push({ id: b.id, title: b.title, at: b.at }); }
+      const lines = chat.chatOf({
+        lines: history("general").filter((l) => l.source === "relay"), thread: threadNow(), repos: chatRepos(), blocks,
+        settled: r.settled.flatMap((g) => g.blocks.filter((b) => b.asks?.answer).map((b) => ({ id: b.id, title: b.title, issue: g.issue, answer: b.asks!.answer! }))),
+      });
+      return w.send({ type: "team.chat", rid, me, group: activeRoom(s).name, members: chat.membersOf(teamMembers(), me), waiting: r.waiting, lines: lines.map((l) => ({ ...l, said: chat.ruleWords(l.rule) })),
+        // the blocks on my stage the composer can put on a line, the newest first
+        stage: mine.sort((a, b) => b.at - a.at).slice(0, 12).map(({ id, title }) => ({ id, title })), readAt: Date.now() });
     }
     case "team.talk.history": {
       watchBridges();
@@ -1518,6 +1609,8 @@ export async function handleTeam(w: Wire, m: any) {
       return w.send({ type: "team.hand", rid, ...(await handNow(m)) });
     case "team.hand.answer":
       return w.send({ type: "team.hand.answer", rid, ...(await answerNow(m.id, m.how, m.line, m.start !== false)) });
+    case "team.hand.back":   // #1002: pull a hand of mine back before it is taken
+      return w.send({ type: "team.hand.back", rid, ...(await backNow(m.repo, m.issue)) });
     case "team.hands.get":
       return w.send({ type: "team.hands", rid, ...(await handsNow(!!m.refresh)) });
     // --- end Hand
@@ -1578,7 +1671,7 @@ export async function handleTeam(w: Wire, m: any) {
       if (m.type === "team.leads.who") return reply(await candidates({ gh: runGh }, repo).then((people) => ({ people }), (e) => ({ error: String((e as Error)?.message ?? e).slice(0, 200) })));
       const r = await pressLeads({
         gh: runGh, login: myLogin, team: teamMembers,
-        ping: (to, line, at) => !onCloud() && sendRelay("ping", { to, line, pingKind: "decision", repo: at }),   // #214: GitHub logins
+        ping: (to, line, at) => !onCloud() && wakeUp().send({ to, line, pingKind: "decision", repo: at }),   // #214: GitHub logins
         table: (code) => projectOwners(code),
         propose: async (code, table, by) => {
           const { record } = projectWhere(code);
@@ -1589,6 +1682,19 @@ export async function handleTeam(w: Wire, m: any) {
       return reply(r);
     }
     // --- end the owner's press
+    // --- Ask for a session (#335, PROTOCOL.md round 113): the asks waiting on my press and mine out; ask for one of a
+    // person's group sessions from their page; my press on a card
+    case "team.asks.get":
+      return w.send({ type: "team.asks", rid, asks: asks.list(), asked: asks.asked() });
+    case "team.session.ask": {
+      const login = typeof m.login === "string" && /^[A-Za-z0-9-]{1,39}$/.test(m.login) ? m.login : "";
+      if (!login) return w.send({ type: m.type, rid, error: "whose session that is was not said" });
+      try { return w.send({ type: m.type, rid, ok: true, said: asks.request(String(m.id ?? ""), "", false, login) }); }
+      catch (e) { return w.send({ type: m.type, rid, error: String((e as Error)?.message ?? e).slice(0, 200) }); }
+    }
+    case "team.session.give":
+      return w.send({ type: m.type, rid, ...(await asks.answer(String(m.ask ?? ""), m.yes === true)) });
+    // --- end Ask for a session
     // --- Show (#101, PROTOCOL.md round 27): who is showing a session now, or one shown session's last lines
     case "team.shown.get": {
       const login = typeof m.login === "string" ? m.login : "", id = typeof m.id === "string" ? m.id : "";
@@ -1609,7 +1715,7 @@ export async function handleTeam(w: Wire, m: any) {
       try { return w.send({ type: "team.file.shot", rid, shot: fileItBlock() ? await viaBlock("shot", {}) : await takeShot() }); }
       catch (e) {
         const why = String((e as Error)?.message ?? e).slice(0, 200);
-        return w.send({ type: "team.file.shot", rid, error: why === HIDDEN ? HIDDEN : `no screenshot: ${why}` });   // the eye's words as they are
+        return w.send({ type: "team.file.shot", rid, error: `no screenshot: ${why}` });
       }
     }
     // --- The review session (#416): a press on its card, the reviewer's own (tonight.ts checks it); answered by rid
@@ -1667,7 +1773,7 @@ export async function handleTeam(w: Wire, m: any) {
     case "team.file": {
       const s = getTeam();
       try {
-        const held = typeof m.shot === "string" ? heldShot(m.shot) : null;   // the engine's own shot slot: a grab, or a shot taken before the block was loaded
+        const held = typeof m.shot === "string" && fileItBlock() ? heldShot(m.shot) : null;   // for the block: the engine's own shot slot, a grab or a shot taken before it was loaded (main's path reads its own)
         const r: { number: number; url: string; shot: boolean; note?: string } = fileItBlock()
           ? JSON.parse(await viaBlock("file", { mode: m.mode, words: m.words, page: m.page, conversation: m.conversation, ...(held ? { image: held.toString("base64") } : typeof m.shot === "string" ? { shot: m.shot } : {}) }))
           : await fileIt({
@@ -1706,8 +1812,8 @@ async function viaBlock(tool: "shot" | "file", args: Record<string, unknown>): P
   return text;
 }
 
-// --- Hand (#34): the record is the issue; the relay carries the word; every face hears a hand to me, the notch's too
-const everyFace = (m: object) => { for (const f of faces.keys()) f.send(m); };
+// --- Hand (#34): the record is the issue; the relay carries the word; every face hears a hand to me
+const everyFace = (m: object) => { for (const f of faces.keys()) f.send(m); momentHeard(m); };   // a hand to me is a moment (notify.ts)
 const quiet: Wire = { send() {} };
 startHand({
   gh: runners.hand,
@@ -1741,7 +1847,8 @@ onRelay("hand", (m) => { if (!onCloud()) heard(m); });   // #214: never from a S
 onBoard(() => boardRead());
 // --- end Hand
 // --- The timeline (#424, timeline.ts): Sol's own checkout, read on the first ask (never at start), kept beside Work's
-// state; everyone on it as the roster says now. A read behind a stale answer goes to every Cowork face when it is done
+// state; everyone on it as the roster says now. No face asks it since #1299 (its wire message went in #1376): the v3 people
+// wire and team.releases read it
 const timelineDeps = (): TimelineDeps => ({
   dir: resolve(HERE, ".."),
   gh: (args) => runGh(args),
@@ -1756,7 +1863,6 @@ function timelineAsk(fresh = false) {
   const people = [{ login: me, version: roster.find((e) => e.who === me)?.version ?? versionNow() }, ...roster.map((e) => ({ login: e.who, version: e.version ?? null })), ...teamMembers().map((login) => ({ login, version: null }))];
   return timelineNow(timelineDeps(), { me, people, fresh });
 }
-onTimeline(() => void timelineAsk().then((t) => everyoneTeam({ type: "team.timeline", ...t })).catch(() => {}));
 // --- end The timeline
 // --- The review session (#416, tonight.ts): once a minute, a review the project's rhythm names me for opens itself on
 // the engine my window is on, in my folder for the project, as a Work session with the summary and its card. Marked cowork under the room that has the
@@ -1765,7 +1871,7 @@ const tonightDeps = (): TonightDeps => ({
   me: () => getTeam().me.login,
   // where the person is: a face on this engine (a NucBox with no window waits, the review stays due until the morning);
   // SOL_TONIGHT=off in sol/engine/.env keeps an engine out of it
-  present: () => process.env.SOL_TONIGHT !== "off" && solWindowOn(),
+  present: () => process.env.SOL_TONIGHT !== "off" && !isQuiet() && solWindowOn(),
   folders: async () => {
     const s = getTeam();
     const own = await remoteOf(resolve(HERE, "..", "..", "..", "..")).catch(() => "");   // this Sol's own repository: SOL's rhythm lives there
@@ -1786,7 +1892,7 @@ const tonightDeps = (): TonightDeps => ({
   },
   bus: workBus,
   say: (l) => console.log(l),
-  ping: (p) => { if (!onCloud()) sendRelay("ping", { to: p.to, pingKind: "decision", line: p.line, issue: p.issue, repo: p.repo }, true); },
+  ping: (p) => { if (!onCloud()) wakeUp().send({ to: p.to, pingKind: "decision", line: p.line, issue: p.issue, repo: p.repo }, true); },
 });
 // the hand-in session (#420, handin.ts): the same engine, folders and start as the review's, plus git in the folder
 // for the clashes (its origin fetched, then merged in memory; nothing checked out)
@@ -1822,6 +1928,7 @@ export const brokeNow = (a: { repo: string; number: number; why: unknown; agent:
 // the slight send backs before the review (#421, sentback.ts): one made severe at `until` shows "back from last night"
 // on the review that opens after it
 const nightTick = () => {
+  if (isQuiet()) return;   // no review, hand-in or send-back session opens itself on a quiet Sol (#1293)
   void (async () => { const d = tonightDeps(); await sentBackTick(d).catch(() => {}); await tonightTick(d).catch(() => {}); })();
   void handInTick(handInDeps()).catch(() => {});
   void handInScan(cardDeps()).catch(() => {});   // every two minutes inside (#476)
@@ -1885,7 +1992,7 @@ function heardPing(m: Record<string, any>): object | null {
   const s = getTeam();
   // an audit asked while "what leaves this machine" says never: my agent turns it down at once, no card (the switch's word)
   const no = auditTurnedDown(p, s.leaves.audit, s.me.login);
-  if (no) { sendRelay("ping", { to: p.from.login, line: no, pingKind: "chat" }, true); return null; }
+  if (no) { wakeUp().send({ to: p.from.login, line: no, pingKind: "chat" }, true); return null; }
   const r = route(p.kind, s.dials[p.kind]);
   if (r.written) void writeAbsorbed(p).catch(() => {});
   return r.card ? { type: "team.pinged", id: p.id, kind: p.kind, from: p.from, line: p.line, at: p.at, ...(p.issue ? { issue: p.issue } : {}), ...(p.repo ? { repo: p.repo } : {}), ...(m.spooled ? { spooled: true } : {}) } : null;
@@ -1924,7 +2031,7 @@ async function routeMine(b: Board) {
     const mine = b.cards.filter((c) => c.repo === repo && c.state === "open" && c.author.toLowerCase() === me);
     if (!routed.has(repo)) routed.set(repo, new Set());
     await routeIssues({ gh: runGh, repo, dryRun: false, say: () => {}, seen: routed.get(repo),
-      ping: (p) => !onCloud() && sendRelay("ping", { to: p.to, pingKind: p.kind, line: p.line, issue: p.issue, repo }, true) }, mine, l);   // #214: GitHub logins
+      ping: (p) => !onCloud() && wakeUp().send({ to: p.to, pingKind: p.kind, line: p.line, issue: p.issue, repo }, true) }, mine, l);   // #214: GitHub logins
   }
 }
 // --- end Routing
@@ -1970,11 +2077,32 @@ const V3_SLICE: [RegExp, string][] = [
   [/^team\.v3\.(talk|setup|join)\./, "five"],                           // slice 5, Talk per item, setup, joining
   [/^team\.v3\.studio\./, "studio"],                                   // slice 6, the studio and the nights
   [/^team\.v3\.(artifacts|search|floor)\./, "seven"],                   // slice 7, artifacts, search, the floor
+  [/^team\.v3\.way\./, "way"],                                         // the ways (#987), behind their own switch too
 ];
+// What a v3 message may do from a socket that is not Sol's own window (#1074): read, and only read. Everything else
+// writes as me (a trail event signed by this machine, a key, a pairing code, a grant on GitHub), so it is Sol's own
+// window's press only, as team.v3.running's review is; a message that is not named here is a write
+const V3_READS = new Set([
+  "team.v3.since", "team.v3.record", "team.v3.migrate.dry", "team.v3.on", "team.v3.cross.landed", "team.v3.front", "team.v3.needsme",
+  "team.v3.places.read", "team.v3.places.reach", "team.v3.places.letin",
+  "team.v3.talk.threads", "team.v3.talk.thread", "team.v3.talk.asks", "team.v3.setup.open", "team.v3.setup.answer", "team.v3.join.waiting", "team.v3.join.arrival",
+  "team.v3.studio.list", "team.v3.studio.parse", "team.v3.studio.log",
+  "team.v3.artifacts.list", "team.v3.artifacts.get", "team.v3.artifacts.export", "team.v3.search.query",
+  "team.v3.way.read",
+]);
+// not here, though they look like reads: people, window and running seed a project's members as me on first look
+// (people.ts peopleOf), and floor.get makes this machine's keys if there are none (floor.ts devices)
+/** whether a team.v3.* message only reads; fromSol is index.ts's word from the socket, never the message's */
+export function v3Reads(m: { type?: unknown; op?: unknown }): boolean {
+  const type = String(m.type ?? "");
+  if (V3_READS.has(type)) return true;
+  return type === "team.v3.plan" && (m.op === undefined || m.op === "" || m.op === "read");   // a read without an op, a write with one
+}
 async function handleV3(w: Wire, m: any, rid: ReturnType<typeof RID>) {
   if (!coworkV3()) return;
   const which = V3_SLICE.find(([re]) => re.test(m.type))?.[1];
   if (!which) return;
+  if (m.fromSol !== true && !v3Reads(m)) return w.send({ type: "team.error", rid, message: "only Sol's own window" });
   const me = getTeam().me.login;
   switch (which) {
     case "trail": {
@@ -1995,6 +2123,11 @@ async function handleV3(w: Wire, m: any, rid: ReturnType<typeof RID>) {
     case "places": return w.send(await (await import("./v3/places-wire.js")).handleV3Places(m, { usage: (id) => usageOf(usageDeps(), id) }));
     case "five": return w.send(await (await import("./v3/wire5.js")).handleV3Five(m, { me, push: everyoneTeam, projects: () => getTeam().rooms.map((r) => ({ id: r.id, name: r.name || r.id })) }));
     case "studio": return w.send(await (await import("./v3/studio-wire.js")).handleStudio(m));
+    case "way": {
+      if (!(await import("./v3/way-switch.js")).waysOn()) return;   // the ways' switch off: no answer, nothing of the ways loaded
+      const a = await (await import("./v3/way-wire.js")).answerWay(m, { me: () => me });
+      return a ? w.send(a) : undefined;
+    }
     case "seven": {
       const login = me || (await myLogin().catch(() => ""));
       return w.send(await (await import("./v3/floorwire.js")).answerSeven(m, { me: login, projects: getTeam().rooms.map((r) => r.id) }));

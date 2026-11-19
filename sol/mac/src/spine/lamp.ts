@@ -1,7 +1,7 @@
 // The lamp (Marco 2026-11-07, side-mechanics.html): one soft light that follows the pointer between the side's rows on
 // its own spring (lift: quick, no bounce), instead of each row lighting itself. It fades when the pointer leaves.
 import { useRef } from "react";
-import { SPRINGS as CFG, useSpring } from "../motion";
+import { CFG, useSpring } from "../motion";
 
 const LAMP = { ...CFG.lift, eps: 0.002 };   // quick, no bounce: lift, the fastest of the five (motion.ts, #763)
 export function useLamp() {

@@ -10,20 +10,18 @@
 // Transients done / wrong go out as creature.flash and never change the state. At a turn's end that did something,
 // creature.receipt { lines } goes to the face that ran it (step 4, the RECEIPT scene).
 //
-// Notch buttons (#6, step 0): two more messages beside creature.state, to every face on change and on connect.
-//   creature.ask  { id, sessionId, seat, tool, title, path?, n, of } | null   the oldest open perm ask across Work runs
+// One more message beside creature.state, to every face on change and on connect:
 //   creature.turn { seat, sessionId, title, kind: life | work | call } | null the busy conversation with the latest
-//                 activity (a turn starting, a delta, a tool step, a call, a ping): the one the notch follows and stops
+//                 activity (a turn starting, a delta, a tool step, a call, a ping); Together's presence follows it too
 
 import { basename } from "node:path";
 import { busyList, onBusy, type Job } from "./busy.js";
 import { allRuns } from "./work/runs.js";
-import { backHere } from "./ping.js";
 import { getTitles } from "./titles.js";
 
 export const CREATURE_STATES = ["here", "elsewhere", "away", "working", "yourcall", "listening", "speaking", "unplugged"] as const;
 export type CreatureState = (typeof CREATURE_STATES)[number];
-export type Role = "window" | "notch" | "phone";
+export type Role = "window" | "phone";
 export type Presence = "here" | "elsewhere" | "away";
 
 export const AWAY_S = 600;      // N: no key or mouse for this long is Away (design data, PRD)
@@ -33,13 +31,12 @@ const WORK_KINDS = new Set(["life", "work", "review", "run"]);
 type Key = object;              // one connected socket
 type Out = { send: (m: object) => void };
 const faces = new Map<Key, { out: Out; role?: Role }>();
-let presence: { key: Key; focused: boolean; idleSeconds: number | null } | null = null;
+let presence: { key: Key; focused: boolean; visible: boolean; idleSeconds: number | null } | null = null;
 const calls = new Set<Key>();
 const dictating = new Set<Key>();
 let spokeAt = 0;
 let state: CreatureState = "here";
 let asks = 0;
-let lastPresence: Presence = "elsewhere";
 
 const everyone = (m: object) => { for (const f of faces.values()) f.out.send(m); };
 const stateMsg = () => ({ type: "creature.state", state, asks });
@@ -48,7 +45,6 @@ export function addCreatureFace(key: Key, out: Out) {
   faces.set(key, { out });
   out.send({ type: "engine", phase: "up" });
   out.send(stateMsg());
-  out.send({ type: "creature.ask", ask: lastAsk });
   out.send({ type: "creature.turn", turn: lastTurn });
 }
 export function removeCreatureFace(key: Key) {
@@ -57,16 +53,20 @@ export function removeCreatureFace(key: Key) {
   update();
 }
 export function setRole(key: Key, role: Role) { const f = faces.get(key); if (f) f.role = role; }
-// Sol's own main window (its page, said hello as "window"): not the notch, the phone, or a program on this Mac (#416)
+// Sol's own main window (its page, said hello as "window"): not the phone, or a program on this Mac (#416)
 const solWindows = new Set<Key>();
 export function markSolWindow(key: Key) { if (faces.has(key)) solWindows.add(key); }
 export const solWindowOn = () => solWindows.size > 0;
 export const roleOf = (key: Key) => faces.get(key)?.role;
 
-export function setPresence(key: Key, focused: boolean, idleSeconds: number | null) {
-  presence = { key, focused, idleSeconds: typeof idleSeconds === "number" && isFinite(idleSeconds) ? idleSeconds : null };
+// visible (#845): Sol's window is on the screen he is looking at (not minimized, not hidden, not under a full-screen app or
+// on another space, the display awake), whether or not it has focus. A face too old to say it: its focus stands for it
+export function setPresence(key: Key, focused: boolean, idleSeconds: number | null, visible?: boolean) {
+  presence = { key, focused, visible: typeof visible === "boolean" ? visible : focused, idleSeconds: typeof idleSeconds === "number" && isFinite(idleSeconds) ? idleSeconds : null };
   update();
 }
+/** the gate of one notification (notify.ts): Sol's window is on his screen. No window: not */
+export const onScreen = () => !!presence && presence.visible && faces.has(presence.key);
 export function setDictation(key: Key, on: boolean) { on ? dictating.add(key) : dictating.delete(key); update(); }
 
 /** what the engine sent a socket: calls, voice out, text out, turn ends */
@@ -79,7 +79,7 @@ export function sent(key: Key, m: any) {
   else if (m.type === "tool" && m.done && m.ok === false) flash("wrong");
   else if ((m.type === "work.delta" || m.type === "work.item") && typeof m.sessionId === "string") touch(m.sessionId, "claude", "work");
   if (m.type === "tool" && life) touch(life.sessionId, life.seat, "life", key);
-  if (m.type === "work.run" || m.type === "work.item") update();   // an ask opened or was answered: creature.ask at once
+  if (m.type === "work.run" || m.type === "work.item") update();   // an ask opened or was answered: yourcall at once
   if (m.type === "tool" && m.done && m.ok !== false && DID.has(m.kind)) {
     const t = tally.get(key) ?? new Map<string, { kind: string; text: string }>();
     t.set(String(m.id ?? t.size), { kind: m.kind, text: String(m.text ?? "") }); tally.set(key, t);
@@ -123,14 +123,6 @@ export function presenceNow(): Presence {
   if (presence.idleSeconds !== null && presence.idleSeconds >= AWAY_S) return "away";
   return presence.focused ? "here" : "elsewhere";
 }
-/** where a ping goes now: the call's surface during a call, else from presence */
-export function placeNow(): Role {
-  const c = [...calls][0];
-  if (c) return faces.get(c)?.role ?? "window";
-  const p = presenceNow();
-  return p === "here" ? "window" : p === "away" ? "phone" : "notch";
-}
-
 export const countAsks = () => allRuns().reduce((n, r) => n + r.perms.size, 0);
 
 export function derive(): CreatureState {
@@ -145,12 +137,9 @@ export function derive(): CreatureState {
 
 export function update() {
   asks = countAsks();
-  const p = presenceNow();
-  if (p !== lastPresence) { const was = lastPresence; lastPresence = p; if (p === "here" && was !== "here") backHere(); }
   const s = derive();
   if (s !== state || asks !== lastAsks) { state = s; lastAsks = asks; everyone(stateMsg()); }
-  const a = pickAsk(allRuns()), t = currentTurn();
-  if (JSON.stringify(a) !== JSON.stringify(lastAsk)) { lastAsk = a; everyone({ type: "creature.ask", ask: a }); }
+  const t = currentTurn();
   if (JSON.stringify(t) !== JSON.stringify(lastTurn)) { lastTurn = t; everyone({ type: "creature.turn", turn: t }); }
   const told = `${state}|${JSON.stringify(lastTurn)}`;
   if (told !== lastTold) { lastTold = told; for (const fn of watchers) fn(state, lastTurn, lastTurn?.kind === "work" ? allRuns().find((r) => r.id === lastTurn!.sessionId)?.cwd : undefined); }
@@ -163,12 +152,7 @@ const watchers = new Set<Watcher>();
 let lastTold = "";
 export function onCreature(fn: Watcher) { watchers.add(fn); fn(state, lastTurn); return () => { watchers.delete(fn); }; }
 
-// ---- creature.ask (Notch buttons #6): the oldest open ask, counted ----
-export type AskMsg = { id: string; sessionId: string; seat: string; tool: string; title: string; path?: string; n: number; of: number };
-type AskRun = { id: string; perms: Map<string, unknown>; items: { get(id: string): any } };
-const askedAt = new Map<string, number>();   // perm id -> the order it was first seen in (asks across runs, oldest first)
-let askSeq = 0;
-let lastAsk: AskMsg | null = null;
+// ---- an ask's words ----
 const file = (p: unknown) => (typeof p === "string" && p ? basename(p) : "");
 /** the window's words for an ask (work/Cards.tsx PermCard: it.title, else "Claude wants to <toolAsk>"); no command, no diff */
 export function askTitle(it: any): string {
@@ -186,25 +170,7 @@ export function askTitle(it: any): string {
     default: return `Claude wants to use ${tool.replace(/^mcp__.+?__/, "")}`;
   }
 }
-/** the oldest open ask across the runs, with its place: n of `of` (1 of 3) */
-export function pickAsk(runs: AskRun[]): AskMsg | null {
-  const open: { run: AskRun; id: string; at: number }[] = [];
-  const live = new Set<string>();
-  for (const r of runs) for (const id of r.perms.keys()) {
-    live.add(id);
-    if (!askedAt.has(id)) askedAt.set(id, ++askSeq);
-    open.push({ run: r, id, at: askedAt.get(id)! });
-  }
-  for (const id of askedAt.keys()) if (!live.has(id)) askedAt.delete(id);
-  if (!open.length) return null;
-  open.sort((a, b) => a.at - b.at);
-  const { run, id } = open[0];
-  const it = run.items.get(id) ?? {};
-  const path = it.path ?? it.input?.file_path ?? it.input?.notebook_path;
-  return { id, sessionId: run.id, seat: "claude", tool: String(it.tool ?? ""), title: askTitle(it), ...(typeof path === "string" && path ? { path } : {}), n: 1, of: open.length };
-}
-
-// ---- creature.turn (Notch buttons #6): the conversation the notch follows ----
+// ---- creature.turn: the conversation with the latest activity ----
 // A last-activity time per session: a turn starting (busy.ts join), a delta, a tool step, a call, a ping. The turn is
 // the busy session with the latest activity; null when none is busy. A call is busy while its socket's call is live.
 export type TurnKind = "life" | "work" | "call";
@@ -232,7 +198,7 @@ export function lifeTurn(key: Key, sessionId: string | undefined, seat: string) 
   touch(sessionId, seat, "life", key);
   update();
 }
-/** a ping (ping.ts) is activity in its conversation */
+/** a ping (notify.ts) is activity in its conversation */
 export function pinged(seat: string, sessionId?: string) {
   if (!sessionId) return;
   touch(sessionId, seat, acts.get(sessionId)?.kind ?? (seat === "work" ? "work" : "life"));

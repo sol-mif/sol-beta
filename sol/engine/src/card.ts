@@ -2,7 +2,14 @@
 // it, and what the face is handed to draw the card. The face draws it (Marco's); the engine holds the press and gives two
 // doors: GET /things says `waiting` on a block that waits, POST /things/<id>/approve is the press.
 //   what it asks   the five lists of needs (domains, folders, programs, Sol's tools, keys), the screen, and a seat's kinds
-//                  it hears (seat.turn, seat.done, seat.step, seat.sent: what a person's AI does, never its words). A block that asks none
+//                  it hears (seat.turn, seat.done, seat.step, seat.sent: what a person's AI does, never its words; and a
+//                  person's own picks, today.pick: every kind whose registry row says hear "card"), and the
+//                  kinds of the log's past it reads (needs.history, sol.since: `history`, and `historyText` when it asks
+//                  for the words in them too; both only when asked, behind its switch, record.ts), and the program it
+//                  starts and keeps running as a seat (needs.seat, acp.ts: `seat`, the program and its arguments as
+//                  written, only when asked, behind its own switch; `seatChildren` when that seat starts other
+//                  programs inside its wall, needs.seat.children; `seatKey` when it is started with a key in its
+//                  environment, needs.seat.key: the key's name and the name it has there). A block that asks none
 //                  of these is never asked about (a small room, as Marco's: refused afterwards, shown afterwards). One that
 //                  asks any, in either room, waits for a press: the card is about what goes beyond the wall, not the
 //                  room's size
@@ -19,12 +26,12 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { writeWhole } from "./safewrite.js";
 import type { Columns, Needs } from "./record.js";
-import { SEAT_KINDS, oldNames } from "./contract/kinds.js";   // the seats' kinds, from the registry
+import { CARD_KINDS, oldNames } from "./contract/kinds.js";   // the kinds heard only after a press (a seat's, a person's picks), from the registry
 import { keyMeta, haveKey } from "./keys.js";
 
 /** what goes beyond the wall, as lists: what a press says yes to, and what a record asks */
 export const OUTWARD = ["domains", "folders", "programs", "sol", "keys"] as const;
-export type Ask = Record<(typeof OUTWARD)[number], string[]> & { screen: boolean; hears: string[]; big: boolean; provides: string[] };
+export type Ask = Record<(typeof OUTWARD)[number], string[]> & { screen: boolean; hears: string[]; big: boolean; provides: string[]; history?: string[]; historyText?: true; seat?: string[]; seatChildren?: true; seatKey?: [string, string] };
 export type Pressed = Partial<Ask> & { at?: number; print?: string };
 
 /** what a record asks beyond the wall (pure): its needs' five lists and screen, the seat's kinds it hears, and a room of
@@ -34,15 +41,18 @@ export function askOf(c: Pick<Columns, "needs" | "hears" | "room">): Ask {
   return {
     ...(Object.fromEntries(OUTWARD.map((k) => [k, [...(n?.[k] ?? [])].sort()])) as Record<(typeof OUTWARD)[number], string[]>),
     screen: !!n?.screen,
-    hears: (c.hears ?? []).filter((k) => SEAT_KINDS.includes(k)).sort(),
+    hears: (c.hears ?? []).filter((k) => CARD_KINDS.includes(k)).sort(),
     big: c.room === "big",
     provides: [...(n?.provides ?? [])].sort(),   // a seat it provides: its asks are as good as everything (step 6)
+    ...(n?.history ? { history: [...n.history.kinds].sort(), ...(n.history.text ? { historyText: true as const } : {}) } : {}),   // the past it reads (step A3): only when asked, so no other card's print moves
+    ...(n?.seat ? { seat: [...n.seat.start], ...(n.seat.children ? { seatChildren: true as const } : {}), ...(n.seat.key ? { seatKey: [n.seat.key, n.seat.keyAs ?? ""] as [string, string] } : {}) } : {}),   // the program it starts as a seat, in its order (step A2), whether that seat starts programs of its own, and the key it is started holding: each only when asked
   };
 }
 /** a seat's kind as the card says it: the action, without its family (seat.turn: turn) */
 const actionOf = (kind: string): string => kind.slice(kind.indexOf(".") + 1);
+const isSeat = (kind: string): boolean => kind.startsWith("seat.");
 /** whether it asks anything a person must say yes to */
-export const asksAny = (a: Ask): boolean => OUTWARD.some((k) => a[k].length > 0) || a.screen || a.hears.length > 0 || a.big || a.provides.length > 0;
+export const asksAny = (a: Ask): boolean => OUTWARD.some((k) => a[k].length > 0) || a.screen || a.hears.length > 0 || a.big || a.provides.length > 0 || !!a.history?.length || !!a.seat?.length;
 
 /** what a record asks beyond what was pressed (pure): each thing, said; none when the press covers it. Narrower asks nothing */
 export function widerThan(pressed: unknown, a: Ask): string[] {
@@ -52,7 +62,12 @@ export function widerThan(pressed: unknown, a: Ask): string[] {
   if (a.screen && p.screen !== true) more.push("the screen");
   if (a.big && p.big !== true) more.push("a room of its own");
   for (const x of a.provides) if (!(Array.isArray(p.provides) && p.provides.includes(x))) more.push(`being a ${x}`);
-  for (const x of a.hears) if (!(Array.isArray(p.hears) && (p.hears.includes(x) || oldNames(x).some((o) => p.hears!.includes(o))))) more.push(`hearing a seat's ${actionOf(x)}`);   // a press from before the event format v1 names the kind as it was (turn): it still covers it
+  for (const x of a.hears) if (!(Array.isArray(p.hears) && (p.hears.includes(x) || oldNames(x).some((o) => p.hears!.includes(o))))) more.push(isSeat(x) ? `hearing a seat's ${actionOf(x)}` : `hearing your ${x}`);   // a press from before the event format v1 names the kind as it was (turn): it still covers it
+  for (const x of a.history ?? []) if (!(Array.isArray(p.history) && p.history.includes(x))) more.push(`reading your past ${x}`);
+  if (a.historyText && p.historyText !== true) more.push("the words in your past records");
+  if (a.seat?.length && !(Array.isArray(p.seat) && p.seat.length === a.seat.length && p.seat.every((x, i) => x === a.seat![i]))) more.push(`starting ${a.seat.join(" ")} as a seat`);   // another program or other arguments: a new press
+  if (a.seatChildren && p.seatChildren !== true) more.push("its seat starting other programs");
+  if (a.seatKey && !(Array.isArray(p.seatKey) && p.seatKey[0] === a.seatKey[0] && p.seatKey[1] === a.seatKey[1])) more.push(`its seat holding the key ${a.seatKey[0]} (as ${a.seatKey[1]})`);   // a room's key never enters the room; a seat's is in its program's hands
   return more;
 }
 
@@ -113,10 +128,19 @@ export function cardOf(app: string, id: string, c: Pick<Columns, "needs" | "hear
   if (a.screen) plain.push("Turning on screenshots means it sees your whole screen, every window and its title, not only Sol's.");
   for (const k of keys) if (k.also.length) plain.push(`The key ${k.name} is also used by ${k.also.join(", ")}: one key, given to ${k.also.length + 1} blocks.`);
   if (a.provides.includes("seat")) plain.push("It becomes a seat: what you say to it goes to it, and it answers as your AI does. Treat it as having everything it asks for, used however it likes.");
-  if (a.hears.length) plain.push(`It hears what your AI does (${a.hears.map(actionOf).join(", ")}): when a turn starts and ends, which tools it uses. Never the words.`);
+  const seats = a.hears.filter(isSeat), mine = a.hears.filter((k) => !isSeat(k));
+  if (seats.length) plain.push(`It hears what your AI does (${seats.map(actionOf).join(", ")}): when a turn starts and ends, which tools it uses. Never the words.`);
+  const worded = a.historyText ? mine.filter((k) => a.history?.includes(k)) : [];   // kernel.ts heardOf: the words only with history's text
+  if (mine.length) plain.push(`It hears your new records as they are written: ${mine.join(", ")}. ${worded.length === mine.length ? "The words in them too." : worded.length ? `The words only in ${worded.join(", ")}.` : "What happened and when, not the words."}`);
   if (a.folders.length) plain.push(`It can read and change every file in ${a.folders.join(", ")}.`);
   if (a.big && !OUTWARD.some((k) => a[k].length) && !a.screen) plain.push("It runs in a room of its own beside Sol, walled in: it reaches nothing outside it.");
   if (a.sol.length) plain.push(`It can use Sol's own ${a.sol.length === 1 ? "tool" : "tools"} ${a.sol.join(", ")}, as your AI does.`);
+  if (a.history?.length) plain.push(`It wants to read your past records: ${a.history.join(", ")}.`);   // the design's sentence, as written (§7.3)
+  if (a.seat?.length) plain.push(`It starts ${a.seat.join(" ")} and keeps it running beside Sol as a seat, walled in, until you take it out.`);
+  if (a.seat?.length) plain.push("Inside that wall it can still learn who has an account on this Mac: each account's name and full name, yours among them, and which are administrators. Never what is in a home.");   // kernel.ts SEAT_MORE: the user lookup every seat is given
+  if (a.seatChildren) plain.push(`That seat starts other programs itself, inside the same wall: the ones in its own folder${a.programs.length ? ` and ${a.programs.join(", ")}` : ""}. Sol stops them when you take it out; one it hides on purpose can go on running, still walled in.`);
+  if (a.seatKey) plain.push(`That seat is started with the key ${a.seatKey[0]} in its environment (as ${a.seatKey[1]}): its program holds the key itself, and can use it or send it wherever its wall lets it reach${a.domains.length ? ` (${a.domains.join(", ")})` : ""}${a.folders.length ? `, or keep a copy in ${a.folders.join(", ")}` : ""}. Paste another or take it away, and the seat starts again or waits.`);
+  if (a.history?.length && a.historyText) plain.push("It also reads the words in them: what you and your AI wrote there, not only what happened and when.");
   const more = pressed ? widerThan(pressed, a) : [];
   return { print: printOf(a, why, plain), why, again: !!pressed && more.length > 0, more, asks: a, plain, keys, missing: keys.filter((k) => !k.have).map((k) => k.name) };
 }

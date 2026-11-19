@@ -143,3 +143,18 @@ test("away: a write lands locally, shows waiting to send, and reaches the cloud 
   assert.equal(fold(m.trail.check(P).ok, { waiting: (id) => m.sync.isWaiting(id) }).items.offline.waiting, undefined);
   assert.equal(m.sync.state(P).away, "");
 });
+
+test("a fact is never erased on the cloud either (#987's seventeenth review): an erase event that names a role event leaves it whole, and a Sol that joins later reads it", async () => {
+  const { TRAIL_FACTS } = await import("../../cloud/src/trail.ts");
+  const { erasable, TEAM_KINDS } = await import("../src/team/v3/trail-kinds.ts");
+  // the cloud's list is the engine's rule: the facts of an unchecked family, and every checked kind with no free text
+  assert.deepEqual([...TRAIL_FACTS].sort(), ["member", "wayfile", ...[...TEAM_KINDS.keys()].filter((k) => !erasable(k))].sort());
+  const m = sol("marcocyl04-ux", "macbook");
+  const seat = m.trail.append({ project: P, by: m.by, kind: "member", item: "zoe", value: { role: "editor", in: true } });
+  m.trail.append({ project: P, by: m.by, kind: "erase", item: seat.id });   // as an older build, or by hand
+  await m.sync.push(P);
+  const late = sol("franktsai2008-eng", "legion2");
+  await late.sync.pull(P);
+  assert.equal(late.trail.get(seat.id)?.erased, undefined, "whole on the cloud");
+  assert.deepEqual(late.trail.get(seat.id)?.value, { role: "editor", in: true });
+});

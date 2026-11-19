@@ -52,7 +52,7 @@ export function OnToken({ onClear }: { onClear?: () => void }) {
   if (!on.length) return null;
   return (
     <button ref={me} className="st-ontok" tabIndex={-1} title="what your words are about: press, or esc, to let it go" onMouseDown={(e) => e.preventDefault()} onClick={() => { pointAt([]); onClear?.(); }}>
-      {on[0].kind && <Mark kind={on[0].kind} />}<span>{picked && on.length > 1 ? `${on.length} blocks picked` : on.map((o) => o.words).join(" · ")}</span>
+      {on[0].kind && <Mark kind={on[0].kind} />}<span>{picked && on.length > 1 ? `${on.length} artifacts picked` : on.map((o) => o.words).join(" · ")}</span>
     </button>
   );
 }

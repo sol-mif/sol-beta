@@ -1,4 +1,5 @@
 @import "./palette.css"; /* the colours: generated from design/system/tokens.json (palette) (--ink, --paper, green/yellow/red soft and strong, gradients) */
+@import "./tokens.css"; /* the contract's names (--base-color, --page, --surface, --r, --col …): generated from the same file (tokens); nothing below is typed by hand (#1183) */
 @import "./kit/type.css"; /* the six type steps as classes (#762): .t-display .t-title .t-read .t-body .t-code .t-label */
 /* Sol's face. The look (mine/look/SPEC.md, 2026-10-25): ONE material. The window is the base colour at an opacity over
    the desktop (black 0.78 by default); every surface inside it is the same base laid again at a step; every line and
@@ -6,37 +7,7 @@
    second surface colour. The base is adjustable in Settings → look; --glow, the seat's colour, is the one hue. */
 :root {
   color-scheme: dark;
-  /* the base: set by look.ts from Settings (look.color / alpha / blur); these are the defaults */
-  --base-color: #000000;
-  --base-alpha: 0.78;
-  --base-blur: 48px;
-  /* "on": white on a dark base, black on a light one (relative colour syntax: a lightness far past 100 or 0 clamps).
-     look.ts sets --on too, from the same rule in JS, so a WebKit without this syntax still reads right. */
-  --on: lch(from var(--base-color) calc((50 - l) * 1000) 0 0);
-  --base: rgb(from var(--base-color) r g b / var(--base-alpha));   /* the window itself */
-  --page: rgb(from var(--base-color) r g b / 0.10);     /* a nested surface at the window's own depth (a step's detail, the pane) */
-  --side: rgb(from var(--base-color) r g b / 0.10);     /* the sidebar */
-  --surface: rgb(from var(--base-color) r g b / 0.25);  /* slabs, cards, fields */
-  --raised: rgb(from var(--base-color) r g b / 0.40);   /* hover, the active tab, the running step */
-  --island: rgb(from var(--base-color) r g b / 0.55);   /* the composer */
-  --pop: rgb(from var(--base-color) r g b / 0.96);      /* anything that pops open over the chat: a menu, a list, a card; near-solid so its words read over words (sitting 4) */
-  --pop-shadow: 0 12px 40px -12px rgba(0,0,0,.6);      /* the one drop every popover wears */
-  --line: rgb(from var(--on) r g b / 0.06);             /* every 1px line */
-  --edge: rgb(from var(--on) r g b / 0.10);             /* the window's own edge, a lifted thing's ring */
-  --ink: rgb(from var(--on) r g b / 0.92);              /* text */
-  --dim: rgb(from var(--on) r g b / 0.55);              /* quiet text */
-  --mute: rgb(from var(--on) r g b / 0.32);             /* quieter still: ticks, glyphs at rest */
-  --glow: var(--candy); /* the one accent: the active seat's flat colour (set below from data-seat; palette.css) */
-  --warn: var(--red-strong); /* a step that failed, the engine down */
-  --ok: var(--green-strong); /* the engine is up */
-  --r-s: 6px;
-  --r: 10px;
-  --r-l: 14px;
-  --pill: 999px;
-  --col: 680px;         /* one column: the call lines, settings */
-  --col-max: 760px;     /* the chat column (sitting 4): the talk and the island share one box, one left edge and one right edge */
-  --col-pad: 24px;      /* its padding at both sides */
-  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  /* the material's values (--base-color … --mono) come from tokens.css, written by tokens.mjs from tokens.json (#1183): nothing here by hand */
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   font-size: 15px;
   line-height: 1.55;
@@ -53,14 +24,15 @@
 html { height: 100%; margin: 0; background: transparent; }
 body, #root { height: 100%; margin: 0; color: var(--ink); }
 body { -webkit-font-smoothing: antialiased; overflow: hidden; }
-/* the glass is the face's alone (data-face, main.tsx): the notch, the grab sheet and the phone page load this file
-   too and keep their own windows clear (a blur on the notch's body would show as a grey slab over the desktop) */
+/* the glass is the face's alone (data-face, main.tsx): the phone page loads this file too and keeps its own page
+   clear */
+/* the window: the base over the desk, blurred; the ground the board asks for (#1183) is the kit's Ground, laid under the face once Marco picks its take (tokens.json palette.ground.pick) */
 :root[data-face] body { background: var(--base); -webkit-backdrop-filter: blur(var(--base-blur)); backdrop-filter: blur(var(--base-blur)); }
 :root[data-face][data-app] body { -webkit-backdrop-filter: none; backdrop-filter: none; }
-/* #891, behind stage.whole or sol.home.whole: the window that carries words is near solid, and words are never under
+/* #891, behind stage.whole: the window that carries words is near solid, and words are never under
    4.5:1 (mute, at 0.32, is 2.7:1 even on black); tokens.json palette.shade.read, src/eyes.test.ts */
 :root[data-whole] { --dim: rgb(from var(--on) r g b / var(--read-dim)); --mute: rgb(from var(--on) r g b / var(--read-mute)); }
-:root[data-face][data-whole] body { background: rgb(from var(--base-color) r g b / var(--read-window)); }
+/* mine: Marco, 2026-11-11: "pitch black again which is wrong"; the window stays the glass (--base, 0.78), the readable words above are kept */
 #root { background: transparent; }
 button { font: inherit; }
 ::selection { background: color-mix(in srgb, var(--glow) 28%, transparent); }
@@ -81,7 +53,7 @@ canvas.space-eye { width: 60px; height: 40px; }
 .face > .bar, .face > .shell { position: relative; z-index: 1; }
 /* the overlay title bar: macOS draws the traffic lights over its left end (they take about the first 78px),
    so the first control starts after them with a clear gap; every control is centred on the bar's middle */
-.bar { height: 44px; flex: none; display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 0 10px 0 88px; color: var(--dim); font-size: 12px; user-select: none; }
+.bar { height: var(--f-row, 44px); flex: none; display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 0 10px 0 var(--f-head-pad, 88px); color: var(--dim); font-size: 12px; user-select: none; }
 /* a bar button: a 28px key with a 14px cell glyph; raised on hover, pressed-in while on */
 .barbtn { flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; background: none; border: 1px solid transparent; border-radius: var(--r-s); color: var(--dim); cursor: pointer; }
 .barbtn:hover { color: var(--ink); background: var(--raised); border-color: var(--line); }
@@ -94,7 +66,7 @@ canvas.space-eye { width: 60px; height: 40px; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 /* ---- sidebar: history + settings, floating over the chat ---- */
-.side { position: fixed; left: 0; top: 44px; bottom: 0; width: 240px; z-index: 30; display: flex; flex-direction: column; min-height: 0; user-select: none;
+.side { position: fixed; left: var(--f-spine, 0px); top: var(--f-row, 44px); bottom: 0; width: 240px; z-index: 30; display: flex; flex-direction: column; min-height: 0; user-select: none;
   background: var(--side); border-top-right-radius: var(--r-l);   /* one glass panel (sitting 2): no hairline at its right; no blur of its own, the window's glass is the blur (a second backdrop-filter recomposites every frame) */
   translate: -100% 0; visibility: hidden; pointer-events: none; box-shadow: 14px 0 32px -8px var(--shade); will-change: translate; }
 .side.pinned { box-shadow: none; }
@@ -167,7 +139,7 @@ textarea { overflow-y: hidden; }
 .row.on .seat { opacity: 1; }
 .row .pencil { display: none; flex: none; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; background: none; border: 0; border-radius: var(--r-s); color: var(--dim); cursor: pointer; }
 .row:hover .pencil { display: flex; }
-/* a conversation a door started (the phone, the notch) says so */
+/* a conversation a door started (the phone) says so */
 .row .door { flex: none; font-size: 10px; color: var(--dim); border: 1px solid var(--line); border-radius: var(--pill); padding: 0 5px; line-height: 14px; }
 .row .pencil:hover { color: var(--ink); background: var(--line); }
 .row.editing { padding: 3px 4px; }
@@ -348,9 +320,12 @@ button.stop:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--mute); 
    knob, the level's lit cells, before the word; open, a track of cells with the creature's knob riding it (body in --on,
    its one eye in --glow) and the level's word inside the pill to the right of the track */
 .picker .slider.epill { padding: 0 11px 0 28px; cursor: pointer; outline: none; display: flex; align-items: center; color: var(--ink); caret-color: var(--glow); }
+.picker .slider.epill { height: var(--h-chip); background: none; box-shadow: none; isolation: isolate; }   /* it stands on the kit's Pill (EffortPill.tsx): the glass is the kit's PillBack, never the grey surface and its line */
 .epill:focus-visible { box-shadow: inset 0 0 0 1px var(--mute); }
 .epill.open .name { visibility: hidden; }
-.epill .eghost { position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; letter-spacing: -0.02em; pointer-events: none; }
+.picker .wmic.bare { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; background: none; border: 0; color: var(--ink); cursor: default; }   /* the mic on the bar itself, no disc */
+.kheat { animation: eheat-drift 2.2s ease-in-out infinite alternate; }   /* the kit pill's heat drifts as the effort pill's does */
+.epill .eghost { position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; font-weight: 500; font-size: var(--t-pill); pointer-events: none; }   /* the word's canvas draws in this font (EffortPill.tsx Word) */
 .epill .eghost span { margin-right: 8px; }
 /* the heat inside the capsule (EffortPill.tsx): the level's bands under the word, the new heat pouring in from the left */
 .epill .eheat { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; transition: opacity .18s ease; }
@@ -362,6 +337,7 @@ button.stop:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--mute); 
 @keyframes eheat-pour { from { clip-path: inset(0 100% 0 0 round 13px); } to { clip-path: inset(0 0 0 0 round 13px); } }
 .epill.swell { animation: eheat-swell 420ms cubic-bezier(.3, 1.5, .5, 1) 1; }
 @keyframes eheat-swell { 40% { transform: scale(1.07, 1.12); } }
+.epill .name .val { font-family: inherit; font-size: var(--t-pill); font-weight: 500; letter-spacing: 0; }   /* the row's one word: the sans at the pill size, as the open word's canvas */
 .epill .name { z-index: 1; color: #fff; text-shadow: 0 0 2px rgba(0, 0, 0, .9), 0 1px 3px rgba(0, 0, 0, .7); }
 .epill .eheat::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 18px, rgba(0, 0, 0, .34) 44px, rgba(0, 0, 0, .42)); }   /* the heat is richest at the droplet and calms under the word, so the word reads */
 .epill.open .eheat::after { opacity: 0; }
@@ -369,7 +345,6 @@ button.stop:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--mute); 
 .epill .etrack i.on { opacity: 1; }
 .epill .eword { color: #fff; }
 .picker .wchip.leash { color: #fff; text-shadow: 0 0 2px rgba(0, 0, 0, .9), 0 1px 3px rgba(0, 0, 0, .7); }
-.picker .wchip.leash.lifted { box-shadow: inset 0 0 0 1px var(--mute); }
 .epill .etrack { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .epill .etrack i { position: absolute; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; }
 .epill .eknob { position: absolute; z-index: 1; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; pointer-events: none; transition: left 260ms cubic-bezier(.3, 1.55, .5, 1); }
@@ -517,6 +492,10 @@ svg.voicebody { display: block; flex: none; }
    one section on the right; the rail and the pane scroll on their own */
 .settings-shell { flex: 1; display: grid; grid-template-columns: auto minmax(0, 1fr); padding: 0; overflow: hidden; min-height: 0; container-type: inline-size; }
 .srail { position: relative; width: 216px; display: flex; flex-direction: column; min-height: 0; padding: 12px 8px 16px 12px; border-right: 1px solid var(--line); }
+/* which settings these are (Sol's or Build's), over the search; and the line at the foot that crosses to the other */
+.sscope { margin: 2px 8px 10px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.sother { display: flex; align-items: center; justify-content: space-between; flex: none; height: 30px; margin-top: 8px; padding: 0 8px; background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; color: var(--mute); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.sother:hover { color: var(--ink); }
 .ssearch { display: flex; align-items: center; gap: 7px; margin: 0 0 10px; padding: 0 8px; height: 30px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-s); color: var(--mute); cursor: text; }
 .ssearch:focus-within { border-color: var(--mute); color: var(--dim); }
 .ssearch input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--ink); font: inherit; font-size: 12.5px; }
@@ -564,7 +543,7 @@ svg.voicebody { display: block; flex: none; }
 @container (max-width: 640px) {
   .srail { width: 52px; padding: 10px 6px; }
   .ssearch { padding: 0; justify-content: center; }
-  .ssearch input, .ssearch kbd, .sgroup, .sitem .st, .speek { display: none; }
+  .ssearch input, .ssearch kbd, .sgroup, .sitem .st, .speek, .sscope, .sother { display: none; }
   .ssearch:focus-within { position: absolute; z-index: 3; width: 200px; padding: 0 8px; background: var(--pop); }
   .ssearch:focus-within input { display: block; }
   .sitem { justify-content: center; padding: 0; height: 34px; }
@@ -789,6 +768,16 @@ button.stop.sure { color: var(--ink); border-color: var(--ink); }
 .orb .orb-dot { position: absolute; top: -1px; right: -1px; width: 7px; height: 7px; border-radius: var(--pill); background: var(--ink); box-shadow: 0 0 0 2px var(--base-color); scale: 0; transition: scale .18s cubic-bezier(.3,1.6,.5,1); }
 .orb.fresh .orb-dot { scale: 1; }
 @media (prefers-reduced-motion: reduce) { .orb .orb-dot { transition: none; } }
+/* ⌘F in a session (#1239, FindBar.tsx): a small bar at the top right of the talk; every match lit, the one it is on lit strong */
+.findbar { position: absolute; top: 8px; right: 28px; z-index: 5; display: flex; align-items: center; gap: 2px; padding: 4px 4px 4px 10px; background: rgb(from var(--base-color) r g b / 0.97); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 8px 24px var(--shade); font-size: 12.5px; }
+.findbar input { width: 190px; padding: 3px 0; background: none; border: 0; outline: 0; color: var(--ink); font: inherit; }
+.findbar input::placeholder { color: var(--mute); }
+.findbar .count { min-width: 52px; padding: 0 6px; color: var(--dim); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.findbar button { width: 24px; height: 24px; padding: 0; display: grid; place-items: center; background: none; border: 0; border-radius: var(--r-s); color: var(--dim); font: inherit; cursor: pointer; }
+.findbar button:hover:not(:disabled) { color: var(--ink); background: var(--raised); }
+.findbar button:disabled { color: var(--mute); cursor: default; }
+::highlight(sol-find) { background-color: rgb(250 204 21 / 0.35); color: inherit; }
+::highlight(sol-find-now) { background-color: rgb(249 115 22 / 0.75); color: inherit; }
 .trail { position: absolute; top: 14px; bottom: 14px; right: 3px; width: 18px; cursor: pointer; touch-action: none; user-select: none; opacity: 0.5; transition: opacity 0.15s; }
 .trail:hover, .trail.down { opacity: 1; }
 .trail .win { position: absolute; left: 8px; top: 0; height: 100%; width: 2px; background: var(--line); border-radius: 1px; transform-origin: 0 0; will-change: transform; }
@@ -816,15 +805,6 @@ button.stop.sure { color: var(--ink); border-color: var(--ink); }
 
 /* the scenes' stage (creature/scenes.ts): over everything, never in the way */
 canvas.scenes { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 40; image-rendering: pixelated; }
-
-/* Notch buttons (#6): the row the notch's Open landed on, highlighted for a breath; land.ts moves --land 0 → 1 → 0 on
-   the arrive spring and takes the class off after 1.2 s. Ink only, no colour. */
-.landed {
-  border-radius: 10px;
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ink) calc(var(--land, 0) * 55%), transparent);
-  background-color: color-mix(in srgb, var(--ink) calc(var(--land, 0) * 7%), transparent);
-}
-
 
 /* the base's swatches in settings → look, a touch larger than the rule above, wrapping */
 .swatches { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0 2px; }

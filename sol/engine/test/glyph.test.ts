@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { Glyph, GLYPHS, GLYPH_SETS, glyphColour, type GlyphName } from "../../mac/src/kit/Glyph.tsx";
 import { GLYPH, SHADE } from "../../mac/src/kit/tokens.ts";
 import { dim, mute } from "../../mac/src/kit/paint.ts";
+import { anyWhole } from "../../mac/src/flag.ts";
 
 const face = createRequire(fileURLToPath(new URL("../../mac/package.json", import.meta.url)));
 const { createElement } = face("react") as typeof import("react");
@@ -41,7 +42,9 @@ test("the glyphs: each of the 22 renders as one 24 × 24 svg with its drawing in
 });
 
 test("the glyphs: mute at rest, dim on hover, the on colour's own strengths", () => {
-  assert.equal(mute, dim.replace(String(SHADE.on.dim), String(SHADE.on.mute)));
+  // the strengths paint.ts drew from: the readable set while a whole switch is on (stage.whole is, by default, #691)
+  const sh = anyWhole() ? SHADE.read : SHADE.on;
+  assert.equal(mute, dim.replace(String(sh.dim), String(sh.mute)));
   for (const name of GLYPHS) {
     assert.match(attr(draw(name), "style") ?? "", new RegExp(`color:${mute.replace(/[().]/g, "\\$&")}`), `${name} at rest`);
     assert.match(attr(draw(name, true), "style") ?? "", new RegExp(`color:${dim.replace(/[().]/g, "\\$&")}`), `${name} on hover`);

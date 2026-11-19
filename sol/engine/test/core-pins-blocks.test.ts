@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 const D = mkdtempSync(join(tmpdir(), "sol-core-blocks-"));
 process.env.SOL_HOME = join(D, "home");
+process.env.SOL_STAGE_WHOLE = "off";   // the stage before stage.whole (a lens per session), which is on by default since #691
 const S = await import("../src/work/blocks.ts");
 after(() => { S.disarmAll(); S.setStageBus(null); });
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));

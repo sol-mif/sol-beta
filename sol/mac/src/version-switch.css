@@ -1,0 +1,7 @@
+/* the version switch (#1295, VersionSwitch.tsx): three segments centred in the title row, over every mode's head */
+.vswitch { position: fixed; top: calc((var(--f-row) - 26px) / 2); left: 50%; transform: translateX(-50%); z-index: 62; display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--pill); background: var(--paper); }
+.vswitch button { height: 20px; display: flex; align-items: center; gap: var(--s1); padding: 0 10px; white-space: nowrap; background: none; border: 0; border-radius: var(--pill); color: var(--dim); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.vswitch button:hover:not(.on) { color: var(--ink); }
+.vswitch button.on { background: var(--ink); color: var(--base-color); }
+.vswitch button small { font-size: var(--t-label); opacity: 0.7; }
+.vswitch button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }

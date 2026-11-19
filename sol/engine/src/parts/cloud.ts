@@ -6,8 +6,8 @@
 //     copied and read back. { room: <id>, as?: <a name on the cloud> }
 //   GET /cloud/accounts: names and hubs only, never a token
 import type { Parts, Route } from "../parts.js";
-import { hubHttp, restartRelay, CLOUD_FILE } from "../team/relay.js";
-import { signIn, signOut, accounts as cloudAccounts } from "../team/cloud.js";
+import { hubHttp, restartRelay } from "../team/relay.js";
+import { identity } from "../seams/identity.js";   // sign-in and the Sol ID (#1320)
 import { sharedHub } from "../team/settings.js";
 import { moveNow } from "../team/wire.js";
 
@@ -19,8 +19,8 @@ const sign: Route = async ({ req, res, path }) => {
   try { const v = JSON.parse(body || "{}"); if (typeof v?.hub === "string") given = v.hub.trim(); } catch {}
   const hub = hubHttp(given || sharedHub());
   const out = !/^https:\/\//.test(hub) ? { ok: false, error: "which cloud? (SOL_HUB, or { hub: \"wss://…/relay\" })" }
-    : path === "/cloud/signin" ? await signIn(hub, { file: CLOUD_FILE })
-    : { ok: await signOut(hub, { file: CLOUD_FILE }) };
+    : path === "/cloud/signin" ? await identity().signIn(hub)
+    : { ok: await identity().signOut(hub) };
   if (out.ok) restartRelay();   // the next knock carries the new ticket, or none
   res.writeHead(200, { "content-type": "application/json" });
   res.end(JSON.stringify(out));
@@ -41,6 +41,6 @@ export default function (p: Parts) {
   });
   p.route("GET", "/cloud/accounts", ({ res }) => {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ accounts: cloudAccounts(CLOUD_FILE) }));   // names and hubs only, never a token
+    res.end(JSON.stringify({ accounts: identity().accounts() }));   // names and hubs only, never a token
   });
 }

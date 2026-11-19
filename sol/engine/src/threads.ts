@@ -85,7 +85,8 @@ function codexUserText(o: any): string | null {
 }
 
 // The index: every rollout's first line says where it ran (cwd) and what started it (originator: codex_sdk_ts is Sol,
-// codex_cli_rs a Terminal, codex_exec a one-shot `codex exec`, codex_work_desktop the ChatGPT app). A file's first line
+// codex_cli_rs a Terminal, codex_exec a one-shot `codex exec`, codex_work_desktop the ChatGPT app, sol_internal a turn
+// of Sol's own that the person did not start: never a chat or a talk, see SOL_INTERNAL). A file's first line
 // and first message never change, so each file is read once and kept; a file that grew only gets its time again. The
 // folder list is walked again at most every CODEX_TTL, or at once after a Sol turn (invalidateCodex).
 export type CodexTalk = {
@@ -93,6 +94,27 @@ export type CodexTalk = {
   real: string;                            // the same folder in this home, links resolved: what is compared
   originator: string; title: string; updatedAt: number; size: number;
 };
+/** the originator of Sol's own internal Codex turns (agents' naming, an offer, a rehearsal: agent/meta/say.ts): the
+ *  rollout itself says so, so no list of chats or talks ever shows one, on any machine, even after a crash */
+export const SOL_INTERNAL = "sol_internal";
+/** how a folder agent's turn opens (agent/run.ts promptOf): a thread that opens so is that agent's own, never a talk,
+ *  even one started before its turns were marked SOL_INTERNAL (its first line keeps the mark it was started with) */
+export const AGENT_OPENING = "You are the agent of the folder ";
+/** a thread that is Sol's own, not one the person started (pure): marked internal, or a folder agent's by how it opens */
+export const solsOwn = (t: Pick<CodexTalk, "originator" | "title">) => t.originator === SOL_INTERNAL || t.title.startsWith(AGENT_OPENING);
+/** the variable Codex reads its originator from (the SDK sets it to codex_sdk_ts when it is not set) */
+export const ORIGINATOR_ENV = "CODEX_INTERNAL_ORIGINATOR_OVERRIDE";
+/** the environment a Codex for an internal turn runs with: this process's own, the originator Sol's internal one
+ *  (the SDK passes only this env when one is given, so the rest is copied) */
+export function internalEnv(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(env)) if (v !== undefined) out[k] = v;
+  out[ORIGINATOR_ENV] = SOL_INTERNAL;
+  return out;
+}
+/** what a Codex is started with for a turn: an internal one (agents' naming, an offer, a rehearsal) gets internalEnv, so
+ *  its rollout says it is Sol's own and no chat list shows it; a person's own turn keeps the SDK's default */
+export const codexEnv = (internal?: boolean): { env?: Record<string, string> } => (internal ? { env: internalEnv() } : {});
 const CODEX_TTL = 8_000;
 const TITLE_SCAN = 2_000;   // lines read looking for the first thing Marco said (it comes in the first few)
 const entries = new Map<string, CodexTalk & { mtimeMs: number }>();
@@ -163,17 +185,17 @@ function placer(): (t: CodexTalk) => string {
 
 async function codexThreads(home: string): Promise<Thread[]> {
   const at = placer();
-  return (await codexIndex()).filter((t) => at(t) === home)
+  return (await codexIndex()).filter((t) => at(t) === home && !solsOwn(t))
     .map((t) => ({ seat: "codex" as const, sessionId: t.id, title: t.title || "(new conversation)", updatedAt: new Date(t.updatedAt).toISOString() }));
 }
 
 // Codex talks in a project folder (#182): every talk whose folder is not Sol's home (those are Life's chats), except the
-// ones that are not talks: one-shot `codex exec` runs (an agent's reviewer), Sol's own review seat (`skip`: its thread
-// ids, work/review.ts), and the ChatGPT app's own project folders under ~/.codex.
+// ones that are not talks: one-shot `codex exec` runs (an agent's reviewer), Sol's own turns (solsOwn: SOL_INTERNAL, or
+// a folder agent's thread by its opening, #1430), Sol's own review seat (`skip`: its thread ids, work/review.ts), and the ChatGPT app's own project folders under ~/.codex.
 export async function codexTalks(home: string, skip: Set<string> = new Set()): Promise<CodexTalk[]> {
   const real = await realpath(home).catch(() => home);
   const codexHome = join(homedir(), ".codex"), at = placer();
-  return (await codexIndex()).filter((t) => at(t) !== real && t.originator !== "codex_exec" && !skip.has(t.id)
+  return (await codexIndex()).filter((t) => at(t) !== real && t.originator !== "codex_exec" && !solsOwn(t) && !skip.has(t.id)
     && !(t.real === codexHome || t.real.startsWith(codexHome + "/") || t.cwd.startsWith(codexHome + "/")));
 }
 

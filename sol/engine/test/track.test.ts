@@ -5,18 +5,20 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, mkdi
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { setTrackHome, track, trackIn, trackOut, testerCode, sendPending, badProp, band, hashOf, asWord, whoNow, trackUrlOf, dayFile, IN, OUT, KEEP_DAYS, EVERY, MAX_LINES_A_DAY } from "../src/track.ts";
+import { asSolId, setTrackHome, track, trackIn, trackOut, testerCode, sendPending, badProp, band, hashOf, asWord, whoNow, trackUrlOf, dayFile, IN, OUT, KEEP_DAYS, EVERY, MAX_LINES_A_DAY, setPrivate, isPrivate, wasPrivate, privateIds } from "../src/track.ts";
 
 let home = "";
 let now = new Date(2026, 9, 28, 21, 14, 3);
 let consent = { usage: true };
-let who = { name: "frank", user: "franktsai" };
+let who = { name: "frank", id: "", user: "franktsai" };
+let token = "";
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), "sol-track-"));
   now = new Date(2026, 9, 28, 21, 14, 3);
   consent = { usage: true };
-  who = { name: "frank", user: "franktsai" };
-  setTrackHome(home, { version: "abc1234", consent: () => consent, who: () => who, now: () => now });
+  who = { name: "frank", id: "", user: "franktsai" };
+  token = "";
+  setTrackHome(home, { version: "abc1234", consent: () => consent, who: () => who, bearer: async () => token, now: () => now });
 });
 // the day's lines, without the tester.who that opens each file (its own test below)
 const all = (d = now) => (existsSync(dayFile(d)) ? readFileSync(dayFile(d), "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)) : []);
@@ -68,7 +70,6 @@ test("a message kind the table does not know is counted by its kind alone; the n
   trackIn(ws, { type: "presence", focused: true, idleSeconds: 0 });
   trackIn(ws, { type: "ping", at: 1 });
   trackIn(ws, { type: "team.board.get", rid: 4 });
-  trackIn(ws, { type: "eye.tick", bundle: "com.apple.Notes", on: true });
   trackIn(ws, { type: "hear", audio: "UklGR...", done: false });
   trackIn(ws, { type: "hear", audio: "UklGR...", done: true });
   trackIn(ws, { type: "team.room.join", code: "bright-fox-42" });
@@ -76,7 +77,7 @@ test("a message kind the table does not know is counted by its kind alone; the n
   assert.deepEqual(got.map((l) => l.name), ["msg.sticky.make", "dictation.heard", "room.join"]);
   assert.equal(got[0].props, undefined, "by its kind alone: nothing of the sticky");
   assert.deepEqual(got[2], { ...got[2], mode: "cowork", props: { how: "code" } });
-  assert.doesNotMatch(readFileSync(dayFile(), "utf8"), /milk|bright-fox|UklGR|Notes/);
+  assert.doesNotMatch(readFileSync(dayFile(), "utf8"), /milk|bright-fox|UklGR/);
 });
 
 test("the rails' presses, batched by the face, become one button.press per button; a person's own button goes as a hash", () => {
@@ -88,7 +89,7 @@ test("the rails' presses, batched by the face, become one button.press per butto
 
 test("out: start and done make a turn with its seconds; the stream itself (delta, tool steps, output) is not counted", () => {
   const ws = sock();
-  trackIn(ws, { type: "hello", face: "notch" });
+  trackIn(ws, { type: "hello", face: "phone" });
   trackOut(ws, { type: "start", seat: "codex", sessionId: "s1" });
   trackOut(ws, { type: "delta", text: "Here is the secret plan" });
   trackOut(ws, { type: "tool", seat: "codex", id: "t1", kind: "read", text: "reading ~/secret.md", done: false });
@@ -100,7 +101,7 @@ test("out: start and done make a turn with its seconds; the stream itself (delta
   assert.deepEqual(got.map((l) => l.name), ["face.hello", "turn.start", "turn.tool", "turn.done"]);
   assert.deepEqual(got[2].props, { kind: "read", ok: true });
   assert.deepEqual(got[3].props, { ok: true, stopped: false, turns: 3, secs: 41 });
-  assert.equal(got[3].face, "notch");
+  assert.equal(got[3].face, "phone");
   assert.doesNotMatch(readFileSync(dayFile(), "utf8"), /secret|hunter2/);
 });
 
@@ -120,23 +121,32 @@ test("usage off (by hand in settings): nothing is written, not even the breakage
   assert.ok(!existsSync(dayFile()), "no file at all");
 });
 
-test("who: a day's file opens with a tester.who line, the Sol name on the cloud and the Mac's user, both as words; the rest of the day has none", () => {
+test("who: a day's file opens with a tester.who line, the Sol name on the cloud, the Sol ID and the Mac's user, as words; the rest of the day has none", () => {
   track("engine.up");
   trackIn(sock(), { type: "say", text: "hi" });
   const [first, ...rest] = all();
   assert.equal(first.name, "tester.who");
-  assert.deepEqual(first.props, { name: "frank", user: "franktsai" });
+  assert.deepEqual(first.props, { name: "frank", id: "none", user: "franktsai" });
   assert.equal(first.tester, testerCode());
   assert.deepEqual(rest.map((l) => l.name), ["engine.up", "turn.say"]);
   // not signed in: the name is "" (written as "none", a word the box takes); a user name with a space or an accent is still a word
-  who = { name: "", user: "Frank Tsai" };
-  assert.deepEqual(whoNow(), { name: "", user: "Frank-Tsai" });
+  who = { name: "", id: "", user: "Frank Tsai" };
+  assert.deepEqual(whoNow(), { name: "", id: "", user: "Frank-Tsai" });
+  // the Sol ID (#1607) is a UUID as Supabase writes one, or nothing: never a word someone typed
+  assert.equal(asSolId("2F6C1E0A-9B3D-4C7E-8A1F-0123456789AB"), "2f6c1e0a-9b3d-4c7e-8a1f-0123456789ab");
+  assert.equal(asSolId("frank"), "");
+  assert.equal(asSolId("2f6c1e0a-9b3d-4c7e-8a1f-0123456789ab; drop"), "");
   assert.equal(asWord("  mårco/x"), "m-rco-x");
   assert.equal(asWord("a".repeat(100)).length, 64);
   // the next day's file opens with the who of that day
   now = new Date(2026, 9, 29, 9, 0, 0);
   track("engine.up");
-  assert.deepEqual(all()[0].props, { name: "none", user: "Frank-Tsai" });
+  assert.deepEqual(all()[0].props, { name: "none", id: "none", user: "Frank-Tsai" });
+  // signed in on Supabase: the id rides on the next day's who line
+  who = { name: "frank", id: "2f6c1e0a-9b3d-4c7e-8a1f-0123456789ab", user: "franktsai" };
+  now = new Date(2026, 9, 30, 9, 0, 0);
+  track("engine.up");
+  assert.deepEqual(all()[0].props, { name: "frank", id: "2f6c1e0a-9b3d-4c7e-8a1f-0123456789ab", user: "franktsai" });
 });
 
 test("the address: the team's hub, wss or ws, becomes the box's /relay/track; no hub, no address", () => {
@@ -212,8 +222,8 @@ test("a message type that is not shaped like one is msg.other, whatever it says"
 
 test("a message to every face is counted on no face, before the sockets see it", () => {
   const ws = sock();
-  trackIn(ws, { type: "hello", face: "notch" });
-  const m = { type: "notify", id: "p1", dest: "notch", line: "x" };
+  trackIn(ws, { type: "hello", face: "phone" });
+  const m = { type: "notify", id: "p1", dest: "phone", line: "x" };
   trackOut(EVERY, m); trackOut(ws, m);
   assert.deepEqual(lines().slice(1).map((l) => [l.name, l.face]), [["ping.sent", ""]]);
 });
@@ -241,6 +251,14 @@ test("usage off: a day already on the Mac stays and goes nowhere; the headers of
   assert.deepEqual((await sendPending("https://box.example/track", f)).sent, ["2026-10-27.jsonl"]);
   assert.equal(posts[0]!["x-sol-who"], "frank");
   assert.equal(posts[0]!["x-sol-user"], "franktsai");
+  // the Sol ID never rides as a header (#1607): the store binds it from the sign-in's token, sent only when there is one
+  assert.equal("x-sol-id" in posts[0]!, false);
+  assert.equal("authorization" in posts[0]!, false);
+  // signed in: the token rides as the bearer, read once a send
+  token = "tok123";
+  writeFileSync(join(home, "track", "2026-10-26.jsonl"), use);
+  assert.deepEqual((await sendPending("https://box.example/track", f)).sent, ["2026-10-26.jsonl"]);
+  assert.equal(posts[1]!.authorization, "Bearer tok123");
 });
 
 test("a day the box refuses for good (413, 400) is kept as .refused and not asked again; 429 and a failure wait", async () => {
@@ -289,4 +307,51 @@ test("no home set: nothing is written and nothing throws", () => {
   assert.equal(track("engine.up"), null);
   trackIn(sock(), { type: "say", text: "x" });
   trackOut(sock(), { type: "done" });
+});
+
+test("a private session (#1242): from the switch on, nothing in or out carrying its id is written, the switch included; back off, it counts again", () => {
+  const ws = sock();
+  trackIn(ws, { type: "say", sessionId: "s-p", text: "before" });
+  trackIn(ws, { type: "work.private", sessionId: "s-p", on: true });
+  assert.ok(setPrivate("s-p", true));
+  assert.ok(isPrivate("s-p") && !isPrivate("s-other"));
+  trackIn(ws, { type: "say", sessionId: "s-p", text: "a personal thing" });
+  trackIn(ws, { type: "work.say", sessionId: "s-p", text: "x" });
+  trackIn(ws, { type: "stop", sessionId: "s-p" });
+  trackOut(ws, { type: "start", sessionId: "s-p" });
+  trackOut(ws, { type: "done", sessionId: "s-p", ok: true });
+  trackIn(ws, { type: "say", sessionId: "s-other", text: "counted" });
+  trackIn(ws, { type: "work.private", sessionId: "s-p", on: false });
+  assert.deepEqual(lines().map((l) => l.name), ["turn.say", "turn.say"], "the say before it, and the other session's; nothing of the private one, not the switch either way");
+  now = new Date(now.getTime() + 60_000);
+  assert.ok(setPrivate("s-p", false));
+  trackIn(ws, { type: "say", sessionId: "s-p", text: "back" });
+  assert.equal(lines().length, 3, "turned back: counted again");
+});
+
+test("the private list is kept in home/track/private.json with its stretches, read again after a restart; a bad id is refused", () => {
+  const on = now.getTime();
+  assert.ok(setPrivate("abc-123", true));
+  now = new Date(on + 3_600_000);
+  assert.ok(setPrivate("abc-123", false));
+  now = new Date(on + 7_200_000);
+  assert.ok(setPrivate("abc-123", true));
+  assert.equal(setPrivate("../etc/passwd", true), false);
+  assert.equal(setPrivate("", true), false);
+  setTrackHome(home, { now: () => now });   // a restart: read from the file
+  assert.deepEqual(privateIds(), ["abc-123"]);
+  assert.ok(wasPrivate("abc-123", on + 10) && !wasPrivate("abc-123", on + 3_600_000 + 10) && wasPrivate("abc-123", on + 7_200_000 + 10));
+  assert.ok(!wasPrivate("abc-123", on - 10), "not before the switch");
+  const kept = JSON.parse(readFileSync(join(home, "track", "private.json"), "utf8"));
+  assert.deepEqual(kept, { v: 1, sessions: { "abc-123": [[on, on + 3_600_000], [on + 7_200_000, null]] } });
+});
+
+test("the stage's browser block: its first frame is build.browser.open, a blank one build.browser.fail with whether it had a size (#1314)", () => {
+  const ws = sock();
+  trackIn(ws, { type: "browser.shown", where: "block", secs: 0.84, tab: "t-1" });
+  trackIn(ws, { type: "browser.blank", where: "block", seen: false, tab: "t-2" });
+  assert.deepEqual(lines().map((l) => [l.name, l.props]), [
+    ["build.browser.open", { where: "block", secs: 0.8 }],
+    ["build.browser.fail", { where: "block", seen: false }],
+  ]);
 });

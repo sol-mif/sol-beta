@@ -6,7 +6,7 @@
 // The base is whichever of stable, dev and main (origin's first, then the local branch) has the fewest of HEAD's commits
 // outside it; a tie goes to stable, then dev. On main that is main itself (none of mine); on a */mine branch rebased onto
 // stable or dev (#529: a dev-channel Sol) it is that branch, and its commits over it are mine. The release is a release
-// tag on the base's commit (stable-*, dev-*, beta-*, release-*), picked by releaseTag as ship.ts picks the offer's, or, in a tester's clone of the beta repo, the "Sol stable-..." its main's
+// tag on the base's commit (stable-*, dev-*, beta-*, release-*, and the beta pass's v1, v2… #1300), picked by releaseTag as ship.ts picks the offer's, or, in a tester's clone of the beta repo, the "Sol stable-..." its main's
 // export commit says; else the branch's own name.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -15,17 +15,27 @@ import type { SolVersion } from "./hub/index.js";
 export type { SolVersion };
 const run = promisify(execFile);
 const BASES = ["refs/remotes/origin/stable", "refs/heads/stable", "refs/remotes/origin/dev", "refs/heads/dev", "refs/remotes/origin/main", "refs/heads/main"];
-const TAG = /^(stable|dev|beta|release)-[\w.-]+$/;
+const TAG = /^(?:(stable|dev|beta|release)-[\w.-]+|v[1-9]\d*)$/;
 
 type Git = (args: string[]) => Promise<string>;
 /** of the release tags on one commit, the one it is (#529, shared with ship.ts askOrigin so the offer and Settings
  * name the same release): any dev-* before any other, then the newest by the date in the name (dev-YYYYMMDD-HHMM
- * after dev-YYYYMMDD), then by name; none: "" */
+ * after dev-YYYYMMDD), then by name; none: "". A beta release's number (v1, v2…, #1300) sits on a dev-* commit and
+ * never stands for it: it comes after the dated names, and of two the higher number (productTag says it) */
 export function releaseTag(tags: string[]): string {
   const when = (t: string) => { const m = /(\d{8})(?:-(\d{4}))?/.exec(t); return m ? m[1] + (m[2] ?? "0000") : ""; };
-  const rank = (a: string, b: string) => (Number(a.startsWith("dev-")) - Number(b.startsWith("dev-"))) || when(a).localeCompare(when(b)) || a.localeCompare(b);
+  const num = (t: string) => Number(PRODUCT_TAG.exec(t)?.[1] ?? 0);
+  const rank = (a: string, b: string) => (Number(a.startsWith("dev-")) - Number(b.startsWith("dev-"))) || (Number(!num(a)) - Number(!num(b)))
+    || num(a) - num(b) || when(a).localeCompare(when(b)) || a.localeCompare(b);
   return [...new Set(tags)].sort(rank).at(-1) ?? "";
 }
+
+/** a beta release's number (#1300): v1, v2… on the same commit as the dev-* tag the beta pass moved stable to */
+export const PRODUCT_TAG = /^v([1-9]\d*)$/;
+/** the number a commit carries among its tags, the highest when it has two (pure); none: "" */
+export const productTag = (tags: string[]) => tags.filter((t) => PRODUCT_TAG.test(t)).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))).at(-1) ?? "";
+/** the next number after the ones there are (pure): v1 when there is none */
+export const nextProduct = (tags: string[]) => `v${Number(productTag(tags).slice(1) || 0) + 1}`;
 
 const gitIn = (cwd: string): Git => (args) => run("git", args, { cwd, timeout: 5000 }).then((r) => r.stdout.trim());
 

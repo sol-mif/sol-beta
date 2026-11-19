@@ -19,3 +19,12 @@ export type TableBody = { cols: string[]; rows: string[][] };
 export type DiffLine = { k: "+" | "-" | " "; t: string };
 /** `file`: the file the lines are of, for its pill (else the block's source) */
 export type DiffBody = { lines?: DiffLine[]; text?: string; file?: string };
+/** a session under an orchestrator (step 4, engine work/children.ts): the engine keeps it current; the face draws it */
+export type SessionBody = {
+  sessionId: string; title?: string;
+  row?: { running?: boolean; failed?: boolean; unread?: boolean; done?: boolean };
+  run?: { busy: boolean; waiting: number; tasks?: number; failed?: boolean };
+  where?: { folder: string; branch?: string; pr?: { n: number; state: string } };
+  last?: string;
+  ask?: { question: string; actions?: { label: string }[] };
+};

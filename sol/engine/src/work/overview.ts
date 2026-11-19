@@ -8,6 +8,7 @@ import { existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { changes, pullRequest } from "./panes.js";
+import { quietPush } from "../quiet.js";
 
 const run = promisify(execFile);
 
@@ -25,14 +26,23 @@ export type Usage = {
   est: PartKey[];                             // the parts that are estimates
   rest?: number;                              // estimated only: in the window, not split (system, tools, skills, agents)
   more?: { name: string; tokens: number }[];  // a category the SDK names that is none of the ten
+  live?: boolean;                             // work.liveContext (#1519): the total is exact at every step, the API's own
 };
 
 // what the SDK's getContextUsage answers (the fields this file reads)
 export type ContextAnswer = {
   categories: { name: string; tokens: number; kind?: "used" | "free" | "buffer" | "deferred"; isDeferred?: boolean }[];
   totalTokens: number; maxTokens?: number; rawMaxTokens?: number;
-  memoryFiles?: { path: string }[]; mcpTools?: { name: string; serverName: string }[]; agents?: { agentType: string }[];
+  memoryFiles?: { path: string; tokens?: number }[]; mcpTools?: { name: string; serverName: string; tokens?: number; isLoaded?: boolean }[];
+  agents?: { agentType: string; tokens?: number }[];
   autoCompactThreshold?: number; isAutoCompactEnabled?: boolean;
+  // the full count's own split of each part (#1519): read only by partOf, when the card asks for one part
+  systemTools?: { name: string; tokens: number }[]; systemPromptSections?: { name: string; tokens: number }[];
+  skills?: { skillFrontmatter?: { name: string; tokens: number }[] }; slashCommands?: { totalCommands: number; tokens: number };
+  messageBreakdown?: {
+    toolCallTokens?: number; toolResultTokens?: number; attachmentTokens?: number; assistantMessageTokens?: number; userMessageTokens?: number;
+    toolCallsByType?: { name: string; callTokens: number; resultTokens: number }[];
+  };
 };
 
 const tool = (wire: string, server: string) => `${server}:${wire.startsWith(`mcp__${server}__`) ? wire.slice(server.length + 7) : wire}`;
@@ -94,6 +104,70 @@ export function catchUp(u: Usage, context: number): Usage {
   const total = context;
   const parts = { ...u.parts, messages: (u.parts.messages ?? 0) + d, free: u.parts.free === null ? null : Math.max(0, u.parts.free - d) };
   return { ...u, total, parts, est: u.est.includes("messages") ? u.est : [...u.est, "messages"], compactSoon: soon(total, u.window, u.threshold) };
+}
+
+// ---- the live count and one part's breakdown (#683, #1519; behind work.liveContext) ----
+
+// The total is exact at every step: the API's own count of the step that just came back (catchUp), or the token-count
+// API's when it is newer. Only the split lags: what came since the last split sits in the conversation, wearing ≈ (est).
+// The SDK's quick summary at the start is an estimate of the total too; once a step has come back, the step's count
+// stands in for it and the difference goes to the conversation, so the total never wears ≈.
+// `newer`: the step came back after the count, so its total is the truth even when it is lower (a compact mid-turn).
+export function liveUsage(u: Usage, context: number, newer = false): Usage {
+  if (newer && context > 0 && context < u.total) {
+    const d = u.total - context, msgs = Math.max(0, (u.parts.messages ?? 0) - d);
+    const parts = { ...u.parts, messages: msgs, free: u.parts.free === null ? null : u.parts.free + d };
+    return { ...u, total: context, parts, est: u.est.includes("messages") ? u.est : [...u.est, "messages"], compactSoon: soon(context, u.window, u.threshold), live: true };
+  }
+  const c = catchUp(u, context);
+  if (c.how === "summary" && context > 0 && c.total !== context) {
+    const d = context - c.total, msgs = Math.max(0, (c.parts.messages ?? 0) + d);
+    const parts = { ...c.parts, messages: msgs, free: c.parts.free === null ? null : Math.max(0, c.parts.free - d) };
+    return { ...c, total: context, parts, compactSoon: soon(context, c.window, c.threshold), live: true };
+  }
+  return { ...c, live: true };
+}
+
+/** the parts the card shows (Context.tsx GROUPS): the conversation, Sol's instructions and tools, memory files, skills and agents */
+export type CardPart = "talk" | "sys" | "mem" | "kit";
+export const CARD_PARTS: CardPart[] = ["talk", "sys", "mem", "kit"];
+export type PartLine = { name: string; tokens: number };
+export type PartReading = { part: CardPart; lines: PartLine[]; rest: number; total: number };
+const TOP = 4;   // the hover card is small: its biggest few, the rest as one line
+const home = homedir();
+const short = (p: string) => (p.startsWith(home) ? `~${p.slice(home.length)}` : p);
+
+/** what fills one part of the card, biggest first, from a full count (pure): which tools' outputs and whose words in
+ *  the conversation; which sections, tools and connectors in Sol's instructions and tools; which memory files; which
+ *  skills and agents. The biggest TOP lines, and the rest summed */
+export function partOf(r: ContextAnswer, part: CardPart): PartReading {
+  const lines: PartLine[] = [];
+  const add = (name: string, t: number | undefined) => { const n = Math.max(0, Math.round(t ?? 0)); if (n > 0) lines.push({ name, tokens: n }); };
+  if (part === "talk") {
+    const b = r.messageBreakdown ?? {};
+    add("your messages", b.userMessageTokens);
+    add("Claude's replies", b.assistantMessageTokens);
+    add("files and images you attached", b.attachmentTokens);
+    const byTool = b.toolCallsByType ?? [];
+    for (const t of byTool) add(t.name.startsWith("mcp__") ? tool(t.name, t.name.split("__")[1] ?? "") : t.name, t.callTokens + t.resultTokens);
+    if (!byTool.length) add("tools and what they gave back", (b.toolCallTokens ?? 0) + (b.toolResultTokens ?? 0));
+  } else if (part === "sys") {
+    for (const x of r.systemPromptSections ?? []) add(x.name, x.tokens);
+    for (const x of r.systemTools ?? []) add(x.name, x.tokens);
+    const servers = new Map<string, number>();
+    for (const m of r.mcpTools ?? []) if (m.isLoaded !== false) servers.set(m.serverName, (servers.get(m.serverName) ?? 0) + (m.tokens ?? 0));
+    for (const [name, t] of servers) add(`${name} (connector)`, t);
+  } else if (part === "mem") {
+    for (const m of r.memoryFiles ?? []) add(short(m.path), m.tokens);
+  } else {
+    for (const k of r.skills?.skillFrontmatter ?? []) add(k.name, k.tokens);
+    for (const a of r.agents ?? []) add(`${a.agentType} (agent)`, a.tokens);
+    if (r.slashCommands?.totalCommands) add(`${r.slashCommands.totalCommands} commands`, r.slashCommands.tokens);
+  }
+  lines.sort((a, b) => b.tokens - a.tokens);
+  const total = lines.reduce((n, l) => n + l.tokens, 0);
+  const top = lines.slice(0, TOP);
+  return { part, lines: top, rest: total - top.reduce((n, l) => n + l.tokens, 0), total };
 }
 
 // Claude Code's own agents (init lists them with the user's); the rail's "Custom agents" are the others
@@ -218,6 +292,7 @@ export async function createPr(cwd: string): Promise<{ pr?: PrShort; error?: str
   const no = prRefusal(branch);
   if (no) return { error: no };
   try {
+    quietPush();   // a quiet Sol pushes nothing (#1293)
     await run("git", ["push", "-u", "origin", "HEAD"], { cwd, timeout: 60_000 });
     await run("gh", ["pr", "create", "--draft", "--fill"], { cwd, timeout: 60_000 });
   } catch (e: any) { return { error: e?.code === "ENOENT" ? "gh is not installed on the engine's machine" : said(e) }; }

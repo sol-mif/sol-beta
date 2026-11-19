@@ -40,7 +40,7 @@ function procs(pids: number[]): Map<number, { ppid: number; start: number }> | n
 
 const whoOf = (entry: string | undefined, ppid: number): Holder["who"] =>
   entry === "claude-desktop" ? "desktop"
-  : entry === "sdk-ts" || entry === "sdk-py" ? (ppid === process.pid ? "sol" : "sol-other")
+  : entry === "sdk-ts" || entry === "sdk-py" || entry === "sdk-cli" ? (ppid === process.pid ? "sol" : "sol-other")   // sdk-cli: the CLI's word for an SDK run since 2.1.29x (#1013)
   : entry === "cli" ? "terminal" : "other";
 
 let cache: { at: number; map: Map<string, Holder[]>; blind: boolean } | null = null;
@@ -97,16 +97,26 @@ export const moving = new Set<string>();
 // so the set is also looked at every 20 s
 const sig = () => [...holders()].map(([id, hs]) => id + hs.map((h) => h.pid + h.status).join()).sort().join("|");
 let watcher: FSWatcher | null = null;
+let looking: NodeJS.Timeout | null = null;
+let soon: NodeJS.Timeout | undefined;
+let last = "";
+// every window that opens calls this (work/wire.ts addWorkFace): the look every 20 s is made once per engine, the
+// folder's watch until it is there. It was one guard, the watcher, and with no ~/.claude/sessions folder there was
+// no watcher, so each window added one more look every 20 s for good (#1107)
 export function watchHolders(changed: () => void) {
+  if (!looking) {
+    last = sig();
+    looking = setInterval(() => { cache = null; const now = sig(); if (now !== last) { last = now; changed(); } }, 20_000);
+    looking.unref();
+  }
   if (watcher) return;
-  let t: NodeJS.Timeout | undefined;
-  let last = sig();
-  setInterval(() => { cache = null; const now = sig(); if (now !== last) { last = now; changed(); } }, 20_000).unref();
   try {
     watcher = watch(DIR, (_e, name) => {
       if (name && !String(name).endsWith(".json")) return;
-      clearTimeout(t);
-      t = setTimeout(() => { cache = null; last = sig(); changed(); }, 500);
+      clearTimeout(soon);
+      soon = setTimeout(() => { cache = null; last = sig(); changed(); }, 500);
     });
-  } catch { /* no folder yet */ }
+  } catch { /* no folder yet: the next window looks again */ }
 }
+/** for tests: the look and the watch stopped */
+export function _stopHolders() { if (looking) clearInterval(looking); looking = null; watcher?.close(); watcher = null; clearTimeout(soon); }

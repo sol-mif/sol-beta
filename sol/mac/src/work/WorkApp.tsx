@@ -1,16 +1,17 @@
 import { ran, setRunner } from "../run";
-import { useLanding } from "../land";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { askedDrawer, type Leave } from "../spine/settings";
 import type { useEngine, Seat, Thread } from "../useEngine";
+import { useTicketsToEngine } from "../one/tickets";   // build.tickets: the engine told of the switch
 import type { AppMode } from "../ModeSwitch";
 import { Space } from "../creature/Space";
 import { useCreatureDriver } from "../creature/state";
 import { BarCells } from "../BarCells";
-import { Mark } from "../Mark";
+import { BodyLive } from "../Body";
 import { Trail } from "../Trail";
+import { FindBar } from "../FindBar";
 import { Orb } from "../Orb";
 import { Settings } from "../Settings";
+import { askedDrawer, type Leave } from "../spine/settings";   // #911: a plain ask opens on the first drawer
 import { Conversations } from "../Conversations";
 import { CFG, enter, follow, type Follow } from "../motion";
 import { fitRow, useDock, useWidth } from "../fit";
@@ -38,6 +39,12 @@ import { pressed } from "../buttons/usage";
 import { LifeTalk, putInChatBox } from "../LifeTalk";
 import { seatPick, folderIn } from "./seats";
 import { readOpen, type Open } from "../migrate";
+import { connectPieces } from "../folderPieces/usePieces";   // #1092
+import { useBuildPieces } from "../folderPieces/flag";   // #1092
+import { usePieces } from "../folderPieces/usePieces";
+import { pieceLine } from "../folderPieces/open";
+import { PieceRoom } from "../folderPieces/PieceRoom";
+import { closePiece, useOpenPiece } from "../folderPieces/open";
 import "./work.css";
 
 const VIEWS: TalkView[] = ["normal", "thinking", "verbose"];
@@ -66,28 +73,40 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   // which kind of talk shows; opening a session (from anywhere: the side, a pane, a key) shows the session
   const [kind, setKind] = useState<Kind>(() => (solo ? "session" : readOpen(localStorage).kind));
   const chat = kind === "chat";
-  const wOpen = useCallback((id: string) => { setKind("session"); w0.open(id); }, [w0.open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const wOpen = useCallback((id: string) => { setKind("session"); closePiece(); w0.open(id); }, [w0.open]); // eslint-disable-line react-hooks/exhaustive-deps
   const wFresh = useCallback((cwd?: string, o?: { parent?: string }) => { setKind("session"); w0.fresh(cwd, o); }, [w0.fresh]); // eslint-disable-line react-hooks/exhaustive-deps
   const w: Work = { ...w0, open: wOpen, fresh: wFresh };
   // a code block's run cell sends for the session showing (run.ts); the engine reads it from the Work transcript (a chat sets its own)
   useEffect(() => { if (!chat) setRunner({ send: e.send, seat: "claude", sessionId: w.current ?? null, work: true }); }, [e.send, w.current, chat]);
   useEffect(() => e.subscribe(ran), [e.subscribe]);
+  const piecesOn = useBuildPieces();   // #1092: off, the pieces never ask the engine
+  useEffect(() => (piecesOn ? connectPieces(w.ask, e.subscribe) : undefined), [piecesOn, w.ask, e.subscribe]);
+  const piece = useOpenPiece();   // #1092: a piece in the room, in place of the session
+  const pieceTitle = usePieces(piecesOn && piece ? piece.cwd : null).pieces.find((x) => x.name === piece?.name)?.title;
   const [pinned, setPinned] = useState(() => !solo && localStorage.getItem("sol.work.pin") !== "0");
   // the page in the stage: the talk, Settings (⌘,) or Conversations (⌘;, #253); ?page=conversations opens on it (dev stills)
-  const [view, setView] = useState<"chat" | "settings" | "conversations">(() => (new URLSearchParams(location.search).get("page") === "conversations" ? "conversations" : kept("sol.work.view", "chat")));
+  const [view, setView] = useState<"chat" | "settings" | "conversations" | "one">(() => (new URLSearchParams(location.search).get("page") === "conversations" ? "conversations" : kept("sol.work.view", "chat")));
   // the drawer Settings opens on: a new key only when settings are closed; when they are up, Settings opens the drawer
   // in place, so an open drawer or a slider mid-drag is kept
   const [settingsFirst, setSettingsFirst] = useState<{ first: string; n: number }>({ first: "work", n: 0 });
   useEffect(() => {
-    // a drawer asked for by name (#342, the join card's "sign in": "me"); Settings opens it in place when it is up.
-    // A plain ask (the spine's mark, #911) opens on the first drawer (spine/settings.ts)
+    // a drawer asked for by name (#342, the join card's "sign in": "me")
+    // a plain ask (the spine's mark, #911) opens on the first drawer (spine/settings.ts)
     const named = (ev: Event) => { const d = askedDrawer((ev as CustomEvent).detail); if (view === "settings" || d === null) return; setSettingsFirst((s) => ({ first: d, n: s.n + 1 })); setView("settings"); };
     window.addEventListener("sol:settings", named);
     return () => window.removeEventListener("sol:settings", named);
   }, [view]);
+  // #1521: a pane the seat opened for the person (spine/openFor.ts): shown as its press shows it
+  useEffect(() => {
+    const go = (ev: Event) => { const id = (ev as CustomEvent).detail; if (typeof id === "string" && id) { setView("chat"); h.current.showPane(id); } };
+    window.addEventListener("sol:pane", go);
+    return () => window.removeEventListener("sol:pane", go);
+  }, []);
   useEffect(() => keepS("sol.work.view", view), [view]);
-  // leaving Settings, told to the window (#911, App.tsx): a real close (the x, Esc, ⌘, again, the side's button off) may go
-  // back to the view Settings was asked from; any other way out (a session, a new session, conversations) stays there
+  useTicketsToEngine();
+  useEffect(() => { if (view === "one") setView("chat"); }, [view]);   // a view kept from before #1209, when a page was the kept one session's
+  // leaving Settings, told to the window (#911/#1029, App.tsx): a real close (the x, Esc, ⌘, again, the side's button off)
+  // may go back to the view Settings was asked from; any other way out (a session, a new session, conversations) stays
   const wasView = useRef(view);
   const closing = useRef(false);
   const shutSettings = () => { closing.current = true; setView("chat"); };
@@ -102,7 +121,12 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   const [rec, setRec] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => ({ text: kept("sol.work.draft", ""), atts: [] }));
   useEffect(() => keepS("sol.work.draft", draft.text), [draft.text]);
-  useEffect(() => { if (w.unsent) setDraft((d) => (d.text.trim() ? d : { ...d, text: w.unsent!.text })); }, [w.unsent?.n]); // eslint-disable-line react-hooks/exhaustive-deps
+  // words taken back come into an empty box; their files always come back beside what is there (#1448)
+  useEffect(() => {
+    const u = w.unsent;
+    if (!u) return;
+    setDraft((d) => { const atts = u.files?.length ? [...d.atts, ...u.files] : d.atts; return d.text.trim() ? { ...d, atts } : { ...d, text: u.text, atts }; });
+  }, [w.unsent?.n]); // eslint-disable-line react-hooks/exhaustive-deps
   // the panes at the right: the tabs open and the one showing, per kind of talk; the frame's share of the window
   // (pane buttons' ids; "helper" was the helpers' key before they were buttons)
   const [panesBy, setPanesBy] = useState<Record<Kind, { tabs: string[]; active: string | null }>>(() => {
@@ -192,12 +216,6 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
     const open: Open = chat ? { kind, id: e.sessionId ?? null, seat: e.seat } : { kind, id: w.current ?? null };
     try { localStorage.setItem("sol.home.open", JSON.stringify(open)); } catch { /* private */ }
   }, [kind, e.sessionId, e.seat, w.current, e.up]); // eslint-disable-line react-hooks/exhaustive-deps
-  // a chat's ping clicked in the notch (App.tsx); the pings know no session is in front while a chat is (pings.ts)
-  useEffect(() => {
-    const go = (ev: Event) => openChat((ev as CustomEvent<Thread>).detail);
-    window.addEventListener("sol:open-chat", go);
-    return () => window.removeEventListener("sol:open-chat", go);
-  });
   useEffect(() => { if (!solo) window.dispatchEvent(new CustomEvent("sol:work-live", { detail: chat ? null : w.live })); }, [chat]); // eslint-disable-line react-hooks/exhaustive-deps
   const chatMark = useRef<Marked>(() => {});
   const toggleSide = () => setPinned((s) => { localStorage.setItem("sol.work.pin", s ? "0" : "1"); return !s; });
@@ -239,12 +257,13 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
       if (ev.ctrlKey && !ev.metaKey && (ev.code === "BracketRight" || ev.code === "BracketLeft")) { ev.preventDefault(); H.ring(ev.code === "BracketRight" ? 1 : -1); return; }
       // a button's own key: its pane shows or closes, or it is pressed
       const b = KEYED.find((x) => keyIs(ev, x.key!) && (!H.chat || !ctxNow.current || (x.shows?.(ctxNow.current) ?? true)));
-      if (b && ctxNow.current) { ev.preventDefault(); pressed(b.id); if (b.kind === "pane") H.togglePane(b.id); else b.press?.(ctxNow.current); return; }
+      if (b && ctxNow.current) { ev.preventDefault(); pressed(b.id, ctxNow.current); if (b.kind === "pane") H.togglePane(b.id); else b.press?.(ctxNow.current); return; }
       if (ev.metaKey && ev.shiftKey && k === "s") { ev.preventDefault(); H.showPane("browser"); setArmed((a) => !a); return; }
       if (ev.metaKey && !ev.shiftKey && k === "w") { ev.preventDefault(); if (H.chat) { if (H.e.sessionId) H.freshChat(); } else if (H.w.live) H.fresh(H.w.thread?.cwd); return; }
       if (ev.metaKey && !ev.shiftKey && ev.key === "\\" && H.inPane() && H.active) { ev.preventDefault(); H.closePane(H.active); box.current?.focus(); return; }
-      // ⌘; in the box of a live session asks on the side, as before; anywhere else it opens and closes Conversations
-      if (ev.metaKey && ev.key === ";") { ev.preventDefault(); if (h.current.view === "chat" && document.activeElement === box.current && h.current.w.live && !H.chat) { setAsideOn((a) => !a); box.current?.focus(); } else setView((v) => (v === "conversations" ? "chat" : "conversations")); }
+      // ⌘; in the box of a live session asks on the side, as before; in a new session's box it says there is nothing to
+      // ask beside yet (#1542); anywhere else it opens and closes Conversations
+      if (ev.metaKey && ev.key === ";") { ev.preventDefault(); if (h.current.view === "chat" && document.activeElement === box.current && !H.chat) { if (h.current.w.live) { setAsideOn((a) => !a); box.current?.focus(); } else H.e.flash("an aside needs an open session"); } else setView((v) => (v === "conversations" ? "chat" : "conversations")); }
       else if (ev.key === "Escape" && (h.current.asideOn || h.current.w.sideAnswer)) { ev.preventDefault(); setAsideOn(false); h.current.w.dropAside(); }
       else if (ev.metaKey && !ev.shiftKey && ev.key === "\\") { ev.preventDefault(); h.current.toggleSide(); }
       else if (ev.metaKey && ev.key === ",") { ev.preventDefault(); flipSettings(h.current.view); }
@@ -274,13 +293,18 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
     t.addEventListener("scroll", onScroll, { passive: true });
     return () => { t.removeEventListener("scroll", onScroll); f.destroy(); stick.current = null; setFlw(null); };
   }, [view, has, w.current]);
-  useLanding(talk, w.current, items.length, useCallback((y: number) => stick.current?.goTo(y), []));   // Open from the notch (land.ts)
-  // a ping clicked in the notch opens its Work session here (App.tsx switches the mode); the session open is seen
+  // a session asked for elsewhere in the window (sol:open-work) opens here; the session open is seen
   useEffect(() => {
     const go = (ev: Event) => { const id = (ev as CustomEvent<string>).detail; if (id) { setView("chat"); w.open(id); } };
     window.addEventListener("sol:open-work", go);
     return () => window.removeEventListener("sol:open-work", go);
   }, [w.open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a new session asked from Home's folders (#1016, side.sorted): it starts in that folder
+  useEffect(() => {
+    const go = (ev: Event) => { const cwd = (ev as CustomEvent<string>).detail; if (cwd) fresh(cwd); };
+    window.addEventListener("sol:new-work", go);
+    return () => window.removeEventListener("sol:new-work", go);
+  });
   useEffect(() => { if (view === "chat" && w.live && !chat) seenSession(w.live); }, [w.live, view, chat]);
 
   // the page arrives sliding up when a session opens
@@ -425,6 +449,10 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   const sheetOn = useRef(sheet);
   sheetOn.current = sheet;
   useEffect(() => { if (!tabs.includes("browser")) setArmed(false); }, [tabs]);
+  // turn private (#1242): the open chat's or session's, once it has an id; the engine keeps the list (track.ts)
+  const privId = piece && view === "chat" ? null : chat ? e.sessionId ?? null : w.live;
+  const priv = !!privId && w.privates.includes(privId);
+  const flipPrivate = () => { if (privId) void w.setPrivate(privId, !priv).then((r) => { if (r.error) e.flash(r.error); }); };
 
   return (
     <div className="face wface">
@@ -434,9 +462,13 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
           <BarCells kind="side" on={pinned} />
         </button>}
         <div className="wtitle" data-tauri-drag-region>
-          <span className="tt">{title || "untitled"}</span>
+          {/* #1092: while a piece has the room, the top line names it ("sol-dev › the night"), not the session's words */}
+          <span className="tt">{piece && view === "chat" ? pieceLine(piece, pieceTitle) : title || "untitled"}</span>
           {chat && e.cwd && <span className="where" title={e.cwd}>{base(e.cwd)}</span>}
           {cwd && !chat && <span className="where" title={cwd}>{base(cwd)}{branch ? ` · ${branch}` : !w.live && w.copy ? " · a side copy" : ""}</span>}
+          {privId && (priv
+            ? <><button className="wprivate on" aria-pressed onClick={flipPrivate} title="count this session again, from now on">private</button><span className="where">From now on, nothing from this session is counted.</span></>
+            : <button className="wprivate" aria-pressed={false} onClick={flipPrivate} title="stop counting this session: from now on, nothing from it is counted">turn private</button>)}
         </div>
         <div className="spacer" data-tauri-drag-region />
         {view === "chat" && <Rail c={ctx} fallback={chat ? "everyday" : "build"} on={paneOpen ? active : null} onPane={togglePane} foot={foot} />}
@@ -449,8 +481,9 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
         <div ref={main} className="main">
           <div className="wcols">
           <div ref={page} className="page-in" data-view={view}>
-          {view === "settings" ? (
-            <Site name="settings"><Settings key={settingsFirst.n} s={e.settings} stale={false} info={e.engineInfo} up={e.up} health={e.health} goBack={e.goBackPlan} send={e.send} models={e.models} efforts={e.efforts} sampling={e.sampling} onSet={e.setSettings} onHear={e.hearVoice}
+          {piece && view === "chat" ? <PieceRoom at={piece} onSession={(id) => w.open(id)} />
+          : view === "settings" ? (
+            <Site name="settings"><Settings key={settingsFirst.n} s={e.settings} stale={false} info={e.engineInfo} up={e.up} health={e.health} goBack={e.goBackPlan} send={e.send} subscribe={e.subscribe} models={e.models} efforts={e.efforts} sampling={e.sampling} onSet={e.setSettings} onHear={e.hearVoice}
               first={settingsFirst.first} more={(o, t) => <WorkDrawers w={w} open={o} toggle={t} flash={e.flash} />} onClose={shutSettings} /></Site>
           ) : view === "conversations" ? (
             <Site name="conversations"><Conversations onOpenChat={(sessionId, t) => openChat({ seat: "claude", sessionId, title: t, updatedAt: Date.now() })} /></Site>
@@ -462,12 +495,13 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
                   <div className="talk-inner"><WorkTalk items={items} busy={busy} w={w} view={talkView} onFresh={(text) => { fresh(cwd); if (text) setDraft({ text, atts: [] }); }} onLink={onLink} onBox={toBox} /></div>
                 ) : (
                   <div className="empty wempty">
-                    <Mark size={56} live />
+                    <BodyLive size={56} six />
                     {!w.live && <p className="wwhere">{w.freshCwd ? <>a new session in <b title={w.freshCwd}>{w.freshCwd === "~" ? "your home folder" : base(w.freshCwd)}</b></> : "a new session in your home folder"}</p>}
                   </div>
                 )}
               </div>
               <Trail scroller={talk} version={items.length} goTo={(y) => stick.current?.goTo(y)} />
+              <FindBar scroller={talk} goTo={(y) => stick.current?.goTo(y)} />
               <Orb f={flw} />
             </div>
             </Site>
@@ -494,7 +528,7 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
 
 // cmd+/: every key Work answers, in five short columns of what they are for; it drops in on a spring
 const KEYS: [string, [string, string][]][] = [
-  ["sessions", [["⌘N", "a new session"], ["⌘W", "close it, back to a new one"], ["⌃⇥  ⌘⇧]", "the next session"], ["⌃⇧⇥  ⌘⇧[", "the one before"], ["⌘\\", "the side, or the pane in focus"]]],
+  ["sessions", [["⌘N", "a new session"], ["⌘W", "close it, back to a new one"], ["⌘F  ⌘G", "find in it, the next match"], ["⌃⇥  ⌘⇧]", "the next session"], ["⌃⇧⇥  ⌘⇧[", "the one before"], ["⌘\\", "the side, or the pane in focus"]]],
   ["the box", [["⏎", "send"], ["⇧⏎", "a new line"], ["⇥  →", "take the suggested prompt"], ["⌘;", "ask on the side (in the box)"], ["esc", "stop the turn"]]],
   ["how it runs", [["⌘⇧M", "the next leash"], ["⌘⇧I", "the model"], ["⌘⇧E", "the effort"], ["⌃O", "how much shows"]]],
   ["panes", [["⌘⇧D", "changes"], ["⌃`", "terminal"], ["⌘⇧B", "browser"], ["⌘⇧S", "mark the page"], ["⌘⇧P", "the page it wrote"], ["⌘⇧O", "the show"], ["⌃]  ⌃[", "focus round the box, beside, panes"]]],

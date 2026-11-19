@@ -1,5 +1,5 @@
 // Cowork v3, slice 5 (fr-30, #558): joining. An owner makes the project's link (it expires in a week; editor or guest);
-// a person who opens it waits until an owner lets them in with one press, on a black card like the notch's; then their
+// a person who opens it waits until an owner lets them in with one press, on a black card; then their
 // arrival is their role's: an owner sees the setup, an editor three things, a guest what it is, view only. The three
 // arrivals stand as stills, yours lifted. Read and written through team.v3.join.* (ask5.ts).
 import { useEffect, useState } from "react";

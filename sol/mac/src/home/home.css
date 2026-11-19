@@ -6,76 +6,19 @@
    in Settings › look (look.ts, data-skin on the root), the two blocks at the end of this file: pearl (the default),
    a pearl sheen on the one thing that has you; ink, lines and words, nothing filled. */
 .hc { --hc-white: var(--ink); --hc-pearl: var(--c-pearl); --hc-dim: var(--dim); --hc-faint: var(--page); --hc-line: var(--edge);
-  --hc-side: 264px; --hc-mark: var(--s4);
+  --hc-mark: var(--s4);
   color: var(--hc-white); background: transparent; }
 .hc button { font: inherit; color: inherit; }
 
-/* the title bar */
-.hc-bar { gap: var(--s2); color: var(--hc-dim); }
-.hc-title { color: var(--hc-white); font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
-.hc-where { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--hc-dim); white-space: nowrap; }
-.hc-sidekey { display: flex; align-items: center; gap: calc(var(--s1) / 2); height: var(--h-chip); padding: 0 var(--s1); border: 0; background: none; border-radius: var(--r-chip); cursor: pointer; }
-.hc-sidekey i { width: 5px; height: var(--s3); border: 1.2px solid var(--hc-dim); border-radius: calc(var(--s1) / 2); }
-.hc-sidekey.on i:first-child { background: var(--hc-dim); }
-.hc-tmark { border: 0; background: none; padding: 0; cursor: pointer; display: flex; }
+/* the title bar: the rail, its own rules in rail.css (#682) */
 
 /* the three places */
 .hc-main { flex: 1; min-height: 0; display: flex; position: relative; z-index: 1; }
-.hc-side { width: var(--hc-side); flex: none; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--hc-line); padding: var(--s2) var(--s2) 0; box-sizing: border-box; }
-.hc-side.wide { flex: 1; width: auto; border-right: 0; padding: var(--s2) var(--s6) 0; }
 .hc-talk { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
 .hc-pane { display: flex; min-height: 0; }
 .hc-pane:not(:has(.wpane)), .hc-pane.shut { display: none; }
-/* the folded side: a strip at the window's left edge; the cursor there soft-opens the side over the talk */
-.hc-edge { position: absolute; left: 0; top: 0; bottom: 0; width: var(--s2); z-index: 6; }
-.hc-side.soft { position: absolute; left: 0; top: 0; bottom: 0; z-index: 7; background: var(--c-deep); box-shadow: var(--shadow-float); animation: hc-soft-in var(--d-turn) var(--e-arrive); }
-.hc-side.soft.closing { animation: hc-soft-out var(--d-turn) var(--e-leave) forwards; pointer-events: none; }
-/* its hover reaches the window's edge: the cursor that soft-opened it in the edge strip stays on it once the pearl
-   skin's margin sets it in, so a layout change under a still cursor (data arriving) never closes and reopens it (#610) */
-.hc-side.soft::before { content: ""; position: absolute; top: 0; bottom: 0; right: 100%; width: var(--s2); }
-@keyframes hc-soft-in { from { translate: calc(-1 * var(--s6)) 0; opacity: 0; } }
-@keyframes hc-soft-out { to { translate: calc(-1 * var(--s6)) 0; opacity: 0; } }
 
-/* the side: heads, folders and rows share one box (32px, inset --s2) and one mark column (16px + --s2) */
-.hc-sidetop { display: flex; flex-direction: column; padding: 0 0 var(--s2); border-bottom: 1px solid var(--hc-line); margin-bottom: var(--s2); }
-.hc-sidetop > :first-child { margin: 0 0 var(--s2); }
-.hc-side.wide .hc-sidetop > * { width: calc(var(--hc-side) - 2 * var(--s2)); }   /* opened wide, the top stays the side's width */
-.hc-head, .hc-fhead, .hc-row, .hc-gear { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-row); font-size: var(--t-body); line-height: var(--t-body-line); cursor: pointer; box-sizing: border-box; }
-.hc-head { color: var(--hc-dim); }
-.hc-head:hover, .hc-head.on { color: var(--hc-white); background: var(--hc-faint); }
-.hc-head kbd { margin-left: auto; min-width: var(--s6); font: var(--t-label) / var(--t-label-line) ui-monospace, monospace; color: var(--hc-dim); opacity: 0.7; }
-.hc-head > :first-child, .hc-gear > :first-child, .hc-row > :first-child, .hc-fhead > :first-child { flex: none; width: var(--hc-mark); height: var(--hc-mark); }
-.hc-plus, .hc-caret { display: inline-flex; align-items: center; justify-content: center; }   /* marks, like the icons: centred in the box */
-.hc-plus::before { content: "+"; font-size: var(--t-read); }
-.hc-caret::before { content: "›"; }
-.hc-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: var(--s3); }
-.hc-fhead { margin-top: var(--s1); font-size: var(--t-label); letter-spacing: 0.04em; text-transform: lowercase; color: var(--hc-dim); }
-.hc-caret { transition: rotate var(--d-turn) var(--e-move); }
-.hc-caret.open { rotate: 90deg; }
-.hc-n { margin-left: auto; font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.6; }
-:root[data-whole] .hc-n { opacity: 1; }   /* #891: a quiet word is not dimmed again (4.5:1) */
-.hc-more { font-size: var(--t-label); padding-left: calc(var(--s2) + var(--hc-mark) + var(--s2)); }
-.hc-row { color: var(--hc-white); }
-.hc-row:hover { background: var(--hc-faint); }
-.hc-row.on { background: var(--c-picked); }
-.hc-row.gone .hc-tt { color: var(--hc-dim); }
-.hc-nomark { display: inline-block; position: relative; }
-.hc-nomark::after { content: ""; position: absolute; inset: calc(var(--s1) + 1px); border-radius: 50%; background: var(--hc-line); }
-.hc-tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hc-when { min-width: var(--s6); }   /* the side's right column: ⌘N and the times share one edge */
-.hc-when, .hc-c { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--hc-dim); }
-.hc-empty { padding: var(--s4) var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--hc-dim); }
-.hc-sidefoot { flex: none; padding: var(--s2) 0 var(--s3); border-top: 1px solid var(--hc-line); }
-.hc-gear { border: 0; background: none; color: var(--hc-dim); }
-.hc-gear:hover { color: var(--hc-white); background: var(--hc-faint); }
 
-/* the side opened wide: the same rows with more columns */
-.hc-filters { display: flex; gap: var(--s2); padding: var(--s2) 0 var(--s3); border-radius: var(--r-row); }
-.hc-filters button { height: var(--h-chip); border: 0; box-shadow: inset 0 0 0 1px var(--hc-line); background: none; border-radius: var(--r-pill); padding: 0 var(--s3); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--hc-dim); cursor: pointer; }
-.hc-filters button.on { background: var(--hc-pearl); color: var(--c-deep); box-shadow: none; }
-.hc-cols, .hc-side.wide .hc-row { display: grid; grid-template-columns: var(--hc-mark) minmax(0, 1fr) 140px 90px 70px; gap: var(--s2); align-items: center; }
-.hc-cols { padding: 0 var(--s2) var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); letter-spacing: 0.04em; color: var(--hc-dim); border-bottom: 1px solid var(--hc-line); margin-bottom: var(--s1); }
-.hc-cols span:first-child { grid-column: 2; }
 
 /* the talk */
 .hc-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3); height: 100%; color: var(--hc-dim); font-size: var(--t-read); line-height: var(--t-read-line); }
@@ -129,9 +72,19 @@
 @container (width < 404px) { .hc .picker > .wchip.folder { display: none; } }
 @container (width < 316px) { .hc .picker > button.icon:not([class*="call-"], .rec) { display: none; } }
 
-/* overlays: Settings as a sheet over Home, the ⌘K jump */
+/* overlays: Settings as a sheet over Home, the ⌘K jump (its rows: the side's line, its own here; the side's are side.css's) */
+.hc-jump .hc-row, .hc-phead .hc-tt { font-size: var(--t-body); line-height: var(--t-body-line); }
+.hc-jump .hc-row { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-row); cursor: pointer; box-sizing: border-box; color: var(--hc-white); }
+.hc-jump .hc-row > :first-child { flex: none; width: var(--hc-mark); height: var(--hc-mark); }
+.hc-jump .hc-row.on { background: var(--hc-faint); }
+.hc-jump .hc-tt, .hc-phead .hc-tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-jump .hc-c { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--hc-dim); }
 .hc-sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: var(--c-scrim); }
-.hc-sheetcard { width: min(880px, 92vw); height: 88vh; overflow: auto; background: var(--c-lift); border: 1px solid var(--hc-line); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; box-shadow: var(--shadow-sheet); }
+/* #1001: a column, so Settings' shell fills it and its list and page scroll on their own; the card itself never scrolls
+   (it did, carrying the page's heading away when the list was scrolled to its last rows) */
+.hc-sheetcard { width: min(880px, 92vw); height: 88vh; position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--c-lift); border: 1px solid var(--hc-line); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; box-shadow: var(--shadow-sheet); }
+/* #1001: Settings' close in the sheet sits on the sheet's own corner, not the window's (it floated outside the card) */
+.hc-sheetcard .settings-x { position: absolute; top: var(--s3); right: var(--s3); }
 .hc-jumpwrap { align-items: flex-start; padding-top: 16vh; }
 .hc-jump { width: min(540px, 90vw); padding: var(--s2); background: var(--c-lift); border: 1px solid var(--hc-line); border-radius: var(--r-card); box-shadow: var(--shadow-jump); box-sizing: border-box; }
 .hc-jump input { width: 100%; box-sizing: border-box; height: calc(var(--h-row) + var(--s2)); padding: 0 var(--s2); margin-bottom: var(--s1); border: 0; border-bottom: 1px solid var(--hc-line); background: none; color: var(--hc-white); font: inherit; font-size: var(--t-read); line-height: var(--t-read-line); outline: none; }
@@ -150,16 +103,6 @@
 :root:not([data-skin="ink"]) .hc { --hc-line: transparent;
   --hc-sheen: var(--sheen-pearl);
   --hc-sheen-soft: var(--sheen-soft); }
-:root:not([data-skin="ink"]) .hc-side { background: var(--side); border-right: 0; margin: 0 0 var(--s2) var(--s2); width: calc(var(--hc-side) - var(--s2)); border-radius: var(--r-card); }
-:root:not([data-skin="ink"]) .hc-side.wide { margin: 0 var(--s2) var(--s2); width: auto; }
-:root:not([data-skin="ink"]) .hc-side.soft { background: var(--pop); }
-:root:not([data-skin="ink"]) :is(.hc-sidetop, .hc-cols) { border-bottom: 0; }
-:root:not([data-skin="ink"]) .hc-sidefoot { border-top: 0; }
-:root:not([data-skin="ink"]) .hc-fhead { margin-top: var(--s3); }
-:root:not([data-skin="ink"]) .hc-row.on { background: var(--hc-sheen-soft); box-shadow: var(--shadow-lit-edge); }
-:root:not([data-skin="ink"]) :is(.hc-row:hover, .hc-head:hover, .hc-gear:hover) { background: var(--page); }
-:root:not([data-skin="ink"]) .hc .modesw .seatsw .thumb { background: var(--hc-sheen); }
-:root:not([data-skin="ink"]) :is(.hc-filters button.on) { background: var(--hc-sheen); }
 :root:not([data-skin="ink"]) .hc .wpane { border-left: 0; background: var(--page); border-radius: var(--r-card) 0 0 0; }
 :root:not([data-skin="ink"]) .hc .ask-inner { outline: 0; border: 0; box-shadow: var(--shadow-rest); }
 :root:not([data-skin="ink"]) .hc .ask-inner::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
@@ -170,14 +113,6 @@
 /* ink: the whiteboard. Nothing filled but the chat box; one hairline between places; the picked row told by white
    words and a pearl bar; home | cowork two words with a pearl underline; your words in a pearl outline. */
 :root[data-skin="ink"] .hc { --hc-line: var(--c-on-line); --hc-faint: transparent; --hc-dim: var(--c-on-dim); }
-:root[data-skin="ink"] .hc-row { color: var(--c-on-rest); }
-:root[data-skin="ink"] .hc-row.on { background: none; color: var(--hc-white); box-shadow: var(--shadow-bar); border-radius: 0 var(--r-row) var(--r-row) 0; }
-:root[data-skin="ink"] :is(.hc-row:hover, .hc-head:hover, .hc-gear:hover) { color: var(--hc-white); }
-:root[data-skin="ink"] .hc-fhead { margin-top: var(--s6); letter-spacing: 0.08em; }
-:root[data-skin="ink"] .hc-sidetop { border-bottom: 0; }
-:root[data-skin="ink"] .hc .modesw .seatsw { background: none; box-shadow: none; }
-:root[data-skin="ink"] .hc .modesw .seatsw .thumb { top: auto; bottom: 0; height: calc(var(--s1) / 2); background: var(--hc-pearl); scale: 0.3 1; }
-:root[data-skin="ink"] .hc .modesw .seatsw button.on { color: var(--hc-white); }
 :root[data-skin="ink"] .hc .msg.me { background: none; border: 1px solid var(--c-pearl-line); box-shadow: none; }
 :root[data-skin="ink"] .hc .step-row { background: none; box-shadow: inset 0 0 0 1px var(--hc-line); }
 :root[data-skin="ink"] .hc .ask-inner { background: var(--c-base-box); outline: 1px solid var(--hc-line); box-shadow: none; }
@@ -240,7 +175,9 @@
 .hc .wtype textarea { position: relative; z-index: 1; max-height: none; }
 .hc .wmirror { position: absolute; inset: 0; margin: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word; pointer-events: none; color: var(--ink); }
 .hc .wsaid { color: transparent; }   /* the mirror's spans have names of their own: Work's .wmine and .wopen drew over them (11.5px, an indent) */
-.hc .wunsure { color: var(--mute); }
+/* the words not final yet wear the jelly's heat, drifting, and set to ink when they are final (Marco 2026-11-07: not a
+   highlight round the box; the dictation shows in the words themselves). The rim (Listen.tsx Hears) went. */
+.hc .wunsure { color: transparent; background: var(--jelly); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; animation: eheat-drift calc(var(--d-pour) * 3) var(--e-move) infinite alternate; }
 .hc .ask-inner.listening .picker > :not(.wdone, .grow, .wlistening) { opacity: 0.35; pointer-events: none; transition: opacity var(--d-turn) var(--e-move); }
 .hc .wlistening { flex: none; display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-variant-numeric: tabular-nums; color: var(--dim); }
 
@@ -252,6 +189,19 @@
    words stand on the talk's text edge (--s3 + the pill's half height = the mark edge, 16px + --s2) */
 .hc .ask-inner.kit .ask-line, .hc .ask-inner.kit .picker { padding-left: var(--s3); }
 .hc .ask-inner.kit .wplus.kit { width: auto; height: auto; padding: 0; background: none; box-shadow: none; border-radius: var(--r-pill); }
+/* the box's anatomy (Marco 2026-11-07: the formatting moved with the words, the + sank under a tall box, the queue lost
+   its padding). Four places that never move: the + at the top left, send or stop at the top right, the words between
+   them at full width, the row at the bottom; the queue is a strip under the words, its text on the text edge (--s6 =
+   the + box's --s3 + its word's --s3). A narrower box only shortens lines. */
+.hc .ask-inner.kit .ask-line { align-items: flex-start; }
+.hc .ask-inner.kit .wplus { margin: 0; align-self: flex-start; }
+.hc .ask-inner.kit .wsend, .hc .ask-inner.kit .stop { align-self: flex-start; }
+.hc .ask-inner.kit .wqueue { padding-left: var(--s6); padding-right: var(--s4); }
+/* the row squishes by dropping and shortening, never by squeezing a pill (a kit Pill has one width; squeezed, it
+   overlapped its neighbour): the mode's word goes short first, then the ring and the folder go (the queries above) */
+.hc .picker .wchip.kit, .hc .picker .slider.epill { flex-shrink: 0; min-width: 0; }
+.hc .picker .wchip.kit .wshort { display: none; }
+@container (width < 470px) { .hc .picker .wchip.kit .wlong { display: none; } .hc .picker .wchip.kit .wshort { display: inline-flex; } }
 
 /* continuous corners where the engine draws them (a squircle; elsewhere the plain radius stands) */
 @supports (corner-shape: squircle) {
@@ -265,6 +215,12 @@
 .hc-row.carry { outline: var(--hair) solid var(--sun); outline-offset: calc(-1 * var(--hair)); }
 .hc-row.carry .hc-carried { color: var(--sun); }
 .hc-carried { white-space: nowrap; }
+/* the lamp (spine/lamp.ts, Marco 2026-11-07): one soft light that follows the pointer between rows on a spring; with the
+   spine on, rows and heads no longer light themselves */
+.hc-list { position: relative; }
+.hc-lamp { position: absolute; left: 0; right: 0; top: 0; height: var(--h-row); border-radius: var(--r-row); background: var(--hc-faint); opacity: 0; pointer-events: none; will-change: transform, opacity; transition: opacity var(--d-reveal) var(--e-reveal); }
+html[data-spine="on"] .hc-list :is(.hc-row:hover, .hc-fhead:hover, .hc-head:hover) { background: transparent; }
+html[data-spine="on"] .hc-list .hc-row.on:hover { background: var(--c-picked); }
 
 /* #954 (scene 14, whole.html's box behind stage.whole): the words take the box's whole width; under them one row, the +
    first and the round send arrow last, lit by the jelly when there is something to send. What you point at is the

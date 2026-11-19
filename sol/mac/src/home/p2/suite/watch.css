@@ -1,0 +1,21 @@
+/* The watch's inside (Watch.tsx, #692 suite step 2): the number, its line over time, his line across it. The scale's
+   values only (the layout skill); the line is the deep ink, his line dashed, yellow once the number is past it. */
+.wt { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.wt-now { display: flex; align-items: baseline; gap: var(--s3); min-width: 0; }
+.wt-now b { flex: none; font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; }
+.wt-now span { display: flex; flex-direction: column; min-width: 0; }
+.wt-now small { opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-label); }
+.wt-wait { margin: 0; opacity: 0.8; }
+.wt-chart { position: relative; height: calc(var(--s12) * 2); min-width: 0; touch-action: none; }
+.wt-chart svg { position: absolute; inset: 0; overflow: visible; }
+.wt-path { fill: none; stroke: var(--c-deep); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
+.wt-dot { fill: var(--c-deep); opacity: 0.6; }
+.wt-dot.now { opacity: 1; }
+.wt-line { stroke: var(--c-deep); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
+.wt.past .wt-line { stroke: var(--yellow-strong); stroke-width: 2; opacity: 1; }
+.wt-grab { fill: transparent; cursor: ns-resize; outline: none; }
+.wt-grab:focus-visible { fill: color-mix(in srgb, var(--c-deep) 10%, transparent); }
+.wt-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); min-width: 0; }
+.wt-tag { flex: none; max-width: 100%; padding: 0 var(--s2); border: var(--hair) solid currentColor; border-radius: var(--r-pill); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt.past .wt-tag { border-color: var(--yellow-strong); background: var(--yellow-strong); }
+.wt-by { flex: 1; min-width: 0; text-align: right; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

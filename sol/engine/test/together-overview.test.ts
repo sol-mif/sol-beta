@@ -140,3 +140,64 @@ test("overview: Create PR refuses the main line and a detached head, takes a bra
   assert.match(prRefusal("")!, /detached/);
   assert.equal(prRefusal("marco/together-overview"), null);
 });
+
+// ---- the live count and one part's breakdown (#683, #1519) ----
+import { liveUsage, partOf, type ContextAnswer } from "../src/work/overview.ts";
+import { homedir } from "node:os";
+
+test("live: the total is the step's own count, only what came since the split wears ≈", () => {
+  const u = fromContext(counted, "counted");
+  const l = liveUsage(u, u.total + 5000);
+  assert.equal(l.live, true);
+  assert.equal(l.total, u.total + 5000);
+  assert.equal(l.parts.messages, 135000);
+  assert.deepEqual(l.est, ["messages"]);
+  // the count is newer than the step: its total stands
+  assert.equal(liveUsage(u, u.total - 100).total, u.total);
+  // the SDK's quick summary at the start: once a step comes back, its count is the total, the difference in the talk
+  const s = fromContext(counted, "summary");
+  const ls = liveUsage(s, s.total - 2000);
+  assert.equal(ls.total, s.total - 2000);
+  assert.equal(ls.parts.messages, 128000);
+  assert.equal(ls.live, true);
+});
+
+const full: ContextAnswer = {
+  ...counted,
+  memoryFiles: [{ path: `${homedir()}/.claude/CLAUDE.md`, tokens: 3000 }, { path: "/x/CLAUDE.md", tokens: 1300 }],
+  mcpTools: [{ name: "mcp__sol__read", serverName: "sol", tokens: 900 }, { name: "mcp__sol__compose", serverName: "sol", tokens: 1100 }, { name: "mcp__figma__x", serverName: "figma", tokens: 50, isLoaded: false }],
+  agents: [{ agentType: "reviewer", tokens: 755 }],
+  systemTools: [{ name: "Bash", tokens: 4000 }, { name: "Read", tokens: 1500 }],
+  systemPromptSections: [{ name: "core", tokens: 9000 }, { name: "env", tokens: 800 }],
+  skills: { skillFrontmatter: [{ name: "sol", tokens: 300 }, { name: "a", tokens: 10 }, { name: "b", tokens: 10 }, { name: "c", tokens: 10 }, { name: "d", tokens: 5 }] },
+  slashCommands: { totalCommands: 12, tokens: 200 },
+  messageBreakdown: { userMessageTokens: 2000, assistantMessageTokens: 8000, attachmentTokens: 0,
+    toolCallsByType: [{ name: "Read", callTokens: 100, resultTokens: 60000 }, { name: "mcp__sol__read", callTokens: 50, resultTokens: 950 }] },
+};
+
+test("a part's breakdown: biggest first, the top four, the rest summed; ~ for the home folder; unloaded connectors left out", () => {
+  const t = partOf(full, "talk");
+  assert.deepEqual(t.lines.map((l) => l.name), ["Read", "Claude's replies", "your messages", "sol:read"]);
+  assert.equal(t.lines[0].tokens, 60100);
+  assert.equal(t.total, 60100 + 8000 + 2000 + 1000);
+  assert.equal(t.rest, 0);
+  const m = partOf(full, "mem");
+  assert.deepEqual(m.lines, [{ name: "~/.claude/CLAUDE.md", tokens: 3000 }, { name: "/x/CLAUDE.md", tokens: 1300 }]);
+  const sys = partOf(full, "sys");
+  assert.deepEqual(sys.lines.map((l) => l.name), ["core", "Bash", "sol (connector)", "Read"]);
+  assert.equal(sys.rest, 800);
+  assert.ok(!sys.lines.some((l) => l.name.startsWith("figma")));
+  const k = partOf(full, "kit");
+  assert.deepEqual(k.lines.map((l) => l.name), ["reviewer (agent)", "sol", "12 commands", "a"]);
+  assert.equal(k.rest, 25);
+  assert.deepEqual(partOf({ categories: [], totalTokens: 0 }, "talk"), { part: "talk", lines: [], rest: 0, total: 0 });
+});
+
+test("live: a step newer than the count wins even when lower (a compact mid-turn); the talk shrinks, wearing ≈", () => {
+  const u = fromContext(counted, "counted");
+  const l = liveUsage(u, u.total - 100000, true);
+  assert.equal(l.total, u.total - 100000);
+  assert.equal(l.parts.messages, 30000);
+  assert.deepEqual(l.est, ["messages"]);
+  assert.equal(liveUsage(u, u.total - 100000, false).total, u.total, "an older step leaves the count");
+});

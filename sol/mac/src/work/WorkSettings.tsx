@@ -3,12 +3,12 @@ import { Drawer, Pick } from "../Settings";
 import { Switch } from "../settingsShell";
 import { WHICH } from "../useEngine";
 import type { Work } from "./useWork";
-import { PINGS, loadPings, savePings, type Pings } from "./pings";
 
 // Work's own drawers, under the shared ones in Settings: how sessions are made (side copies, branches, archive, the
-// long leash), the side copies themselves, the box, pings, the browser, the writing style, the tools a run loads,
-// and the machine. The engine keeps what it acts on (work.prefs); pings and the leash are this window's.
+// long leash), the side copies themselves, the box, the browser, the writing style, the tools a run loads,
+// and the machine. The engine keeps what it acts on (work.prefs); the leash is this window's (the notifications are Settings.tsx's, #845).
 type Prefs = { wtDir: string; prefix: string; archivePr: boolean; archiveDays: number; browser: boolean; suggest: boolean; awake: boolean; battery: boolean; style: string; stale: boolean; newIn: string };
+type Grouping = { off: { at: number; why: string } | null; moves: number; undone: number };
 type Copy = { path: string; repo: string; base?: string; branch?: string; kb?: number; dirty: number; ahead?: number; sessions: number; usedAt?: number; live: boolean; gone?: boolean; stale?: boolean; foreign?: boolean };
 type Copies = { copies?: Copy[]; where?: string; kb?: number; transcripts?: number; error?: string };
 type About = {
@@ -26,7 +26,7 @@ const opener = () => import("@tauri-apps/plugin-opener");
 export function Seg<T extends string | boolean | number>({ value, options, onChange, disabled }: { value: T; options: [T, string][]; onChange: (v: T) => void; disabled?: boolean }) {
   return (
     <div className="wseg">
-      {options.map(([v, l]) => <button key={String(v)} className={v === value ? "on" : ""} disabled={disabled} onClick={() => v !== value && onChange(v)}>{l}</button>)}
+      {options.map(([v, l]) => <button key={String(v)} className={v === value ? "on" : ""} title={l} disabled={disabled} onClick={() => v !== value && onChange(v)}>{l}</button>)}
     </div>
   );
 }
@@ -44,13 +44,16 @@ export function Field({ value, placeholder, onSave }: { value: string; placehold
 export function WorkDrawers({ w, open, toggle, flash }: { w: Work; open: string; toggle: (n: string) => void; flash: (s: string) => void }) {
   const [p, setP] = useState<Prefs | null>(null);
   const [err, setErr] = useState("");
-  const [pings, setPings] = useState<Pings>(loadPings);
   const [copies, setCopies] = useState<Copies | null>(null);
   const [about, setAbout] = useState<About | null>(null);
   const [busy, setBusy] = useState("");
   const [sure, setSure] = useState<string | null>(null);   // a copy with work in it, asked once more before it goes
 
   useEffect(() => { void w.ask<{ prefs?: Prefs }>("work.prefs", {}).then((r) => r.prefs && setP(r.prefs)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // grouping on evidence (#1336): on until too many of its moves are taken back, then off with its reason, till switched on
+  const [grouping, setGrouping] = useState<Grouping | null>(null);
+  useEffect(() => { void w.ask<Grouping>("work.grouping", {}).then((r) => r && "moves" in r && setGrouping(r)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const switchGrouping = (on: boolean) => void w.ask<Grouping>("work.grouping", { on }).then((r) => r && "moves" in r && setGrouping(r));
   const set = async (patch: Partial<Prefs>) => {
     setP((x) => (x ? { ...x, ...patch } : x));
     const r = await w.ask<{ prefs?: Prefs; error?: string }>("work.prefs", { patch });
@@ -77,7 +80,6 @@ export function WorkDrawers({ w, open, toggle, flash }: { w: Work; open: string;
     flash(r.error ?? (r.removed ? `${r.removed} side ${r.removed > 1 ? "copies" : "copy"} removed` : "nothing to remove") + (r.errors?.length ? `; ${r.errors.length} kept` : ""));
     loadCopies();
   };
-  const setPing = (patch: Partial<Pings>) => setPings((x) => { const n = { ...x, ...patch }; savePings(n); return n; });
   const mac = WHICH === "next";
   const off = !p;
   const staleOf = (c: Copy) => !!c.stale;
@@ -100,6 +102,11 @@ export function WorkDrawers({ w, open, toggle, flash }: { w: Work; open: string;
       <div className="field-r">
         <div className="lab"><span>branch prefix</span><small>on the branches Sol makes, as {p?.prefix ?? "claude/"}fix-the-notes-3fa2c1</small></div>
         <Field value={p?.prefix ?? ""} placeholder="no prefix" onSave={(v) => void set({ prefix: v })} />
+      </div>
+      <div className="field-r">
+        <div className="lab"><span>group sessions by what they did</span>
+          <small>{grouping?.off ? grouping.off.why : "a session started by another, or sent to or read by an orchestration session of its folder, goes under it; one click on its mark takes it back, and that pair stays apart"}</small></div>
+        <OnOff on={!!grouping && !grouping.off} set={switchGrouping} disabled={!grouping} />
       </div>
       <div className="field-r">
         <div className="lab"><span>archive when its pull request closes</span><small>a side copy's sessions, merged or closed</small></div>
@@ -162,19 +169,6 @@ export function WorkDrawers({ w, open, toggle, flash }: { w: Work; open: string;
         your own styles are .md files in {tilde(about?.styles?.dir ?? "~/.claude/output-styles")}
         {mac && about?.styles?.dir && <> · <button className="link" onClick={() => void opener().then((o) => o.openPath(about.styles!.dir)).catch(() => flash("there is no such folder yet"))}>open it</button></>}
       </p>
-    </Drawer>
-
-    <Drawer name="pings" open={open === "pings"} onToggle={() => toggle("pings")}>
-      <p className="hint-line top">when Sol is not in front, or the session is not the one open</p>
-      {PINGS.map(([k, label]) => (
-        <div className="field-r" key={k}>
-          <div className="lab"><span>{label}</span></div>
-          <Seg value={pings[k]} options={[["off", "off"], ["badge", "badge"], ["banner", "banner"]]} onChange={(v) => setPing({ [k]: v } as Partial<Pings>)} />
-        </div>
-      ))}
-      <div className="field-r"><div className="lab"><span>bounce the dock</span></div><OnOff on={pings.attention} set={(v) => setPing({ attention: v })} /></div>
-      <div className="field-r"><div className="lab"><span>a sound</span></div><OnOff on={pings.sound} set={(v) => setPing({ sound: v })} /></div>
-      {!mac && <p className="hint-line">banners come from the engine's machine; on the NucBox there are none</p>}
     </Drawer>
 
     <Drawer name="machine" open={open === "machine"} onToggle={() => toggle("machine")}>

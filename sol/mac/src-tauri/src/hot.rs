@@ -1,8 +1,8 @@
-// Mutable mode (2026-10-15): the same app and the same three windows, but their pages come from Vite's dev server
+// Mutable mode (2026-10-15): the same app and the same window, but its pages come from Vite's dev server
 // (http://localhost:1420) instead of the bundle, so an edit to sol/mac/src slides into the running windows through hot
 // module replacement: no reload, no relaunch. The face is hot, the engine and this shell stay cold.
 //
-// The pick is a "face-hot" file next to the notch-off flag (there: hot; gone: bundled), so it survives a relaunch.
+// The pick is a "face-hot" file in the app's config folder (there: hot; gone: bundled), so it survives a relaunch.
 // Hot asks for Vite: if nothing answers on 1420, Sol starts it in sol/mac itself (its own child, stopped when Sol
 // quits or the face goes back to bundled). The windows only go to the dev pages while Vite answers; when it stops
 // answering they go back to the bundled pages within two seconds, and the engine drawer says "dev server down".
@@ -15,7 +15,7 @@ use tauri::menu::MenuItem;
 use tauri::{AppHandle, Emitter, Manager, Url, Wry};
 
 pub const DEV: &str = "http://localhost:1420";
-pub const LABELS: [&str; 4] = ["main", "notch", "island", "grab"];   // grab: the sheet, once it is made (grab.rs)
+pub const LABELS: [&str; 1] = ["main"];
 const GRACE: Duration = Duration::from_secs(15); // a fresh Vite gets this long before Sol tries again
 
 #[derive(Default)]
@@ -39,8 +39,6 @@ pub fn tray_text(hot: bool) -> &'static str { if hot { "Use the bundled face" } 
 fn flag(app: &AppHandle) -> Option<std::path::PathBuf> {
     app.path().app_config_dir().ok().map(|d| d.join("face-hot"))
 }
-/// The windows are on the dev pages right now (a window made now should start there too: grab.rs).
-pub fn is_on(app: &AppHandle) -> bool { app.state::<Hot>().0.lock().unwrap().on }
 pub fn wanted(app: &AppHandle) -> bool { flag(app).map(|f| f.exists()).unwrap_or(false) }
 
 /// Vite listens on "localhost", which node may bind as ::1 only: ask both.
@@ -116,9 +114,8 @@ pub fn init(app: &AppHandle) {
     s.want = wanted(app);
 }
 
-/// Every two seconds (and right after a flip), on the main thread. Returns the labels whose page changed, so the
-/// caller can reset what it keeps about them (the notch's open/hover state).
-pub fn check(app: &AppHandle) -> bool {
+/// Every two seconds (and right after a flip), on the main thread.
+pub fn check(app: &AppHandle) {
     let up = dev_up();
     let st = app.state::<Hot>();
     let mut s = st.0.lock().unwrap();
@@ -142,7 +139,6 @@ pub fn check(app: &AppHandle) -> bool {
         s.last = now;
         let _ = app.emit_to("main", "face-state", FaceState { hot: s.want, state: now });
     }
-    moved
 }
 
 /// Flip the pick (Settings or the menu bar icon).

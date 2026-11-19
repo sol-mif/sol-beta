@@ -54,8 +54,9 @@ export function mutableWrite(home: string, p: string): boolean {
 // and (safety pass #11) the files that build the messages sent to the engine, so an edit cannot speak for Marco,
 // and (#16 blocker 5) what the fence itself imports: the ring (the colours as data) and the frame loop, so no
 // seat-editable file can break the boundaries that take a broken edit back
-const FENCE = ["Site.tsx", "renovation.ts", "socket.ts", "engine.ts", "sites.ts", "hot.ts", "main.tsx", "notch/main.tsx", "useEngine.ts", "run.ts", "work/useWork.ts", "notch/useNotch.ts", "away/useDoor.ts",
-  "creature/ring.ts", "creature/loop.ts", "creature/states.ts", "notch/devTauri.ts", "creature/palette.ts"]; // palette.ts: generated from design/system/tokens.json
+const FENCE = ["Site.tsx", "renovation.ts", "socket.ts", "engine.ts", "sites.ts", "hot.ts", "main.tsx", "useEngine.ts", "run.ts", "work/useWork.ts", "away/useDoor.ts",
+  "creature/ring.ts", "creature/loop.ts", "creature/states.ts", "creature/palette.ts",
+  "notify/moments.ts"]; // palette.ts: generated from design/system/tokens.json; notify/moments.ts: the window's moments on the wire (#845), imported by renovation.ts
 export function fenced(home: string, p: string): boolean {
   const abs = real(isAbsolute(p) ? p : resolve(real(home), p));
   const src = resolve(real(home), "..", "mac", "src");

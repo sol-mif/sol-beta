@@ -1,8 +1,9 @@
 // The mode (#647 round 4, from the kit #674). A ladder of the harness's permission modes, Bypass at the top (it does the
 // most without asking) down to Plan (it only plans). Round 3 compared three ways of telling the order; round 4 draws
-// one, from the kit: a Card at the pop step holding a List, each mode a Row (its name, what it does in plain words) and
-// at its end a Meter of how much it does on its own, so the order reads down the meters without reading a word. The mode
-// that is on is the pearl.
+// one, from the kit: a Card at the pop step holding a List, each mode a Row (its name, what it does in plain words). The
+// meters went (Marco 2026-11-07: "no value add"); round 5's pins took the rest of the right column ("useless space for no
+// reason") and the Bypass heat chip ("useless"): the card is as wide as its words, and the risk reads in the row itself,
+// Bypass lit in the jelly's heat when it is the pick, as its pill is in the row. Any other mode that is on is the pearl.
 // Bypass sticks (Marco 2026-11-06, "the key isn't removing it but making it stick"): the first pick asks "sure?" once;
 // confirmed, it is the person's default for every new session (Settings › work's default mode) and never asks again.
 // Then the Bypass row says so, "every new session starts here", and the row under the pointer offers the quiet way
@@ -11,12 +12,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CFG, enter } from "../motion";
 import { useCover } from "../cowork/thingView";
-import { Button, Card, List, Meter, type Item } from "../kit";
+import { Button, Card, List, type Item } from "../kit";
+import { textW } from "../kit/paint";
+import { heatWord } from "../kit/Pill";
+import { TYPE } from "../kit/tokens";
 
 export type ModeItem = { m: string; label: string; note: string; risky?: string };
 // top to bottom: the most it does on its own first
 const ORDER = ["bypassPermissions", "auto", "acceptEdits", "default", "plan"];
-const W = 340, PAD = 8, IN = W - 2 * PAD;
+const PAD = 8, ROW = 12, GAP = 10, BTN = 24;   // the card's padding; the kit Row's own padding and gap; the button's height
+const SURE = "everything runs unasked, in every new session", STUCK = "every new session starts here";
 
 /** the bypass pick is confirmed once per person (this window's storage, and the default it set) */
 export const BYPASS_SURE = "sol.work.bypass.sure";
@@ -51,19 +56,28 @@ export function ModePick({ r, items, mode, def, onPick, onSure, onDefault, onClo
     onPick(it.m); onClose();
   };
   const stuck = def === "bypassPermissions";
-  const n = rungs.length;
   const list: Item[] = rungs.map((it, k) => {
     const risky = !!it.risky, asking = sure === k;
-    const note = asking ? `${it.risky}: once you say sure, every new session starts here` : risky && stuck ? "every new session starts here" : it.note;
-    const title = asking ? "sure? click again" : <>{it.label}{k === on ? <span style={{ opacity: 0.6 }}> · now</span> : null}{k === dAt && k !== on ? <span style={{ opacity: 0.6 }}> · new sessions</span> : null}</>;
+    const note = asking ? SURE : risky && stuck ? STUCK : it.note;
+    const hot = risky && k === on;   // Bypass is the pick: its name wears the heat, never the pearl
+    const name = hot ? <span className="kheat" style={heatWord()}>{it.label}</span> : it.label;
+    const title = asking ? "sure? click again" : <>{name}{k === on ? <span style={{ opacity: 0.6 }}> · now</span> : null}{k === dAt && k !== on ? <span style={{ opacity: 0.6 }}> · new sessions</span> : null}</>;
     const back = stuck && k === lit && !risky && !asking;
     return {
-      id: it.m, title, note, picked: k === on,
+      id: it.m, title, note, picked: k === on && !hot,
       aside: back
-        ? <span className="wback" onClick={(ev) => ev.stopPropagation()}><Button h={24} onClick={() => { onDefault(it.m); onPick(it.m); onClose(); }}>make default</Button></span>
-        : <Meter w={40} h={6} value={(n - k) / n} label={`${it.label}: how much it does on its own`} />,
+        ? <span className="wback" onClick={(ev) => ev.stopPropagation()}><Button h={BTN} flat acts onClick={() => { onDefault(it.m); onPick(it.m); onClose(); }}>make default</Button></span>
+        : null,   // no column of its own: the way back stands in the row under the pointer, only once Bypass sticks
     };
   });
+  // as wide as its words: the widest name (with its "· now" or "· new sessions") or note any row can show, and the way
+  // back's button beside it once Bypass sticks; measured once, so the card never jumps as the pointer walks it
+  const back = stuck ? GAP + textW("make default", TYPE.pill[0], 500) + BTN : 0;
+  const words = Math.max(...rungs.map((it) => Math.max(
+    textW(`${it.label} · new sessions`, TYPE.body[0], 500), textW(it.note, TYPE.label[0]),
+    ...(it.risky ? [textW("sure? click again", TYPE.body[0], 500), textW(SURE, TYPE.label[0]), textW(STUCK, TYPE.label[0])] : []),
+  ) + (it.risky ? 0 : back)));
+  const IN = Math.ceil(words) + 2 * ROW, W = IN + 2 * PAD;
   const left = Math.max(8, Math.min(r.left, innerWidth - 8 - W));
   return createPortal(
     <div ref={box} className="wpick mode kit" aria-label="mode" style={{ position: "fixed", zIndex: 60, left, bottom: innerHeight - r.top + 8 }}

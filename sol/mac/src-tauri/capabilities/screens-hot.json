@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "screens-hot",
+  "description": "The main window only: it alone asks for the displays and opens or closes the windows of Jelly on other screens (screens.rs, #1090). The screen windows, Work's pop-outs and popped blocks call none of these (mutable mode, its page served by Vite)",
+  "webviews": [
+    "main"
+  ],
+  "remote": {
+    "urls": [
+      "http://localhost:1420/*"
+    ]
+  },
+  "permissions": [
+    "allow-screens",
+    "allow-screen-window-open",
+    "allow-screen-window-close",
+    "allow-screens-off"
+  ]
+}

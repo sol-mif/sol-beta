@@ -1,0 +1,76 @@
+/* Build becomes yours (#1089, build.yours): the offer line at the talk's foot and the sheet over the stage. Every
+   space, size, corner, colour and motion is a token (tokens.css, palette.css); the pearl is the kit's own (Pearl). */
+
+/* the line: one row above the box, quiet; it fades in after the session settles and never moves the box */
+.yo-line { display: flex; align-items: center; gap: var(--s2); box-sizing: border-box; height: var(--h-head); padding: 0; margin: 0 0 var(--s1);
+  color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line);
+  opacity: 0; transform: translateY(var(--s1)); pointer-events: none; transition: opacity var(--d-reveal) var(--e-reveal), transform var(--d-reveal) var(--e-reveal); }
+.yo-line.on { opacity: 1; transform: none; pointer-events: auto; }
+.yo-line b { color: var(--ink); font-weight: 500; }
+.yo-said { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yo-mark { flex: none; display: inline-grid; place-items: center; }
+.yo-quiet { background: none; border: 0; color: var(--mute); font: inherit; font-size: var(--t-label); cursor: pointer; padding: 0 var(--s1); white-space: nowrap; }
+.yo-quiet:hover { color: var(--dim); }
+
+/* the versions: one group standing on the line (head, 16, versions, 16, the row), no panel behind it; the talk and the
+   stage step back to a quarter while it stands */
+.yo-sheet { position: fixed; z-index: 1100; box-sizing: border-box; outline: 0; padding: var(--s4) var(--s4) var(--s3);
+  display: flex; flex-direction: column; align-items: center; gap: var(--s4); background: var(--base-color); border-radius: var(--r-l); }
+/* keep: the group's place is frozen; its head, its row and the two not picked go to nothing; only the pick flies */
+.yo-sheet.leaving { background: transparent; }
+.yo-sheet.leaving .yo-head, .yo-sheet.leaving .yo-foot, .yo-sheet.leaving [data-version]:not(.yo-pickwrap) { opacity: 0; transition: opacity var(--d-reveal) var(--e-leave); }
+body.yo-shaping .st-talkwrap, body.yo-shaping .st-stagebox { opacity: .25; transition: opacity var(--d-turn) var(--e-move); }
+.yo-head { display: flex; align-items: center; gap: var(--s2); min-width: 0; width: 100%; max-width: calc(var(--col-max) + var(--s12)); }
+.yo-vers { display: flex; gap: var(--s3); align-items: flex-start; justify-content: center; max-width: 100%; overflow-x: auto; padding-top: var(--s1); }
+.yo-foot { display: grid; gap: var(--s2); justify-items: center; }
+.yo-pushes { display: flex; gap: var(--s1); flex-wrap: wrap; justify-content: center; }
+.yo-pushes.nudge { animation: yo-beat var(--d-turn) var(--e-arrive) 2 alternate; }
+.yo-count { color: var(--dim); font-size: var(--t-label); font-variant-numeric: tabular-nums; cursor: default; }
+@keyframes yo-beat { to { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) { .yo-line { transition: none; } .yo-pushes.nudge { animation: none; } }
+
+/* Build settings › yours */
+.yo-krow { display: flex; align-items: center; gap: var(--s3); min-height: var(--h-head); }
+.yo-krow + .yo-krow { border-top: 1px solid var(--line); }
+.yo-kfrom { flex: 1; min-width: 0; color: var(--dim); font-size: var(--t-label); font-variant-numeric: tabular-nums; }
+/* a row's state word stands beside its own undo, not mid-row (the designer, NOW 06:30 1) */
+.yo-krow .yo-kfrom + .yo-kfrom { flex: none; }
+.yo-passed { margin-top: var(--s4); }
+
+/* Jev's unsure reading of the Sol user's words: that press stands dashed, one press does it */
+.yo-ghost { display: inline-flex; border-radius: var(--pill); outline: 1px dashed var(--mute); outline-offset: var(--hair, 1px); }
+
+/* the shelf: kept chips in the line's row; a pressed one opens its piece above it */
+.yo-line { position: relative; z-index: 3; }   /* above the box's own top strip (.st-bar) it now stands close to */
+.yo-shelfchip { position: relative; display: inline-flex; flex: none; }
+.yo-pop { position: absolute; z-index: 1100; left: 0; bottom: calc(100% + var(--s2)); }
+
+/* each version stands on the one black: the dimmed talk never shows through a card */
+.yo-vers > [data-version] { background: var(--base-color); border-radius: var(--r-card, var(--r-l)); }
+
+/* a fill held to six lines, in every dock, until the Sol user's next key */
+textarea[data-yours-fill] { max-height: 6lh !important; overflow-y: auto !important; }
+/* the kept line's quiet word for where it went (with pieces on): never louder than "yours" */
+.yo-where { color: var(--mute); font-size: var(--t-label); white-space: nowrap; }
+/* Build settings' button rule beat the quiet words (the designer's NOW 03:33 3): scoped here, the label's size */
+.yo-list button.yo-quiet, .yo-krow button.yo-quiet { all: unset; color: var(--mute); font-size: var(--t-label); cursor: pointer; padding: 0 var(--s1); white-space: nowrap; }
+.yo-list button.yo-quiet:hover, .yo-krow button.yo-quiet:hover { color: var(--dim); }
+/* the switch row's one line about Jev: under the name, the label's size, dim; out of the settings' fold (#1020) */
+.yo-told { display: block; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+/* the first minute: reading, then what they repeat; a row is one press; they rise 4px, 120 ms, 80 ms apart */
+.yo-reading { display: flex; align-items: center; gap: var(--s2); color: var(--dim); font-size: var(--t-label); min-height: 48px; }
+.yo-press { cursor: pointer; }
+.yo-press:hover .yo-kfrom { color: var(--dim); }
+.yo-rise { animation: yo-rise var(--d-reveal) var(--e-reveal) both; }
+@keyframes yo-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.yo-found { color: var(--dim); font-size: var(--t-label); margin-right: var(--s2); white-space: nowrap; }
+/* the place a tool will stand, before there is one (the designer, NOW 06:01): a dashed box, nothing in it */
+.yo-none { flex: none; width: 96px; height: 28px; box-sizing: border-box; border-radius: var(--r-row); border: 1px dashed var(--mute); }
+/* kept rows stand at the found rows' height (48, Found.tsx): the three groups read alike (the designer, NOW 06:16 1) */
+[data-yours="kept"] .yo-krow { min-height: 48px; }
+/* reduced motion: no beat, no fade, no flight (the designer, NOW 06:30 3; the beat is an inline style in Made.tsx) */
+@media (prefers-reduced-motion: reduce) {
+  [data-made] *, .yo-sheet, .yo-sheet * { animation: none !important; transition: none !important; }
+  body.yo-shaping .st-talkwrap, body.yo-shaping .st-stagebox { transition: none; }
+}

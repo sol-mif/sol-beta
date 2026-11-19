@@ -20,7 +20,7 @@ test("a thing marked remake whose place the contract dropped stands on Home as a
   assert.deepEqual(loaded.map((t) => t.record.id), ["moved"]);
   assert.equal(loaded[0].record.place, "notch");   // the record keeps what it asked for; only where it stands moved
   assert.deepEqual(refused.map((r) => r.id), ["kept"]);
-  assert.match(refused[0].why, /notch, which this face has not declared/);
+  assert.match(refused[0].why, /"notch", which is not a place of the frame/);
 });
 
 test("stateOf with the kernel and the release together: broken wins over remake, remake over stale", () => {

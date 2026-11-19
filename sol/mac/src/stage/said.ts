@@ -7,12 +7,13 @@
 import type { Block, Line, Place } from "./model";
 import type { Side, Step } from "./moving";
 import type { Seen } from "./store";
+import type { Snapshot } from "./geometry";
 
 /** how long a line stays before it leaves by itself */
 export const SAID_STAYS = 5000;
 
 /** what one block's change in a step was */
-export type Kind = "moved" | "resized" | "folded" | "opened" | "closed" | "reopened" | "popped" | "unpopped" | "pinned" | "unpinned";
+export type Kind = "moved" | "resized" | "folded" | "opened" | "closed" | "reopened" | "popped" | "unpopped";
 
 /** one thing the line can say */
 export type Said =
@@ -43,7 +44,6 @@ export function kindOne(before: Place | null, after: Place | null): Kind {
   if (!before && after) return "reopened";
   const b = before!, a = after!;
   if (!!b.popped !== !!a.popped) return a.popped ? "popped" : "unpopped";
-  if (!!b.pinned !== !!a.pinned) return a.pinned ? "pinned" : "unpinned";
   if (!!b.folded !== !!a.folded) return a.folded ? "folded" : "opened";
   if (!same(b, a, ["w", "h"])) return "resized";
   return "moved";
@@ -61,8 +61,8 @@ export function kindOf(step: Step): Kind {
 
 /** names joined as a person says them: "Plan", "Plan and Notes", "Plan, Notes and Diff", "Plan, Notes and 2 more" */
 export function names(titles: string[]): string {
-  const t = titles.map((x) => x.trim() || "a block");
-  if (t.length <= 1) return t[0] ?? "a block";
+  const t = titles.map((x) => x.trim() || "an artifact");
+  if (t.length <= 1) return t[0] ?? "an artifact";
   if (t.length <= 3) return `${t.slice(0, -1).join(", ")} and ${t[t.length - 1]}`;
   return `${t.slice(0, 2).join(", ")} and ${t.length - 2} more`;
 }
@@ -77,8 +77,6 @@ const DID: Record<Kind, (n: string, it: string) => [string, string]> = {
   reopened: (n, it) => [`Brought ${n} back`, `⌘Z to close ${it} again`],
   popped: (n, it) => [`Popped ${n} out to ${it === "it" ? "its own window" : "their own windows"}`, `⌘Z to bring ${it} back`],
   unpopped: (n, it) => [`Brought ${n} back to the stage`, `⌘Z to pop ${it} out again`],
-  pinned: (n, it) => [`Pinned ${n} to the notch`, `⌘Z to take ${it} off`],
-  unpinned: (n, it) => [`Took ${n} off the notch`, `⌘Z to pin ${it} again`],
 };
 const UNDID: Record<Kind, (n: string, it: string) => string> = {
   moved: (n, it) => `Put ${n} back where ${it === "it" ? "it was" : "they were"}`,
@@ -89,8 +87,6 @@ const UNDID: Record<Kind, (n: string, it: string) => string> = {
   reopened: (n) => `Closed ${n} again`,
   popped: (n) => `Brought ${n} back from ${n.includes(" and ") ? "their windows" : "its window"}`,
   unpopped: (n) => `Popped ${n} out again`,
-  pinned: (n) => `Took ${n} off the notch`,
-  unpinned: (n) => `Pinned ${n} to the notch again`,
 };
 const AGAIN: Record<Kind, (n: string) => string> = {
   moved: (n) => `Moved ${n} again`,
@@ -101,8 +97,6 @@ const AGAIN: Record<Kind, (n: string) => string> = {
   reopened: (n) => `Brought ${n} back again`,
   popped: (n) => `Popped ${n} out again`,
   unpopped: (n) => `Brought ${n} back to the stage again`,
-  pinned: (n) => `Pinned ${n} to the notch again`,
-  unpinned: (n) => `Took ${n} off the notch again`,
 };
 
 /** the step's blocks a sentence names: those it changed, less any it could not bring back */
@@ -124,7 +118,26 @@ export function sentence(s: Said, title: (id: string) => string): Sentence {
   const gone = lost.length ? `${names(lost.map(title))} ${lost.length > 1 ? "were" : "was"} closed ${s.closer === "agent" ? "by the agent " : s.closer === "elsewhere" ? "in another window " : ""}since` : "";
   const none = "nothing to put back";
   if (!ids.length) return { words: gone, back: none, agent: false };
+  // a hand's step that also sent others to the tray (a drop or a resize the plan made room for, #1001): the hand's own
+  // verb, and the others named as gone to make room, never "Folded <the moved block>"
+  const each = ids.map((id) => [id, kindOne(s.step.before[id] ?? null, s.step.after[id] ?? null)] as const);
+  const roomed = each.filter(([, k]) => k === "folded").map(([id]) => id), hand = each.filter(([, k]) => k === "moved" || k === "resized" || k === "opened").map(([id]) => id);
+  if (roomed.length && hand.length && roomed.length + hand.length === ids.length) {
+    const hn = names(hand.map(title)), hk = kindOf({ before: pick(s.step.before, hand), after: pick(s.step.after, hand) }), hi = hand.length > 1 ? "them" : "it", rn = names(roomed.map(title));
+    if (s.how === "did") return { words: `${DID[hk](hn, hi)[0]}; ${rn} went to the tray to make room`, back: "⌘Z to undo both", agent: false };
+    if (s.how === "undid") return { words: `${UNDID[hk](hn, hi)}; ${rn} came back from the tray`, back: "⇧⌘Z to do it again", agent: false };
+    return { words: `${AGAIN[hk](hn)}; ${rn} went to the tray again`, back: "⌘Z to undo it", agent: false };
+  }
   const k = kindOf({ before: pick(s.step.before, ids), after: pick(s.step.after, ids) });
+  // #1001: a step whose own kind is not a move (a block opened from the tray, closed, popped) and that moved others aside
+  // to make room names only its own blocks with that verb, and the others as moved (it said "Opened A and B" for B moved)
+  const aside = k !== "moved" && k !== "resized" && !gone ? each.filter(([, x]) => x === "moved" || x === "resized").map(([id]) => id) : [];
+  if (aside.length && aside.length < ids.length) {
+    const own = ids.filter((id) => !aside.includes(id)), on = names(own.map(title)), oi = own.length > 1 ? "them" : "it", an = names(aside.map(title));
+    if (s.how === "did") { const [w] = DID[k](on, oi); return { words: `${w}; ${an} moved to make room`, back: "⌘Z to undo both", agent: false }; }
+    if (s.how === "undid") return { words: `${UNDID[k](on, oi)}; ${an} moved back`, back: "⇧⌘Z to do it again", agent: false };
+    return { words: `${AGAIN[k](on)}; ${an} moved again`, back: "⌘Z to undo it", agent: false };
+  }
   if (s.how === "did") {
     const [w, back] = DID[k](n, it);
     // the stage folded it, not the person: said as what happened to the block, short enough for the narrowest stage
@@ -134,6 +147,19 @@ export function sentence(s: Said, title: (id: string) => string): Sentence {
   const w = s.how === "undid" ? UNDID[k](n, it) : AGAIN[k](n);
   if (gone) return { words: `${w}; ${gone}`, back: `${none} for ${lost.length > 1 ? "them" : "it"}`, agent: false };
   return { words: w, back: s.how === "undid" ? "⇧⌘Z to do it again" : `⌘Z to undo it`, agent: false };
+}
+/** the whole stage's step (stage.whole's undo, geometry.ts Snapshot: the stage before and after one verb) as the line's
+ *  Step: only the blocks it changed; a block closed (or not on the stage) is null. Null when nothing changed (#1001: the
+ *  whole stage's verbs said nothing on the line) */
+export function stepOfShots(before: Snapshot, after: Snapshot): Step | null {
+  const at = (s: Snapshot, id: string): Place | null => { const x = s[id]; return x && !x.closed ? { id, ...x.r, z: 0, ...(x.folded ? { folded: true } : {}) } : null; };
+  const b: Side = {}, a: Side = {};
+  for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const x = at(before, id), y = at(after, id);
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    b[id] = x; a[id] = y;
+  }
+  return Object.keys(b).length ? { before: b, after: a } : null;
 }
 const pick = (side: Side, ids: string[]): Side => Object.fromEntries(ids.map((id) => [id, side[id] ?? null]));
 

@@ -1,5 +1,5 @@
 // The first run's three commands (#169 the download's door, #134 the first run). A Sol.app with no root (root.rs)
-// shows the face at /?firstrun=1 (sol/mac/src/firstrun): it asks a name and runs the bundled sol/install behind the
+// shows the face at /?firstrun=1 (the one onboarding, sol/mac/src/onboard, #1223): it asks about their life and runs the bundled sol/install behind the
 // scenes (the same file the one line runs, with SOL_SKIP_APP=1: the app is already here), streaming its lines to the
 // page; the sign-ins (Claude, ChatGPT) open each one's own page in the browser, with no Terminal; welcome_done reads
 // the root again, starts the engine and loads the face.
@@ -211,12 +211,11 @@ pub fn welcome_done(app: AppHandle) -> Result<(), String> {
 pub fn show_page(app: &AppHandle, path: &str) -> Result<(), String> {
     let w = app.get_webview("main").ok_or("the main window is not here")?;   // the face's web view; the window may hold a thing too (thing.rs)
     let mut u = w.url().map_err(|e| format!("the main window's address could not be read: {e}"))?;
-    // "/?firstrun=1": a query rides along (the first run, firstrun/FirstRun.tsx)
+    // "/?firstrun=1": a query rides along (the one onboarding opens there and runs the install, onboard/install.ts)
     let (p, q) = path.split_once('?').map(|(p, q)| (p, Some(q))).unwrap_or((path, None));
     u.set_path(p);
     u.set_query(q);
     w.navigate(u).map_err(|e| format!("the face would not load: {e}"))?;
-    crate::eye::apply(&w.window());   // the main window keeps the eye across its pages (eye.rs)
     Ok(())
 }
 

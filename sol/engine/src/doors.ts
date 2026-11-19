@@ -1,16 +1,16 @@
-// Doors: the notch (and its monitor form, the island) and the phone are ways in that are not the main window.
+// Doors: the phone is a way in that is not the main window.
 // A door talks in conversations of its own, never in whatever chat is open on the Mac. A door's call or text
 // continues the door's last conversation when that one last spoke less than DOOR_WINDOW ago; otherwise it starts
 // a fresh one (Marco, 2026-10-14: continuation by time, to keep it clean). engine/doors.json (gitignored)
 // remembers which conversations belong to which door and when each last spoke; threads.ts shows the door on
-// the thread so the sidebar can say "phone" or "notch" next to it.
+// the thread so the sidebar can say "phone" next to it.
 
 import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export type Door = "notch" | "phone";
-export const DOORS: Door[] = ["notch", "phone"];
+export type Door = "phone";
+export const DOORS: Door[] = ["phone"];
 export const DOOR_WINDOW_MS = 20 * 60_000;
 
 type Book = { of: Record<string, Door>; last: Partial<Record<Door, { sessionId: string; at: number }>> };

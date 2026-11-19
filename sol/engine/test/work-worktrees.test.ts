@@ -58,6 +58,7 @@ test("a worktree removed since it was seen stays a copy of its repo, its session
   git(repo, "worktree", "remove", join(wt, "r5-477"));
   invalidate();   // the list read again: the folders there and the ones found not to be worktrees forgotten
   assert.deepEqual(worktreeOf(join(wt, "r5-477")), { repo, name: "r5-477" });
+  folderOp("add", repo);   // as the test above, so this one also stands alone (the eval's check picks it by name)
   const r = fileSessions([s(repo), s(join(wt, "r5-477"))]);
   assert.deepEqual(r.projects.map((p) => p.path), [repo]);
   assert.equal(r.sessions.find((x) => x.worktree === "r5-477")?.gone, true);

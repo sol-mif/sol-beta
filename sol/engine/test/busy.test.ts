@@ -60,3 +60,26 @@ test("the writer lock keeps the folder, and a fresh talk's move onto its id keep
   assert.equal(sessionCwd("thread-2"), "/Users/m/kaat");
   assert.equal(sessionCwd("draft-2"), null);
 });
+
+test("#1566: background work (a run's background agents) does not hold a renew, and counts for everything else", async () => {
+  const { betweenTurns, whenBetweenTurns, turnLine, turnsInFlight, letGo } = await import("../src/busy.ts");
+  const bg = join("work", "run-1", "agents", "/Users/m/sol", true);
+  assert.equal(betweenTurns(), true, "a resting session with a 2 h background Bash is between turns");
+  assert.equal(turnLine(), "");
+  assert.equal(idle(), false, "the counter still holds it");
+  assert.deepEqual(busyIn("/Users/m/sol").map((j) => j.id), ["run-1"], "a move or a rename still waits for it");
+  assert.equal(letGo(), false, "letting go still waits for it");
+  const turn = join("work", "run-2", "auto");
+  assert.equal(betweenTurns(), false);
+  assert.deepEqual(turnsInFlight().map((j) => j.id), ["run-2"]);
+  assert.match(turnLine(), /^work run-2 \(auto\) \d+s$/, "the renew names the turn, never the background work");
+  let woke = false;
+  const p = whenBetweenTurns().then(() => { woke = true; });
+  await Promise.resolve();
+  assert.equal(woke, false);
+  turn();
+  await p;
+  assert.equal(woke, true, "the turn ended: between turns, with the agents still at work");
+  assert.equal(busyCount(), 1);
+  bg();
+});

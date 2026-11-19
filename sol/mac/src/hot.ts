@@ -1,4 +1,4 @@
-// Vite's hot updates, as the page hears them (issue #15). Each page (main, notch, island) imports this once from its
+// Vite's hot updates, as the page hears them (issue #15). Each page imports this once from its
 // main.tsx and hears its own updates: an update that landed makes its parts shimmer (renovation.landed), a compile
 // error is drawn in the taped part whose file it names (never Vite's red page: vite.config.ts turns the overlay off),
 // and a full reload leaves a mark so the page comes back saying so. On the bundled face there is no import.meta.hot:

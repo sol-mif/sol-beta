@@ -1,0 +1,161 @@
+/* Pieces in Build's project folders (#1092): the rows in the side, the piece in the hand, the piece in the room. Every space, size, corner
+   and colour is the scale's (the layout skill); the page's width is written once, here. */
+.fp-rows { position: relative; }
+.fp-seam { display: block; height: var(--hair); margin: var(--s1) var(--s2); background: var(--line); }
+
+/* the square: a tool's mark, where a session's row has its dot */
+.fp-sq { display: block; width: var(--s3); height: var(--s3); border-radius: calc(var(--r-chip) / 2); box-sizing: border-box; border: var(--hair) solid var(--dim); }
+.fp-sq.fp-working { border-color: var(--ink); animation: fp-breathe var(--d-pour) var(--e-move) infinite alternate; }
+.fp-sq.fp-you { border-color: var(--sun); background: color-mix(in srgb, var(--sun) 22%, transparent); }
+.fp-sq.fp-broken { border-color: var(--error); border-style: dashed; }
+@keyframes fp-breathe { from { opacity: 0.3; scale: 0.82; } }
+@media (prefers-reduced-motion: reduce) { .fp-sq.fp-working { animation: none; opacity: 0.6; } }
+
+.hc-side .fp-row { touch-action: none; user-select: none; }
+.hc-side .fp-row .hc-tt { color: var(--ink); }
+.hc-side .fp-row.fp-you .fp-fig { color: var(--sun); font-variant-numeric: tabular-nums; }
+.hc-side .fp-row .fp-fig { font-variant-numeric: tabular-nums; }
+.hc-side .fp-row.on :is(.hc-tt, .fp-fig) { color: var(--c-deep); }
+.hc-side .fp-row.on .fp-sq { border-color: var(--c-deep); }
+.fp-more { align-self: flex-start; border: 0; background: none; color: var(--mute); font: inherit; padding: 0 var(--s2); margin-left: calc(var(--s2) + var(--s2)); min-height: var(--h-row); cursor: pointer; }
+.fp-more:hover { color: var(--ink); }
+.hc-side .fp-row.fp-lifted { opacity: 0.35; }
+.hc-side .fp-row.fp-seated { animation: fp-seat var(--d-turn) var(--e-arrive); }
+@keyframes fp-seat { 40% { scale: 0.97; } }
+
+/* in the hand it is the piece itself (the design's NOW 3): over the side the row follows the hand; past the side's edge it
+   grows into the block it will be (its head and first three rows, real, at 0.96); no words, no tilt */
+.fp-carry { --fp-block-w: 340px; position: fixed; z-index: 60; pointer-events: none; isolation: isolate; width: calc(var(--s12) * 5); color: var(--ink);
+  translate: calc(-1 * var(--s4)) calc(-1 * var(--s4)); font-size: var(--t-body); line-height: var(--t-body-line); overflow: hidden;
+  transition: width calc(var(--d-turn) * 1.2) var(--e-move), scale calc(var(--d-turn) * 1.2) var(--e-move); }
+.fp-carry > :first-child { position: absolute; inset: 0; z-index: -1; }
+.fp-chead { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); white-space: nowrap; }
+.fp-chead span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fp-chead b { font-weight: 400; color: var(--dim); font-variant-numeric: tabular-nums; }
+.fp-carry.fp-you .fp-chead b { color: var(--sun); }
+.fp-crows { display: grid; grid-template-rows: 0fr; transition: grid-template-rows calc(var(--d-turn) * 1.2) var(--e-move); }
+.fp-crows > * { min-height: 0; }
+.fp-carry.fp-grown { width: var(--fp-block-w); scale: 0.96; }
+.fp-carry.fp-grown .fp-crows { grid-template-rows: 1fr; padding: 0 var(--s3) var(--s3); }
+.fp-crow { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); color: var(--dim); white-space: nowrap; overflow: hidden; }
+.fp-crow span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fp-crow > i { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); box-shadow: inset 0 0 0 var(--hair) var(--mute); }
+.fp-crow.wait > i { box-shadow: inset 0 0 0 var(--hair) var(--sun); }
+.fp-crow.half > i { background: var(--ink); box-shadow: none; }
+
+/* in Build's WorkSidebar (its .row grammar): the square sits where a session's state mark sits; the figure where its age is */
+.fp-g-work .fp-row { touch-action: none; user-select: none; }
+.fp-g-work .fp-mk { flex: none; width: var(--s3); height: var(--s3); display: grid; place-items: center; }
+.fp-g-work .fp-row .t { color: var(--ink); }
+.fp-g-work .fp-row .age { flex: none; color: var(--dim); font-variant-numeric: tabular-nums; }
+.fp-g-work .fp-row.fp-you .age { color: var(--sun); }
+.fp-g-work .fp-row.fp-lifted { opacity: 0.35; }
+.fp-g-work .fp-row.fp-seated { animation: fp-seat var(--d-turn) var(--e-arrive); }
+.fp-g-work .fp-seam { margin-left: var(--s3); }
+
+/* ── the piece in the room (the design's NOW 1): one column on the room's own ground, no card, no shadow ── */
+.fp-room { --fp-col: 640px; position: relative; height: 100%; overflow-y: auto; display: flex; justify-content: center; color: var(--ink);
+  font-size: var(--t-body); line-height: var(--t-body-line); animation: fp-fade var(--d-turn) var(--e-arrive); }
+@keyframes fp-fade { from { opacity: 0; } }
+.fp-col { width: min(var(--fp-col), 100%); padding: var(--s12) var(--s6) var(--s12); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--s6); }
+.fp-room .fp-head { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.fp-room .fp-head h2 { margin: 0; font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-turn { flex: none; width: var(--s4); height: var(--s4); padding: 0; background: none; cursor: pointer; }
+.fp-turn:hover { border-color: var(--ink); }
+.fp-room .fp-said { color: var(--dim); white-space: nowrap; }
+.fp-room.fp-you .fp-said { color: var(--sun); }
+.fp-room .fp-keys { margin-left: auto; display: flex; gap: var(--s1); flex: none; min-width: 0; }
+.fp-room .fp-keys button { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); border: var(--hair) solid var(--edge); background: none; color: var(--dim); font: inherit; cursor: pointer; white-space: nowrap; max-width: calc(var(--s12) * 5); overflow: hidden; text-overflow: ellipsis; }
+.fp-room .fp-keys button:hover { color: var(--ink); border-color: var(--dim); }
+.fp-room .fp-keys .fp-in { border-color: transparent; }
+
+/* the front: one thing, at title size, one line why, one button named by its effect */
+.fp-front { display: flex; flex-direction: column; gap: var(--s2); animation: fp-come var(--d-turn) var(--e-arrive); }
+@keyframes fp-come { from { opacity: 0; translate: 0 var(--s2); } }
+.fp-front.fp-leave { animation: fp-go calc(var(--d-turn) * 1.6) var(--e-leave) forwards; }
+@keyframes fp-go { to { opacity: 0; translate: calc(-1 * var(--s12)) 0; } }
+.fp-grp { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.fp-ft { margin: 0; font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 500; }
+.fp-why { margin: 0; color: var(--dim); font-size: var(--t-read); line-height: var(--t-read-line); }
+.fp-act { margin-top: var(--s2); }
+.fp-calm .fp-ft { color: var(--dim); font-weight: 400; }
+.fp-broke .fp-ft { color: var(--error); font-size: var(--t-read); line-height: var(--t-read-line); }
+
+/* the names: the rest, dim, no buttons; plates side by side when the rows have places (machines, areas) */
+.fp-names { display: flex; flex-direction: column; gap: var(--s4); }
+.fp-names.fp-plates { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--s12) * 4), 1fr)); gap: var(--s4) var(--s6); }
+.fp-plate { display: flex; flex-direction: column; min-width: 0; }
+.fp-names h3 { margin: 0 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--mute); }
+.fp-name { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); padding: 0 var(--s2); margin: 0 calc(-1 * var(--s2)); border: 0; border-radius: var(--r-row);
+  background: none; color: var(--dim); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.fp-name:hover, .fp-name.lit { color: var(--ink); background: var(--c-picked); }
+.fp-name > i { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); box-shadow: inset 0 0 0 var(--hair) var(--mute); }
+.fp-name.half > i { background: var(--ink); box-shadow: none; animation: fp-breathe var(--d-pour) var(--e-move) infinite alternate; }
+.fp-name.wait > i { box-shadow: inset 0 0 0 var(--hair) var(--sun); }
+.fp-name.done > i { background: var(--ok); box-shadow: none; }
+.fp-name > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-name small { flex: none; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-answered .fp-name { cursor: default; }
+.fp-answered .fp-name:hover { background: none; color: var(--dim); }
+
+/* the foot line: answered, with its undo, for six seconds */
+.fp-foot { position: absolute; left: 50%; bottom: var(--s6); translate: -50% 0; display: flex; align-items: center; gap: var(--s1); max-width: min(var(--fp-col), 90%);
+  color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: fp-fade var(--d-turn) var(--e-arrive); }
+.fp-foot button { border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: var(--mute); padding: 0; }
+
+/* the back: pearl ground, deep words; the four facts and the ledger */
+.fp-back { border-radius: var(--r-card); background: var(--c-pearl); color: var(--c-deep); padding: var(--s4) var(--s4) var(--s3); display: flex; flex-direction: column; gap: var(--s3); animation: fp-come var(--d-turn) var(--e-arrive); }
+.fp-back dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: var(--s1) var(--s4); }
+.fp-back dt { opacity: 0.55; }
+.fp-back dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.fp-back .fp-ledger { list-style: none; margin: 0; padding: var(--s2) 0 0; border-top: var(--hair) solid rgb(from var(--c-deep) r g b / 0.12); display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); }
+.fp-back .fp-ledger li { display: flex; gap: var(--s2); min-width: 0; }
+.fp-back .fp-ledger li span:first-child { flex: none; opacity: 0.55; }
+.fp-back .fp-ledger li span:nth-child(2) { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-back .fp-ledger small { flex: none; opacity: 0.55; font-size: inherit; }
+.fp-backacts { display: flex; gap: var(--s1); }
+.fp-backacts button { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); border: var(--hair) solid rgb(from var(--c-deep) r g b / 0.3); background: none; color: var(--c-deep); font: inherit; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .fp-front, .fp-front.fp-leave, .fp-back, .fp-room { animation-duration: calc(var(--d-turn) * 0.8); } }
+
+/* the piece in a session's block: the same front, compact at the block's width */
+.fp-block { height: 100%; overflow-y: auto; padding: var(--s1) 0; }
+.fp-face.fp-compact { display: flex; flex-direction: column; gap: var(--s3); }
+.fp-compact .fp-ft { font-size: var(--t-read); line-height: var(--t-read-line); }
+.fp-compact .fp-why { font-size: var(--t-body); line-height: var(--t-body-line); }
+.fp-compact .fp-act { margin-top: 0; }
+.fp-compact .fp-names { gap: 0; }
+.fp-compact .fp-more { margin-left: 0; padding: 0; min-height: var(--h-chip); }
+.fp-plain { height: var(--h-row); padding: 0 var(--s4); border-radius: var(--r-pill); border: var(--hair) solid var(--edge); background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.fp-face { display: flex; flex-direction: column; gap: var(--s6); }
+
+.fp-aside { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); border: var(--hair) solid var(--edge); background: none; color: var(--dim); font: inherit;
+  cursor: pointer; white-space: nowrap; max-width: calc(var(--s12) * 5); overflow: hidden; text-overflow: ellipsis; }
+.fp-aside:hover { color: var(--ink); border-color: var(--dim); }
+.fp-room .pf-head b { flex: none; max-width: 50%; }
+
+/* Jev only half sure a change needs him (design JEV 2): the square's rim dashed, no yellow, no count change */
+.fp-sq.fp-doubt { border-style: dashed; border-color: var(--ink); }
+/* a script piece waits for his yes to run the folder's scripts (the reviewer's 2): one dashed chip under the pieces */
+.fp-ask { border: var(--hair) dashed var(--edge); background: none; color: var(--dim); font: inherit; text-align: left; width: 100%; cursor: pointer; }
+/* a refused drop's reason, under the folder's pieces for a few seconds: words, never a colour */
+.fp-said { padding: var(--s1) var(--s4); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
+/* the maker in the room: padded like the room, so the pearl never touches the side and the front's notes stay in */
+.fp-make { box-sizing: border-box; width: 100%; padding: var(--s12) var(--s8) var(--s6); }
+/* "new piece" is quiet until the hand is over it: it is a way to make one, not a piece */
+.fp-new .fp-sq, .fp-new { color: var(--mute); border-color: var(--mute); }
+.fp-new:is(:hover, :focus-visible) { color: var(--ink); }
+/* open (the bench is in the room): its words stay readable on the row's own ground */
+.fp-new.on, .fp-new.on .fp-sq { color: var(--ink); border-color: var(--dim); }
+/* a piece is born: its row drops into the folder the first time its recipe appears (born.ts), rows 60 ms apart.
+   It moves and fades only: a row may hold the kit's glass, which measures its own box, so it is never scaled */
+.fp-row.fp-born { animation: fp-born calc(var(--d-pour) / 2) var(--e-pour) both; animation-delay: calc(var(--born, 0) * var(--d-reveal) / 2); }
+@keyframes fp-born { from { opacity: 0; translate: 0 calc(-1 * var(--s3)); } }
+@media (prefers-reduced-motion: reduce) { .fp-row.fp-born { animation: none; } }
+/* the ghost row (ghost.ts): "make: releases" arrives with the pearl tick at its left, never yellow; gone at first hover */
+.fp-new.fp-offer { color: var(--dim); box-shadow: inset calc(var(--hair) * 2) 0 0 var(--c-pearl-line); }
+.fp-new.fp-offer:is(:hover, :focus-visible) { box-shadow: none; }
+/* the folder's first second (the designer's NOW 1 of 06:31): the ask that wakes its tools is its first row, in ink; the
+   pieces past five fold into one dim row by name, no square */
+.fp-ask.fp-first, .fp-ask.fp-first .fp-sq { color: var(--ink); border-color: var(--ink); }
+.fp-fold { color: var(--dim); }
+.fp-fold:is(:hover, :focus-visible) { color: var(--ink); }

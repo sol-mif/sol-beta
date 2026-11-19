@@ -1,0 +1,31 @@
+/* The stack's inside (Stack.tsx, #692 suite step 2): a row, in order, the next one lit. On the frame's pearl, made of
+   the scale's values only (the layout skill): each mark sits in the ring's column, the words on the head's words edge. */
+.stk { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); min-width: 0; }
+.stk-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.stk-row { display: flex; align-items: center; gap: var(--s2); min-width: 0; min-height: var(--h-row); border-bottom: var(--hair) solid var(--c-pearl-line); font-size: var(--t-body); line-height: var(--t-body-line); }
+.stk-row:last-child { border-bottom: 0; }
+.stk-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.72; }
+.stk-row.next .stk-text { font-weight: 500; opacity: 1; }
+.stk-row.done .stk-text { text-decoration: line-through; opacity: 0.45; }
+.stk-row.held .stk-text { opacity: 0.85; }
+
+/* the mark: the item's state in the ring's column, pressed to tick it */
+.stk .stk-mark { all: unset; position: relative; flex: none; box-sizing: border-box; width: var(--s4); height: var(--s4); cursor: pointer; }
+.stk-mark::before { content: ""; position: absolute; inset: var(--s1); border-radius: var(--r-pill); border: var(--hair) solid currentColor; opacity: 0.5; }
+.stk-row.next .stk-mark::before { background: var(--c-deep); border-color: var(--c-deep); opacity: 1; box-shadow: 0 0 0 var(--s1) var(--c-pearl-line); }
+.stk-row.done .stk-mark::before { background: var(--green-strong); border-color: var(--green-strong); opacity: 1; }
+.stk-row.held .stk-mark::before { border-style: dashed; opacity: 0.9; }
+.stk-mark:focus-visible::before { opacity: 1; }
+
+/* a gate: a step that acts in his name; the run asks before it */
+.stk-gate { flex: none; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--yellow-soft); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+
+/* the moves: under the pointer, or when the row has the keyboard */
+.stk-acts { flex: none; display: none; gap: var(--s1); }
+.stk-row:hover .stk-acts, .stk-row:focus-within .stk-acts { display: flex; }
+.stk-row:hover .stk-gate, .stk-row:focus-within .stk-gate { display: none; }
+@media (hover: none) { .stk-acts { display: flex; } }
+.stk-foot { margin: 0; padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); opacity: 0.6; }
+/* the moves keep their pill inside "what came out" (pass 2's .p2-stickies button strips a button bare) */
+.stk .pc-act { padding: 0 var(--s3); border: var(--hair) solid currentColor; }
+.stk .pc-act.quiet { border-color: transparent; }

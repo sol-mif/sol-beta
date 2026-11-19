@@ -4,9 +4,9 @@
 //
 // In:  { type: "say", text, seat?, sessionId?, model?, effort?, files?, door?, fresh?, cwd?, parent? }   seat: "codex" | "claude"
 //        cwd: a new GPT talk's project folder (#182): Codex works there; none = Sol's home. parent: the talk it carries on
-//        door: "notch" | "phone": a way in outside the main window; with no sessionId it continues the door's own last
+//        door: "phone": a way in outside the main window; with no sessionId it continues the door's own last
 //        conversation when it spoke less than 20 min ago, else starts one (src/doors.ts); fresh: true always starts one
-//      { type: "stop", sessionId? }      this socket's turn; with sessionId (or a draft), the Life turn on it (the notch's Stop)
+//      { type: "stop", sessionId? }      this socket's turn; with sessionId (or a draft), the Life turn on it, from any socket
 //      { type: "list" }                      -> threads
 //      { type: "open", seat, sessionId }     -> thread
 //      { type: "open", seat, sessionId? , draft?, resume: true }   the face's re-sync after its link came back (#17): a
@@ -21,26 +21,24 @@
 //      { type: "browser.watch", tab|null } { type: "browser.open", url, sessionId? } { type: "browser.close", tab }
 //      { type: "browser.select", tab } { type: "browser.input", tab, event } { type: "browser.navigate", tab, action }
 //      { type: "desk.act", sessionId, id, act, ... } Marco did something on a card (src/desk.ts); { type: "desk.get", sessionId }
-//      { type: "notify.seen", id }          Marco saw a ping (src/ping.ts): counts only from the ping's destination
-//      { type: "notify.ack", id }           the phone has a ping (else it moves to the notch after 20 s)
-//      { type: "hello", face }              window | notch | phone: which face this socket is (pings are routed by it)
-//      { type: "presence", focused, idleSeconds }   the main window: focus and system idle (src/creature.ts)
+//      { type: "seen", id } / { type: "seen", all: true }   Marco saw a moment, or waved them all off (src/notify.ts):
+//                                            counts only from the moment's destination
+//      { type: "hello", face }              window | phone: which face this socket is (moments go by it)
+//      { type: "presence", focused, visible, idleSeconds }   the main window: focus, on his screen (the gate of one
+//                                            notification, #845; absent, focus stands for it) and system idle
 //      { type: "dictation", on }            dictation started / stopped on this face
-//      { type: "eye", invisible }           the notch's eye, after each flick and on connect (src/eye.ts); no answer
-//      { type: "eye.list" } / { type: "eye.tick", bundle, on } / { type: "eye.add", name, bundle }   the private list
-//                                            (src/private.ts, home/private.json): { apps } back under type and rid
 //      { type: "arrange.get" } / { type: "arrange.set", patch }   the arrangement (src/arrange.ts) -> arrange.changed
 //      { type: "arrange.used", counts: { <button id>: n } }   presses on the rails, batched a minute; no answer
 //      { type: "arrange.undo" }   the agent's last change to the arrangement taken back, one step only
-//      { type: "dictated", raw, typed, app, name?, title, seconds, went }   the notch typed a dictation into an app
-//                                            (#110): appended to home/voice/dictations/<YYYY-MM-DD>.jsonl (src/dictations.ts)
 //      { type: "face.broken", site, error } / { type: "face.mended", site }   a part of the window threw when it drew, or
 //                                            drew again (Site.tsx); after a recent face edit, src/changing.ts may take it back
 // Out: { type: "start", seat, sessionId }
 //      { type: "delta", text }               streamed assistant text
 //      { type: "tool", seat, id, kind, text, detail?, ok?, done }   one step of the seat's work; the same id again when it completes
 //      { type: "usage", context, window, parts }   tokens in the window, its size, and a rough split of it
-//      { type: "done", seat, sessionId, ok?, stopped?, turns?, costEstimate? }
+//      { type: "done", seat, sessionId, ok?, stopped?, turns?, costEstimate?, tokens? }   tokens: what a block's seat spent (step A2)
+//      { type: "seat.ask", id, seat, sessionId?, ask }   a block's seat asks (a permission, a question): answered by
+//                                            { type: "seat.answer", id, answer } from Sol's own window (seats.ts SEAT_WIRE)
 //      { type: "said", seat, sessionId, text, door? }   to everyone: a finished sentence of Sol's, and which door asked
 //      { type: "error", message }
 //      { type: "threads", threads: [{ seat, sessionId, title, updatedAt, door?, moved? }] }   moved: handed into Work
@@ -50,15 +48,14 @@
 //      { type: "tabs", tabs: [{ id, sessionId, title, url, active }] }   every browser tab change, to every face
 //      { type: "frame", tab, data, w, h }    base64 JPEG of the tab being watched, <= 10/s
 //      { type: "desk", sessionId, cards }    the desk of a conversation, to every face on every change
-//      { type: "pin", card | null }          the card pinned to the notch, to every face
 //      { type: "arrange.changed", arrangement, note?, refused?, undo? }   to every face on a change; refused: to the asker
 //        only; undo { who, what }: an agent changed it, the rail's note
 //      { type: "changing", seat, sessionId, kind, file?, files?, line, done, ok? }   Sol changing its own face (src/changing.ts), to every face
-//      { type: "notify", id, seat, sessionId, line, at, dest } / { type: "notify.clear", id } / { type: "notify.mark", count }
-//                                            / { type: "notify.dot", ... }   a ping, to its destination only (src/ping.ts)
+//      { type: "moment", id, kind, sessionId?, seat, line, at } / { type: "moment.gone", id }   one notification, to
+//                                            one place: the window if Sol is on his screen, else a banner on the Mac (src/notify.ts)
 //      { type: "engine", phase: "up" }      on connect; { type: "creature.state", state, asks } on every change, to every
 //                                            face; { type: "creature.flash", kind: "done" | "wrong" } (src/creature.ts);
-//                                            { type: "creature.ask", ask } and { type: "creature.turn", turn } likewise (#6)
+//                                            { type: "creature.turn", turn } likewise
 //      { type: "health", health }            kept, build, face, reverted (src/health.ts), to every face when it changes;
 //                                            also in settings' up object
 // HTTP: GET /health (says the contract, #630), GET /things (the home's things, for the frame, #630; with sol.frame on each says its engine half, #633, and the after-release card, #634), POST /things/release/undo and /close (the card's presses, #634), GET /log?since= and POST /things/:id/undo and GET /things/tools (#633), POST /claim (the harness, a file another branch changed: a claim ping to its holder, #202), POST /letgo (a window going back to the NucBox, One Sol #62), GET /file?path= (only inside home/), GET /pane-image?path= (an image the file pane opened), GET /pane-asset/<folder>/<rel> (a page's own files, for the page pane, #54), POST /tool (used by src/mcp-stdio.ts; /browser is an alias).
@@ -68,8 +65,9 @@
 import { conversions } from "./convert/start.js";   // first: the saved data's conversion steps run before any module reads it (#422)
 import { doorOpen, appPage, tailnetOk as tailnetDoor } from "./door.js";
 import { turnOn, registerSeats, seatFor } from "./seatturn.js";   // the seat seam (step 6, seats.ts): a turn on a seat, and Sol's own two as seats
+import { both, refusalIn } from "./consent.js";   // what the person allowed (#1216): a folder's level from ~/.sol/record/me.json
 import { plan as goBackPlan, goBack } from "./goback.js";
-import { join as joinBusy, idle as engineIdle, busyList, busyLine, onBusy, lockSession, relockSession, Held, letGo, refusedWhileLettingGo } from "./busy.js";
+import { join as joinBusy, busyList, onBusy, lockSession, relockSession, Held, letGo, refusedWhileLettingGo } from "./busy.js";
 import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { resolve, dirname, relative, join, basename } from "node:path";
@@ -77,12 +75,12 @@ import { readFileSync, realpathSync, statSync, createReadStream, unlinkSync } fr
 import { randomUUID } from "node:crypto";
 import { homedir, userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
-import { WebSocketServer, WebSocket } from "ws";
+import { WebSocket, faceServer } from "./face-socket.js";   // ws's WebSocket, and the faces' server (#1438)
 import { Relay, relayFor } from "./relay.js";
 import { parts, type Engine } from "./parts.js";   // a new part is a file in src/parts/, not a line here (#934)
 import { query, createSdkMcpServer, tool, type Options, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Codex, type ModelReasoningEffort, type ThreadEvent, type UserInput } from "@openai/codex-sdk";
-import { listThreads, openThread, codexLastUsage, threadExists, threadSettings, codexCwd, invalidateCodex, type Seat } from "./threads.js";
+import { listThreads, openThread, codexLastUsage, threadExists, threadSettings, codexCwd, invalidateCodex, codexEnv, type Seat } from "./threads.js";
 import { saveFiles, attachedLines, serveFile, servePaneImage, type FileIn } from "./files.js";
 import { blocksNow } from "./work/blocks.js";   // GET /blocks (#695)
 import { setBrowserProfile, browserProfileDir, addFace, removeFace, watch, openTab, closeTab, selectTab, navigateTab, resizeTab, inputTab, inspectTab, locateTab, adoptTabs, type TurnCtx } from "./browser.js";
@@ -92,7 +90,7 @@ import { setSuggestSend } from "./suggest.js";   // Home offers a group once (#3
 import { HOME_INVENTORY, solScript, type Inventory } from "./inventory.js";
 import { transcribe, DICTATION_MODEL } from "./voice.js";
 import { makeCall, haveVoiceKey, voiceKeyName, voiceVendor, type VoiceCall } from "./call.js";
-import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, frameOn } from "./settings.js";
+import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, onLens, onSeatSet, readings, versionMode } from "./settings.js";
 import { setArrangeHome, arrangeMsg, setArrangement, undoArrangement, addUsage, oneAsk } from "./arrange.js";
 import { setTitle, nameConversation, namingModel } from "./titles.js";
 import { Sample } from "./sample.js";
@@ -103,40 +101,43 @@ import { sessionItems, sessionInfo, setWorkHome, workFolderIn, relocated } from 
 import { reviewThreads } from "./work/review.js";
 import { servePaneAsset, keyedAsset } from "./work/page.js";
 import { getRun, allRuns } from "./work/runs.js";
-import { renewOnBuild } from "./renew.js";
+import { startRenew } from "./renewing.js";   // the renew, between turns (#1566)
 import { addWorkFace, removeWorkFace, handleWork, setWorkChanging, broadcastSessions, askInSession } from "./work/wire.js";
 import { addTeamFace, removeTeamFace, handleTeam, startTeam, setRegistry, hearClaim, moveNow, cloudNow, tonightNow, v3Health } from "./team/wire.js";
-import { relayServer, relayRoutes, RelayHub, hubHttp, restartRelay, CLOUD_FILE, ENGINE_HUB } from "./team/relay.js";
-import { signIn, signOut, accounts as cloudAccounts } from "./team/cloud.js";
+import { relayServer, relayRoutes, RelayHub, hubHttp, restartRelay, ENGINE_HUB } from "./team/relay.js";
 import { Spool, Registry, Guesses, Proofs, REGISTRY_MAX, makeCode } from "./hub/index.js";   // the hub, built alone for the box as the package sol/hub (#208)
-import { ghVerify } from "./team/identity.js";
+import { identity } from "./seams/identity.js";   // sign-in and the Sol ID (#1320)
+import { dataStore, useDataStore, hubStore, bothStores, SUPABASE_USAGE } from "./seams/store.js";   // data storage (#1320)
 import { hostedMembers } from "./team/members.js";
 import { startShip } from "./team/ship.js";
 import { getTeam, hostedRoom, speakParagraph, hubHosts, sharedHub } from "./team/settings.js";
 import { guardSpeak } from "./team/control.js";
 import { ownGhOnPath } from "./team/gh.js";
 import { Changing } from "./changing.js";
-import { addPingFace, removePingFace, seenPing, ackPing, pingFaceIs } from "./ping.js";
+import { addMomentFace, removeMomentFace, momentFaceIs, sessionSeen, heard as momentHeard } from "./notify.js";   // "seen" and the work wiring: parts/notify.ts
 import { workState, STATE_DIR, mark } from "./work/state.js";
-import { storeDictation } from "./dictations.js";
 import { setTrackHome, setTrackVersion, trackIn, trackOut, startTrackSender, trackUrlOf, EVERY } from "./track.js";
 import { setErrorCount, countError, audienceOf, shippedOf, countsErrors, type Audience } from "./errcount.js";
 import { STAGE, stageRefusal } from "./stage.js";
 import { startOthers } from "./track-files.js";
-import { addCreatureFace, removeCreatureFace, setRole, markSolWindow, setPresence, setDictation, sent as creatureSent, lifeTurn, type Role } from "./creature.js";
+import { addCreatureFace, removeCreatureFace, setRole, roleOf, markSolWindow, setPresence, setDictation, sent as creatureSent, lifeTurn, type Role } from "./creature.js";
 import { watchHealth, noteRevert, type Health } from "./health.js";
 import { watchVersion, versionNow, versionLine } from "./version.js";   // the release plus my own layer (#417)
 import { contractNow } from "./things.js";   // freeform's foundation (#630): the contract number, the home's things
-import { kernelNow, syncKernel, thingTools, runThingTool } from "./kernel.js";   // #633: the log, the loader, the gate, undo (behind sol.frame)
+import { kernelNow, kernelFollows, thingTools, runThingTool } from "./kernel.js";   // #633: the log, the loader, the gate, undo (behind sol.frame)
 import { logAnswer } from "./log.js";   // the answer to GET /log (WIRE.md §1)
-import { turnStarted, turnEnded, stepTaken, sentAtStart, fileOf, sizeOf, claudeTokens, codexTokens, codexStepOf } from "./seatlog.js";   // a seat's own steps on the log (design step 1)
+import { logging, turnStarted, turnEnded, stepTaken, sentAtStart, fileOf, sizeOf, claudeTokens, codexTokens, codexStepOf } from "./seatlog.js";   // a seat's own steps on the log (design step 1)
 import { afterRelease } from "./release.js";   // the first start after a release (#634)
 import { setShelfHome, startSweep } from "./shelf.js";
-import { handleGrab } from "./grab.js";
 import { setAnticipate, handleAnticipate } from "./anticipate.js";
 import { handleTalks, setTalks } from "./talks.js";   // Conversations (#253): the talks of home/voice/talks
-import { setSolHidden } from "./eye.js";
-import { setPrivateHome, handlePrivate } from "./private.js";
+import { homeWindow, ceilingGuard, ceilingHooks, solChecked } from "./home/wire.js";   // Home's engine half (#790), behind home.whole; Home 5's upper limit at position two, only inside a Home Run (its messages: parts/home.ts)
+import { claudeModels, claudeDefault, codexModels, codexDefault, codexWindow, latest, refreshClaude } from "./models.js";   // #863
+import { startAgents } from "./agent/index.js";   // the folder's agent (step 1, record-only): agent/; its page and its messages are parts/agent-page.ts
+import { makeJev } from "./agent/jev.js";
+import { connectorsGuard, servicesOff, standIns, toolKey } from "./connectors.js";   // a read turn through the person's Claude account; its socket message is parts/connectors.ts
+import { letGoIfBehind } from "./backlog.js";   // a window that stops reading is let go, never held in the heap (#1107)
+import { isQuiet } from "./quiet.js";
 
 // Keys live in sol/engine/.env (gitignored): ELEVENLABS_API_KEY or GEMINI_API_KEY for the call (src/call/vendor.ts).
 try { process.loadEnvFile(resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env")); } catch { /* no .env: no call */ }
@@ -146,7 +147,7 @@ const PORT = Number(process.env.SOL_PORT ?? process.env.PORT ?? 7777); // SOL_PO
 const STARTED = new Date().toISOString();
 const HOST = "127.0.0.1";
 
-type Say = { type: "say"; text: string; seat?: Seat; sessionId?: string; draft?: string; model?: string; effort?: string; files?: FileIn[]; door?: Door; fresh?: boolean; cwd?: string; parent?: string };
+type Say = { type: "say"; text: string; seat?: Seat; sessionId?: string; draft?: string; model?: string; effort?: string; files?: FileIn[]; door?: Door; fresh?: boolean; cwd?: string; parent?: string; read?: boolean };   // read: a read turn (connectorsGuard below)
 type Stop = { type: "stop"; sessionId?: string };
 type List = { type: "list" };
 type Open = { type: "open"; seat: Seat; sessionId: string; draft?: string; resume?: boolean };
@@ -168,13 +169,13 @@ setWorkHome(HOME, reviewThreads);   // Work's side lists GPT talks in folders, n
 setArrangeHome(HOME, (m) => everyone(m));   // the arrangement (#133): its own file in the back room, told to every face
 // tracking (#356): how Sol is used as counts, home/track/<day>.jsonl, every socket message passing src/track.ts once;
 // the days before today go once a day to the cloud the team meets on (POST /relay/track on its box), SOL_TRACK_URL
-// names another address (a self-hoster), `off` none. On from the start (beta-rules §6); the first window shows one
-// card, one button (settings.track.told). Who: the Sol name on the cloud when signed in, and the Mac's user name.
+// names another address (a self-hoster), `off` none. Counted from the start, sent only once the first window's one
+// card is pressed (settings.track.told, #500). Who: the Sol name on the cloud when signed in, and the Mac's user name.
 // Once a day the other tools' own files on this Mac are counted too (src/track-files.ts): Claude Code's and Codex's
 // transcripts as tokens a day, the plan type in their sign-in files, which AI apps are installed. Numbers, never words.
 // SOL_TRACK=off: nothing counted, written or sent (the tests that spawn this engine against the real settings file)
-const TRACK_OFF = /^(off|none|0|false)$/i.test((process.env.SOL_TRACK ?? "").trim());
-if (!TRACK_OFF) setTrackHome(HOME, { consent: () => getSettings().track, who: () => ({ name: cloudNow().login, user: userInfo().username }) });
+const TRACK_OFF = isQuiet() || /^(off|none|0|false)$/i.test((process.env.SOL_TRACK ?? "").trim());
+if (!TRACK_OFF) setTrackHome(HOME, { consent: () => getSettings().track, who: () => ({ name: cloudNow().login, id: identity().id(), user: userInfo().username }), bearer: () => identity().bearer() });
 execFile("git", ["log", "-1", "--format=%h"], { cwd: HERE, timeout: 5000 }, (_e, out) => setTrackVersion(String(out ?? "").trim()));
 // error counts per feature (#485, errcount.ts): counts only, the engine's file, the type of error and where it was caught,
 // for Sol testers (origin sol-beta) and Sol developers (sol-dev); a Sol user (any other origin) is not counted. The
@@ -195,15 +196,20 @@ if (!TRACK_OFF && !STAGE) {
   process.on("uncaughtExceptionMonitor", (err) => countError(err, "uncaught"));
 }
 // SOL_TRACK_URL: unset is the team's hub; an http(s) address is that; any other word is off (never a silent fallback)
-const trackUrl = () => { const u = (process.env.SOL_TRACK_URL ?? "").trim(); return TRACK_OFF ? null : !u ? trackUrlOf(sharedHub()) : /^https?:\/\/\S+$/.test(u) ? u : null; };
-if (!TRACK_OFF) { startTrackSender(trackUrl); startOthers(); }
-// the shelf (Grab and Shelf, #200): home/shelf/, its items served by GET /file, the whole list told to every face
-setShelfHome(HOME, (abs) => `http://${HOST}:${PORT}/file?path=${encodeURIComponent(abs)}`, (items) => everyone({ type: "shelf.items", items }));
+const trackUrl = () => { const u = (process.env.SOL_TRACK_URL ?? "").trim(); return TRACK_OFF || !getSettings().track.told ? null : !u ? trackUrlOf(sharedHub()) : /^https?:\/\/\S+$/.test(u) ? u : null; };
+// the beta's usage goes through the data seam (#1320): the hub as before and Sol's Supabase project beside it (#1350),
+// until Supabase has run long enough to stand alone. SOL_DATA=hub: the hub alone; SOL_DATA=supabase: Supabase alone.
+// A SOL_TRACK_URL set (another address, or a word that is off) is the whole of where usage goes: Supabase gets nothing
+const supabaseUsage = () => TRACK_OFF || !getSettings().track.told || (process.env.SOL_TRACK_URL ?? "").trim() ? null : SUPABASE_USAGE;
+const dataWay = (process.env.SOL_DATA ?? "").trim().toLowerCase();
+useDataStore(dataWay === "hub" ? hubStore(trackUrl) : dataWay === "supabase" ? hubStore(supabaseUsage) : bothStores(hubStore(trackUrl), hubStore(supabaseUsage)));
+if (!TRACK_OFF) { startTrackSender(() => dataStore().usage()); startOthers(); }
+// the shelf (#200): home/shelf/, where a talk's export lands, its items served by GET /file
+setShelfHome(HOME, (abs) => `http://${HOST}:${PORT}/file?path=${encodeURIComponent(abs)}`);
 // Anticipate (#253): a talk's turns and cards, told to every face; the helper is sol/mac/listen/bin/listen
 setAnticipate(HOME, resolve(HERE, "..", ".."), (m) => everyone(m));
 setTalks(HOME, (m) => everyone(m));   // Conversations (talks.ts): talks.changed reaches every face
 setSuggestSend((m) => everyone(m));   // home.suggest (#321): the face draws it under that conversation only
-setPrivateHome(HOME);   // the clean screen's private list (#253): home/private.json
 // the first start after a release (#634, release.ts): a block made under an older contract is migrated, every block
 // re-linted, one that cannot be carried marked remake; the face's one card says so (GET /things). Once per contract.
 try {
@@ -226,15 +232,16 @@ const health = watchHealth(resolve(HERE, ".."), (h: Health) => everyone({ type: 
 // what this Sol runs (#417): read from git after the start, never before it; /health, the relay and Cowork say it
 watchVersion(resolve(HERE, ".."));
 // Ship (#33, #418): a new release heard on the relay or asked of GitHub: offered to every face, a dev one installed at a quiet moment (team/ship.ts)
-startShip(resolve(HERE, "..", ".."), (m) => everyone(m));
+startShip(resolve(HERE, "..", ".."), (m) => { everyone(m); momentHeard(m); });   // a new stable is a moment (notify.ts)
 
 const EFFORTS = ["low", "medium", "high", "max"];
 
 function send(ws: Wire, msg: object) {
-  if (ws.readyState !== WebSocket.OPEN) return;
+  if (ws.readyState !== WebSocket.OPEN || (ws instanceof WebSocket && letGoIfBehind(ws))) return;   // what a window has not read stays in this heap: past the cap it is let go (#1107)
   trackOut(ws, msg);   // counted by its kind alone (src/track.ts); a message to every face once
   ws.send(JSON.stringify(msg));
   if (ws instanceof WebSocket) creatureSent(ws, msg);   // the creature hears calls, voice and text out, turn ends (creature.ts)
+  if (ws instanceof WebSocket && (msg as any).type === "done" && (msg as any).sessionId) momentHeard({ ...(msg as any), type: "life.done" });   // a Life turn's end on a real socket (not a tap): a moment (notify.ts)
 }
 
 const short = (s: string, n = 60) => {
@@ -277,34 +284,17 @@ const hostOf = (u: string) => { try { return new URL(u).host; } catch { return s
 
 // ---- models ----
 
-// Codex: gpt-6.1-sol first, then whatever Codex itself lists as visible (its own cache, read only).
-function codexModels(): string[] {
-  const out = ["gpt-6.1-sol"];
-  try {
-    const cache = JSON.parse(readFileSync(join(homedir(), ".codex", "models_cache.json"), "utf8"));
-    for (const m of cache.models ?? []) if (m.visibility === "list" && !out.includes(m.slug)) out.push(m.slug);
-  } catch {}
-  return out;
-}
-const CLAUDE_MODELS = ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
-
-// Window sizes: Codex says so in its model cache; Claude's result message says so (and we guess until then).
-function codexWindow(model?: string): number {
-  try {
-    const cache = JSON.parse(readFileSync(join(homedir(), ".codex", "models_cache.json"), "utf8"));
-    const m = (cache.models ?? []).find((x: any) => x.slug === (model ?? "gpt-6.1-sol"));
-    if (m?.context_window) return Math.round(m.context_window * (m.effective_context_window_percent ?? 100) / 100);
-  } catch {}
-  return 258400;
-}
+// What each seat offers comes from the companies' own lists (models.ts, #863); Claude's window: its result message says
+// so, and we guess until then.
 const claudeWindowGuess = (model: string) => (model.includes("haiku") ? 200000 : 1000000);
 
 function seatsMsg() {
   return [
-    { seat: "codex", label: "Codex", via: "ChatGPT subscription", models: codexModels(), default: "gpt-6.1-sol", efforts: EFFORTS, can: INV.can, cannot: INV.cannot },
-    { seat: "claude", label: "Claude", via: "Claude subscription", models: CLAUDE_MODELS, default: "claude-opus-5-5", efforts: EFFORTS, can: INV.can, cannot: INV.cannot },
+    { seat: "codex", label: "Codex", via: "ChatGPT subscription", models: codexModels(), default: codexDefault(), efforts: EFFORTS, can: INV.can, cannot: INV.cannot },
+    { seat: "claude", label: "Claude", via: "Claude subscription", models: claudeModels(), default: claudeDefault(), efforts: EFFORTS, can: INV.can, cannot: INV.cannot },
   ];
 }
+const modelsMsg = () => ({ type: "models", seats: seatsMsg(), codex: codexModels(), claude: claudeModels(), efforts: EFFORTS });
 
 // Rough split of the window: bytes/4 for the home files the seats read at start, chars/4 for the conversation.
 function homeFilesTokens(): number {
@@ -349,10 +339,10 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
   const ws = conn.ws;
   const { seat: provider, instead } = seatFor(say.seat ?? "codex");
   // the seat named is gone: Claude takes the turn as a fresh one (the gone seat's conversation is not Claude's)
-  if (instead) { send(ws, { type: "seat.instead", why: instead }); say = { ...say, sessionId: undefined }; }
+  if (instead) { if (kernelNow()) send(ws, { type: "seat.instead", why: instead }); say = { ...say, sessionId: undefined }; }   // said with the frame on only, as before the seam (#1270)
   const seat = (provider.builtIn ? provider.name : say.seat) as Seat;
   // The browser tools know which conversation and which face they belong to through this.
-  const turn: TurnCtx = { sessionId: say.sessionId ?? say.draft, seat, sink: (step) => send(ws, { type: "tool", seat, ...step }) };
+  const turn: TurnCtx = { sessionId: say.sessionId ?? say.draft, seat, said: say.text, sink: (step) => send(ws, { type: "tool", seat, ...step }) };
   conn.sessionId = say.sessionId;
   // one ending per turn: the seat ends it when its answer is complete; a refusal, a throw or a stop ends it in the
   // finally below, once (an error alone left the creature thinking the turn ran on)
@@ -378,8 +368,7 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
       conn.ws = {
         get readyState() { return ws.readyState; },
         send: (line: string) => {
-          ws.send(line);
-          const m = JSON.parse(line);
+          if (ws instanceof WebSocket && letGoIfBehind(ws)) return; ws.send(line); const m = JSON.parse(line);   // the same cap as send() (#1107)
           if (m.type === "delta") answer += m.text;
           else if (m.type === "done" && m.ok && m.sessionId) void nameThread(seat, m.sessionId, say.text, answer);
         },
@@ -437,7 +426,7 @@ async function nameThread(seat: Seat, sessionId: string, first: string, answer: 
   await broadcastThreads();
   broadcastSessions();   // a GPT talk in a folder is a row in Work's side (#182): it wears the name too
 }
-// Anticipate's typed asks (anticipate.ts): a say on the Claude seat by the notch's door, fresh the first time and named
+// Anticipate's typed asks (anticipate.ts): a say on the Claude seat, fresh the first time and named
 // "Talk · <day> <time>" as it starts (so the usual naming leaves it), its words read back for the card
 function talkSay(ws: Wire, text: string, sessionId?: string, title?: string): Promise<{ text: string; sessionId?: string }> {
   let said = "", sid = sessionId;
@@ -447,7 +436,7 @@ function talkSay(ws: Wire, text: string, sessionId?: string, title?: string): Pr
     else if (m.type === "delta") said += m.text;
     send(ws, m);
   } };
-  const say: Say = { type: "say", text, seat: "claude", door: "notch", ...(sessionId ? { sessionId } : { fresh: true, draft: randomUUID() }) };
+  const say: Say = { type: "say", text, seat: "claude", ...(sessionId ? { sessionId } : { fresh: true, draft: randomUUID() }) };
   return handleSay({ ws: tap, chars: 0, sessionId }, say, new AbortController()).then(() => ({ text: said, sessionId: sid }));
 }
 const settingsMsg = () => ({
@@ -455,25 +444,26 @@ const settingsMsg = () => ({
   // voiceNow: the maker that carries a call now, "auto" resolved; errorCounts: whether this Sol counts its errors (a Sol
   // tester's or developer's, errcount.ts), so the counting card says it (both read-only)
   settings: { ...getSettings(), voiceNow: voiceVendor(), errorCounts: !TRACK_OFF && !STAGE && countsErrors(AUDIENCE),
-    // Cowork v3 (fr-30): SOL_COWORK_V3 wins over the setting, so the face reads the switch as the engine does; absent, today's
-    ...(coworkV3Env() ? { cowork: { v3: coworkV3Env() === "on" }, coworkEnv: coworkV3Env() } : {}) },
+    // the four switches as the engine reads them (settings.ts readings: an env, or a stage in this version); coworkEnv: v3's env said
+    ...readings(), ...(coworkV3Env() ? { coworkEnv: coworkV3Env() } : {}) },
   haveVoiceKey: haveVoiceKey(),
   dictationModel: DICTATION_MODEL,
-  up: { since: STARTED, port: PORT, health: health() },
+  up: { since: STARTED, port: PORT, health: health() }, login: getTeam().me.login,   // login: whose Sol this is (#1224)
 });
+for (const heard of [onLens, onSeatSet]) heard(() => everyone(settingsMsg()));   // the lens changed from a stage (#824), a setting a seat changed for the person (#1521): every face hears the settings again, as after a settings.set
 
 // Codex reaches the browser through a small stdio MCP server that calls back into this engine. Each turn
 // gets its own token, so the engine knows which conversation a browser call belongs to.
 const turns = new Map<string, TurnCtx>();
-function codexFor(token: string) {
+function codexFor(token: string, o: { internal?: boolean } = {}) {
   return new Codex({
-    codexPathOverride: process.env.SOL_CODEX,   // SOL_CODEX: a stand-in codex binary, for tests
+    codexPathOverride: process.env.SOL_CODEX, ...codexEnv(o.internal),   // SOL_CODEX: a stand-in codex binary, for tests; codexEnv: threads.ts
     config: {
       mcp_servers: {
         sol: {
           command: process.execPath,
           args: [join(HERE, "mcp-stdio.js")],
-          env: { ENGINE_URL: `http://${HOST}:${PORT}`, SOL_TURN: token },
+          env: { ENGINE_URL: `http://${HOST}:${PORT}`, SOL_TURN: token, ...(kernelNow() ? { SOL_KERNEL: "on" } : {}), ...(versionMode() ? { SOL_VERSION: versionMode()! } : {}) },   // the kernel there: mcp-stdio offers the install tool; the engine's mode, since that process knows no channel and its list follows the cards (#1589)
           // Codex asks approval for MCP tools by default; with approval_policy "never" that was a flat refusal
           // ("the browser tool is blocked"). Sol's tools are the inventory, so they are pre-approved.
           default_tools_approval_mode: "approve",
@@ -547,6 +537,8 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
   const where = say.sessionId ? await codexFolderOf(say.sessionId) : { folder: freshFolder(say.cwd) };
   if (!where.folder) { send(ws, { type: "error", message: `its folder is gone (${where.recorded}); start a new talk to go on` }); return; }
   const folder = where.folder, inFolder = folder !== HOME;
+  // a talk in a folder the person's record names is held at that folder's level (#1216, consent.ts): its tools past it are refused by name
+  if (inFolder) turn.refuse = both(refusalIn(folder), turn.refuse);
   const token = randomUUID();
   turns.set(token, turn);
   const opts = {
@@ -611,7 +603,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
         }
         if (inFolder) { invalidateCodex(); broadcastSessions(); }   // the row is in its folder at once
         send(ws, { type: "start", sessionId, seat: "codex", ...(inFolder ? { cwd: folder } : {}) });
-        turnStarted("codex", sessionId, say.model); sentAtStart("codex", sessionId, saved, deskLines); began = true;   // on the log: a turn, and what Sol handed it
+        began = logging(); if (began) { turnStarted("codex", sessionId, say.model); sentAtStart("codex", sessionId, saved, deskLines); }   // on the log, with the frame on: a turn, and what Sol handed it
       } else if (e.type === "item.started" || e.type === "item.updated" || e.type === "item.completed") {
         const done = e.type === "item.completed";
         if (e.item.type === "agent_message") {
@@ -619,7 +611,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
         } else {
           // One step when it starts, one when it completes. Codex files notices as "error" items too
           // (e.g. "resumed with another model"): a note, not part of the answer. A turn that really fails says so on turn.failed.
-          if (done && sessionId) { const cs = codexStepOf(e.item); if (cs) stepTaken("codex", sessionId, cs.tool, cs); }   // on the log: the step, not its words
+          if (done && sessionId && began) { const cs = codexStepOf(e.item); if (cs) stepTaken("codex", sessionId, cs.tool, cs); }   // on the log: the step, not its words
           const s = codexStep(e.item, done, folder);
           if (s && (done || !announced.has(s.id))) {
             announced.add(s.id);
@@ -634,7 +626,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
         send(ws, usageMsg(conn, last?.context ?? 0, last?.window || window));
         if (began && sessionId) turnEnded("codex", sessionId, { ok: true, tokensTotal: codexTokens(e.usage) }); began = false;   // on the log: the thread's tokens so far
         end({ sessionId, ok: true });   // a late abort (a new say while the child drains) is then no stop
-        // every door hears what Sol just said (the notch and the island show it, whichever door asked)
+        // every face hears what Sol just said, and which door asked
         const said = [...seen.values()].join("\n").trim();
         if (said) everyone({ type: "said", seat: "codex", sessionId, text: said, ...(say.door ? { door: say.door } : {}) });
       } else if (e.type === "turn.failed") {
@@ -652,6 +644,7 @@ async function sayCodex(conn: Conn, say: Say, abort: AbortController, saved: Awa
     if (inFolder) { invalidateCodex(); broadcastSessions(); }   // the row's time, and it is not running any more
   }
 }
+
 
 // A Claude tool call as a step (not yet done), plus what to put before its result in the detail.
 function claudeStep(id: string, name: string, input: any): { step: Step; prefix: string } | null {
@@ -688,14 +681,17 @@ function resultText(content: unknown): string {
 
 async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Awaited<ReturnType<typeof saveFiles>>, turn: TurnCtx, deskLines: string, end: End) {
   const ws = conn.ws;
-  const model = say.model ?? "claude-opus-5-5";
+  const model = latest(say.model ?? claudeDefault());
   // The browser tools, in this process, as MCP server "sol"; with the frame on, the tools the home's blocks registered (#633)
-  const blockTools = thingTools(), offered = seatTools();   // the install tool only with the frame on (the off switch)
+  const blockTools = thingTools(), offered = seatTools().filter((t) => t.name !== "way_press");   // the install tool only with the frame on (the off switch); a way's press only in Work, where its card is (#1281)
+  solChecked([...offered, ...blockTools].map((t) => t.name));   // Home 5: each runs through runSolTool's guard, so the hook and canUseTool leave it to it
+  const readHints = new Map<string, boolean>();   // a read turn: each connected tool's readOnly hint, once it has started
   const sol = createSdkMcpServer({
     name: "sol",
     version: "1.0.0",
     tools: [...offered, ...blockTools].map((t) => tool(t.name, t.description, t.shape, async (args) => (await runSolTool(t.name, args, turn)) as any)),
   });
+  let sessionId = say.sessionId;   // before the options: ceilingHooks reads it as it is made, and a `let` read above its own line throws
   const options: Options = {
     model,
     effort: (say.effort ?? "medium") as Options["effort"], // "max" is valid for Claude as is
@@ -707,12 +703,14 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
     permissionMode: INV.claude.permissionMode,
     allowedTools: INV.claude.allowedTools,
     tools: INV.claude.tools.concat([...offered, ...blockTools].map((t) => "mcp__sol__" + t.name)),
-    canUseTool: guardSpeak(INV.claude.canUseTool(HOME)),
+    canUseTool: guardSpeak(ceilingGuard(INV.claude.canUseTool(HOME), () => sessionId)),
+    hooks: ceilingHooks(() => sessionId, () => wss.clients.size > 0),   // Home 5: on every seat launched while Home is on, so one launched before its Run is checked too; none while Home is off
     includePartialMessages: true,
     maxTurns: 50,
     abortController: abort,
-    mcpServers: { sol },
+    mcpServers: say.read ? { ...standIns(), sol } : { sol },
   };
+  if (say.read) options.canUseTool = connectorsGuard(options.canUseTool!, readHints, servicesOff(HOME));   // a read turn: the connectors' own check on top of the ceiling
 
   const text = [say.text, deskLines, attachedLines(saved)].filter(Boolean).join("\n\n");
   // Images go in as base64 image blocks, so the prompt becomes a one-message stream.
@@ -736,7 +734,6 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
       })()
     : text;
 
-  let sessionId = say.sessionId;
   const token = randomUUID();
   let unlock: () => void;
   try { unlock = lockSession(say.sessionId ?? say.draft ?? token, `life:${token}`); }
@@ -750,15 +747,17 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
   let began = false;   // a turn is on the log and not yet ended there
   const thinking: string[] = []; // reasoning steps started while the stream was thinking, completed by the assistant message
   try {
-    for await (const m of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
+    const q = query({ prompt, options });
+    for await (const m of q as AsyncIterable<SDKMessage>) {
       if (m.type === "system" && m.subtype === "init") {
+        if (say.read) void q.mcpServerStatus().then((all) => { for (const x of all) for (const t of x.tools ?? []) readHints.set(toolKey(x.name, t.name), t.annotations?.readOnly === true); }).catch(() => {});
         sessionId = m.session_id;
         if (!say.sessionId) unlock = relockSession(say.draft ?? token, sessionId, `life:${token}`);
         turn.sessionId = sessionId;
         conn.sessionId = sessionId;
         if (!say.sessionId) { adoptTabs(say.draft, sessionId); adoptDesk(say.draft, sessionId); listSoon(); }
         send(ws, { type: "start", sessionId, seat: "claude" });
-        turnStarted("claude", sessionId, model); sentAtStart("claude", sessionId, saved, deskLines); began = true;   // on the log: a turn, and what Sol handed it
+        began = logging(); if (began) { turnStarted("claude", sessionId, model); sentAtStart("claude", sessionId, saved, deskLines); }   // on the log, with the frame on: a turn, and what Sol handed it
       } else if (m.type === "stream_event") {
         const ev = m.event;
         if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
@@ -775,7 +774,7 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
           if (b.type === "text") said += String(b.text ?? "") + "\n";
           if (b.type === "tool_use") {
             changing.tool("claude", sessionId, String(b.id), b.name, b.input, HOME, said);
-            uses.set(String(b.id), { name: String(b.name), file: fileOf(b.input) });
+            if (began) uses.set(String(b.id), { name: String(b.name), file: fileOf(b.input) });   // kept only for the log
             const s = claudeStep(String(b.id), b.name, b.input);
             if (s) { pending.set(String(b.id), s); step(s.step); }
           } else if (b.type === "thinking") {
@@ -867,7 +866,7 @@ setRegistry(registry);
 const hostOrg = () => hostedRoom(getTeam()).org;   // #154: the room that meets here, whichever room I am in
 const hostKey = () => (getTeam().relay.host ? getTeam().relay.key : "");
 const hubOpen = () => getTeam().relay.open;        // #157: the beta's hub, anyone signed in to GitHub
-const hubVerify = ghVerify();                      // one cache of who a token is, for the socket and the routes alike
+const hubVerify = identity().verifier();           // one cache of who a token is, for the socket and the routes alike
 const proofs = new Proofs(join(STATE_DIR, "relay", "proof.key"));   // the hub's tickets (proof.ts): nobody's token held
 const guesses = new Guesses();                     // codes tried that no room has, per caller, the routes' and the hellos' alike
 const rooms = relayRoutes(PORT, hostKey, registry, { org: hostOrg, open: hubOpen, verify: hubVerify, guesses, proofs, hosts: hubHosts });
@@ -909,7 +908,7 @@ const http = createServer(async (req, res) => {
     // a page at most (log.ts PAGE and logAnswer, whose names WIRE.md §1 writes down)
     const origin = req.headers.origin;
     res.writeHead(200, { "content-type": "application/json", ...(typeof origin === "string" ? { "access-control-allow-origin": origin, vary: "origin" } : {}) });
-    res.end(JSON.stringify(logAnswer(kernelNow(), new URL(req.url ?? "/", "http://x").searchParams)));
+    res.end(JSON.stringify(logAnswer(kernelNow(), new URL(req.url ?? "/", "http://x").searchParams, logKinds())));
     return;
   }
   if (path === "/tonight" && req.method === "POST") {
@@ -954,7 +953,7 @@ const http = createServer(async (req, res) => {
   res.end();
 });
 
-const wss = new WebSocketServer({ noServer: true });
+const wss = faceServer();   // a message past its cap closes that socket only, never the engine (#1438)
 // Two sockets share this port (Together, #31): the team relay at /relay (team/relay.ts, its own gate: the relay key),
 // and everything else, the faces' socket, through the door as before.
 // #102: the hub keeps talk and pings for whoever is away (its spool, under the state dir), and with an org in team.json
@@ -1039,11 +1038,12 @@ wss.on("connection", (ws, req) => {
   });
   const face = { send: (m: object) => send(ws, m) };
   addFace(face);
+  const forgetHome = homeWindow(face, fromSol);   // Home (#790): home.today after any change, to Sol's own windows only
   if (REVERTED) send(ws, { type: "engine.reverted", at: REVERTED });
   addDeskFace(face);
   addWorkFace(face);
   addTeamFace(face);
-  addPingFace(face);
+  addMomentFace(face);
   addCreatureFace(ws, face);
   send(ws, settingsMsg());
   ws.on("message", async (raw) => {
@@ -1064,30 +1064,32 @@ wss.on("connection", (ws, req) => {
       // a window just went back to the NucBox (One Sol, #62): nothing new starts on this Mac meanwhile
       const message = "Sol is moving to the NucBox; say it again there in a moment";
       const m = msg as any;
-      return send(ws, msg.type.startsWith("work.") ? { type: "work.error", sessionId: m.sessionId, message } : msg.type.startsWith("team.") ? { type: "team.error", rid: m.rid, message } : /^(shelf|grab|anticipate|eye|talks)\./.test(msg.type) ? { type: msg.type, rid: m.rid, error: message } : { type: "error", message });
+      return send(ws, msg.type.startsWith("work.") ? { type: "work.error", sessionId: m.sessionId, ...(msg.type === "work.say" && typeof m.id === "string" ? { id: m.id } : {}), message } : msg.type.startsWith("team.") ? { type: "team.error", rid: m.rid, message } : /^(anticipate|talks)\./.test(msg.type) ? { type: msg.type, rid: m.rid, error: message } : { type: "error", message });
     }
+    if ((msg.type === "work.open" || msg.type === "work.view") && roleOf(ws) === "window" && typeof (msg as any).sessionId === "string") sessionSeen((msg as any).sessionId);   // opening a session is seeing (notify.ts)
     if (typeof msg.type === "string" && msg.type.startsWith("work.")) {
       // work.handover: no face sends it since Home (#132) holds chats and sessions in one window; kept unused for one
       // release, it goes with #25's clean-up. A Codex one is carried as its words (Work runs Claude), read here
       if (msg.type === "work.handover" && (msg as any).seat === "codex") (msg as any).said = await openThread(HOME, "codex", String((msg as any).sessionId)).catch(() => []);
       const handover = msg.type === "work.handover" ? String((msg as any).sessionId ?? "") : "";
+      if (msg.type.startsWith("work.pieces.")) (msg as any).fromSol = fromApp;   // #1092: a folder's yes to its scripts comes only from Sol's own window (appPage), never the message's word
       try {
         await handleWork(face, msg);
         // once it went (the mode mark is written), the threads show it moved
         if (handover && workState().marks[handover]?.mode === "work") void broadcastThreads();
       } catch (err) {
         countError(err, "work", msg.type);
-        send(ws, { type: "work.error", sessionId: (msg as any).sessionId, message: err instanceof Error ? err.message.split("\n")[0] : String(err) });
+        // a message that did not go names its id: the face takes back that line and only that one (#917)
+        send(ws, { type: "work.error", sessionId: (msg as any).sessionId, ...(msg.type === "work.say" && typeof (msg as any).id === "string" ? { id: (msg as any).id } : {}), message: err instanceof Error ? err.message.split("\n")[0] : String(err) });
       }
     } else if (typeof msg.type === "string" && msg.type.startsWith("team.")) {
       // the review session's card (#416): whether this socket is the app's own page (an Origin, never none) is the
       // engine's word, never the message's
-      if (msg.type.startsWith("team.tonight.") || msg.type.startsWith("team.handin.") || msg.type.startsWith("team.checkpoint.")) (msg as any).fromSol = fromApp;   // and the hand-in card's (#476), Scoped/Approve (#482)
-      if (msg.type === "team.v3.running") (msg as any).fromSol = fromApp;   // Cowork v3's Start the review (fr-30, #556): Sol's own window only
+      if (msg.type.startsWith("team.tonight.") || msg.type.startsWith("team.handin.") || msg.type.startsWith("team.checkpoint.") || msg.type.startsWith("team.v3.")) (msg as any).fromSol = fromApp;   // and the hand-in card's (#476), Scoped/Approve (#482); Cowork v3: every write is Sol's own window's (#556, #1074), team/wire.ts v3Reads
+      const heard = parts.heard(msg.type);   // a part's team.* type (team.people, #1297: team.* counts as Cowork); the rest are wire.ts's
+      if (heard) return void await heard(msg, { ...engine, ws, face, conn, fromSol, fromApp });
       try { await handleTeam(face, msg); }
       catch (err) { countError(err, "team", msg.type); send(ws, { type: "team.error", rid: (msg as any).rid, message: err instanceof Error ? err.message.split("\n")[0] : String(err) }); }
-    } else if (typeof msg.type === "string" && (msg.type.startsWith("shelf.") || msg.type.startsWith("grab."))) {
-      await handleGrab(face, msg);   // Grab and Shelf (grab.ts): answers with the same type and rid, or its error
     } else if (typeof msg.type === "string" && msg.type.startsWith("anticipate.")) {
       await handleAnticipate(face, msg, (text, sid, title) => talkSay(ws, text, sid, title));   // a talk (anticipate.ts): same type and rid back
     } else if (typeof msg.type === "string" && msg.type.startsWith("talks.")) {
@@ -1095,26 +1097,18 @@ wss.on("connection", (ws, req) => {
     } else if (msg.type === "face.broken" || msg.type === "face.mended") {
       const m = msg as any;   // only Sol's own windows: a page elsewhere must not make the engine take edits back
       if (fromSol && typeof m.site === "string") m.type === "face.broken" ? changing.broke(m.site, String(m.error ?? "")) : changing.mended(m.site);
-    } else if (msg.type === "notify.seen") {
-      seenPing(String((msg as any).id ?? ""), face);
-    } else if (msg.type === "notify.ack") {
-      ackPing(String((msg as any).id ?? ""), face);
     } else if (msg.type === "hello") {
       const role = (msg as any).face as Role;
-      if (role === "window" || role === "notch" || role === "phone") { setRole(ws, role); pingFaceIs(face, role); }
+      if (role === "window" || role === "phone") { setRole(ws, role); momentFaceIs(face, role); }
       if (role === "window" && fromApp) markSolWindow(ws);   // the review session opens only where this is (#416)
     } else if (msg.type === "presence") {
       const m = msg as any;
-      setPresence(ws, !!m.focused, typeof m.idleSeconds === "number" ? m.idleSeconds : null);
-    } else if (typeof msg.type === "string" && msg.type.startsWith("eye.")) {
-      await handlePrivate(face, msg);   // the private list (private.ts): eye.list / eye.tick / eye.add, same type and rid back
-    } else if (msg.type === "eye") {
-      setSolHidden((msg as any).invisible);   // the notch's eye (eye.ts): while closed, a Sol grab and File it's shot refuse
+      setPresence(ws, !!m.focused, typeof m.idleSeconds === "number" ? m.idleSeconds : null, typeof m.visible === "boolean" ? m.visible : undefined);
     } else if (msg.type === "dictation") {
       setDictation(ws, !!(msg as any).on);
     } else if (msg.type === "stop") {
-      // { type: "stop", sessionId } (Notch buttons #6): the Life turn on that conversation, whichever face runs it
-      // (the notch's Stop; the window's turn runs on the window's socket). Without one: this socket's own turn.
+      // { type: "stop", sessionId }: the Life turn on that conversation, whichever face runs it (the window's turn runs
+      // on the window's socket). Without one: this socket's own turn.
       // The relay holds the turn's abort by its draft and, once the seat names it, by its session id.
       const sid = (msg as any).sessionId;
       if (typeof sid === "string" && sid) relayFor(sid)?.abort.abort();
@@ -1129,7 +1123,7 @@ wss.on("connection", (ws, req) => {
       say.sessionId = await doorConversation(say.door, say.seat, say.sessionId, say.fresh);
       if (!say.sessionId) say.draft ??= randomUUID();
       const sid = (say.sessionId ?? say.draft)!;
-      lifeTurn(ws, sid, say.seat);   // the notch follows the conversation that spoke last (creature.turn)
+      lifeTurn(ws, sid, say.seat);   // the conversation that spoke last (creature.turn)
       // the turn writes to a relay, not to this socket: if the socket goes (a sleep), the turn runs on and a face that
       // opens the conversation again takes it back (src/relay.ts). Its own copy of conn, so the socket a fresh
       // conversation's naming wraps is the relay's.
@@ -1178,7 +1172,7 @@ wss.on("connection", (ws, req) => {
         console.log(`relay: a face came back to a ${r.seat} turn, ${running ? "still running" : "finished while it was away"}`);
       }
     } else if (msg.type === "models") {
-      send(ws, { type: "models", seats: seatsMsg(), codex: codexModels(), claude: CLAUDE_MODELS, efforts: EFFORTS });
+      send(ws, modelsMsg());
     } else if (msg.type === "hear") {
       const m = msg as any;
       if (m.done === false) {
@@ -1203,7 +1197,6 @@ wss.on("connection", (ws, req) => {
     } else if (msg.type === "settings.set") {
       patchSettings((msg as any).patch);
       everyone(settingsMsg());
-      void syncKernel(HOME, frameOn()).catch((e) => console.error("the kernel:", e));   // the frame's switch turned (#633)
     } else if (msg.type === "thread.rename") {
       const m = msg as any;
       if (typeof m.sessionId === "string" && /^[A-Za-z0-9_-]+$/.test(m.sessionId)) {
@@ -1306,10 +1299,11 @@ wss.on("connection", (ws, req) => {
     if (dialing) dialing.hung = true;
     sample?.cancel(); sample = null;
     removeFace(face);
+    forgetHome();
     removeDeskFace(face);
     removeWorkFace(face);
     removeTeamFace(face);
-    removePingFace(face);
+    removeMomentFace(face);
     removeCreatureFace(ws);
   });
 });
@@ -1318,9 +1312,20 @@ http.listen(PORT, HOST, () => {
   console.log(`engine up on ws://${HOST}:${PORT}`);
   startTeam();   // the team relay's client and presence (team/wire.ts)
   startSweep();   // the shelf: what is not kept and older than a week goes, now and every hour (shelf.ts)
-  // a new build of this engine goes live by itself, at a quiet moment (renew.ts); launchd brings it back
-  renewOnBuild(resolve(HERE), engineIdle, everyone, busyLine);
+  startRenew(resolve(HERE), everyone);   // a new build goes live by itself between two turns (renewing.ts); launchd brings it back
   onBusy((jobs) => everyone({ type: "engine.busy", jobs }));
+  // Claude's models as its CLI lists them, now and every six hours; a change goes to every face (models.ts). Only the
+  // person's own engine asks: a throwaway one (tests, try, catch-up: SOL_NO_RENEW; SOL_QUIET) keeps the saved list and starts no CLI.
+  const models = () => void refreshClaude().then((changed) => { if (changed) everyone(modelsMsg()); });
+  if (!process.env.SOL_NO_RENEW && !isQuiet()) { models(); setInterval(models, 6 * 3600_000).unref(); }
   void namingModel().then((m) => console.log("naming model:", m ?? "none (titles stay the cut first message)"));
-  void syncKernel(HOME, frameOn()).catch((e) => console.error("the kernel:", e));   // the home's blocks, with the frame on (#633)
+  kernelFollows(HOME);   // the home's blocks, with the frame on (#633), and again whenever its reading turns (kernel.ts)
+  // the folders' agents (agent/): each folder with a policy.md; the clock looks every minute (SOL_AGENT_CLOCK=off: only
+  // agent.run starts a rule, for tests and the try). Their Codex turns are this engine's, network off, in the folder
+  const folders = startAgents({
+    home: HOME, jev: makeJev(), changed: (folder) => { everyone({ type: "agent.changed", folder }); everyone({ type: "agents.changed", folder }); },   // agents.changed: Agents (#1327)
+    step: (folder, step) => everyone({ type: "agent.step", folder, step }),   // a run as it goes, pressed or by the clock (#1228)
+    run: { codexFor, turns, sandboxMode: INV.codex.sandboxMode, networkAccessEnabled: INV.codex.networkAccessEnabled },
+  }, !isQuiet() && !/^off$/i.test(process.env.SOL_AGENT_CLOCK ?? ""));
+  if (folders.folders().length) console.log(`folder agents: ${folders.folders().map((f) => f.name).join(", ")}`);
 });

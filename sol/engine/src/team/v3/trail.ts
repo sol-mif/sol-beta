@@ -24,6 +24,7 @@ import { dirname } from "node:path";
 import { certOk, verifySig, writerOf, LOGIN, NAME, type By, type Cert, type Keys, type Signer } from "./keys.js";
 import { collectionOf, headsOf } from "./record.js";
 import { canonical, hashOf } from "../../canonical.js";   // shared with the local log, not a copy
+import { erasable, kindError } from "./trail-kinds.js";   // the families whose kinds have rows (way.*); every other kind is checked for its name only
 
 export type { By, Cert } from "./keys.js";
 /** what a writer asks to append */
@@ -33,11 +34,18 @@ export type Body = {
   v: 1 | 2; project: string; by: By; kind: string; item?: string; field?: string; fields?: string[]; base?: string[];
   hash: string; at: number; prev: string; key: string; cert?: Cert;
 };
-/** one event of the trail */
-export type TrailEvent = Body & { seq: number; id: string; sig: string; value?: unknown; erased?: true };
+/** one event of the trail. `notUnderstood`: kept, but this Sol cannot read it as its kind (a kind of a checked family
+ *  with no row here, a value that does not fit its row, an erased fact: trail-kinds.ts). Worked out each time the event
+ *  is read, never stored, signed or sent, and only on what a raw read or check() gives apart: a way reader reads
+ *  check().ok, which never holds one */
+export type TrailEvent = Body & { seq: number; id: string; sig: string; value?: unknown; erased?: true; notUnderstood?: string };
 /** an event refused, and why, in one line */
-export type Bad = { id: string; why: "unreadable" | "shape" | "id" | "signature" | "key" | "person key" | "content" | "chain" | "fork"; line: string };
-export type Verified = { ok: TrailEvent[]; bad: Bad[] };
+export type Bad = { id: string; why: "unreadable" | "shape" | "id" | "signature" | "key" | "person key" | "content" | "kind" | "chain" | "fork"; line: string };
+/** ok: the events that verify and are understood. bad: the refused, and the not understood, each named with one line.
+ *  notUnderstood: those last, signed and chained as they should be, so they are kept and the chain goes on through
+ *  them, each with its line as `notUnderstood` (a newer Sol's kind, the format's §7: what is not understood does not
+ *  pass, and a teammate's later events are still taken) */
+export type Verified = { ok: TrailEvent[]; bad: Bad[]; notUnderstood: TrailEvent[] };
 
 export const VALUE_MAX = 64 * 1024;
 /** from this moment every chain is per writer per project; an event signed in the days before it (from the night v3 was
@@ -111,11 +119,17 @@ export type VerifyOpts = {
   /** links only through events that verified (a merge: nothing is kept after a refused one); without it a tampered
    *  event in the middle of a chain is named alone and the events after it still verify (a check of what is kept) */
   strict?: boolean;
+  /** events whose signature and certificate were checked already, as `id \n sig` (way-reader.ts, the fold cache): its id
+   *  is still worked out again, so its body is the one checked, and the rest still checks it; only those two signatures
+   *  are not checked again. One that passes is added */
+  signed?: { has(k: string): boolean; add(k: string): void };
 };
 
 /** each event checked, the good ones kept and the others named with one line: a body that is not its id, a signature
  *  that is not its key's, a key its person did not sign, a person key other than the one pinned, a value that is not
- *  its hash, a previous event that is not there, or a second event on the same previous (a fork). The good ones are
+ *  its hash, a previous event that is not there, or a second event on the same previous (a fork). One that passes all
+ *  of those but is a kind of a checked family (trail-kinds.ts) with no row here, or a value that does not fit it, is
+ *  named too ("kind") and given back apart, marked, to be kept: never among the good ones. The good ones are
  *  given back in the trail's order, so the rest still fold (pure but for what opts read) */
 export function verify(events: unknown[], o: VerifyOpts = {}): Verified {
   const bad: Bad[] = [], good: TrailEvent[] = [];
@@ -126,7 +140,7 @@ export function verify(events: unknown[], o: VerifyOpts = {}): Verified {
     if (!isObj(raw)) { name("", "unreadable", "an event that is not an object"); continue; }
     const s = shapeError(raw);
     if (s) { name(raw.id, "shape", s); continue; }
-    const e = raw as unknown as TrailEvent;
+    const { notUnderstood: _mark, ...e } = raw as unknown as TrailEvent;   // the mark is this Sol's own: whatever came with it is dropped, and it is made again below
     present.set(e.id, e.key);
     read.push(e);
   }
@@ -134,24 +148,29 @@ export function verify(events: unknown[], o: VerifyOpts = {}): Verified {
   for (const e of [...read].sort(order)) {
     const body = bodyOf(e);
     if (eventId(body) !== e.id) { name(e.id, "id", "its words are not the ones it was written with"); continue; }
-    if (!verifySig(e.key, canonical(body), e.sig)) { name(e.id, "signature", "its signature is not its writer's"); continue; }
+    // the id is the SHA-256 of the body (checked just above), so an id and a signature seen before name the same words,
+    // key and certificate: what they gave then they give now
+    const mk = o.signed ? `${e.id}\n${e.sig}` : "", sure = o.signed?.has(mk) === true;
+    if (!sure && !verifySig(e.key, canonical(body), e.sig)) { name(e.id, "signature", "its signature is not its writer's"); continue; }
     const by = e.by;
     const want = by.agent ? { kind: "agent", name: by.agent } : by.machine !== undefined ? { kind: "machine", name: by.machine } : null;
     if (want) {
-      if (!certOk(e.cert) || e.cert.pub !== e.key || e.cert.person !== by.person || e.cert.kind !== want.kind || e.cert.name !== want.name) { name(e.id, "key", `its key is not one ${by.person} signed for that ${want.kind}`); continue; }
+      if (!e.cert || !(sure || certOk(e.cert)) || e.cert.pub !== e.key || e.cert.person !== by.person || e.cert.kind !== want.kind || e.cert.name !== want.name) { name(e.id, "key", `its key is not one ${by.person} signed for that ${want.kind}`); continue; }
     } else if (e.cert !== undefined) { name(e.id, "key", "a person key carries no certificate"); continue; }
+    if (o.signed && !sure) o.signed.add(mk);
     const pkey = e.cert?.pkey ?? e.key, pk = `${e.project}\n${by.person.toLowerCase()}`;
     const pin = pins.get(pk) ?? o.pinned?.(e.project, by.person) ?? null;
     if (pin && pin !== pkey) { name(e.id, "person key", `signed under a person key that is not ${by.person}'s`); continue; }
     if (!pin) pins.set(pk, pkey);
     if (e.erased) { if (e.value !== undefined) { name(e.id, "content", "erased but still holding its content"); continue; } }
     else if (hashOf(e.value) !== e.hash) { name(e.id, "content", "its content is not the content it points at"); continue; }
-    good.push(e);
+    const k = kindError(e.kind, e.value, e.erased === true);
+    good.push(k ? { ...e, notUnderstood: k } : e);
   }
   // the chains, per writer per project: each event's previous is there with the same key; one event a previous. An
   // event of version 1 from before CHAIN_PER_PROJECT whose previous is nowhere here pointed into another project: its
   // chain starts. A merge (strict) links only through events that verified
-  const ok: TrailEvent[] = [], next = new Map<string, string>(), linked = o.strict ? new Map<string, string>() : present;
+  const ok: TrailEvent[] = [], odd: TrailEvent[] = [], next = new Map<string, string>(), linked = o.strict ? new Map<string, string>() : present;
   // a writer's events in one millisecond tie on time and key, and their ids sort at random: each event is taken after
   // the one before it in its own chain (when that one is in the batch), so a chain is never judged out of its order
   const inBatch = new Map(good.map((e) => [e.id, e])), placed = new Set<string>(), chained: TrailEvent[] = [];
@@ -173,10 +192,12 @@ export function verify(events: unknown[], o: VerifyOpts = {}): Verified {
     if (other && other !== e.id) { name(e.id, "fork", "its writer already wrote another event after the same one"); continue; }
     next.set(link, e.id);
     if (o.strict) linked.set(e.id, e.key);
+    if (e.notUnderstood) { name(e.id, "kind", e.notUnderstood); odd.push(e); continue; }
     ok.push(e);
   }
   ok.sort(order);
-  return { ok, bad };
+  odd.sort(order);
+  return { ok, bad, notUnderstood: odd };
 }
 
 /** the kind of an erase event, whose `item` names the event whose content it erases */
@@ -196,7 +217,7 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS cursor (project TEXT PRIMARY KEY, seq INTEGER NOT NULL);`;
 
 /** an event as it is kept: the whole event but its seq */
-const keep = (e: TrailEvent): string => { const { seq: _s, ...rest } = e; return canonical(rest); };
+const keep = (e: TrailEvent): string => { const { seq: _s, notUnderstood: _n, ...rest } = e; return canonical(rest); };   // never the mark: it is worked out on read
 
 /** the trail of every project on this Sol */
 export class Trail {
@@ -234,8 +255,15 @@ export class Trail {
   }
 
   private parse(r: Row): TrailEvent | null {
-    try { const e = JSON.parse(r.body); return isObj(e) ? { ...(e as TrailEvent), seq: Number(r.seq) } : null; } catch { return null; }
+    try {
+      const e = JSON.parse(r.body);
+      if (!isObj(e)) return null;
+      const { notUnderstood: _n, ...ev } = e as TrailEvent;   // a mark an older build of this file stored is not read
+      return { ...ev, seq: Number(r.seq) };
+    } catch { return null; }
   }
+  /** an event as it is handed out: marked when this Sol does not understand it now (trail-kinds.ts) */
+  private read(e: TrailEvent): TrailEvent { const k = kindError(e.kind, e.value, e.erased === true); return k ? { ...e, notUnderstood: k } : e; }
   private rows(rs: unknown[]): TrailEvent[] { return (rs as Row[]).flatMap((r) => { const e = this.parse(r); return e ? [e] : []; }); }
   private opts(): VerifyOpts {
     return {
@@ -261,6 +289,8 @@ export class Trail {
     if (!by) throw new Error("who wrote it? a person's login, and a machine or agent name");
     const signer: Signer = this.keys.signerFor(by);
     if (d.value !== undefined && Buffer.byteLength(canonical(d.value)) > VALUE_MAX) throw new Error("an event's content is 64 KB at most");
+    const k = kindError(d.kind, d.value);
+    if (k) throw new Error(`the team trail takes no such event: ${k}`);
     if (d.item !== undefined && d.field === undefined && d.value !== undefined && !isObj(d.value)) throw new Error("a write to an item names its field, or gives an object of fields");
     const fields = d.field === undefined && isObj(d.value) ? Object.keys(d.value).filter((k) => (d.value as Record<string, unknown>)[k] !== undefined).sort() : undefined;
     const head = this.q.head.get(d.project, signer.pub) as { id: string; at: number } | undefined;
@@ -283,22 +313,47 @@ export class Trail {
     return this.get(id)!;
   }
 
-  /** events from elsewhere (the cloud, another Sol) checked against what is here and kept; the refused named */
+  /** events from elsewhere (the cloud, another Sol) checked against what is here and kept; the refused named. One that
+   *  is signed and chained but not understood (verify's notUnderstood) is kept too, unmarked on the disk, so its writer's later
+   *  events chain through it; it is named in `bad` this once and is not among `added` */
   merge(events: unknown[], o: { sent?: boolean } = {}): { added: TrailEvent[]; already: number; bad: Bad[] } {
     const fresh = events.filter((e) => !(isObj(e) && typeof e.id === "string" && this.q.byId.get(e.id)));
     const v = verify(fresh, { ...this.opts(), strict: true });
     const added: TrailEvent[] = [];
     this.db.exec("BEGIN");
-    try { for (const e of v.ok) if (this.put({ ...e, seq: 0 }, o.sent !== false)) added.push(this.get(e.id)!); this.db.exec("COMMIT"); }
+    try {
+      for (const e of [...v.ok, ...v.notUnderstood].sort(order)) if (this.put({ ...e, seq: 0 }, o.sent !== false) && !e.notUnderstood) added.push(this.get(e.id)!);   // in the trail's order, as before; the mark is not stored
+      this.db.exec("COMMIT");
+    }
     catch (err) { this.db.exec("ROLLBACK"); throw err; }
     return { added, already: events.length - fresh.length, bad: v.bad };
   }
 
   /** one event, or null */
-  get(id: string): TrailEvent | null { const r = this.q.byId.get(id) as Row | undefined; return r ? this.parse(r) : null; }
+  // What the trail hands out (get, since, waiting) is what this Sol understands now: a kept event of a checked family it
+  // does not understand (trail-kinds.ts) is left out, unless the read asks for `raw`, and then it carries its
+  // `notUnderstood` line, worked out now. A reader of way events folds check().ok, never since()
+  /** one event, or null (or one this Sol does not understand, unless raw) */
+  get(id: string, o: { raw?: boolean } = {}): TrailEvent | null {
+    const r = this.q.byId.get(id) as Row | undefined, e = r ? this.parse(r) : null;
+    if (!e) return null;
+    const x = this.read(e);
+    return x.notUnderstood && !o.raw ? null : x;
+  }
   /** a project's events after seq (this Sol's order), at most limit */
-  since(project: string, seq = 0, limit = 10_000): TrailEvent[] { return this.rows(this.q.since.all(project, seq, limit) as unknown[]); }
-  /** a project's whole trail as kept here, checked again: what was changed on the disk is named, the rest given back */
+  since(project: string, seq = 0, limit = 10_000, o: { raw?: boolean } = {}): TrailEvent[] {
+    const out: TrailEvent[] = [];
+    for (let from = seq; ;) {
+      const rs = this.q.since.all(project, from, limit) as Row[];
+      let left = 0;
+      for (const r of rs) { const e = this.parse(r); if (!e) continue; const x = this.read(e); if (x.notUnderstood && !o.raw) left++; else out.push(x); }
+      // a page short by the events left out is filled from after it, so a reader paging by `limit` misses nothing
+      if (!left || rs.length < limit || out.length >= limit) return out.slice(0, limit);
+      from = Number(rs[rs.length - 1].seq);
+    }
+  }
+  /** a project's whole trail as kept here, checked again: what was changed on the disk is named, the rest given back.
+   *  An event kept but not understood is given back apart (notUnderstood), not named again: it was named when it came */
   check(project: string): Verified {
     const rows = this.db.prepare("SELECT seq, id, body, key FROM event WHERE project = ? ORDER BY seq").all(project) as (Row & { key: string })[];
     const out: unknown[] = [], bad: Bad[] = [];
@@ -307,30 +362,30 @@ export class Trail {
     // an event from before the chains were per project may point into another project: looked up in the whole store
     const elsewhere = (id: string) => { const r = this.db.prepare("SELECT key FROM event WHERE id = ?").get(id) as { key: string } | undefined; return r ? { key: r.key } : null; };
     const v = verify(out, { pinned: this.opts().pinned, known: (id) => (keys.has(id) ? { key: keys.get(id)! } : elsewhere(id)) });
-    return { ok: v.ok, bad: [...bad, ...v.bad] };
+    return { ok: v.ok, bad: [...bad, ...v.bad.filter((b) => b.why !== "kind")], notUnderstood: v.notUnderstood };
   }
 
   /** an event's content replaced by its hash, here; with `by` (the content's own person) an erase event goes on the trail
    *  too, so every Sol and the cloud erase it. False when there is no such event or it is not theirs to erase */
   erase(id: string, by?: By): boolean {
-    const e = this.get(id);
-    if (!e || (by && by.person.toLowerCase() !== e.by.person.toLowerCase())) return false;
+    const e = this.get(id, { raw: true });
+    if (!e || !erasable(e.kind) || (by && by.person.toLowerCase() !== e.by.person.toLowerCase())) return false;   // a way fact is never erased
     if (by) { this.append({ project: e.project, by, kind: ERASE, item: id }); return true; }
     return this.eraseNow(id, e.by.person);
   }
   private eraseNow(id: string, person: string): boolean {
-    const e = this.get(id);
-    if (!e || e.by.person.toLowerCase() !== person.toLowerCase()) return false;
+    const e = this.get(id, { raw: true });
+    if (!e || !erasable(e.kind) || e.by.person.toLowerCase() !== person.toLowerCase()) return false;   // an erase event from elsewhere that names a way fact erases nothing
     if (e.erased) return true;
-    const { value: _v, ...rest } = e;
+    const { value: _v, notUnderstood: _n, ...rest } = e;
     this.q.body.run(keep({ ...rest, erased: true }), id);
     return true;
   }
 
   /** a project's events still waiting to send, oldest first */
-  waiting(project: string, limit = 500): TrailEvent[] { return this.rows(this.q.out.all(project, limit) as unknown[]); }
+  waiting(project: string, limit = 500): TrailEvent[] { return this.rows(this.q.out.all(project, limit) as unknown[]).map((e) => this.read(e)).filter((e) => !e.notUnderstood); }
   /** whether one event is still waiting to send */
-  isWaiting(id: string): boolean { const r = this.db.prepare("SELECT sent, refused FROM event WHERE id = ?").get(id) as { sent: number; refused: string | null } | undefined; return !!r && !r.sent && !r.refused; }
+  isWaiting(id: string): boolean { const r = this.db.prepare("SELECT sent, refused FROM event WHERE id = ?").get(id) as { sent: number; refused: string | null } | undefined; return !!r && !r.sent && !r.refused && !!this.get(id); }
   /** events the cloud kept */
   markSent(ids: string[]): void { for (const id of ids) this.q.sent.run(id); }
   /** an event the cloud refused, with its line (it stops being sent) */

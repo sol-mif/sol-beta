@@ -1,0 +1,29 @@
+/* The one session at team size (#1002, build.one-app.team): the team's pieces and lines in the one session's own look
+   (one.css: type 11 / 12.5 / 14 / 17, spacing 4 / 8 / 12 / 16). Whose is a small round initial; a teammate's is dim. */
+.one-team { display: flex; flex-direction: column; gap: 12px; }
+.t-who { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; flex: none; margin-right: 8px;
+  font-style: normal; font-size: 11px; font-weight: 600; color: #111; background: var(--pearl); vertical-align: middle; }
+.t-who.dim { background: rgb(255 255 255 / .14); color: var(--dim); }
+.t-who.t-me { background: rgb(255 79 154 / .85); color: #fff; }
+.t-hand { border-color: rgb(255 79 154 / .45); }
+.t-hand .p-title { display: inline-flex; align-items: center; color: #fff; }
+.t-say p { margin: 0; font-size: 17px; line-height: 1.45; }
+.t-brief { margin: 0; padding: 0 0 0 16px; color: var(--mute); font-size: 12.5px; line-height: 1.5; }
+.t-give .o-parts { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.t-give .o-part { grid-template-rows: auto auto; }
+.t-give .o-choice { display: inline-flex; align-items: center; }
+.t-give .o-choice small { color: inherit; opacity: .7; font-size: 11px; margin-left: 4px; }
+.t-lines { list-style: none; margin: 0; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; border-left: 2px solid var(--edge); }
+.t-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); min-height: 28px; }
+.t-line > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-line .t-who { margin-right: 0; }
+.t-line.quiet { color: var(--mute); }
+.t-line .o-undo { border: 1px solid rgb(255 255 255 / .3); background: none; border-radius: 10px; padding: 4px 12px; font-size: 12.5px; }
+.t-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.t-foot kbd { font: inherit; color: var(--mute); margin-left: 4px; }
+.t-set { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; }
+.t-set small { color: var(--mute); font-size: 11px; margin-right: 4px; }
+.t-opt { border: 1px solid var(--edge); background: none; border-radius: 999px; padding: 4px 12px; color: var(--mute); font-size: 12.5px; }
+.t-opt.on { color: #111; background: var(--pearl); border-color: transparent; }
+.o-going.bad { color: #ffb3c9; }
+.t-bad { color: #ffb3c9; }

@@ -28,7 +28,7 @@ export const PARTS: Record<Part, { name: string; def: string }> = {
 export type Call = { script: "sol/night" | "sol/release" | "sol/morning"; args: string[] };
 export type Step = {
   part: Part; label: string;
-  /** where an output writes (send): talk, drive, github, notch, calendar, email, chat, record */
+  /** where an output writes (send): talk, drive, github, calendar, email, chat, record */
   place?: string;
   /** the script this part runs */
   call?: Call;
@@ -59,7 +59,6 @@ const isPart = (p: unknown): p is Part => typeof p === "string" && (PART_ORDER a
 /** where a send writes, from its words */
 export function placeOf(label: string): string {
   const l = label.toLowerCase();
-  if (/\bnotch\b/.test(l)) return "notch";
   if (/\bdrive\b|\bdoc(ument)?s?\b|\bfolder\b/.test(l)) return "drive";
   if (/\bgithub\b|\bissue\b|\bpull request\b|\bpr\b/.test(l)) return "github";
   if (/\bcalendar\b/.test(l)) return "calendar";
@@ -138,7 +137,7 @@ export type StudioDeps = {
 };
 
 export const DEFAULT_LIMIT = 2;
-const PLACE_WORD: Record<string, string> = { talk: "Talk", drive: "Drive", github: "GitHub", notch: "the notch", calendar: "the calendar", email: "email", chat: "the chat", record: "the record" };
+const PLACE_WORD: Record<string, string> = { talk: "Talk", drive: "Drive", github: "GitHub", calendar: "the calendar", email: "email", chat: "the chat", record: "the record" };
 export const placeWord = (p: string) => PLACE_WORD[p] ?? p;
 const monthOf = (t: number) => new Date(t).toISOString().slice(0, 7);
 const rid = () => `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;

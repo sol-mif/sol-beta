@@ -15,7 +15,7 @@ const BUILD = /\bv3\b|sol\/|SOL_|dry run|layouts|placeholder|\btrail\b|\brecord\
 
 test("#948: the rows under Settings › me say what a person sees change, not how it is built", () => {
   const rows = [...shown(read("cowork/v3/SwitchRow.tsx")), ...shown(read("home/CleanRow.tsx"))];
-  assert.equal(rows.length, 6);   // three rows, a name and a label each
+  assert.equal(rows.length, 6);   // three rows, a name and a label each (the walk row went with the walk, #1054)
   for (const r of rows) assert.doesNotMatch(r, BUILD, r);
   const card = read("cowork/v3/SwitchRow.tsx").match(/className="v3-card"[^>]*>\s*(<p>[\s\S]*?<\/p>)/)?.[1] ?? "";
   assert.ok(card, "the card's line");

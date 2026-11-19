@@ -17,6 +17,7 @@ writeFileSync(TEAM, JSON.stringify({ me: { login: "tester", name: "T" }, repos: 
 process.env.SOL_HOME = HOME;
 process.env.SOL_TEAM = TEAM;
 process.env.SOL_TEAM_OFFLINE = "1";
+process.env.SOL_STAGE_WHOLE = "off";   // the stage before stage.whole (a lens per session), on by default since #691; on, a lens goes to settings.json
 
 const S = await import("../src/work/blocks.ts");
 const tools = await import("../src/work/tools.ts");

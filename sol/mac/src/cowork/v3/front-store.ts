@@ -1,6 +1,6 @@
 // Cowork v3, slice 2 (fr-30, #555): the face's one read of the front, a project's Space and Plan, and the one count.
 // The engine answers team.v3.front / team.v3.plan / team.v3.needsme by rid (team/v3/planwire.ts); every answer carries
-// the same count, so the front, the stage chip and the notch never disagree. One store per window, polled while
+// the same count, so the front and the stage chip never disagree. One store per window, polled while
 // something shows it, and read again at once after any write.
 import { useEffect, useSyncExternalStore } from "react";
 

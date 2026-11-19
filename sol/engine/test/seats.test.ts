@@ -11,6 +11,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import WebSocket from "ws";
 import { Kernel } from "./kernels.ts";
 import { registerSeat, unregisterSeat, seatFor, seatList, clearSeats, BUILT_IN, type SeatProvider } from "../src/seats.ts";
+import { freePort } from "./test-engine.ts";
 
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const homes: string[] = [];
@@ -104,7 +105,7 @@ test("a real engine: Sol's two seats on the seam, a block's seat takes a turn ov
   const h = join(dir, "home");
   mkdirSync(join(h, "things"), { recursive: true });
   block(h, "echo", SEAT);
-  const PORT = 7790 + Math.floor(Math.random() * 100);
+  const PORT = await freePort();   // nobody else's (#938, #1144)
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: ENGINE, stdio: "ignore",
     env: {

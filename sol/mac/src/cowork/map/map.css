@@ -1,0 +1,118 @@
+/* Cowork's map (#1433), the answer key's look (mine/look/cowork/o1): spaces, type, heights and corners from the scale
+   (palette.css: --s*, --t-*, --h-*, --r-*), colours and depths from tokens.json through vars.ts (--m-*). The two widths
+   of a whole place are written once, here. */
+.cmap {
+  --cm-rail: 340px; container: cmap / inline-size;
+  color: var(--m-ink); font: 400 var(--t-body)/var(--t-body-line) var(--m-font); -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; gap: var(--s3); min-width: 0;
+}
+.cmap, .cmap * { box-sizing: border-box; }
+.cmap button { font: inherit; }
+.cm-paint { position: absolute; }
+.cm-bar { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.cm-grow { flex: 1; }
+.cm-cardish, .cm-card { background: var(--m-card); border-radius: var(--r-card); box-shadow: var(--m-drop-card), inset 0 1px 0 var(--m-rim-card); }
+.cm-crumbs { display: flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s2); flex: 1; min-width: 0; overflow: hidden; }
+.cm-cr { display: inline-flex; align-items: center; gap: var(--s1); }
+.cm-c { color: var(--m-dim); cursor: pointer; padding: 0 var(--s1); white-space: nowrap; }
+.cm-c:hover { color: var(--m-ink); }
+.cm-c.here { color: var(--m-ink); font-weight: 500; cursor: default; }
+.cm-csep { color: var(--m-mute); }
+.cm-pill { font-size: var(--t-pill); line-height: var(--t-pill-line); height: var(--h-row); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); color: var(--m-dim); cursor: pointer;
+  display: inline-flex; align-items: center; gap: var(--s2); white-space: nowrap; background: color-mix(in srgb, var(--m-set-1) 7%, transparent); }
+.cm-pill:hover { background: var(--m-control); box-shadow: var(--m-drop-control), inset 0 1px 0 var(--m-rim-control); color: var(--m-ink); }
+.cm-pill.on { background: var(--m-nacre); color: var(--m-deep); font-weight: 500; }
+.cm-pill.off { color: var(--m-mute); text-decoration: line-through; text-decoration-color: var(--m-mute); }
+.cm-layers, .cm-views { flex: none; display: flex; align-items: center; gap: var(--s1); padding: var(--s1); border-radius: var(--r-pill); background: var(--m-control); box-shadow: var(--m-drop-control), inset 0 1px 0 var(--m-rim-control); }
+.cm-sep { width: 1px; height: var(--s4); background: var(--m-line); margin: 0 var(--s1); }
+.cm-note { color: var(--m-mute); font-size: var(--t-label); padding: 0 var(--s2); white-space: nowrap; }
+.cm-seen { display: flex; align-items: center; gap: var(--s1); color: var(--m-mute); font-size: var(--t-label); white-space: nowrap; }
+.cm-cw { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); align-items: start; }
+.cm-main { min-width: 0; }
+/* the box is the sheet's shape (1000 × 640) across the whole width, so the map draws at the box's own scale, never letterboxed */
+.cm-mapbox { position: relative; aspect-ratio: 1000 / 640; overflow: hidden; background: var(--m-card); border-radius: var(--r-card); box-shadow: var(--m-drop-card), inset 0 1px 0 var(--m-rim-card); }
+.cm-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cm-float { position: absolute; z-index: 2; }
+.cm-search { left: var(--s3); top: var(--s3); height: var(--h-row); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--m-control);
+  box-shadow: var(--m-drop-control), inset 0 1px 0 var(--m-rim-control); color: var(--m-mute); min-width: 260px; }
+.cm-search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--m-ink); font: inherit; outline: none; }
+.cm-search input::placeholder { color: var(--m-mute); }
+.cm-zoom { right: var(--s3); top: var(--s3); display: flex; flex-direction: column; gap: var(--s1); padding: var(--s1); border-radius: var(--r-row); background: var(--m-control); box-shadow: var(--m-drop-control), inset 0 1px 0 var(--m-rim-control); }
+.cm-zoom button { width: var(--h-chip); height: var(--h-chip); display: grid; place-items: center; color: var(--m-dim); border: 0; background: none; border-radius: var(--r-chip); cursor: pointer; font-size: var(--t-read); }
+.cm-zoom button:hover { background: var(--m-flat); color: var(--m-ink); }
+.cm-bottom { left: var(--s3); right: var(--s3); bottom: var(--s3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); pointer-events: none; }
+.cm-bottom > * { pointer-events: auto; }
+.cm-th { width: 18px; height: var(--s3); border-radius: var(--s1); display: inline-block; flex: none; }
+/* the scrubber keeps a rail's width; where the box is narrower (the app beside its rail) it takes a row of its own */
+.cm-time { flex: 1 1 var(--cm-rail); min-width: 0; height: calc(var(--h-row) + var(--s1)); display: flex; align-items: center; gap: var(--s3); padding: 0 var(--s4); border-radius: var(--r-pill); background: var(--m-control);
+  box-shadow: var(--m-drop-control), inset 0 1px 0 var(--m-rim-control); font-size: var(--t-label); color: var(--m-dim); white-space: nowrap; }
+.cm-track { flex: 1; position: relative; height: var(--s6); }
+.cm-ticks { position: absolute; left: var(--s1); right: var(--s1); top: 0; height: var(--s2); }
+.cm-ticks i { position: absolute; top: 0; width: 7px; height: 7px; border-radius: 50%; transform: translateX(-50%); }
+.cm-time input { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; margin: 0; accent-color: var(--m-pearl); }
+.cm-time b { color: var(--m-ink); font-weight: 500; min-width: 96px; text-align: right; }
+/* Street View is a panel over the map, under the zoom (two chips, their gaps and the box's inset), above the bottom bar */
+.cm-street { right: var(--s3); top: calc(var(--s3) * 2 + var(--h-chip) * 2 + var(--s1) * 3); width: var(--cm-rail);
+  max-height: calc(100% - var(--s3) * 4 - var(--h-chip) * 2 - var(--s1) * 3 - var(--cm-foot, var(--s12))); overflow: auto; padding: var(--s4); border-radius: var(--r-card);
+  background: var(--m-lifted); box-shadow: var(--m-drop-lifted), inset 0 1px 0 var(--m-rim-lifted); }
+.cm-street h3 { margin: 0 0 var(--s1); font: var(--m-display-weight) var(--t-big)/var(--t-big-line) var(--m-font-display); letter-spacing: var(--m-display-track); }
+.cm-sub { color: var(--m-dim); font-size: var(--t-label); margin-bottom: var(--s3); }
+.cm-about { color: var(--m-dim); margin-bottom: var(--s2); }
+.cm-x { float: right; color: var(--m-mute); cursor: pointer; }
+.cm-lab { font-size: var(--t-label); color: var(--m-mute); margin: var(--s3) 0 var(--s1); }
+.cm-foot { color: var(--m-mute); font-size: var(--t-label); margin-top: var(--s1); }
+.cm-row { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); font-size: var(--t-body); }
+.cm-row .cm-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-row .cm-t b { font-weight: 500; }
+.cm-mute { color: var(--m-mute); }
+.cm-ago { color: var(--m-mute); font-size: var(--t-label); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cm-chips { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.cm-chip { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--m-flat); font-size: var(--t-label); color: var(--m-dim); }
+.cm-presses { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+/* Street View scrolls under its presses: they stay on the card's foot, never below the fold */
+.cm-street .cm-presses { position: sticky; bottom: calc(0px - var(--s4)); margin: var(--s3) calc(0px - var(--s4)) calc(0px - var(--s4)); padding: var(--s3) var(--s4) var(--s4); background: var(--m-lifted); }
+.cm-go { height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); border: 0; font-weight: 500; font-size: var(--t-pill); color: var(--m-deep); background: var(--m-nacre); cursor: pointer; white-space: nowrap; }
+.cm-go.q { background: color-mix(in srgb, var(--m-set-1) 7%, transparent); color: var(--m-ink); font-weight: 400; }
+.cm-go:disabled { opacity: .5; cursor: default; }
+.cm-sticker { flex: none; display: inline-flex; align-items: center; gap: var(--s1); font: 600 var(--t-label)/var(--t-label-line) ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .06em; text-transform: uppercase;
+  padding: 0 var(--s2); border-radius: var(--m-r-sticker); color: var(--m-deep); box-shadow: var(--m-drop-sticker); transform: rotate(var(--m-tilt)); }
+.cm-sticker.cm-call { background: var(--m-ask); }
+.cm-sticker.mine { background: var(--m-nacre); }
+.cm-sticker.flat { transform: none; }
+.cm-face { flex: none; display: block; }
+.cm-key { display: flex; flex-wrap: wrap; gap: var(--s4); margin-top: var(--s3); color: var(--m-dim); font-size: var(--t-label); align-items: center; }
+.cm-key > span { white-space: nowrap; display: inline-flex; align-items: center; gap: var(--s1); }
+/* the rail: under the map, its cards side by side, until the box is wide enough for the map at full scale beside it
+   (the sheet's 1000 px, the gap, the rail's 340 px) */
+.cm-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cm-rail)), 1fr)); gap: var(--s3); align-items: start; min-width: 0; }
+@container cmap (min-width: 1356px) {
+  .cm-cw { grid-template-columns: minmax(0, 1fr) var(--cm-rail); }
+  .cm-rail { display: flex; flex-direction: column; }
+  .cm-main > .cm-strip { display: none; }
+}
+/* the view's own answer (the day's hours, the route's steps) in one row over the map while the rail is under it */
+.cm-strip { display: flex; gap: var(--s1); padding: var(--s1); margin-bottom: var(--s3); min-width: 0; }
+.cm-cell { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--m-flat); white-space: nowrap; }
+.cm-cell b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.cm-cell .cm-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--m-dim); }
+.cm-bad { color: var(--m-wrong); font-size: var(--t-label); white-space: nowrap; }
+.cmap .cm-slide { transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .cmap .cm-slide { transition: none; } }
+.cm-rail .cm-card { padding: var(--s4); }
+.cm-rail h4 { margin: 0 0 var(--s2); font: 500 var(--t-head)/var(--t-head-line) var(--m-font); color: var(--m-dim); }
+.cm-topi { display: grid; grid-template-columns: 28px 1fr; gap: var(--s2); padding: var(--s2) 0; align-items: start; cursor: pointer; }
+.cm-topi + .cm-topi { border-top: 1px solid var(--m-line); }
+.cm-pin { width: var(--h-chip); height: var(--h-chip); display: grid; place-items: center; }
+.cm-s { font-size: var(--t-body); line-height: var(--t-body-line); }
+.cm-num { font-variant-numeric: tabular-nums; font-weight: 500; font-size: var(--t-read); }
+.cm-p { display: flex; gap: var(--s2); align-items: center; margin-top: var(--s1); }
+.cm-w, .cm-why { color: var(--m-mute); font-size: var(--t-label); }
+.cm-why { margin-top: var(--s1); }
+.cm-q { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 500; }
+.cm-panel { margin-top: var(--s3); }
+.cm-mem { display: flex; gap: var(--s1); margin: var(--s1) 0 var(--s2); }
+.cm-ln { display: flex; gap: var(--s2); font-size: var(--t-label); color: var(--m-dim); padding: var(--s1) 0; align-items: flex-start; }
+.cm-ln span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmap .drift { stroke-dasharray: 10 6; animation: cm-drift 2.4s linear infinite; }
+@keyframes cm-drift { to { stroke-dashoffset: -40; } }
+@media (prefers-reduced-motion: reduce) { .cmap .drift { animation: none; } }

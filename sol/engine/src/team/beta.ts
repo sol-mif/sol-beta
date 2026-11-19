@@ -13,6 +13,9 @@
 //             after, with slack for the timer and for the 23-hour day when the clocks go forward
 //   not broke no merged change the release holds wears `broke` (#421, broke.ts brokenIn; GitHub not answering refuses)
 //   forward   `stable` as it is now is in the release's history: it only moves forward
+// A pass numbers the release too (#1300): the tag v<N> on the same commit as its dev-* tag, N one more than the highest
+// v* there is (v1 the first), so a tester hears "v4" where the team says dev-20261112. A release that has its number
+// keeps it; a number GitHub did not take is said, never undoes the pass, and is made again by the next run.
 // Hold leaves `stable` as it is. Releases build on each other, so the next night's pass carries the held day with it.
 // `beta-guard.yml` asks the same questions again of every push to `stable` (checkStable), so a push by any other
 // way goes red where everyone sees it. Who may push `stable` at all is the ruleset (#439, F2), not this file.
@@ -23,15 +26,19 @@ import { fileURLToPath } from "node:url";
 import { clockIn, handoverOf, backupsOf, edited, REPO, DIGEST_TITLE, type Rhythm } from "./tonight.js";
 import { brokenIn } from "./broke.js";
 import { DEV_TAG, devTag, fetchAll, firstLine, rev, runnerOf, type ReleaseDeps, type PrComment } from "./release.js";
+import { quietPush } from "../quiet.js";
+import { PRODUCT_TAG, nextProduct, productTag } from "../version.js";
 
 export type BetaDeps = Pick<ReleaseDeps, "git" | "gh" | "now" | "dryRun" | "say"> & {
   /** the export to sol-beta (ship.ts mirror); absent, nothing is exported */
   mirror?: (sha: string, tag: string) => Promise<{ beta?: string }>;
+  /** whether the export would go (this checkout has a `beta` remote), for the dry run; absent, it is taken to go */
+  exports?: () => Promise<boolean>;
   /** the word to every Sol on the relay; false when it could not go (each Sol asks GitHub within the hour anyway) */
   tell?: (p: { sha: string; tag: string; by: string }) => boolean | Promise<boolean>;
 };
 export type Passed =
-  | { ok: true; tag: string; sha: string; by: string; already?: true; dry?: true; told?: boolean; beta?: string }
+  | { ok: true; tag: string; sha: string; by: string; product?: string; already?: true; dry?: true; told?: boolean; beta?: string }
   | { ok: true; nothing: true; held?: string }
   | { ok?: false; error: string };
 
@@ -77,16 +84,19 @@ export function verdictsOf(comments: PrComment[], beta: string[], backup: Backup
   return out;
 }
 
+/** "a day" (pure): a release made on an earlier day, in the rhythm's zone, and at least MIN_AGE ago. The pass's rule,
+ *  and gate two's question 4 (gatetwo.ts), which asks the same of the release it reports on */
+export function aDayOld(made: number, now: Date, zone = ""): boolean {
+  return !!made && clockIn(new Date(made), zone).day < clockIn(now, zone).day && now.getTime() - made >= MIN_AGE;
+}
+
 /** why a dev release may not go to beta now, or null when it may (pure; the list at the top of this file) */
 export function passRule(a: { tag: string; made: number; verdict?: Verdict; broken: { number: number }[]; now: Date; rhythm: Pick<Rhythm, "beta" | "zone"> }): string | null {
   if (!DEV_TAG.test(a.tag)) return `only a whole dev release goes to beta, and ${a.tag || "that"} is not one (a dev-* tag)`;
   const v = a.verdict;
   if (!v || v.at < a.made) return `${a.tag} has no pass from the beta reviewer (${a.rhythm.beta.join(" or ") || "nobody is named"}) written after it was made`;
   if (v.verdict === "hold") return `${a.tag} was held by ${v.by}: it stays off beta`;
-  const t = a.now.getTime();
-  if (!a.made || clockIn(new Date(a.made), a.rhythm.zone).day >= clockIn(a.now, a.rhythm.zone).day || t - a.made < MIN_AGE) {
-    return `${a.tag} is not a day old yet: it goes to beta at the release hour of the day after it was made`;
-  }
+  if (!aDayOld(a.made, a.now, a.rhythm.zone)) return `${a.tag} is not a day old yet: it goes to beta at the release hour of the day after it was made`;
   if (a.broken.length) return `${a.tag} holds ${a.broken.map((b) => `#${b.number}`).join(", ")}, marked broke: it stays off beta until the label comes off`;
   return null;
 }
@@ -121,6 +131,45 @@ export async function devReleases(d: Pick<BetaDeps, "git">): Promise<DevRelease[
   if (r.code !== 0) return [];
   return r.out.split("\n").map((l) => l.trim().split("\t")).filter((x) => x.length === 4 && DEV_TAG.test(x[0]))
     .map(([tag, peeled, obj, at]) => ({ tag, sha: peeled || obj, made: Number(at) * 1000 || 0 }));
+}
+
+/** the beta releases' numbers as fetched (v1, v2…, #1300): tag and commit */
+async function products(d: Pick<BetaDeps, "git">): Promise<{ tag: string; sha: string }[]> {
+  const r = await d.git(["for-each-ref", "--format=%(refname:short)%09%(*objectname)%09%(objectname)", "refs/tags/v*"]);
+  if (r.code !== 0) return [];
+  return r.out.split("\n").map((l) => l.trim().split("\t")).filter((x) => x.length === 3 && PRODUCT_TAG.test(x[0])).map(([tag, peeled, obj]) => ({ tag, sha: peeled || obj }));
+}
+
+/** the number the release at `sha` has, or the next one, and whether it is new */
+async function numberFor(d: Pick<BetaDeps, "git">, sha: string): Promise<{ product: string; fresh: boolean }> {
+  const all = await products(d);
+  const had = productTag(all.filter((x) => x.sha === sha).map((x) => x.tag));
+  return had ? { product: had, fresh: false } : { product: nextProduct(all.map((x) => x.tag)), fresh: true };
+}
+
+/** the number on GitHub: an annotated tag, never forced (a v<N> already there for another commit is refused); a push
+ *  cut off after GitHub took it is asked of GitHub, and a refused one takes the local tag back. null when it stands */
+async function stampProduct(d: Pick<BetaDeps, "git">, product: string, sha: string, tag: string, by: string): Promise<string | null> {
+  const who = (await d.git(["var", "GIT_COMMITTER_IDENT"])).code === 0 ? [] : ["-c", "user.name=Sol release runner", "-c", "user.email=release@sol.invalid"];
+  const t = await d.git([...who, "tag", "-a", product, "-m", `Sol ${product}: the dev release ${tag}, passed by ${by}`, sha]);
+  if (t.code !== 0) return `could not make the tag ${product}: ${firstLine(t.out)}`;
+  quietPush();   // a quiet Sol pushes nothing (#1293)
+  const p = await d.git(["push", "-q", "origin", `refs/tags/${product}:refs/tags/${product}`]);
+  if (p.code === 0) return null;
+  const up = (await d.git(["ls-remote", "origin", `refs/tags/${product}`])).out;
+  if (up.includes(`${sha}\trefs/tags/${product}^{}`)) return null;
+  await d.git(["tag", "-d", product]);
+  return `GitHub did not take ${product}: ${firstLine(p.out)}`;
+}
+
+/** number the release on stable (said either way; a number not taken leaves the pass as it is) */
+async function numbered(d: Pick<BetaDeps, "git" | "say">, sha: string, tag: string, by: string): Promise<string | undefined> {
+  const { product, fresh } = await numberFor(d, sha);
+  if (!fresh) return product;
+  const no = await stampProduct(d, product, sha, tag, by);
+  if (no) { d.say(`${no}: the next run numbers it`); return undefined; }
+  d.say(`${tag} is ${product}`);
+  return product;
 }
 
 const ancestor = async (d: Pick<BetaDeps, "git">, a: string, b: string) => (await d.git(["merge-base", "--is-ancestor", a, b])).code === 0;
@@ -161,7 +210,10 @@ export async function passBeta(d: BetaDeps, o: { repo: string; rhythm: Rhythm; t
     const by = verdicts.get(x.tag)?.by ?? "";
     if (stable === x.sha) {
       if (refused) return { error: refused };
-      d.say(`stable is at ${x.tag} already`); return { ok: true, tag: x.tag, sha: x.sha, by, already: true };
+      d.say(`stable is at ${x.tag} already`);
+      // a number GitHub did not take the last time is made now (never in a dry run)
+      const product = d.dryRun ? (await numberFor(d, x.sha)).product : await numbered(d, x.sha, x.tag, by);
+      return { ok: true, tag: x.tag, sha: x.sha, by, ...(product ? { product } : {}), already: true };
     }
     if (stable && !(await ancestor(d, stable, x.sha))) { refused ||= `stable (${short(stable)}) has what ${x.tag} does not: stable only moves forward, to a newer dev release`; break; }
     const b = await broken(d, o.repo, x.tag);
@@ -174,19 +226,26 @@ export async function passBeta(d: BetaDeps, o: { repo: string; rhythm: Rhythm; t
   const { tag, sha } = pick;
   const by = verdicts.get(tag)!.by;
 
-  if (d.dryRun) { d.say(`would move stable to ${tag} (${short(sha)}), passed by ${by}, export it to sol-beta and tell every Sol`); return { ok: true, tag, sha, by, dry: true }; }
+  if (d.dryRun) {
+    const { product, fresh } = await numberFor(d, sha);
+    const out = (await d.exports?.().catch(() => false)) ?? true;
+    d.say(`would move stable to ${tag} (${short(sha)}), passed by ${by}, ${fresh ? "tag" : "keep"} it ${product}, ${out ? "export it to sol-beta" : "skip the export to sol-beta (no beta remote)"} and tell every Sol`);
+    return { ok: true, tag, sha, by, product, dry: true };
+  }
   // forward only, never forced: GitHub refuses a push that is not a fast-forward
+  quietPush();   // a quiet Sol pushes nothing (#1293)
   const p = await d.git(["push", "-q", "origin", `${sha}:refs/heads/stable`]);
   if (p.code !== 0) {
     const up = (await d.git(["ls-remote", "origin", "refs/heads/stable"])).out;
     if (!up.startsWith(`${sha}\t`)) return { error: `GitHub did not take stable: ${firstLine(p.out)}` };
   }
   d.say(`stable moved to ${tag} (${short(sha)}), passed by ${by}`);
+  const product = await numbered(d, sha, tag, by);
   const beta = d.mirror ? (await d.mirror(sha, tag).catch((e) => ({ beta: `the beta repo did not take it: ${firstLine(String((e as Error)?.message ?? e))}` }))).beta : undefined;
   if (beta) d.say(beta);
   const told = d.tell ? await Promise.resolve(d.tell({ sha, tag, by })).catch(() => false) : false;
   d.say(told ? "every Sol on the relay was told" : "the relay was not in sight: each Sol finds it within the hour");
-  return { ok: true, tag, sha, by, told, ...(beta ? { beta } : {}) };
+  return { ok: true, tag, sha, by, ...(product ? { product } : {}), told, ...(beta ? { beta } : {}) };
 }
 
 /** beta-guard.yml: is `stable` at `sha` a pass that the rules allow? `before`, the commit stable was at, must be in its
@@ -232,15 +291,16 @@ async function main(argv: string[]): Promise<number> {
   const dryRun = argv.includes("--dry-run");
   const tag = arg(argv, "--tag");
   console.log(`beta pass${dryRun ? " (dry run: nothing moves)" : ""}, ${new Date().toISOString()}, ${repo}, beta reviewer ${rhythm.beta.join(", ") || "nobody"}`);
-  const { mirror } = await import("./ship.js");
+  const { mirror, hasBeta } = await import("./ship.js");
   try {
     const r = await passBeta({
       git, gh, now: () => new Date(), dryRun, say: (l) => console.log(l),
       mirror: (sha, t) => mirror({ root: resolve(root, "sol") }, sha, t),
+      exports: () => hasBeta(resolve(root, "sol")),
       tell: (p) => tell("stable", p),
     }, { repo, rhythm, tag });
     if (!r.ok) { console.error(`beta: ${r.error}`); return 1; }
-    if ("tag" in r) console.log(`beta: ${r.tag} ${r.sha}`);
+    if ("tag" in r) console.log(`beta: ${r.tag} ${r.sha}${r.product ? ` ${r.product}` : ""}`);
     return 0;
   } finally { await stop(); }
 }

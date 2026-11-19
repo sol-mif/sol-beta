@@ -316,36 +316,35 @@ test("flags: a merge without its lead's word gets one signed line on the PR and 
   assert.match(w.posts().find((p) => p.issue === 120)!.body, /Merged into main: #50 engine tweak \(fktsai\); #51 face/);
 });
 
-test("the night press (#544): a small PR the dev review took in is the lead's read; high, outside it, or faked words are flagged", async () => {
-  const into = (night = "2026-10-21") => `**Into sol-dev** in the dev review of ${night}: one merge commit, so one revert undoes it; its branch is deleted.\n\n— marcocyl04-ux (review session)`;
-  const engine = [{ path: "sol/mac/src/app.ts" }];   // life, led by isaacw; marcocyl04-ux presses at night
-  const m = (number: number, body: string) => ({ number, title: `pr ${number}`, author: { login: "fktsai" }, mergedBy: { login: "marcocyl04-ux" }, reviews: [], files: engine, body });
+test("#1128: a merge through a green PR is the flow and not flagged, whatever its risk; one around the ruleset is", async () => {
+  const life = [{ path: "sol/mac/src/app.ts" }];   // life, led by isaacw
+  const ok = [{ name: "engine", status: "COMPLETED", conclusion: "SUCCESS" }, { name: "skip", status: "COMPLETED", conclusion: "SKIPPED" }];
+  const m = (number: number, body: string, statusCheckRollup?: unknown[]) => ({ number, title: `pr ${number}`, author: { login: "fktsai" }, mergedBy: { login: "fktsai" }, reviews: [], files: life, body, ...(statusCheckRollup ? { statusCheckRollup } : {}) });
   const w = fake({
     codeowners: OWNERS,
-    comments: {
-      60: [{ body: into(), at: ago(0), login: "marcocyl04-ux" }],
-      61: [{ body: into(), at: ago(0), login: "marcocyl04-ux" }],
-      62: [{ body: into(), at: ago(0), login: "marcocyl04-ux" }],
-      63: [{ body: "**Re-checked**, and into sol-dev as one merge commit (its branch is deleted), after the slight send back of the dev review of 2026-10-21: fixed\n\n— marcocyl04-ux's agent (review session)", at: ago(0), login: "marcocyl04-ux" }],
-      // merged by hand in the day: no press comment
-      // the press's words written by someone other than who merged: they count for nothing
-      65: [{ body: into(), at: ago(0), login: "fktsai" }],
-    },
     merged: [
-      m(60, "**Risk:** low · blast 0 · light read"),
-      m(61, "no Risk line: every night-pressed PR is covered"),
-      m(62, "**Risk:** high · blast 3 · heavy read"),
-      m(63, "**Risk:** medium · blast 1 · light read"),
-      m(64, "**Risk:** low · blast 0 · light read"),
-      m(65, ""),
-    ],
+      m(60, "**Risk:** low · blast 0 · light read", ok),
+      m(61, "**Risk:** critical · blast 9 · heavy read", ok),
+      m(62, "", [{ name: "engine", status: "COMPLETED", conclusion: "FAILURE" }]),
+      m(63, "", [{ name: "engine", status: "IN_PROGRESS" }]),
+      m(64, ""),
+    ] as any,
   });
   await N.night(w.d, { staleDays: 7 });
-  assert.deepEqual(w.posts().filter((p) => p.issue !== 120).map((p) => p.issue), [62, 64, 65]);
-  for (const n of [60, 61, 63]) assert.ok(w.said.includes(`#${n} went in by the night press: the lead's read`));
-  assert.ok(w.said.includes("6 merged since the last run, 3 flagged for no lead's approval"));
-  assert.equal(N.riskLine("**Risk:** Critical · blast 9"), "critical");
-  assert.equal(N.riskLine("Risk: low"), "");
+  assert.ok(w.calls.some((c) => c.join(" ").includes("statusCheckRollup")), "the merged list carries each PR's checks");
+  assert.deepEqual(w.posts().filter((p) => p.issue !== 120).map((p) => p.issue), [62, 63, 64]);
+  assert.ok(w.said.includes("5 merged since the last run, 3 flagged for no lead's approval"));
+  assert.equal(N.greenChecks(ok), true);
+  assert.equal(N.greenChecks([{ context: "ci/x", state: "SUCCESS" }]), true);
+  assert.equal(N.greenChecks([{ status: "COMPLETED", conclusion: "SKIPPED" }]), false, "nothing ran green");
+  assert.equal(N.greenChecks([]), false);
+  assert.equal(N.greenChecks(undefined), false);
+  const run = (name: string, conclusion: string, startedAt: string) => ({ name, status: "COMPLETED", conclusion, startedAt });
+  assert.equal(N.greenChecks([run("proof", "CANCELLED", "2026-11-17T00:32:55Z"), run("proof", "SUCCESS", "2026-11-17T00:33:16Z")]), true,
+    "a run a later push cancelled is not the check's word (#1548)");
+  assert.equal(N.greenChecks([run("proof", "SUCCESS", "2026-11-17T00:32:55Z"), run("proof", "CANCELLED", "2026-11-17T00:33:16Z")]), false);
+  assert.equal(N.greenChecks([run("proof", "CANCELLED", "2026-11-17T00:32:55Z")]), false, "only cancelled is not green");
+  assert.equal(N.greenChecks([run("proof", "SUCCESS", "2026-11-17T00:33:16Z"), run("build", "FAILURE", "2026-11-17T00:30:00Z")]), false);
 });
 
 test("dry run: routing and flags print what they would do; nothing assigned, posted or pinged", async () => {

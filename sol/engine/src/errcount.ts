@@ -23,7 +23,7 @@ import { constants as osConstants } from "node:os";
 import { track, type Props } from "./track.js";
 
 export type Audience = "developer" | "tester" | "user";
-export type Kind = "uncaught" | "turn" | "work" | "team" | "desk" | "browser";
+export type Kind = "uncaught" | "turn" | "work" | "team" | "desk" | "browser" | "face";   // face: a window's socket (#1438)
 
 // the team's own repositories, by owner and name: a fork of either (another owner) is a Sol user's
 export const DEV_REPOS = new Set(["sol-mif/sol-dev", "marcocyl04-ux/sol-dev", "marcocyl04-ux/ecosystem"]);   // ecosystem: sol-dev's old name, which old checkouts still say

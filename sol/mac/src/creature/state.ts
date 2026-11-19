@@ -13,13 +13,10 @@ import { tintOf, lookOf, seatName, type Look, type SeatName, type Tint } from ".
 import { CREATURE_STATES, FLASH_MS, type CreatureState, type Flash } from "./states";
 import { onTick } from "./loop";
 import { onWire } from "../renovation";
+import { watchVisible } from "../notify/visible";
 
 export type { CreatureState, SeatName };
 type Phase = "starting" | "up" | "down" | "failed";
-// Notch buttons (#6): what the open card can answer, as the engine says it (PROTOCOL.md round 14). The oldest open ask
-// across Work runs, counted; and the busy conversation the notch follows. Kept here beside the state, read with useCreature().
-export type CardAsk = { id: string; sessionId: string; seat: string; tool: string; title: string; path?: string; n: number; of: number };
-export type CardTurn = { seat: string; sessionId: string; title: string; kind: "life" | "work" | "call" };
 
 // Dev only: ?creature=<state> forces a state, ?seat=home|work forces the seat, so every look can be seen on demand.
 const query = typeof location !== "undefined" && import.meta.env.DEV ? new URLSearchParams(location.search) : null;
@@ -40,8 +37,6 @@ const inputs = {
   state: "here" as CreatureState,
   asks: 0,
   seat: "home" as SeatName,
-  ask: null as CardAsk | null,
-  turn: null as CardTurn | null,
 };
 let flash: { kind: Flash; until: number } | null = null;
 
@@ -64,22 +59,17 @@ export const live = {
 };
 
 const subs = new Set<() => void>();
-let snap = { state: live.state, asks: 0, seat: live.seat, env: 0, ask: null as CardAsk | null, turn: null as CardTurn | null };
+let snap = { state: live.state, asks: 0, seat: live.seat, env: 0 };
 const notify = () => {
-  snap = { state: live.state, asks: live.asks, seat: live.seat, env: live.env, ask: inputs.ask, turn: inputs.turn };
+  snap = { state: live.state, asks: live.asks, seat: live.seat, env: live.env };
   const html = document.documentElement;
   html.dataset.creature = live.state;
   html.dataset.seat = live.seat;
   subs.forEach((f) => f());
 };
 
-// The notch's open card holds the creature awake: Away draws as Elsewhere while it is open (Marco is at the Mac).
-let held = false;
-export function setHeld(on: boolean) { held = on; tick(0, performance.now()); }
-
 function derive(): CreatureState {
-  const s: CreatureState = forced ?? (!inputs.link || inputs.phase !== "up" ? "unplugged" : inputs.state);
-  return held && s === "away" ? "elsewhere" : s;
+  return forced ?? (!inputs.link || inputs.phase !== "up" ? "unplugged" : inputs.state);
 }
 
 /** the engine's phase as this page knows it: up while linked, else the app's word (starting / failed / down) */
@@ -90,17 +80,13 @@ export function feedCreature(m: any) {
   if (m?.type === "creature.state" && isState(m.state)) { inputs.state = m.state; inputs.asks = Number(m.asks) || 0; }
   else if (m?.type === "creature.flash" && (m.kind === "done" || m.kind === "wrong")) flashNow(m.kind);
   else if (m?.type === "engine" && typeof m.phase === "string") inputs.phase = m.phase as Phase;
-  else if (m?.type === "creature.ask") { inputs.ask = m.ask && typeof m.ask.id === "string" ? (m.ask as CardAsk) : null; notify(); return; }
-  else if (m?.type === "creature.turn") { inputs.turn = m.turn && typeof m.turn.sessionId === "string" ? (m.turn as CardTurn) : null; notify(); return; }
   else return;
   tick(0, performance.now());
 }
-/** the ask and turn as they are now (a press checks the ask it drew is still the open one) */
-export const cardNow = () => ({ ask: inputs.ask, turn: inputs.turn });
 /** this page's socket opened or closed */
 export function setLink(up: boolean) {
   inputs.link = up;
-  if (!up) { inputs.phase = "down"; inputs.ask = null; inputs.turn = null; }
+  if (!up) inputs.phase = "down";
   tick(0, performance.now());
 }
 /** a transient over the held state; never changes it */
@@ -122,7 +108,7 @@ export function tick(dt: number, now: number) {
   lastTick = now;
   const state = derive();
   if (flash && flash.until <= now) flash = null;
-  const fl = forcedFlash ?? flash?.kind ?? null;   // a forced state still shows a press's flash (dev shots of the notch buttons)
+  const fl = forcedFlash ?? flash?.kind ?? null;   // a forced state still shows a press's flash (dev shots)
   const look = lookOf(state, fl);
   const seat = forcedSeat ?? inputs.seat;
   let target = 0;
@@ -171,9 +157,11 @@ export function useCreatureDriver(f: { seat: string }) {
 
 // The main window only: focus and system idle go up to the engine, which alone decides Here / Elsewhere / Away.
 // idleSeconds is null when the idle source fails (the engine then never says Away).
+// visible (#845): on the screen he is looking at, focused or not (notify/visible.ts); the gate of the one notification.
 export function startPresence(send: (o: object) => void): () => void {
-  let idle: number | null = null;
-  const report = () => send({ type: "presence", focused: document.hasFocus(), idleSeconds: idle });
+  let idle: number | null = null, visible = typeof document !== "undefined" && document.visibilityState === "visible";
+  const report = () => send({ type: "presence", focused: document.hasFocus(), visible, idleSeconds: idle });
+  const offVisible = watchVisible((v) => { visible = v; report(); }, onWire);
   const poll = () => invoke<number | null>("idle_seconds").then((s) => { idle = typeof s === "number" ? s : null; report(); }, () => { idle = null; report(); });
   void poll();
   const t = window.setInterval(poll, 5000);
@@ -184,7 +172,7 @@ export function startPresence(send: (o: object) => void): () => void {
   const offWire = onWire((e) => { if ("link" in e && e.link) void poll(); });
   const onVisible = () => { if (document.visibilityState === "visible") void poll(); };
   document.addEventListener("visibilitychange", onVisible);
-  return () => { window.clearInterval(t); window.removeEventListener("focus", report); window.removeEventListener("blur", report); offWire(); document.removeEventListener("visibilitychange", onVisible); };
+  return () => { offVisible(); window.clearInterval(t); window.removeEventListener("focus", report); window.removeEventListener("blur", report); offWire(); document.removeEventListener("visibilitychange", onVisible); };
 }
 
 onTick(tick);

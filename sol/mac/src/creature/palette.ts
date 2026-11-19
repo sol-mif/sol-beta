@@ -3,12 +3,12 @@ export type RGB = readonly [number, number, number];
 
 /** functional colours: fixed signals, each with a soft and a strong step */
 export const FUNCTIONAL = {
-  /** done, good. Strong: the done flash, a tick that lands. Soft: a quiet it-went-fine. From the creature: mint, green. */
-  green: { soft: [206, 236, 178] as RGB, strong: [112, 223, 69] as RGB },
-  /** waiting on you (Your call). Strong: the pulse when the ask arrives. Soft: the ask at rest. From the creature: butter, sun. */
-  yellow: { soft: [246, 236, 140] as RGB, strong: [244, 200, 42] as RGB },
-  /** wrong, unplugged. Strong: the wrong flash, a failure. Soft: Unplugged, steady. Strong is the creature's ember; soft is ember mixed toward white (not a creature pixel). */
-  red: { soft: [242, 134, 124] as RGB, strong: [253, 48, 45] as RGB },
+  /** done, good. Strong: the done flash, a tick that lands. Soft: a quiet it-went-fine. From the creature: mint, green. In the UI the soft shade is the one worn (2026-11-15, #1237); strong only for the one-beat flash. */
+  green: { soft: [161, 219, 180] as RGB, strong: [112, 223, 69] as RGB },
+  /** waiting on you (Your call). Strong: the pulse when the ask arrives. Soft: the ask at rest. From the creature: butter, sun. In the UI the soft shade is the one worn (2026-11-15, #1237); strong only for the one-beat flash. */
+  yellow: { soft: [238, 213, 146] as RGB, strong: [244, 200, 42] as RGB },
+  /** wrong, unplugged. Strong: the wrong flash, a failure. Soft: Unplugged, steady. Strong is the creature's ember; soft is ember mixed toward white (not a creature pixel). In the UI the soft shade is the one worn (2026-11-15, #1237); strong only for the one-beat flash. */
+  red: { soft: [227, 146, 139] as RGB, strong: [253, 48, 45] as RGB },
 } as const;
 /** decorative gradients in the creature's family, reusable for cosmetics; sol is the creature's own */
 export const GRADIENTS = {
@@ -44,10 +44,12 @@ export const INK: RGB = [235, 235, 232];
 export const PAPER_RGB: RGB = [26, 26, 26];
 /** the motion's durations in ms (tokens.json palette.motion), for a timer in code; css uses --d-<name> */
 export const MOTION = {
-  turn: 150,
+  turn: 160,
   pour: 850,
   breath: 4800,
   reveal: 120,
   glass: 220,
   lag: 140,
+  land: 320,
+  cycle: 2400,
 } as const;

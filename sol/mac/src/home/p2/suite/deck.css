@@ -1,0 +1,26 @@
+/* The deck's inside (Deck.tsx, #692 suite step 2): one card on a pile (suite.html's mini: one card turned a little
+   behind it), the two marks, a dot per card by its box. The scale's values only (the layout skill). */
+.dk { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; margin-top: var(--s2); padding-left: calc(var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); }
+.dk-pile { position: relative; isolation: isolate; min-width: 0; padding: var(--s1) var(--s2) var(--s2) 0; }
+.dk-pile::before { content: ""; position: absolute; inset: var(--s1) var(--s2) var(--s2) 0; z-index: -1; border: var(--hair) solid var(--c-pearl-line); border-radius: calc(var(--r-row) - var(--s1)); transform: rotate(-3deg); opacity: 0.7; }
+.dk .dk-card { all: unset; position: relative; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: var(--s1); width: 100%; min-height: calc(var(--s12) * 2); padding: var(--s3) var(--s4);
+  border: var(--hair) solid var(--c-deep); border-radius: calc(var(--r-row) - var(--s1)); background: color-mix(in srgb, var(--c-pearl) 70%, transparent); cursor: grab; touch-action: pan-y; user-select: none;
+  transition: transform var(--d-turn) var(--e-move); }
+.dk .dk-card.moving { transition: none; cursor: grabbing; }
+.dk .dk-card:focus-visible { box-shadow: 0 0 0 var(--hair) var(--c-deep); }
+.dk-side { opacity: 0.55; }
+.dk-text { font-size: var(--t-read); line-height: var(--t-read-line); overflow-wrap: anywhere; }
+.dk-source { display: flex; flex-direction: column; gap: var(--s1); }
+.dk-source small { opacity: 0.6; }
+.dk-source span { font-style: italic; overflow-wrap: anywhere; }
+.dk-lean { position: absolute; top: var(--s2); right: var(--s2); padding: 0 var(--s2); border-radius: var(--r-pill); font-style: normal; background: var(--green-strong); color: var(--c-deep); }
+.dk-card[data-dk-lean="didnt"] .dk-lean { right: auto; left: var(--s2); background: var(--yellow-strong); }
+.dk-acts { display: flex; align-items: center; gap: var(--s1); min-width: 0; }
+.dk-acts .pc-act { flex: none; padding: 0 var(--s3); border-style: solid; border-width: var(--hair); }  /* over pass 2's ".p2-stickies button" reset */
+.dk-boxes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s1); flex: 1; min-width: 0; }
+.dk-box { width: var(--s2); height: var(--s2); border-radius: var(--r-pill); border: var(--hair) solid var(--c-deep); opacity: 0.45; }
+.dk-box.b1 { background: color-mix(in srgb, var(--c-deep) 30%, transparent); }
+.dk-box.b2 { background: color-mix(in srgb, var(--c-deep) 60%, transparent); }
+.dk-box.b3, .dk-box.b4 { background: var(--c-deep); }
+.dk-box.now { opacity: 1; }
+.dk-by { margin: 0; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

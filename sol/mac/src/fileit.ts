@@ -2,10 +2,7 @@
 // page, on the page's one socket (teamAsk, cowork/stable.ts). The press takes the window's shot at once (team.file.shot)
 // and opens the line over the composer for one line of words; Return files it (team.file) with the mode's label and
 // the screen; the number comes back as the line's receipt (and the creature's RECEIPT, creature.receipt).
-//   the window  its own "file it" (the button on the bar) does both here
-//   the notch   no longer has a File it (Grab and Shelf, #200: the tracker is one destination of a Sol grab, in the
-//               sheet). The window still takes up an ask left under `sol.file.asking` (takeAsk, the `storage` event):
-//               FileLine reads it on mount
+// The window's own "file it" (the button on the bar) does both.
 // Under ?dev=file (dev builds only) nothing is sent: the shot and the number are made up, for shots of each state.
 import { useSyncExternalStore } from "react";
 import { teamAsk } from "./cowork/stable";
@@ -16,7 +13,6 @@ type State = { open: boolean; shot: string; shooting: boolean; filing: boolean; 
 
 const dev = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 export const DEV_FILE = dev?.get("dev") === "file";
-const ASK_KEY = "sol.file.asking", ASK_MS = 10 * 60_000;
 
 let S: State = { open: false, shot: "", shooting: false, filing: false, said: null, at: 0 };
 if (DEV_FILE) S = dev?.get("said") ? { ...S, said: { text: "filed #120", number: 120, url: "https://github.com" } } : { ...S, open: true, shot: "dev" };
@@ -38,19 +34,6 @@ export async function begin() {
   set({ shooting: false, shot: r.shot, ...(r.error ? { said: { text: r.error, failed: true } } : {}) });
 }
 
-/** the window takes up an ask the notch left (on mount, and on the storage event); stale ones are dropped */
-export function takeAsk(raw = localStorage.getItem(ASK_KEY)): boolean {
-  if (!raw) return false;
-  localStorage.removeItem(ASK_KEY);
-  try {
-    const a = JSON.parse(raw) as { at: number; shot?: string; error?: string };
-    if (!(Date.now() - a.at < ASK_MS)) return false;
-    set({ open: true, shooting: false, filing: false, shot: a.shot ?? "", said: a.error ? { text: a.error, failed: true } : null, at: Date.now() });
-    import("@tauri-apps/api/window").then((w) => w.getCurrentWindow().requestUserAttention(2)).catch(() => {});
-    return true;
-  } catch { return false; }
-}
-
 /** Return in the field: the issue, with what the line knows of the screen */
 export async function file(words: string, screen: { page: string; conversation?: string | null }, mode: FileMode) {
   const w = words.replace(/\s+/g, " ").trim();
@@ -68,4 +51,3 @@ export function cancel() { set({ open: false, shooting: false, shot: "", said: n
 /** the receipt read: the line goes */
 export function clear() { if (!S.open && !S.filing) set({ said: null }); }
 
-if (typeof window !== "undefined") window.addEventListener("storage", (e) => { if (e.key === ASK_KEY && e.newValue) takeAsk(e.newValue); });

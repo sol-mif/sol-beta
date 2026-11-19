@@ -22,7 +22,7 @@
       <li>Sol runs on your own computer. Your AI conversations, your files and your browser stay there. Only what you or your AI post in a shared room passes through Sol's cloud.</li>
       <li>Sol's cloud keeps only what a team needs to share: your account, the rooms you are in, and messages waiting for someone who is offline.</li>
       <li>The cloud is in the United States.</li>
-      <li>We don't sell your data or show you ads. The website runs no trackers. During the beta, the app counts how it is used (which buttons, how long a turn took, which mode) and once a day what Claude Code's and Codex's files on your Mac add up to (tokens, your plan), and sends the counts to the team once a day with your name, never what you type, say or open. A word in the beta testers' Discord turns it off or deletes it.</li>
+      <li>We don't sell your data or show you ads. The website runs no trackers. During the beta, the app counts how it is used (which buttons, how long a turn took, which mode) and once a day what Claude Code's and Codex's files on your Mac add up to (tokens, your plan), and sends the counts to the team once a day with your Sol name and the email you signed in with, never what you type, say or open. A word in the beta testers' Discord turns it off or deletes it.</li>
       <li>You can ask for a copy of your data, or ask us to delete it. Deletion is complete within 30 days of your confirmation, backups included.</li>
     </ul>
   </section>
@@ -44,7 +44,7 @@
     <p>You only need the cloud for rooms you share with other people (Cowork). Signing in with Google creates your Sol account. We ask Google for three things only: your Google account ID, your email address and your basic profile.</p>
     <ul>
       <li><b>Your account:</b> your Google account ID, your Sol name, when you joined, and that you told us you are 13 or older. We don't keep your birth date.</li>
-      <li><b>Your email address:</b> kept on its own, apart from your account, and used only to reach you about your account (a deletion, a report, a security problem). Nobody else in Sol sees it.</li>
+      <li><b>Your email address:</b> kept by our sign-in provider, apart from your account, and used for two things: to reach you about your account (a deletion, a report, a security problem), and, during the beta, to tell the team whose usage counts are whose (below). Nobody else in Sol sees it.</li>
       <li><b>Your name on Google:</b> Google sends it to us, and we don't keep it. Your teammates see your Sol name.</li>
       <li><b>Your signed-in computers:</b> a sign-in token for each of up to 10 machines, stored only in scrambled form (as a hash). Each one expires 90 days after it was last used.</li>
       <li><b>Rooms:</b> each room's name and code, who made it, who is in it and when they joined, and the files the room shares (such as its list of things, its goal and the goal's text files), each with who changed it last and when. A room holds 20 MB at most. For a room connected to GitHub, the room also keeps the names of its GitHub organisation and repositories. Your code stays in your own GitHub, never in Sol.</li>
@@ -62,7 +62,7 @@
     <h2>How Sol is used (the beta)</h2>
     <p>While Sol is in beta, the app on your computer counts how it is used, so we can see what works: which buttons are pressed, how long a turn took and whether it finished, which mode (Home, Work or a room) and which AI answered, when the app was opened, and what broke. It never records what you type, say, read or open: no messages, no transcripts, no file names, no paths, no addresses. A text's length is kept only as a band ("21 to 100 characters"), a folder only as its last name and a hash of its path made with a secret that stays on your Mac.</p>
     <p>Once a day it also reads the files Claude Code and Codex keep on your Mac, and counts: how many prompts and answers a day, with which model, from which folder, and how many tokens; the kind of plan each is signed in with; and which AI apps are installed. It reads them to count, and sends numbers, not content: no words of a conversation, no email, no token, no key ever leaves your Mac.</p>
-    <p>The counts are written on your computer first, one file a day, and sent to the team's cloud once a day. They carry your name: the name you picked in Sol when you signed in, or else your Mac's user name, beside a code your Sol made. The beta's testers are people we know, and we look at the counts by person to understand how each of you uses Sol. Each post arrives from your computer's internet address, which the cloud's access log keeps for 14 days, as it does for everything else that reaches it. Each file is kept on your computer for 90 days. The cloud keeps the counts while the beta's questions are open. What happens to them after the beta will be said here before it is decided.</p>
+    <p>The counts are written on your computer first, one file a day, and sent once a day to the team's cloud and to the team's database at Supabase (in the United States), which keeps the day's counts and, for 30 days, the day's file. They carry your name: the Sol name you picked when you signed in with Google, your Mac's user name and a code your Sol made; the team's own list of testers puts the email you signed in with beside them, so we know whose counts are whose. That list is read by the three of us only, never published, and the email is never copied into the counts themselves. The beta's testers are people we know, and we look at the counts by person to understand how each of you uses Sol. Each post arrives from your computer's internet address, which the cloud's access log keeps for 14 days, as it does for everything else that reaches it. Each file is kept on your computer for 90 days. The cloud keeps the counts while the beta's questions are open. What happens to them after the beta will be said here before it is decided.</p>
     <p>The first time Sol opens after this update, one card says all of this, with one button. There is no switch: to turn the counting off, or to have everything sent under your name deleted, say so in the beta testers' Discord and we do it the same day. A backup made before then keeps the rows until it ages out, 14 days.</p>
   </section>
 
@@ -74,7 +74,7 @@
   <section>
     <h2>Where it is kept, and who can see it</h2>
     <p>The cloud is one server at DigitalOcean in New York, United States. Backups are made daily on that server. An encrypted copy may also be kept with Hetzner, in Germany or Finland. The people who run Sol can see the cloud's data, and only to run and protect the service. We don't share it with anyone else, unless the law makes us.</p>
-    <p>The companies that keep Sol running handle only what they need to: DigitalOcean (the server and its backups), Hetzner (an encrypted backup copy), Google (sign-in, and the team inbox your email reaches), GitHub (this website, and the rooms you choose to connect to a repository) and Discord (the beta testers' server, if you join it).</p>
+    <p>The companies that keep Sol running handle only what they need to: DigitalOcean (the server and its backups), Supabase (the beta's usage counts), Hetzner (an encrypted backup copy), Google (sign-in, and the team inbox your email reaches), GitHub (this website, and the rooms you choose to connect to a repository) and Discord (the beta testers' server, if you join it).</p>
     <p>If you are in the European Union or the United Kingdom: we use your data to give you the service you signed up for, and, for the sign-up limits, the logs and reports, because we have a legitimate interest in keeping Sol safe. Your data is kept in the United States. You can ask to see, correct or delete your data, or object to how we use it, and you can complain to your data protection authority.</p>
   </section>
 
@@ -101,7 +101,7 @@
     <p>When this page changes, the date below changes. For a change that matters, we'll also tell you by email or in Sol before it takes effect.</p>
   </section>
 
-  <footer>Last changed 29 October 2026. <a href="terms.html">Terms</a> · <a href="support.html">Support</a></footer>
+  <footer>Last changed 17 November 2026. <a href="terms.html">Terms</a> · <a href="support.html">Support</a></footer>
 </main>
 </body>
 </html>

@@ -66,14 +66,15 @@ const uncommented = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").repl
 
 type Answer = typeof logAnswer;
 /** the /log answer's names, from running it: the query it reads (a row that, given as ?<row>=7, is the seq it asks the
- *  log for) and each field of the answers it gives (a log with nothing, a page cut with more after it, the frame off) */
+ *  log for) and each field of the answers it gives (a log with nothing, a page cut with more after it, the frame off,
+ *  the narrow look's kinds= with its switch on) */
 function answerOf(rows: string[], f: Answer): string[] {
   const log = (n: number, last: number) => {
     let asked = -1;
-    return { k: { since: (s: number) => { asked = s; return Array.from({ length: n }, (_, i) => ({ seq: s + i + 1 }) as unknown as AnyEv); }, lastSeq: () => last }, asked: () => asked };
+    return { k: { since: (s: number) => { asked = s; return Array.from({ length: n }, (_, i) => ({ seq: s + i + 1, kind: "plugin.load" }) as unknown as AnyEv); }, lastSeq: () => last }, asked: () => asked };
   };
   const gives = new Set<string>();
-  for (const a of [f(log(0, 0).k, new URLSearchParams()), f(log(LOG_PAGE, LOG_PAGE * 2).k, new URLSearchParams()), f(null, new URLSearchParams())]) for (const k of Object.keys(a)) gives.add(k);
+  for (const a of [f(log(0, 0).k, new URLSearchParams()), f(log(LOG_PAGE, LOG_PAGE * 2).k, new URLSearchParams()), f(null, new URLSearchParams()), f(log(1, 1).k, new URLSearchParams({ kinds: "plugin" }), true)]) for (const k of Object.keys(a)) gives.add(k);
   const reads = rows.filter((r) => { const l = log(1, 50); f(l.k, new URLSearchParams({ [r]: "7" })); return l.asked() === 7; });
   const out = rows.filter((r) => !gives.has(r) && !reads.includes(r)).map((r) => `${r} is not in logAnswer's answer (log.ts), nor the query it reads`);
   for (const n of gives) if (!rows.includes(n)) out.push(`${n} is in logAnswer's answer (log.ts) and not on the page`);
@@ -151,7 +152,7 @@ test("WIRE.md's check fails when a name on the page is not in the code, or the c
   const cases: [string, string, RegExp][] = [
     ["| `next` |", "| `nexts` | not a field of the answer |", /nexts is not in logAnswer's answer \(log.ts\), nor the query it reads/],
     ["| `prev` |", "| `previous` | not in the body |", /previous is not in sol\/engine\/src\/log.ts/],
-    ["| `current` |", "| `currently` | not read |", /currently is not in sol\/engine\/src\/kernel.ts/],
+    ["| `current` |", "| `currently` | not read |", /currently is not in sol\/engine\/src\/fingerprint.ts/],
     ["| `provides` |", "| `wants` | not a column of needs |", /wants is not in sol\/engine\/src\/record.ts/],
     ["| `write` | `write(what, value)`", "| `erase` | not on the small room's sol |", /erase is not in sol\/engine\/src\/kernel-worker.ts/],
     ["| `unload` |", "| `pause` | | not a message |", /pause is not sent .*pause is not handled/s],

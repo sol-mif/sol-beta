@@ -1,0 +1,87 @@
+/* Releases (#1299): Cowork › Releases. Every space, size, height and corner from the scale (the layout skill's rule 1);
+   one edge per place: every line starts at the page's inset or at the inset plus one 16px mark and --s2 (rule 2).
+   Colour: black, white and pearl from the scale; red only for a knot, the meaning channel's error (look.md: fixed). */
+/* the place's own widths, written once (layout skill: widths of a whole place) */
+.rl { --rl-page: 1040px; --rl-who: 120px; --rl-by: 160px; --rl-knot: 320px; --rl-n: 48px; padding: var(--s12) var(--s6) var(--s8); max-width: var(--rl-page); box-sizing: border-box; color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.rl button { font: inherit; }
+.rl-dim { color: var(--c-on-dim); }
+.rl-quiet { margin: var(--s3) 0; color: var(--c-on-dim); }
+.rl-link { all: unset; cursor: pointer; color: var(--c-pearl); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rl-link:disabled { color: var(--c-on-dim); cursor: default; }
+.rl-link:focus-visible { box-shadow: 0 0 0 1px var(--c-pearl); border-radius: var(--r-chip); }
+
+/* where I stand: read first */
+.rl-head { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); padding: 0 var(--s3); min-width: 0; }
+.rl-back { all: unset; cursor: pointer; width: var(--h-chip); height: var(--h-chip); display: grid; place-items: center; border-radius: var(--r-chip); color: var(--c-on-dim); }
+.rl-back:hover { background: var(--c-lift); color: var(--ink); }
+.rl-stand { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+.rl-k { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); }
+.rl-on { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; font-family: var(--mono); }
+/* a state is its shape first: even a filled dot, late a ring with a gap, unknown a dashed ring */
+.rl-state { display: inline-flex; align-items: center; gap: var(--s2); color: var(--c-on-dim); white-space: nowrap; }
+.rl-state i { flex: none; box-sizing: border-box; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); }
+.rl-state.even i { background: var(--c-pearl); }
+.rl-state.late { color: var(--ink); }
+.rl-state.late i { border: 1px solid var(--c-pearl); background: conic-gradient(var(--c-pearl) 0 75%, transparent 0); }
+.rl-state.unknown i { border: 1px dashed var(--c-on-dim); }
+
+/* each person against main */
+.rl-people { display: flex; flex-direction: column; gap: var(--s1); margin-bottom: var(--s6); padding: var(--s2) 0; border-top: 1px solid var(--c-on-line); border-bottom: 1px solid var(--c-on-line); }
+.rl-person { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); padding: 0 var(--s3); min-width: 0; }
+.rl-person .rl-state { width: var(--s4); justify-content: center; }
+.rl-who { flex: none; width: var(--rl-who); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-person.mine .rl-who { font-weight: 600; }
+.rl-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-on-dim); }
+.rl-press { all: unset; box-sizing: border-box; flex: none; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); border: 1px solid var(--c-pearl-line); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); display: inline-flex; align-items: center; cursor: pointer; }
+.rl-press:hover:not(:disabled) { background: var(--c-lift); }
+.rl-press:disabled { color: var(--c-on-dim); border-style: dashed; cursor: not-allowed; }
+
+/* the line: newest first */
+.rl-line { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.rl-rel { min-width: 0; }
+.rl-row { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); cursor: pointer; min-width: 0; }
+.rl-row:hover { background: var(--c-lift); }
+.rl-row:focus-visible { box-shadow: inset 0 0 0 1px var(--c-pearl); }
+.rl-rel.latest > .rl-row { background: var(--c-picked); box-shadow: inset 0 0 0 1px var(--c-pearl-line); }
+.rl-tag { flex: none; font-family: var(--mono); font-size: var(--t-code); line-height: var(--t-code-line); }
+.rl-when, .rl-by { flex: none; white-space: nowrap; }
+.rl-by { overflow: hidden; text-overflow: ellipsis; max-width: var(--rl-by); }
+.rl-gap { flex: 1; min-width: 0; }
+.rl-count { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); white-space: nowrap; }
+.rl-count.knot { color: var(--error); }
+.rl-held { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--error); font-size: var(--t-label); line-height: var(--t-label-line); }
+.rl-chev { flex: none; width: var(--s4); text-align: center; color: var(--c-on-dim); transition: transform var(--d-turn) var(--e-move); }
+.rl-chev.open { transform: rotate(90deg); }
+
+/* the channel by shape: dev a ring, beta half filled, stable filled; main a dashed ring */
+.rl-coin { flex: none; box-sizing: border-box; display: inline-block; width: var(--s4); height: var(--s4); border-radius: var(--r-pill); border: 1px solid var(--c-pearl); }
+.rl-coin.rl-c-beta { background: linear-gradient(90deg, var(--c-pearl) 50%, transparent 50%); }
+.rl-coin.rl-c-stable { background: var(--c-pearl); }
+.rl-coin.rl-c-next { border-style: dashed; border-color: var(--c-on-dim); }
+.rl-coin.rl-c-said { border-radius: var(--r-chip); border-color: var(--c-on-dim); }
+
+/* opened: the knots first, then what joined by person; on the inset plus one mark */
+.rl-open { padding: var(--s2) var(--s3) var(--s4) calc(var(--s3) + var(--s4) + var(--s2)); display: flex; flex-direction: column; gap: var(--s3); }
+.rl-knots { display: flex; flex-wrap: wrap; gap: var(--s3); padding: var(--s1) 0; }
+/* a knot: a note stuck on the release, tilted; its shape says it before its red does */
+.rl-knot { box-sizing: border-box; max-width: var(--rl-knot); display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) var(--s3); border-radius: var(--r-chip); background: var(--surface); border: 1px solid var(--error); }
+.rl-knot.l { transform: rotate(-1.5deg); }
+.rl-knot.r { transform: rotate(1deg); }
+.rl-sev { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--error); text-transform: uppercase; letter-spacing: .06em; }
+.rl-kwhat { color: var(--ink); }
+.rl-where { font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-group { min-width: 0; }
+.rl-gwho { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink); font-weight: 600; margin-bottom: var(--s1); }
+.rl-prs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rl-prs li { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; min-height: var(--h-chip); }
+.rl-n { flex: none; width: var(--rl-n); font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--c-on-dim); }
+.rl-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-meta { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+
+/* the cards on the line: on the inset plus one mark, as a release's opened part */
+.rl-card, .rl-dec { padding: var(--s2) 0 var(--s2) calc(var(--s3) + var(--s4) + var(--s2)); }
+.rl-dec { list-style: none; }
+.rl-pp { margin: 0 0 var(--s1); }
+
+.rl-mini { color: var(--c-on-dim); }
+.rl-mini b { color: var(--ink); font-family: var(--mono); font-weight: 500; }

@@ -1,0 +1,72 @@
+/* A piece as a tile on a Home folder's board (#1092, S/design/design.md). A sticky's size and place in the board's grid,
+   the first tile; straight, on dark glass with a hairline, so the pearl stays on his own stickies. Tokens only.
+   .ptile, not .pt: work.css and one.css draw a global .pt (a one-line title, nowrap and hidden) that cut the turning tile. */
+.ptile { --pt-min: calc(var(--s12) * 2 + var(--s8) + var(--s1)); order: -1; position: relative; min-height: var(--pt-min); border-radius: var(--r-card); box-sizing: border-box;
+  color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); perspective: calc(var(--s12) * 20); }
+/* the two sides of one tile */
+.pt-side { position: absolute; inset: 0; display: flex; flex-direction: column; padding: var(--s3) var(--s4) var(--s3); box-sizing: border-box; border-radius: inherit;
+  background: var(--c-lift); box-shadow: inset 0 0 0 var(--hair) var(--edge); backface-visibility: hidden; transition: rotate calc(var(--d-turn) * 2) var(--e-move), box-shadow var(--d-glass) var(--e-move); }
+.pt-back { rotate: y 180deg; background: var(--c-pearl); color: var(--c-deep); box-shadow: none; }
+.pt-turned .pt-front { rotate: y -180deg; }
+.pt-turned .pt-back { rotate: y 0deg; }
+/* something new wants him: the sun on the rim and the figure, nothing else */
+.ptile.fp-you .pt-front { box-shadow: inset 0 0 0 var(--hair) var(--c-waits-line); }
+.ptile.fp-you .pt-front .pt-fig { color: var(--sun); }
+.ptile.fp-broken .pt-front { box-shadow: none; border: var(--hair) dashed var(--error); }
+
+.pt-head { display: flex; align-items: center; gap: var(--s2); height: var(--h-chip); margin-bottom: var(--s2); min-width: 0; color: var(--dim); }
+.pt-back .pt-head { color: color-mix(in srgb, var(--c-deep) 60%, transparent); }
+.pt-turn { flex: none; width: var(--h-chip); height: var(--h-chip); margin-left: calc(-1 * var(--s1) - var(--s1) / 2); display: grid; place-items: center; border: 0; padding: 0; background: none; border-radius: var(--r-chip); cursor: pointer; }
+.pt-turn:is(:hover, :focus-visible) { background: var(--c-picked); outline: none; }
+.pt-back .pt-turn .fp-sq { border-color: var(--c-deep); }
+.pt-head b { font-weight: 500; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt-fig { margin-left: auto; flex: none; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pt-back .pt-fig { color: inherit; }
+
+/* the one thing: a sticky's title size, so the board reads as one row of things */
+.pt-t { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; animation: pt-in var(--d-glass) var(--e-arrive) both; }
+.pt-t.pt-none { color: var(--dim); font-weight: 400; }
+.pt-s { margin-top: var(--s1); color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptile-ghost .pt-s { white-space: normal; }
+@keyframes pt-in { from { opacity: 0; translate: 0 var(--s2); } }
+
+.pt-foot { margin-top: auto; padding-top: var(--s2); display: flex; align-items: center; gap: var(--s2); min-height: var(--h-chip); }
+.pt-next, .pt-again { margin-left: auto; border: 0; padding: 0; background: none; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); cursor: pointer; white-space: nowrap; }
+/* "then 2 more" is the only way to the next thing: a target a hand finds (24 high), in ink he can read */
+button.pt-next { height: var(--h-chip); margin-right: calc(-1 * var(--s2)); padding: 0 var(--s2); border-radius: var(--r-chip); color: var(--dim); }
+.pt-next:is(:hover, :focus-visible) { color: var(--ink); outline: none; }
+button.pt-next:is(:hover, :focus-visible) { background: var(--c-picked); }
+.pt-again { margin-left: 0; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--c-deep); color: var(--c-pearl); }
+
+/* the folder's agent is on it: the tile breathes as a working sticky does; one line says where it is */
+.pt-doing .pt-front { animation: pt-breathe calc(var(--d-pour) * 2) var(--e-breath) infinite; }
+.pt-now { display: flex; align-items: center; gap: var(--s2); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pt-now i { width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--c-pearl); animation: fp-breathe var(--d-pour) var(--e-move) infinite alternate; }
+@keyframes pt-breathe { 50% { box-shadow: inset 0 0 0 var(--hair) var(--c-pearl-line), 0 0 0 var(--s1) var(--c-pearl-tint); } }
+
+/* the back: three short pairs */
+.pt-back dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--s3); margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); }
+.pt-back dt { opacity: 0.55; }
+.pt-back dd { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* not there yet: the same tile, dashed; a press makes it */
+.ptile-ghost { display: flex; flex-direction: column; padding: var(--s3) var(--s4); text-align: left; font: inherit; font-size: var(--t-body); color: var(--dim); background: none; border: var(--hair) dashed var(--edge); cursor: pointer; }
+.ptile-ghost:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--dim); outline: none; }
+.ptile-ghost .pt-head { margin-left: 0; }
+.ptile-ghost .pt-next { color: inherit; }
+
+/* a tile is born: it drops into the board with the row's own arrival (pieces.css, the folder row) */
+.pt-born { animation: pt-born calc(var(--d-pour) / 2) var(--e-pour) both; }
+@keyframes pt-born { from { opacity: 0; translate: 0 calc(-1 * var(--s3)); scale: 0.96; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pt-side { transition: none; }
+  .pt-doing .pt-front, .pt-now i, .pt-t, .pt-born { animation: none; }
+}
+/* the class's row in Home's side: due's figure at its right, sun only while something there is new */
+.fp-duefig { margin-left: auto; color: var(--dim); font-variant-numeric: tabular-nums; }
+.fp-duefig.fp-sun { color: var(--sun); }
+/* a sticky the due tile knows: the piece's square in place of the dot, and when, in the sticky's own small type */
+.fh-sticky.real .tag:has(.fp-duemark)::before { display: none; }
+.fp-duemark { display: inline-flex; align-items: center; gap: var(--s1); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.fp-duemark .fp-sq { display: inline-block; width: var(--s2); height: var(--s2); border-color: currentColor; }

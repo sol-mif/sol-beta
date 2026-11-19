@@ -172,3 +172,20 @@ test("the undo snapshot and stack: before and after, capped at 64, a new verb cl
   assert.equal(big.undo.length, UNDO_CAP);
   assert.equal(big.undo[0].at, 6000);
 });
+
+// #1001: a block fitted to its content with no free place at its new size used to be kept where it was at the full
+// height (clampIn), over the block under it (walked: seven blocks asked, the stills over the table's head)
+import { fitGrow, overlaps as hits, inside as within_ } from "./stage/geometry.ts";
+test("a fitted block with no free place grows only as far as its neighbour, never over it (#1001)", () => {
+  const room = { w: 640, h: 700 };
+  const q = { x: 16, y: 16, w: 608, h: 200 }, below = { x: 16, y: 300, w: 608, h: 388 };
+  const r = fitGrow(room, q, 420, [below]);
+  assert.ok(!hits(r, below), `it covers the block under it: ${JSON.stringify(r)}`);
+  assert.ok(within_(room, r));
+  assert.equal(r.y, 16); assert.equal(r.h, 300 - 12 - 16);   // up to the gap above its neighbour
+  // free room where it is: it simply grows
+  assert.deepEqual(fitGrow(room, q, 260, [below]), { ...q, h: 260 });
+  // already over another (laid so by hand): left as it is
+  const over = { x: 16, y: 250, w: 300, h: 100 };
+  assert.deepEqual(fitGrow(room, { x: 16, y: 200, w: 300, h: 100 }, 400, [over, { x: 328, y: 16, w: 296, h: 680 }]), { x: 16, y: 200, w: 300, h: 100 });
+});

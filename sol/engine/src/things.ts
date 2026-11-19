@@ -34,6 +34,18 @@ export function readIn(dir: string, name: string): string | null {
   if (!real.startsWith(realpathSync(dir) + sep)) throw new Error(`${name} points outside its folder`);
   return readFileSync(real, "utf8");
 }
+/** the same file as it is on the disk, byte for byte (a block's fingerprint, fingerprint.ts: only with the record's
+ *  origin's switch on); the same checks as readIn, kept apart so readIn runs as it did with the switch off */
+export function bytesIn(dir: string, name: string): Buffer | null {
+  const p = join(dir, name);
+  if (!existsSync(p)) return null;
+  const st = lstatSync(p);
+  if (!st.isFile()) throw new Error(`${name} is not a plain file`);
+  if (st.size > MAX) throw new Error(`${name} is over ${MAX / 1024} KB`);
+  const real = realpathSync(p);
+  if (!real.startsWith(realpathSync(dir) + sep)) throw new Error(`${name} points outside its folder`);
+  return readFileSync(real);
+}
 
 /** every thing in the home, sorted by id; a folder that cannot be read carries its reason */
 export function readThings(home: string): ThingWire[] { return readFolder(join(home, "things")); }

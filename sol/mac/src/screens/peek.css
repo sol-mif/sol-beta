@@ -1,0 +1,35 @@
+/* The peek (#1090): position and motion only; the glass and the type come from the kit through Peek.tsx. Drawn inside
+   Seam.tsx's layer (.sc-layer), under the map. Replaces .sc-cross, .sc-drop, .sc-what, .sc-lands and their keyframes. */
+.pk { position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform; box-shadow: var(--pop-shadow); border-radius: var(--curve-block); }
+.pk-head { height: 36px; display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s4); white-space: nowrap; overflow: hidden; }
+.pk-head span { overflow: hidden; text-overflow: ellipsis; }
+/* the ghost: the session's offer. A dashed hairline in the pearl, no fill of its own beyond the glass; it can be pressed */
+.pk.ghost { pointer-events: auto; cursor: pointer; opacity: 0.8; transition: opacity var(--d-turn) var(--e-arrive), margin var(--d-glass) var(--e-reveal); }
+.pk.ghost::after { content: ""; position: absolute; inset: 0; border: 1px dashed var(--c-pearl-line); border-radius: var(--curve-block); pointer-events: none; }
+.pk.ghost:hover { opacity: 1; }
+.pk.ghost.left:hover { margin-left: var(--s3); }
+.pk.ghost.right:hover { margin-left: calc(-1 * var(--s3)); }
+.pk.ghost { animation: pk-in var(--d-glass) var(--e-reveal) both; }
+@keyframes pk-in { from { opacity: 0; } }
+
+/* the seam lit where the block is: 160 px centred on --sc-y, the jelly's bands; add to seam.css in place of .sc-seam.hot */
+.sc-seam .sc-lit { position: absolute; width: 160px; height: var(--s1); opacity: 0; background: var(--jelly); border-radius: var(--r-pill); transition: opacity var(--d-glass) var(--e-arrive); }
+/* on a side seam the same strip stands upright: turned about its centre, so no colour is typed here */
+.sc-seam.left .sc-lit, .sc-seam.right .sc-lit { top: var(--sc-y, 50%); left: 50%; transform: translate(-50%, -50%) rotate(90deg); }
+.sc-seam.top .sc-lit, .sc-seam.bottom .sc-lit { top: 0; left: calc(var(--sc-y, 50%) - 80px); }
+.sc-seam.carrying .sc-lit { opacity: 1; }
+/* the ghost seam: no other window yet. A dashed pearl hairline; a press or a block carried past it opens the window */
+.sc-seam.ghost { background: none; opacity: 0.6; cursor: pointer; animation: pk-in var(--d-glass) var(--e-arrive) 400ms both; }
+.sc-seam.ghost.left, .sc-seam.ghost.right { width: 0; border-left: 1px dashed var(--c-pearl-line); }
+.sc-seam.ghost.top, .sc-seam.ghost.bottom { height: 0; border-top: 1px dashed var(--c-pearl-line); }
+.sc-seam.ghost:hover { opacity: 1; }
+.sc-seam.ghost.refused { animation: sc-refused 160ms var(--e-move) 2; }
+@keyframes sc-refused { 50% { transform: translateY(6px); } }
+/* one object: the solid seam breathes on the clock, so both windows breathe together (Seam.tsx sets --sc-phase to
+   -(Date.now() % 4800) ms once, on mount) */
+.sc-seam:not(.ghost):not(.carrying) { animation: sc-breath var(--d-breath) var(--e-breath) var(--sc-phase, 0ms) infinite; }
+@keyframes sc-breath { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.65; } }
+@media (prefers-reduced-motion: reduce) { .sc-seam, .pk.ghost { animation: none !important; } }
+
+/* while a peek is out the blocks already on this window dim, so the eye goes to what is coming (design NOW 01:53 #2) */
+html[data-peek] [data-block] { opacity: 0.55; transition: opacity var(--d-glass) var(--e-arrive); }

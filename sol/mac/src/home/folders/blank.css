@@ -1,0 +1,12 @@
+/* The blank sticky (#1483, Blank.tsx): dashed paper with a "+" while empty; the nacre once typed into; the two nearest
+   places as dark chips on the paper. Drawn inside .fh, so it reads the folders' colours (folders.css). */
+.fh .fh-sticky.fh-blank { background: none; box-shadow: none; border: 1.5px dashed var(--edge); color: var(--ink); cursor: text; transform: none; min-height: 112px; }
+.fh .fh-sticky.fh-blank:hover { border-color: var(--dim); transform: none; }
+.fh .fh-sticky.fh-blank.typing { background: var(--nacre); color: var(--deep); border-color: transparent; box-shadow: 0 12px 28px rgba(0, 0, 0, .5); }
+.fh-blank input { all: unset; font-size: 15.5px; line-height: 20px; font-weight: 650; width: 100%; color: inherit; }
+.fh-blank input::placeholder { color: var(--mute); font-weight: 400; }
+.fh-blank-plus { font-size: 30px; font-weight: 300; line-height: 1; color: var(--mute); margin-top: auto; }
+.fh-blank-hint { margin-top: auto; font-size: 11.5px; color: rgba(10, 10, 11, .6); }
+.fh-blank-near { margin-top: auto; padding-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.fh-blank-chip { all: unset; cursor: pointer; font-size: 12px; line-height: 16px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--deep); color: var(--pearl, #e6e1d8); }
+.fh-blank-chip:hover { box-shadow: 0 0 0 2px rgba(10, 10, 11, .25); }

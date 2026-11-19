@@ -1,0 +1,51 @@
+/* Home's world (#1093): the canvas fills Home's main area and is clear, so the window's glass shows through; the
+   island is the only thing drawn. Over it: names (the scene's), three counts, two buttons on a sticky, the toast.
+   Every value is the scale's (palette.css, tokens.css). Colour only for state. The whole file is the designer's (n13). */
+.w3 { position: absolute; inset: 0; overflow: hidden; user-select: none; }
+.w3-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+.w3-still { position: absolute; inset: var(--s12) var(--s6) var(--s6); width: calc(100% - 2 * var(--s6)); height: calc(100% - var(--s12) - var(--s6)); }
+.w3-still text { font-family: inherit; }
+
+/* a name under the pointer, for the things that carry no name of their own (a session, a day, a light) */
+.w3-tip { position: fixed; transform: translate(var(--s4), var(--s4)); pointer-events: none; z-index: 40; padding: var(--s1) var(--s3); border-radius: var(--r-row); background: rgb(from var(--c-deep) r g b / 0.9); box-shadow: inset 0 0 0 var(--hair) var(--line); font-size: var(--t-pill); line-height: var(--t-pill-line); font-weight: 600; color: var(--ink); white-space: nowrap; }
+
+/* what the hand just did, with its undo */
+.w3-toast { position: absolute; left: 50%; bottom: var(--s6); transform: translateX(-50%); display: flex; align-items: center; gap: var(--s3); height: var(--h-row); padding: 0 var(--s4); border-radius: var(--r-pill); background: rgb(from var(--c-deep) r g b / 0.95); box-shadow: inset 0 0 0 var(--hair) var(--line); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); white-space: nowrap; animation: w3-in .22s var(--pour, ease) both; }
+.w3-toast button { all: unset; cursor: pointer; font-weight: 600; color: var(--c-pearl); }
+.w3-toast button:hover { color: var(--on); }
+@keyframes w3-in { from { opacity: 0; transform: translate(-50%, var(--s2)); } to { transform: translate(-50%, 0); } }
+.w3-fps { position: absolute; right: var(--s6); top: var(--s4); font: var(--t-label) / var(--t-label-line) ui-monospace, monospace; color: var(--mute); }
+@media (prefers-reduced-motion: reduce) { .w3-toast { animation: none; } }
+
+/* Home's world (#1093): the names the scene lays over the canvas (scene.ts makes .w3-labels and each .w3-l).
+   Add to world3d.css. The kit's type (label 11/16, 12 for a folder, a project and a tile), ink at full, the scene
+   sets each name's opacity by level (.92 ink, .55 dim, .32 mute, 0 hidden). */
+.w3-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.w3-l { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: rgb(from var(--on) r g b); opacity: 0; transition: opacity .2s ease; will-change: transform; text-shadow: 0 var(--hair) var(--s1) rgb(from var(--c-deep) r g b / 0.7); }
+.w3-l.folder, .w3-l.project, .w3-l.thing, .w3-l.edge { font-size: var(--t-pill); }
+.w3-l.edge { font-weight: 600; }   /* the only bold names are the ones that want him */
+.w3-l.edge { overflow: hidden; text-overflow: ellipsis; }
+.w3-l.hour { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* the keys' ring: on the thing Tab is on (the kit's picked ring) */
+.w3-ring { position: absolute; left: 0; top: 0; border-radius: var(--r-row); box-shadow: var(--shadow-picked); opacity: 0; transition: opacity .12s ease; will-change: transform; }
+.w3-l.thing { overflow: hidden; text-overflow: ellipsis; width: calc(var(--s12) * 2 + var(--s4)); text-align: center; }   /* one line, cut with …: a wrapped second line lay beside its district's name (05:30) */
+
+/* three counts in place of the line of words: a dot and a number each */
+[data-pulled] > .w3-counts { opacity: .32; }
+.w3-counts { transition: opacity .2s ease; }
+.w3-counts { position: absolute; left: var(--s6); top: var(--s4); display: flex; align-items: center; gap: var(--s1); }
+.w3-count { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.w3-count:hover { background: var(--line); }
+.w3-count i { width: var(--s2); height: var(--s2); border-radius: var(--r-pill); }
+.w3-count.run i { background: var(--green); }
+.w3-count.ask i { background: var(--sun); }
+.w3-count.done i { background: var(--c-pearl); }
+.w3-off { margin-left: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+
+/* the two buttons on a sticky: placed at world.where(id), they follow it */
+.w3-acts { position: absolute; left: 0; top: 0; pointer-events: none; }
+.w3-acts > div { position: absolute; left: 0; bottom: var(--s4); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--s2); }
+[data-acts="under"] > .w3-acts > div { bottom: auto; top: var(--s1); }   /* a thing on the front edge: its buttons hang under it */
+.w3-acts .name { font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.w3-acts .asks { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--sun); white-space: nowrap; }
+.w3-acts .row { display: flex; gap: var(--s2); pointer-events: auto; }

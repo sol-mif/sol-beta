@@ -27,6 +27,35 @@ export function resultText(content: unknown): string {
   return content.map((b: any) => (b?.type === "text" ? b.text : b?.type === "image" ? "[image]" : "")).filter(Boolean).join("\n");
 }
 
+// The tags the harness wraps a whole user message in. A message made of these is the harness talking; one wrapped in
+// any other tag is the person's own (HTML they pasted to ask about it, #899). A tag left off this list shows as a line
+// of theirs, which is a smaller harm than losing their words. <command-name>, <local-command-stdout> and
+// <system-reminder> have their own lines in userText.
+export const HARNESS_TAGS = [
+  "task-notification", "local-command-caveat",                          // seen wrapping a whole message in real transcripts
+  "local-command-stderr", "bash-input", "bash-stdout", "bash-stderr",   // the rest: tag names the CLI writes, from its code
+  "bash-exit-code", "command-message", "tick", "forked-skill-launch", "user-prompt-submit-hook",
+  "user-memory-input",                                                  // a `#` note: left out as it was before #899
+];
+const OPEN = /\s*<([a-z-]+)>/y;
+
+// The whole text is the harness's own tags back to back, each closed by its own name: a `!` command's output is
+// <bash-stdout>…</bash-stdout><bash-stderr>…</bash-stderr> in one message.
+function harnessOnly(text: string): boolean {
+  let at = 0;
+  while (at < text.length) {
+    OPEN.lastIndex = at;
+    const open = OPEN.exec(text);
+    if (!open || !HARNESS_TAGS.includes(open[1])) return false;
+    const end = `</${open[1]}>`;
+    const close = text.indexOf(end, OPEN.lastIndex);
+    if (close < 0) return false;
+    at = close + end.length;
+    if (!text.slice(at).trim()) return true;
+  }
+  return false;
+}
+
 // Marco's own words in a user message, or null when the message is the harness talking (reminders, tool results).
 export function userText(content: unknown): { text: string; images: number } | null {
   let parts: string[] = [];
@@ -49,7 +78,7 @@ export function userText(content: unknown): { text: string; images: number } | n
   // reminders and injected context come wrapped in tags; Marco's text after them is kept
   text = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "").trim();
   if (!text && !images) return null;
-  if (text.startsWith("<") && /^<[a-z-]+>[\s\S]*<\/[a-z-]+>$/.test(text)) return null;
+  if (text.startsWith("<") && harnessOnly(text)) return null;
   if (/^Caveat: The messages below were generated/.test(text)) return null;
   return { text, images };
 }
@@ -64,6 +93,7 @@ export class Items {
   private streamMsg = "";                    // the message the stream is in
   private streamBlock = new Map<number, string>(); // stream block index -> item id
   plan: Item | null = null;
+  has(id: string) { return this.at.has(id); }
   usage = { context: 0 };
   private used: string[] = [];               // the project's parts read since the last reply (#431, team/used.ts)
   constructor(private emit: (it: Item) => void = () => {}, private delta: (id: string, text: string) => void = () => {}) {}

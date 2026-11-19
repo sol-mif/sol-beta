@@ -1,4 +1,5 @@
 import { cleanHome } from "../home/flag";
+import { stageWhole } from "../flag";
 import { useRef } from "react";
 import { Message } from "../Message";
 import type { Item, Work } from "./useWork";
@@ -10,6 +11,7 @@ import { TonightCard } from "./Tonight";
 import { HandInCard } from "./HandIn";
 import { CheckpointCard } from "./Checkpoint";
 import { UsedMark } from "../cowork/Used";   // the used-Cowork mark (#431)
+import { engineSaid } from "../one/engineSaid";
 
 export { toolLine } from "./WorkSteps";
 
@@ -46,6 +48,19 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
   const drawn = new Set<string>();   // review rounds already drawn
   for (let i = 0; i <= last; i++) {
     const it = top[i];
+    // the interrupt, clean (Marco 2026-11-08: "really jank"): the harness's own lines are not the talk. Its "[Request
+    // interrupted…]" message is not his; its diagnostic line is nobody's; the engine's "stopped" note is drawn once,
+    // and not at all when his next message is what stopped the turn (the step row already says "stopped by you").
+    const txt = String(it.text ?? "");
+    if (it.kind === "me" && /^\[Request interrupted/.test(txt)) continue;
+    if (/^\[ede_diagnostic\]/.test(txt)) continue;
+    if (it.kind === "note" && /^stopped\b/.test(txt)) {
+      let j = i + 1;
+      while (j <= last && top[j].kind === "note" && /^stopped\b/.test(String(top[j].text ?? ""))) j++;
+      const next = top[j];
+      if (next && (next.kind === "me" || /^\[Request interrupted/.test(String(next.text ?? "")))) { i = j - 1; continue; }
+      if (j > i + 1) i = j - 1;
+    }
     if (it.kind === "tool" || it.kind === "think") {
       const start = i;
       while (i <= last && (top[i].kind === "tool" || top[i].kind === "think")) i++;
@@ -60,6 +75,9 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
         if (m) out.push(<SessionCard key={`ss${t.id}`} id={m[1]} w={w} lead={/hand_off$/.test(String(t.name)) ? "handed to" : "started"} />);
         else if (t.input?.initiation === "proposal" && t.ok !== false) out.push(<Proposal key={`pp${t.id}`} it={t} w={w} old={old} />);
       }
+    } else if (it.kind === "me" && engineSaid(txt)) {
+      // what the engine tells an orchestration session is not his (one/engineSaid.ts): one quiet line, its words on hover
+      out.push(<p key={it.id} data-item={it.id} className="wline" title={txt.slice(0, 1200)}>{engineSaid(txt)}</p>);
     } else if (it.kind === "me") {
       if (it.dropped) continue;   // queued, then forgotten before it was read (#51)
       const text = String(it.text ?? "") + (it.images ? `\n[${it.images} image${it.images > 1 ? "s" : ""}]` : "");
@@ -85,8 +103,14 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
     else if (it.kind === "tonight") out.push(<div key={it.id} data-item={it.id}><TonightCard it={it} w={w} /></div>);   // the review session's card (#416)
     else if (it.kind === "handin") out.push(<div key={it.id} data-item={it.id}><HandInCard it={it} w={w} /></div>);   // the hand-in card (#476)
     else if (it.kind === "checkpoint") out.push(<div key={it.id} data-item={it.id}><CheckpointCard it={it} w={w} /></div>);   // Scoped and Approve (#482)
-    else if (it.kind === "perm") out.push(<div key={it.id} data-item={it.id}><PermCard it={it} w={w} /></div>);   // the notch's Open lands here (land.ts)
+    else if (it.kind === "perm") out.push(<div key={it.id} data-item={it.id}><PermCard it={it} w={w} /></div>);
     else if (it.kind === "wrap") out.push(<WrapBox key={it.id} it={it} w={w} last={i === lastWrap && !busy && !top.slice(lastWrap + 1).some((x) => x.kind === "me")} onFresh={onFresh} old={was(it.id)} />);
+    else if (it.kind === "compact" && stageWhole()) {
+      // the summary as a good thing (Marco 2026-11-12: "it feels like compaction is negative… make it feel cool"): room
+      // was made and nothing was lost; the count stays for whoever wants it
+      const k = /\(([^)]*tokens?)\)/.exec(String(it.text ?? ""))?.[1];
+      out.push(<p key={it.id} data-item={it.id} className="wpack" title={`Sol folded the earlier talk into a summary so there is room to go on. ${String(it.text ?? "")}`}><span className="wpack-in"><i aria-hidden /><b>Room made</b><span>{k ? `${k.replace(/ tokens?/, "")} freed · ` : ""}nothing is lost</span></span></p>);
+    }
     else out.push(<p key={it.id} data-item={it.id} className={`wline ${it.kind}`}>{String(it.text ?? "")}</p>);
   }
   if (busy && top[last]?.kind === "me" && !top[last].queued) out.push(<div key="wait" className="msg you md live"><p className="wwait"><Elapsed at={top[last].at} /></p></div>);

@@ -10,6 +10,7 @@ import { STATE_DIR } from "../../work/state.js";
 import { Keys } from "./keys.js";
 import { Trail, PROJECT } from "./trail.js";
 import { fold } from "./record.js";
+import { pointTo } from "./pointer.js";
 
 export { Keys, machineName, verifySig, certOk, writerOf, type By, type Cert, type Signer, type KeyKind } from "./keys.js";
 export { Trail, verify, canonical, hashOf, eventId, bodyOf, order, ERASE, type Draft, type Body, type TrailEvent, type Bad, type Verified, type VerifyOpts } from "./trail.js";
@@ -45,6 +46,7 @@ export async function answerV3(m: Record<string, unknown>, me: string): Promise<
           project, by: { person: me, machine: keys.machineName, ...(agent ? { agent } : {}) }, kind: String(m.kind ?? ""),
           ...(typeof m.item === "string" ? { item: m.item } : {}), ...(typeof m.field === "string" ? { field: m.field } : {}), ...("value" in m ? { value: m.value } : {}),
         });
+        pointTo(event);   // one line on the local log that points at it (pointer.ts; off unless its switch is on)
         return { ...out, event };
       }
       case "team.v3.since": {

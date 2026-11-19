@@ -1,0 +1,65 @@
+/* Two windows, one object (#1090): the seam. Only with screens.two on (the layer is not drawn otherwise). Pearl on
+   black; the seam is light, not a line, so it reads as where the glass continues. The ghost, the lit strip, the breath
+   and the peek are in peek.css (design round 1); the map in map.css. No words anywhere. */
+.sc-layer { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+.sc-seam {
+  position: absolute; pointer-events: auto; cursor: default;
+  --sc-glow: rgb(from var(--c-pearl) r g b / 0.55);
+  transition: box-shadow var(--d-glass) var(--e-arrive);
+}
+.sc-seam.right, .sc-seam.left { top: 6%; bottom: 6%; width: 2px; }
+.sc-seam.top, .sc-seam.bottom { left: 6%; right: 6%; height: 2px; }
+.sc-seam.right:not(.ghost) { right: 0; background: linear-gradient(180deg, transparent, var(--sc-glow) 30%, var(--sc-glow) 70%, transparent); border-radius: var(--pill) 0 0 var(--pill); }
+.sc-seam.left:not(.ghost) { left: 0; background: linear-gradient(180deg, transparent, var(--sc-glow) 30%, var(--sc-glow) 70%, transparent); border-radius: 0 var(--pill) var(--pill) 0; }
+.sc-seam.top:not(.ghost) { top: 0; background: linear-gradient(90deg, transparent, var(--sc-glow) 30%, var(--sc-glow) 70%, transparent); }
+.sc-seam.bottom:not(.ghost) { bottom: 0; background: linear-gradient(90deg, transparent, var(--sc-glow) 30%, var(--sc-glow) 70%, transparent); }
+.sc-seam.ghost.right { right: 1px; } .sc-seam.ghost.left { left: 1px; }
+.sc-seam.ghost.top { top: 1px; } .sc-seam.ghost.bottom { bottom: 1px; }
+/* a wider hit area than the light, so a press or a double press finds it */
+.sc-seam::before { content: ""; position: absolute; inset: 0 calc(-1 * var(--s2)); }
+.sc-seam.top::before, .sc-seam.bottom::before { inset: calc(-1 * var(--s2)) 0; }
+/* the map hovered: both windows' seams brighten while it lasts */
+.sc-seam.bright:not(.ghost) { --sc-glow: var(--c-pearl); box-shadow: 0 0 var(--s4) 0 rgb(from var(--c-pearl) r g b / 0.35); }
+
+/* a wall window: the blocks alone, the whole room theirs (no side, no talk: the talk is on one window) */
+.sc-wall { position: relative; width: 100%; height: 100%; min-height: 0; }
+.sc-wall > .st-stage { position: absolute; inset: 0; }
+
+/* the anchor window: the front stands in the room right of the side (Front.tsx, front.css) */
+.sf-room.sc-anchorroom { height: 100%; overflow-y: auto; }
+
+/* a wall that holds nothing draws nothing: no "ask for one thing", there is no box here to ask with */
+.sc-wall .st-empty { display: none; }
+
+/* follow-me's ghost: the talk's box offered on this window, a dashed outline at the bottom left; a press brings it */
+.sc-boxghost { position: absolute; left: var(--s6); bottom: var(--s6); width: min(var(--col), 60%); height: var(--s8);
+  pointer-events: auto; cursor: pointer; background: none; border: 1px dashed var(--c-pearl-line); border-radius: var(--r-l);
+  animation: pk-in var(--d-glass) var(--e-arrive) both; }
+.sc-boxghost:hover { border-color: var(--c-pearl); }
+
+/* point across: what the other window points at, a pearl chip above this window's box; a press lets go */
+.hc-barbox { position: relative; }
+/* design NOW 05:08 #2a: its bottom 8 px above the box's drawn top edge, its left on the box's left edge; the box keeps that
+   room above it while the chip is there, so no line of the talk lies under it */
+.ask-inner:has(> .sc-pointed) { position: relative; }
+/* the row over the box (its own attachments) holds the chip's place when empty; with attachments the box makes room */
+.st-room.whole .st-talkbox .hc-barbox:has(.sc-pointed):has(.st-bar > *), .hc-barbox:has(.sc-pointed):has(.st-bar > *) { margin-top: calc(24px + var(--s2) * 2); }
+.sc-pointed { position: absolute; left: 0; bottom: calc(100% + var(--s2)); padding: 0; display: flex; gap: var(--s2); z-index: 2; }
+.sc-pchip { display: inline-flex; align-items: center; gap: var(--s2); height: 24px; padding: 0 var(--s3); border-radius: var(--pill);
+  background: var(--c-pearl); color: var(--c-deep); border: 0; font: inherit; font-size: var(--t-pill); cursor: pointer; }
+/* design NOW 05:53 #1a: the box's own button rules outranked the ink: deep ink on pearl, as the side's picked row */
+.hc-barbox .sc-pointed .sc-pchip, .hc-barbox .sc-pointed .sc-pchip span, .hc-barbox .sc-pointed .sc-pchip svg { color: var(--c-deep); opacity: 1; }
+
+/* a block over there changed: the seam pulses once, pearl, 850 ms (design: the seam's pulse) */
+.sc-layer .sc-seam.sc-pulse:not(.ghost) { animation: sc-pulse var(--d-pour) var(--e-reveal) 1; }
+@keyframes sc-pulse { 0% { box-shadow: 0 0 0 0 rgb(from var(--c-pearl) r g b / 0); } 40% { box-shadow: 0 0 var(--s6) var(--s1) rgb(from var(--c-pearl) r g b / 0.55); --sc-glow: var(--c-pearl); } 100% { box-shadow: 0 0 0 0 rgb(from var(--c-pearl) r g b / 0); } }
+/* where the record knows the block's height: 160 px of pearl at it, not the whole seam (design NOW 05:08 #8) */
+.sc-layer .sc-seam.sc-pulse.sc-pulse-at:not(.ghost) { animation: none; }
+.sc-pulseat { position: absolute; width: 160px; height: var(--s1); border-radius: var(--r-pill); background: var(--c-pearl); opacity: 0; pointer-events: none;
+  animation: sc-pulseat var(--d-pour) var(--e-reveal) 1; }
+.sc-seam.left .sc-pulseat, .sc-seam.right .sc-pulseat { top: var(--sc-y, 50%); left: 50%; transform: translate(-50%, -50%) rotate(90deg); }
+.sc-seam.top .sc-pulseat, .sc-seam.bottom .sc-pulseat { top: 0; left: calc(var(--sc-y, 50%) - 80px); }
+@keyframes sc-pulseat { 0% { opacity: 0; box-shadow: 0 0 0 0 rgb(from var(--c-pearl) r g b / 0); } 40% { opacity: 1; box-shadow: 0 0 var(--s6) var(--s1) rgb(from var(--c-pearl) r g b / 0.55); } 100% { opacity: 0; box-shadow: 0 0 0 0 rgb(from var(--c-pearl) r g b / 0); } }
+@media (prefers-reduced-motion: reduce) { .sc-seam.sc-pulse { animation: none; } .sc-pulseat { animation: none; opacity: 0.6; } }
+/* (builder) a narrow anchor: the outline never wider than the room it stands in (design NOW 05:53 #1b) */
+.sf-room.sc-anchorroom > .aw { max-width: calc(100% - var(--s6) * 2); }

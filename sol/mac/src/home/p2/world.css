@@ -1,0 +1,53 @@
+/* World (#692, slice G): the streams on the left two thirds, the lines and ask world on the right. Every colour is a
+   custom property World.tsx sets from kit/tokens.ts; sizes are the kit's type scale. */
+.p2w { container-type:inline-size; height:100%; }
+.p2w-in { display:grid; grid-template-columns:minmax(0, 2fr) minmax(260px, 1fr); gap:16px; height:100%; min-height:520px; color:var(--p2w-ink); }
+.p2w-field { position:relative; min-height:480px; overflow:hidden; user-select:none; }
+.p2w-stream { position:absolute; transform-origin:0 50%; pointer-events:none; overflow:visible; }
+.p2w-stream > div { position:absolute; left:0; top:0; }
+.p2w-dash { position:absolute; left:0; right:0; top:50%; height:2px; margin-top:-1px; background:repeating-linear-gradient(90deg, var(--p2w-mute) 0 6px, transparent 6px 12px); }
+.p2w-stream.pick { filter:brightness(1.18); }
+.p2w-stream.live > div { animation:p2w-pulse 1.1s ease-in-out infinite; }
+.p2w-drop { position:absolute; left:0; top:50%; border-radius:50%; background:radial-gradient(circle at 35% 35%, #fff, rgba(255, 255, 255, 0) 70%); animation:p2w-run 1.1s linear infinite; }
+@keyframes p2w-pulse { 0%, 100% { filter:brightness(1); } 50% { filter:brightness(1.45) saturate(1.2); } }
+@keyframes p2w-run { from { left:0; } to { left:100%; } }
+.p2w-hits { position:absolute; inset:0; }
+.p2w-hits line { stroke:transparent; stroke-width:22; stroke-linecap:round; cursor:grab; pointer-events:stroke; }
+.p2w-hits line:active { cursor:grabbing; }
+.p2w-jelly { position:absolute; pointer-events:none; }
+.p2w-node { position:absolute; transform:translate(-50%, -50%); cursor:default; }
+.p2w-node.off { opacity:.45; }
+.p2w-say { position:absolute; left:8%; right:8%; margin:0; text-align:center; font-size:13px; line-height:20px; color:var(--p2w-dim); min-height:20px; }
+.p2w-tip { position:absolute; z-index:3; max-width:280px; padding:8px 10px; border-radius:12px; background:var(--p2w-pop); box-shadow:0 0 0 1px var(--p2w-edge); font-size:12px; line-height:16px; pointer-events:none; }
+.p2w-tipjob { color:var(--p2w-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.p2w-list { display:none; }
+.p2w-wrow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; font-size:13px; }
+.p2w-col { display:flex; flex-direction:column; gap:14px; min-width:0; overflow:auto; }
+.p2w-sec h4 { margin:0 0 6px; font-size:11px; line-height:16px; font-weight:500; color:var(--p2w-mute); letter-spacing:.01em; }
+.p2w-line { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; padding:5px 8px; margin:0 -8px; border-radius:12px; font-size:13px; line-height:20px; }
+.p2w-line:hover { background:var(--p2w-hover); }
+.p2w-line .p2w-t { flex:1 1 160px; cursor:text; }
+.p2w-line.new .p2w-t { color:var(--p2w-yellow); }
+.p2w-from { flex-basis:100%; order:3; font-size:11px; line-height:16px; color:var(--p2w-yellow); opacity:.75; }
+.p2w-opts { display:flex; gap:8px; }
+.p2w-opts button { all:unset; font-size:11.5px; line-height:16px; color:var(--p2w-dim); cursor:pointer; }
+.p2w-opts button:hover { color:var(--p2w-ink); }
+.p2w-line:not(:hover):not(.new) .p2w-opts { visibility:hidden; }
+.p2w-edit, .p2w-q { flex:1 1 160px; min-width:0; font:inherit; font-size:13px; line-height:20px; color:var(--p2w-ink); background:var(--p2w-card); border:0; border-radius:12px; padding:5px 10px; outline:none; box-shadow:0 0 0 1px var(--p2w-edge); }
+.p2w-q { width:100%; box-sizing:border-box; }
+.p2w-turn { margin-top:10px; font-size:13px; line-height:20px; }
+.p2w-me { color:var(--p2w-dim); }
+.p2w-a { margin-top:2px; }
+.p2w-src { display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:4px; font-size:11px; line-height:16px; color:var(--p2w-mute); }
+@media (prefers-reduced-motion: reduce) { .p2w-stream.live > div, .p2w-drop { animation:none; } .p2w-drop { display:none; } }
+/* narrow: the lines and ask world, the streams as a list of weights */
+@container (max-width: 760px) {
+  .p2w-in { grid-template-columns:minmax(0, 1fr); }
+  .p2w-field { position:absolute; width:1px; height:1px; min-height:0; opacity:0; pointer-events:none; }
+  .p2w-list { display:block; }
+}
+/* the jelly's open picks (pass2.ts PICKS): lit = its inside glows faintly in the black where it rests; grain = noise
+   on the skin and a hard edge (the filter in World.tsx) */
+.p2w-defs { position:absolute; width:0; height:0; }
+.p2w-jelly[data-back=lit]::before { content:""; position:absolute; inset:-60%; border-radius:50%; background:radial-gradient(closest-side, color-mix(in srgb, var(--c-pearl) 16%, transparent), transparent); pointer-events:none; }
+.p2w-jelly[data-skin=grain] > * { filter:url(#p2w-grain) contrast(1.15); }

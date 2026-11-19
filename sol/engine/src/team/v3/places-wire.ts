@@ -1,7 +1,7 @@
 // Cowork v3, slice 4 (fr-30, #557): the face's team.v3.places.* messages, answered as work.v3.places.* from places.ts.
 // wire.ts loads this file only with the switch on (settings.ts coworkV3), so with it off nothing here is loaded (F7).
 // Everything it reaches is today's: the room (team.json), GitHub's sign-in (control.ts githubAccount) and gh, Google's
-// (drive.ts driveAccount / driveToken), the cloud's quota (take.ts usageOf, handed in by wire.ts). Signing in again is
+// (grant.ts readGrant / token, Drive's row), the cloud's quota (take.ts usageOf, handed in by wire.ts). Signing in again is
 // today's own flows, which the face asks for (team.github.connect, team.drive.connect); this file never holds a token
 // and never writes one to the trail.
 import { readdirSync } from "node:fs";
@@ -10,8 +10,9 @@ import { join } from "node:path";
 import { STATE_DIR } from "../../work/state.js";
 import { getTeam, recordOf, type Room } from "../settings.js";
 import { githubAccount } from "../control.js";
-import { driveAccount, driveToken } from "../drive.js";
-import { driveDeps, DRIVE_FILE } from "../relay.js";
+import * as grant from "../grant.js";
+import { DRIVE } from "../drive.js";
+import { grantDeps, DRIVE_FILE } from "../relay.js";
 import { folderOfRecord, DRIVE_API } from "../record/drive.js";
 import { runGh } from "../record/github.js";
 import { doorTrail, type TrailPort } from "./places-trail.js";
@@ -40,7 +41,7 @@ async function readCount(room: Room, p: { kind: P.PlaceKind; label: string }): P
   if (p.kind === "folder" && room.folder) return { n: readdirSync(room.folder).filter((f) => !f.startsWith(".")).length, unit: "files" };
   if (p.kind === "drive") {
     const folder = folderOfRecord(recordOf(room)); if (!folder) return null;
-    const token = await driveToken(driveDeps());
+    const token = await grant.token(DRIVE, grantDeps(DRIVE));
     const r = await fetch(`${DRIVE_API}/drive/v3/files?q=${encodeURIComponent(`'${folder}' in parents and trashed=false`)}&pageSize=1000&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
       { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
     const v = await r.json().catch(() => null) as { files?: unknown[] } | null;
@@ -50,11 +51,13 @@ async function readCount(room: Room, p: { kind: P.PlaceKind; label: string }): P
 }
 
 // my sign-ins, read once per message: GitHub's word (cached by control.ts), and Google's account and whether its token
-// still renews (an account whose refresh Google refused is expired, not gone)
+// still renews (an account whose refresh Google refused is expired, not gone: its ran-out record, grant.ts readRanOut)
 async function signIns(): Promise<Record<"github" | "google", P.SignInState>> {
   const [gh, google] = await Promise.all([
     githubAccount().then((a) => (a.in ? "in" : "out") as P.SignInState).catch(() => "out" as P.SignInState),
-    driveAccount(DRIVE_FILE) ? driveToken(driveDeps()).then(() => "in" as P.SignInState, () => "expired" as P.SignInState) : Promise.resolve("out" as P.SignInState),
+    grant.readGrant(DRIVE_FILE)
+      ? grant.token(DRIVE, grantDeps(DRIVE)).then((t) => (!t && !grant.readGrant(DRIVE_FILE) && grant.readRanOut(DRIVE_FILE) ? "expired" : "in") as P.SignInState, () => "expired" as P.SignInState)
+      : Promise.resolve((grant.readRanOut(DRIVE_FILE) ? "expired" : "out") as P.SignInState),
   ]);
   return { github: gh, google };
 }

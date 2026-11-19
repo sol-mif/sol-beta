@@ -14,9 +14,10 @@
 // The room's folder itself not there, trashed, not a folder, or not shared with me is "(HTTP 403)": never an empty room,
 // which would invite a write over it. Every other verb (cards, notes, code) belongs to a GitHub room: it says so.
 import type { RoomRecord, FileWrite } from "../record.js";
+import { quietFetch } from "../../quiet.js";
 
 export type DriveRecordDeps = {
-  /** my Google access token for Drive (drive.ts driveToken), "" when Drive is not connected on this Sol */
+  /** my Google access token for Drive (grant.ts token, Drive's row), "" when Drive is not connected on this Sol */
   token: () => Promise<string>;
   /** the token was refused (401): the next ask renews it */
   stale?: () => void;
@@ -88,6 +89,7 @@ export function makeDriveRecord(d: DriveRecordDeps): RoomRecord {
   /** one Drive call; its JSON, or a gh-like failure. `room` says the call is about the room's folder itself */
   const call = async (method: string, url: string, o: { body?: BodyInit; type?: string; ifMatch?: string; room?: boolean; raw?: boolean } = {}): Promise<any> => {
     const headers: Record<string, string> = { ...(await auth()), ...(o.type ? { "content-type": o.type } : {}), ...(o.ifMatch ? { "if-match": o.ifMatch } : {}) };
+    if (method !== "GET") quietFetch(DRIVE_API);   // a quiet Sol writes nothing to Drive (#1293); reads go
     let r: Response;
     try { r = await f(`${DRIVE_API}${url}`, { method, headers, ...(o.body !== undefined ? { body: o.body } : {}), signal: AbortSignal.timeout(WAIT) }); }
     catch { throw fail("Google Drive did not answer", 503); }

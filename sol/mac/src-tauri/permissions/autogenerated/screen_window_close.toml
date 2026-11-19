@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-screen-window-close"
+description = "Enables the screen_window_close command without any pre-configured scope."
+commands.allow = ["screen_window_close"]
+
+[[permission]]
+identifier = "deny-screen-window-close"
+description = "Denies the screen_window_close command without any pre-configured scope."
+commands.deny = ["screen_window_close"]

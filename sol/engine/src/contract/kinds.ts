@@ -66,6 +66,9 @@ export const KINDS: readonly KindRow[] = [
   k("plugin.wake", "kernel", { why: "name", pid: "number?" }, { old: "wake", hear: "open", ignorable: true }),
   k("plugin.sleep", "kernel", { why: "name" }, { old: "sleep", hear: "open", ignorable: true }),
   k("plugin.seat", "kernel", { provided: "boolean", why: "text?" }, { old: "seat", hear: "open" }),
+  k("plugin.altered", "kernel", { hash: "name", now: "name" }, { hear: "open", ignorable: true }),   // its record says a fingerprint (§10 `hash`) its folder is not: said at load, not refused (fingerprint.ts, step M1)
+  k("plugin.edited", "kernel", { page: "boolean", ask: "boolean" }, { ignorable: true }),   // its page or its ask.md changed in place, nothing loads again: the face reads /things again (logKinds, #691 step 3); never handed
+  k("plugin.tools", "kernel", { tools: "names" }, { ignorable: true }),   // a tool registered after its load: the tools it has now (logKinds, #691 step 3); never handed
   // tool: a seat's step through a block's tool
   k("tool.call", "kernel", { tool: "name" }, { old: "step", when: { by: "seat", item: true }, hear: "open", ignorable: true }),
   // undo
@@ -75,29 +78,110 @@ export const KINDS: readonly KindRow[] = [
   k("seat.done", "shell", { session: "name", ok: "boolean", turns: "number?", tokens: "numbers?", tokensTotal: "numbers?", costTotal: "number?" }, { old: "done", hear: "card", ignorable: true }),
   k("seat.step", "shell", { session: "name", tool: "name", file: "text?", files: "number?", bytes: "number?", ok: "boolean?", agent: "boolean?" }, { old: "step", when: { by: "seat", item: false }, hear: "card", ignorable: true }),
   k("seat.sent", "shell", { session: "name", what: "name", name: "text?", bytes: "number?" }, { old: "sent", hear: "card", ignorable: true }),
+  k("seat.usage", "shell", { session: "name", in: "number", out: "number", cacheRead: "number?", cacheWrite: "number?" }, { hear: "card", ignorable: true }),   // what a turn spent, as a seat the shell starts says it (acp.ts, step A2)
   // key: a key a person pasted for the blocks, or took away (index.ts)
   k("key.pasted", "shell", { hosts: "names" }, { old: "key", when: { op: "pasted" }, hear: "open" }),
   k("key.removed", "shell", {}, { old: "key", when: { op: "removed" }, hear: "open" }),
+  // team: between the two books (the v2 design §6.4, step C1): a local action in a Cowork project is kept in the team
+  // trail only, and the log says which of its events it was (team/v3/pointer.ts): the item is that event's id
+  k("team.pointer", "shell", { project: "name", kind: "name" }, { ignorable: true }),
   // engine, log: the log's own
   k("engine.start", "kernel", { release: "name?", commit: "name?", mine: "number?", head: "name?", kinds: "name", os: "name", node: "name", tz: "name", offset: "number" }),
   k("engine.tz", "kernel", { tz: "name", offset: "number" }),
   k("log.erase", "kernel", { hash: "name" }, { fsync: true }),
-  // run, rung: "about to do", on the disk before the doing. Their writers come in later units, which say what they carry
-  k("run.about", "core", null, { fsync: true }),
-  k("rung.asked", "core", null, { fsync: true }),
+  // Home (#790 to #874, home/): every Home kind registered at once by Home 1, so no later Home unit edits this file. Home
+  // writes them only through home/log.ts, only with its switch on (settings.ts homeWhole()). `ver` is the SHA-256 of a
+  // stored Thing's (or the policy's) canonical JSON, `from` the version before; `undo` marks the reverse event of an
+  // act (its cause is the act's id). A `words` field is free text (what a person typed, what would have been done): the
+  // value goes to a value file and the line keeps its hash. None is handed to a block (no `hear`), but today.pick (A3)
+  // thing: the Thing store, <HOME>/items/<id>/
+  k("thing.new", "core", { ver: "name", read: "name", waitsOn: "name", state: "name" }),
+  k("thing.state", "core", { ver: "name", from: "name", state: "name", waitsOn: "name", gone: "boolean?", undo: "boolean?" }),
+  k("thing.done", "core", { ver: "name", from: "name", undo: "boolean?" }),
+  k("thing.file", "core", { n: "number", made: "number?", undo: "boolean?", words: "text?" }),
+  k("thing.refile", "core", { ver: "name", from: "name", undo: "boolean?" }),
+  k("thing.open", "core", { mode: "name" }),
+  // today: the one list (home/today.ts)
+  k("today.shown", "core", { order: "name", dumb: "name", sorter: "name", n: "number" }, { ignorable: true }),
+  k("today.answer", "core", { which: "number", words: "text?" }),
+  k("today.later", "core", { undo: "boolean?" }),
+  // a person picked a card: the item is the Thing, `cause` the today.shown it was picked from. Registered only (pressing
+  // an edge is the face's own, no message), and the one Home kind a block may hear: a block may name it in
+  // needs.history (sol.since, step A3), the design's own example of a past a plugin learns from; a person's picks are
+  // heard as a seat's steps are, only by a block that names them, once pressed
+  k("today.pick", "core", null, { hear: "card" }),
+  // judge: the read of a sentence (#827)
+  k("judge.read", "core", { question: "name", verdict: "name", read: "name", p: "numbers", judge: "name", ms: "number" }),
+  k("judge.override", "core", { question: "name", from: "name", to: "name", words: "text?" }),
+  k("judge.line", "core", null),   // registered only: no face control sets a threshold
+  // policy, source: the paragraph and the sources (#828)
+  k("policy.write", "core", { ver: "name", from: "name", undo: "boolean?" }),
+  k("policy.learned", "core", { what: "name", undo: "boolean?", words: "text?" }),
+  k("source.set", "core", { from: "name", to: "name", undo: "boolean?" }),
+  k("source.health", "core", { state: "name", words: "text?" }),
+  // rung: the upper limit at position two (design §8); run: a Home Run (design §9). "about to do" is on the disk first
+  k("rung.ceiling", "core", { from: "name", to: "name", policy: "name", undo: "boolean?" }),
+  k("rung.asked", "core", { act: "name", rung: "name", words: "text?" }, { fsync: true }),
+  k("rung.answered", "core", { yes: "boolean" }),
+  k("rung.did", "core", { act: "name", rung: "name", source: "name?" }),
+  k("rung.would", "core", { act: "name", rung: "name", at: "name", source: "name?", words: "text?" }),
+  k("rung.refused", "core", { act: "name", why: "name" }),
+  k("run.start", "core", { thing: "name", step: "number?", act: "name?" }),
+  k("run.about", "core", { thing: "name", step: "number?", act: "name?" }, { fsync: true }),
+  k("run.did", "core", { thing: "name", step: "number?", act: "name?" }),
+  k("run.unknown", "core", { thing: "name", step: "number?", act: "name?" }),
+  k("run.end", "core", { thing: "name", step: "number?", act: "name?" }),
+  // way: a team's way of working (docs/cowork-ways-2026-11-10/FORMAT.md §5), registered before its writer: a change to
+  // a way (proposed, previewed, agreed, applied, reverted) and a thing's life under one (made, move, refused, checked,
+  // acted, fired). `way` is the way's id, `ver` (and `from`, `to`) a version's print, `thing` a thing's id, `by` and
+  // `role` a role's name, `because` the id of the event the step answers (the team trail has no `cause`). Every field
+  // is an id (a `name` of this family is never prose: IDS below), a number or a true/false, so a fact never needs
+  // erasing and is never erased; the one free text is a way.note's `words`, which goes to a value file. Not Home's
+  // (HOME_FAMILIES), never handed to a block. The team trail checks the same rows (team/v3/trail-kinds.ts).
+  // FORMAT's third version (step 3's fix round): a press, a refusal and a firing name the way.checked events they were
+  // judged on (`checks`, their ids), and way.set, the thirteenth, is the fact of one value a press set that is not
+  // free text (`about` "<thing>.<field>", `because` the press, the value in the one field of its type: a time is a
+  // number). way.note keeps only a `text` field's words and stays the one kind that may be erased.
+  // FORMAT's fourth version (step 4, the runner's spine): way.seen, the fourteenth, is the runner's receipt: it says
+  // which events of other writers the runner had seen (the trail's own signed `base`, not a field of the value) under
+  // the version it names, and changes nothing of any thing. It answers nothing, so it carries no `because`. One that
+  // says `more: true` is a page: it only carries names for the runner's next firing or receipt (256 an event).
+  // A way.checked that says a `tick` is a lead check: asked for the firing of that tick, written right before it, and
+  // in a team's book folded only there (way/spine.ts); one that says none was asked for a press
+  k("way.proposed", "core", { way: "name", from: "name", slots: "names", map: "names?", because: "name?" }),
+  k("way.previewed", "core", { way: "name", from: "name", to: "name", things: "number", differ: "number", because: "name?" }),
+  k("way.agreed", "core", { way: "name", to: "name", role: "name", because: "name?" }),
+  k("way.applied", "core", { way: "name", from: "name", to: "name", reader: "number", because: "name?" }),
+  k("way.reverted", "core", { way: "name", from: "name", to: "name", because: "name?" }),
+  k("way.made", "core", { way: "name", ver: "name", thing: "name", kind: "name", by: "name", because: "name?" }),
+  k("way.move", "core", { way: "name", ver: "name", thing: "name", move: "name", from: "name", to: "name", by: "name", checks: "names?", because: "name?" }),
+  k("way.refused", "core", { way: "name", ver: "name", thing: "name?", move: "name?", why: "name", checks: "names?", because: "name?" }),
+  k("way.checked", "core", { way: "name", ver: "name", thing: "name", rule: "name", seam: "name", pv: "number", pkg: "name", pass: "boolean", at: "number", tick: "number?", because: "name?" }),
+  k("way.acted", "core", { way: "name", ver: "name", thing: "name", seam: "name", pv: "number", pkg: "name", ok: "boolean", because: "name?" }),
+  k("way.fired", "core", { way: "name", ver: "name", trigger: "name", thing: "name?", tick: "number", checks: "names?", because: "name?" }),
+  k("way.note", "core", { way: "name", about: "name", words: "text", because: "name?" }),
+  k("way.set", "core", { way: "name", about: "name", because: "name", name: "name?", number: "number?", boolean: "boolean?", names: "names?", numbers: "numbers?" }),
+  k("way.seen", "core", { way: "name", ver: "name", more: "boolean?" }),
 ];
 
 const BY_NAME = new Map<string, KindRow>();
 for (const r of KINDS) { if (BY_NAME.has(r.kind)) throw new Error(`contract/kinds.ts: "${r.kind}" has two rows`); BY_NAME.set(r.kind, r); }
+
+/** Home's families (home/log.ts reads only these, and plugin.trouble lines whose `where` starts "home."): the kinds
+ *  Home writes and its projections read */
+export const HOME_FAMILIES: readonly string[] = ["thing", "today", "judge", "policy", "source", "rung", "run"];
+export const isHomeKind = (kind: string): boolean => HOME_FAMILIES.includes(kind.slice(0, kind.indexOf("."))) && BY_NAME.has(kind);
 
 /** a kind's row, or undefined for one that is not registered */
 export const kindRow = (kind: string): KindRow | undefined => BY_NAME.get(kind);
 export const isKind = (kind: string): boolean => BY_NAME.has(kind);
 /** the registry's print: it changes when a row is added or changed (engine.start says which registry wrote what follows) */
 export const KINDS_PRINT = createHash("sha256").update(JSON.stringify(KINDS)).digest("hex").slice(0, 16);
-/** the kinds a block's engine half may be handed, and of those the seats' own, which a person presses a card for */
+/** the kinds a block's engine half may be handed; of those the ones a person presses a card for (a seat's steps, a
+ *  person's picks); and of those the seats' own */
 export const HEARD: readonly string[] = KINDS.filter((r) => r.hear).map((r) => r.kind);
-export const SEAT_KINDS: readonly string[] = KINDS.filter((r) => r.hear === "card").map((r) => r.kind);
+export const CARD_KINDS: readonly string[] = KINDS.filter((r) => r.hear === "card").map((r) => r.kind);
+export const SEAT_KINDS: readonly string[] = CARD_KINDS.filter((k) => k.startsWith("seat."));
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 const isName = (x: unknown): boolean => typeof x === "string" && x.length <= 200 && !/[\n\r]/.test(x);
@@ -111,22 +195,34 @@ const HOLDS: Record<Carry, (x: unknown) => boolean> = {
 };
 const typeOf = (c: string): { type: Carry; optional: boolean } => ({ type: c.replace(/\?$/, "") as Carry, optional: c.endsWith("?") });
 
+/** a family whose names are ids, never prose: a way's facts (FORMAT.md §5) carry no free text, so there a `name` (and
+ *  each of `names`) is letters, digits and `_ . : > -`, 120 at most ("" for none: a way's first version has no `from`).
+ *  Every other family's `name` is as it was */
+const IDS: Record<string, RegExp> = { way: /^[\w.:>-]{0,120}$/ };
+const isId = (re: RegExp) => (x: unknown): boolean => typeof x === "string" && re.test(x);
+
+/** whether a value is what a shape carries (pure): null when it is, else what does not hold, said of `kind`. A field
+ *  counts only when it is the shape's own (`constructor`, `__proto__` and the rest are no field of any row) */
+export function fitsShape(kind: string, family: string, carries: Shape, value: unknown): string | null {
+  if (value === undefined) { const need = Object.keys(carries).find((f) => !carries[f].endsWith("?")); return need ? `${kind} carries ${need}, and there is no value` : null; }
+  if (!isObj(value)) return `${kind}'s value is not an object`;
+  const odd = Object.keys(value).find((f) => value[f] !== undefined && !Object.hasOwn(carries, f));
+  if (odd) return `${kind} does not carry ${odd}`;
+  const ids = IDS[family], holds: Record<Carry, (x: unknown) => boolean> = ids ? { ...HOLDS, name: isId(ids), names: (x) => Array.isArray(x) && x.every(isId(ids)) } : HOLDS;
+  for (const [f, c] of Object.entries(carries)) {
+    const { type, optional } = typeOf(c), x = value[f];
+    if (x === undefined || x === null) { if (optional) continue; return `${kind} carries ${f}, which is missing`; }
+    if (!holds[type](x)) return `${kind}'s ${f} is not a ${type}`;
+  }
+  return null;
+}
+
 /** whether a value is what its kind carries (pure): null when it is, else what does not hold. A kind whose row does
  *  not say yet (`carries: null`) fits anything */
 export function fits(kind: string, value: unknown): string | null {
   const row = BY_NAME.get(kind);
   if (!row) return `${kind} is not a kind`;
-  if (!row.carries) return null;
-  if (value === undefined) { const need = Object.keys(row.carries).find((f) => !row.carries![f].endsWith("?")); return need ? `${kind} carries ${need}, and there is no value` : null; }
-  if (!isObj(value)) return `${kind}'s value is not an object`;
-  const odd = Object.keys(value).find((f) => value[f] !== undefined && !Object.hasOwn(row.carries!, f));   // own fields only: `in` let constructor, __proto__ and the like through
-  if (odd) return `${kind} does not carry ${odd}`;
-  for (const [f, c] of Object.entries(row.carries)) {
-    const { type, optional } = typeOf(c), x = value[f];
-    if (x === undefined || x === null) { if (optional) continue; return `${kind} carries ${f}, which is missing`; }
-    if (!HOLDS[type](x)) return `${kind}'s ${f} is not a ${type}`;
-  }
-  return null;
+  return row.carries ? fitsShape(kind, row.family, row.carries, value) : null;
 }
 
 /** where a value goes (pure): nowhere when there is none; on the day's line when it fits its row and holds no free

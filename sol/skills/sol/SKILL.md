@@ -88,34 +88,30 @@ them Sol cannot draw the button.
    with a reason if they want it that way.
 4. **It appears under Yours** on the shelf (live, on Sol's hot window). Put it on a rail with `arrange` if they asked.
 
-## The notch and a talk
+## A talk and Anticipate
 
-Anticipate (the ear pill on the notch's quiet card) hears a call on the Mac and helps in the moment: a drawer under the
-notch with the Transcript, the Cards Sol volunteered and the Ask thread; 🌐 (fn) held is "speak to Sol" with the call
-muted through the call app's own shortcut; Stop packs the talk up into **Conversations** (Home's menu, above settings,
-⌘;), where the person reviews it slowly. Words are kept in `sol/home/voice/talks/`, audio never. The review is read
+Anticipate hears a call on the Mac; when it stops, the talk is packed up into **Conversations** (Home's menu, above
+settings, ⌘;), where the person reviews it slowly. The notch, its drawer, the Fn "speak to Sol" key and the call mute
+were deleted on 2026-11-18 (#1584). Words are kept in `sol/home/voice/talks/`, audio never. The review is read
 by Gemini flash, by the Claude card seat when Gemini fails (the free quota runs out at twenty a day), and a page never
 shows a raw error: one plain sentence, "Sol could not review this talk yet: …". Sol talking (the call) is the **voice** setting; `off`
 means Sol listens and writes and no call starts from any face, with one plain why. Anticipate and dictation need no voice.
 
-What the person can change is one file, theirs, never committed: **`sol/home/skills/notch.md`**, written once by Sol
-with its defaults. Read it before changing it, change only the heading they asked about, and tell them it takes effect
-at the next talk's start:
+What the person can change is one file, theirs, never committed: **`sol/home/skills/notch.md`** (the file keeps its old
+name), written once by Sol with its defaults. Read it before changing it, change only the heading they asked about, and
+tell them it takes effect at the next talk's start:
 
 | They want | You do |
 |---|---|
 | Sol quieter on a subject ("never on family") | a `Never on:` line under **Anticipate** |
-| a fifth button in the drawer ("Translate: say it in Chinese, short") | one `Name: prompt` line under **Buttons**; five at most, the rest are ignored |
-| the mute to work in another call app | one `App name: cmd shift m` line under **Mute**, the app's name as macOS shows it |
 | more or fewer questions after a talk, or what never goes to memory | the lines under **After a talk** |
 
 A talk's review, names and answers are edited in Conversations itself (a click on a name renames; Keep, To the shelf,
-Delete are its buttons); never edit a talk file by hand. The spec is issue #253, the map
-`sol/design/maps/notch.html`.
+Delete are its buttons); never edit a talk file by hand. The spec is issue #253.
 
 ## Maps, and comments on a page
 
-A visual part of Sol (the sidebar, the modes, the rails and buttons, the notch, the desk, the composer, the panes) has
+A visual part of Sol (the sidebar, the modes, the rails and buttons, the desk, the composer, the panes) has
 a map: one page of diagrams in `sol/design/maps/<part>.html`, drawn in Sol's colours. It shows where the part's data
 comes from, what in it is real and what is only how it looks, its states, and its layouts. People work on a part far
 more easily by looking at it than by reading about it (#179).
@@ -131,6 +127,47 @@ more easily by looking at it than by reading about it (#179).
 - **Their comments reach you only when they send them.** In the page pane, pins stay on the page until "to the box"
   (⌘↵) puts them in the message box, and they arrive with the next message they send, as "Comments on the page ...". If
   they say they commented and nothing came, ask them to press ⌘↵ and then send.
+
+## Taking a person through the map
+
+A system block (kind `system`, body `{ "area": "design/redesign" }`) draws one area of the systems registry. To walk
+a person through it, write a **lens** beside the area with `update`, one lens per step (#1220):
+
+    { "area": "design/redesign", "lens": { "focus": "<id>", "path": ["<id>", "<id>"], "say": "<one sentence>",
+      "step": [2, 4], "mark": { "<id>": "cut" }, "fit": "path", "view": "lanes", "show": { "<id>": "after" } } }
+
+`focus` is a click; `path` lights and numbers its systems, dims the rest, and dashes a leg with no wire; `say` stands
+where the since strip is; `step` shows "2 of 4" with ← →, and a press comes back to you as a message ("take me to
+step 3 of 4"); `mark` is a coloured tab; `fit` is `path`, `area` or one id, and the camera eases there; `view` is
+`lanes` or `window` (the area on a miniature of the real window, each surface on its region); `show` is `today`,
+`after` or `both` on a real piece (the buttons, the composer, the sidebar, a block's frame, the accent
+sheet, the body sitting). Every id is a system the area draws: compose and update refuse one it does not, by name, and
+say what it draws. With no lens the block is the plain map.
+
+- **Compose the block and read its view first** (`read`); walk only what it draws.
+- **One step per sentence, at most five steps.** A sixth means the walk is two walks.
+- **Say only what the map cannot show**: why, or what to decide. Never read the tiles aloud.
+- **Mark only with the five words**: `cut`, `redo`, `keep`, `new`, `you` (the person's own part).
+- **The person's click wins.** A click or a drag is theirs until your next lens; a "yours" pill brings the walk back.
+  Do not write a new lens to undo their look.
+- **End on the decision's tile**: the last step focuses the system the person decides on, and its `say` is the question.
+- **Never a walk into the registry**: the lens says where to look; it never edits a record. A wrong map is a record
+  fixed in its own PR.
+
+## Writing in the group's chat
+
+Cowork's Agents' room is a group chat of each person and their agent. When you write there (the `talk` tool, thread
+`general`), write it like a chat:
+
+- **One ask or one answer a line**, under three sentences.
+- **An artifact instead of a paragraph**: put the PR, the diff, the file or the block on the line, and say in one
+  sentence what it is. A fenced block carries it: ```` ```sol-artifact ```` then `{"kind":"pr","ref":"<the PR's
+  address>","title":"<a few words>"}` then ```` ``` ````. Kinds are `pr`, `diff`, `file`, `block`. A plain PR link
+  works too.
+- **@ only who must read it.** `@<login>` notifies that person and runs no model. With no @, nobody reads it, and a
+  name without @ tells nobody. A person's `@<login>'s agent` hands their line to that agent alone, on its person's
+  usage; your line never wakes another agent, so ask one with `ask_agent`, and its answer shows in the same room.
+- **A decision still goes to its issue** as one signed line; the chat says where.
 
 ## Keeping this skill true
 

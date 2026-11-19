@@ -1,0 +1,32 @@
+/* Since you looked (#692, Since.tsx, pieces/since.mjs): the first tile. Every space, size and corner a variable of the
+   scale; every colour a token. Yellow is "waits on you", the green-done ring is an act or a finished run; an undone act
+   is struck through and dim until his next look. */
+.sy { position: relative; min-width: 0; padding: var(--s3) var(--s4); box-sizing: border-box; border-radius: var(--curve-card);
+  background: var(--surface); box-shadow: inset 0 0 0 var(--hair) var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); }
+.sy button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.sy-k { margin: 0 0 var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 400; color: var(--mute); letter-spacing: 0.04em; }
+.sy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.sy-line { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-chip); min-width: 0; }
+.sy-t { flex: 1 1 auto; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-act { flex: none; max-width: 40%; font-size: var(--t-label); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-act.no { color: var(--yellow-strong); }
+.sy-opts { flex: none; display: flex; gap: var(--s1); }
+.sy-opt { position: relative; isolation: isolate; height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); color: var(--dim); white-space: nowrap; }
+.sy-opt.first { color: var(--ink); }
+.sy-opt .hc-lift { border-radius: var(--r-pill); overflow: hidden; }
+.sy-opt:is(:hover, :focus-visible) > .hc-lift { opacity: 1; }
+
+/* the mark before the words: the kit's ring for done, the fixed yellow for what waits */
+.sy-ring { flex: none; width: var(--s4); height: var(--s4); display: grid; place-items: center; border-radius: var(--r-pill); overflow: hidden; }
+.sy-ring.you { background: var(--yellow-strong); }
+.sy-ring.off { opacity: 0.4; }
+
+/* what waits reads yellow; an undone act is struck through, dim */
+.sy-line:is(.k-ask, .k-build) .sy-t { color: var(--yellow-strong); }
+.sy-line.undone .sy-t { color: var(--mute); text-decoration: line-through; }
+.sy-line.undone .sy-act { color: var(--dim); }
+
+/* the fold: six lines, then one press for the rest */
+.sy-more { position: relative; isolation: isolate; margin-top: var(--s2); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); color: var(--mute); }
+.sy-more .hc-lift { border-radius: var(--r-pill); overflow: hidden; }
+.sy-more:is(:hover, :focus-visible) > .hc-lift { opacity: 1; }

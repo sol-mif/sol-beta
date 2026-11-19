@@ -10,7 +10,7 @@ import { GAP, MIN, PAD, SIZES, free, overlaps, type Kind, type Place, type Rect,
 /** one of the project's blocks not on this stage, as the engine's work.stage.get says it (blocks.ts trayOf) */
 export type TrayBlock = { id: string; kind: Kind; title: string; state: State; from: string; at: number };
 /** a miniature in the tray: its block, whether it is this stage's own (folded, popped) or the project's elsewhere */
-export type Mini = { id: string; kind: Kind; title: string; own: boolean; popped?: boolean; pinned?: boolean };
+export type Mini = { id: string; kind: Kind; title: string; own: boolean; popped?: boolean };
 /** a group of miniatures: the stage's own in front (`from` null), then each session that made the rest */
 export type Group = { from: string | null; minis: Mini[] };
 
@@ -33,8 +33,8 @@ export function groups(own: Mini[], others: TrayBlock[]): Group[] {
 export const count = (gs: Group[]) => gs.reduce((n, g) => n + g.minis.length, 0);
 
 /** a place on the stage the person's hand has not touched, so room may be made by folding it: shown, not moved or
- *  resized by hand, not pinned or popped */
-const untouched = (p: Place) => !p.folded && !p.popped && !p.pinned && !p.hand;
+ *  resized by hand, not popped */
+const untouched = (p: Place) => !p.folded && !p.popped && !p.hand;
 
 /** a newcomer of size s placed on a full stage (pure). Its spot is the first free one; when there is none, the oldest
  *  untouched block (the first placed among them) folds to the tray and the newcomer takes its spot: at its born size when

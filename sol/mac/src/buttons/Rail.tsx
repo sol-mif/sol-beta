@@ -274,7 +274,7 @@ function Cell({ b, c, lit, onPane, lift, ask, lifted }: {
   const look = b.look?.(c) ?? (typeof b.glyph === "string" ? "wviewk" : "barbtn");
   return (
     <button data-cell={b.id} className={`${look} ${lit ? "on" : ""} ${lifted ? "raillifted" : ""}`} disabled={off}
-      onClick={() => { pressed(b.id); if (b.kind === "pane") onPane(b.id); else b.press?.(c); }}
+      onClick={() => { pressed(b.id, c); if (b.kind === "pane") onPane(b.id); else b.press?.(c); }}
       onPointerDown={lift && ((ev) => lift(ev, b))} onContextMenu={ask && ((ev) => ask(ev, b))}
       aria-pressed={b.on ? !!lit : undefined} title={b.hover?.(c) ?? (b.key ? `${b.says} (${keyWords(b.key)})` : b.says)}>
       {b.badge?.(c) || b.glyph}

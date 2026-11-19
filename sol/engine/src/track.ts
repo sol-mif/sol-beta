@@ -13,16 +13,21 @@
 //           the first line of each day's file is a tester.who (the Sol name on the team's cloud, the Mac's user name),
 //           and the same two go as headers with each post. Not anonymous (Frank 2026-10-29): the team analyses by person
 //   sol     the engine's commit, set by index.ts at start
-//   face    window | notch | phone, from the socket's hello; "" before one
+//   face    window | phone, from the socket's hello; "" before one
 //   mode    home | work | cowork, from the message's family (work.*, team.*, the rest)
 //   seat    claude | codex | ""
 // Event names are fixed and only ever added to, never renamed, so week one can be compared with week four.
 // Raw events, never daily sums: a sum answers only the question it was designed for.
 //
-// The Mac keeps 90 days. Once an hour, the days before today that were not sent yet go to one address as one POST
-// each (newline-delimited JSON, the tester code, the day and the file's SHA-256 in headers, so the box can refuse a
-// repeat); a file that went is renamed .sent. With no address set, nothing is sent and the files only age out.
+// The Mac keeps 90 days. Once an hour, the days before today that were not sent yet go where usage is kept (the data
+// seam, seams/store.ts, #1320; today one address, one POST each): newline-delimited JSON, the tester code, the day and
+// the file's SHA-256 in headers, so the box can refuse a repeat; a file that went is renamed .sent. With nowhere set,
+// nothing is sent and the files only age out.
 // settings.track.usage off (by hand in engine/settings.json, when a tester asks in Discord): nothing is written or sent.
+// One session turned private (#1242, the switch beside its title): from that moment nothing carrying its sessionId is
+// written here, and src/track-files.ts skips its lines in Claude Code's and Codex's files for the time it was private.
+// The list is home/track/private.json, each session with the stretches it was private, so it survives a restart and a
+// later "turn it back" does not count what was said meanwhile. Lines written before the switch stay: they carry no session.
 // The face has no switch: one card on the first window says what is counted, one button (#356, Frank 2026-10-29).
 import { appendFileSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -33,7 +38,7 @@ export type Mode = "home" | "work" | "cowork";
 export type Props = Record<string, number | boolean | string>;
 export type Event = { at: string; tester: string; sol: string; face: string; mode: Mode; seat: string; name: string; props?: Props };
 export type Consent = { usage: boolean };
-export type Who = { name: string; user: string };   // the Sol name on the team's cloud ("" when not signed in), the Mac's user name
+export type Who = { name: string; id: string; user: string };   // the Sol name on the team's cloud ("" when not signed in), the Sol ID (#1607: Supabase's user id, "" when none), the Mac's user name
 
 export const KEEP_DAYS = 90;
 export const SEND_EVERY_MS = 60 * 60_000;
@@ -51,29 +56,78 @@ const SHIPPED = new Set([...Object.values(ARRANGE.presets).flatMap((p) => p.butt
 let HOME = "";
 let VERSION = "";
 let consent: () => Consent = () => ({ usage: true });
-let who: () => Who = () => ({ name: "", user: "" });
+let who: () => Who = () => ({ name: "", id: "", user: "" });
+let bearer: () => Promise<string> = async () => "";   // my sign-in's token, on the post that names me (#1607); "" sends none
 let clock: () => Date = () => new Date();
 let tester = "";
 let warned = false;
-const faces = new WeakMap<object, string>();          // socket -> window | notch | phone
+const faces = new WeakMap<object, string>();          // socket -> window | phone
 const started = new Map<string, number>();            // sessionId or draft -> when its turn started (for turn.done secs)
 const seen = new WeakSet<object>();                   // a message object sent to every face is counted once
 const counts = new Map<string, { day: string; n: number }>();   // lines written today a file ("" the day's, "files" the other tools'), against MAX_LINES_A_DAY
 export const EVERY = {};                              // the "socket" a message to every face is counted on: no face
 
 /** Where the files go, how the engine's version is named, who says whether tracking is on, and who the person is. */
-export function setTrackHome(home: string, o: { version?: string; consent?: () => Consent; who?: () => Who; now?: () => Date } = {}) {
+export function setTrackHome(home: string, o: { version?: string; consent?: () => Consent; who?: () => Who; bearer?: () => Promise<string>; now?: () => Date } = {}) {
   HOME = home;
   if (o.version !== undefined) VERSION = o.version;
   if (o.consent) consent = o.consent;
+  if (o.bearer) bearer = o.bearer;
   if (o.who) who = o.who;
   if (o.now) clock = o.now;
-  tester = ""; SALT = "";
+  tester = ""; SALT = ""; PRIVATE = null;
   started.clear();
   counts.clear();
 }
 export function setTrackVersion(v: string) { VERSION = v; }
 export const trackDir = () => join(HOME, "track");
+
+// ---- private sessions (#1242) ----
+// { v: 1, sessions: { <id>: [[from, to | null], ...] } }: when each stretch began and ended, in ms; null: private now
+type Stretches = [number, number | null][];
+let PRIVATE: Record<string, Stretches> | null = null;
+const privateFile = () => join(trackDir(), "private.json");
+const SESSION = /^[A-Za-z0-9._:-]{1,128}$/;
+function privates(): Record<string, Stretches> {
+  if (PRIVATE) return PRIVATE;
+  PRIVATE = {};
+  if (!HOME) return PRIVATE;
+  try {
+    const v = JSON.parse(readFileSync(privateFile(), "utf8"));
+    for (const [id, st] of Object.entries(v?.sessions ?? {})) {
+      if (!SESSION.test(id) || !Array.isArray(st)) continue;
+      const ok = st.filter((x): x is [number, number | null] => Array.isArray(x) && typeof x[0] === "number" && (x[1] === null || typeof x[1] === "number"));
+      if (ok.length) PRIVATE[id] = ok;
+    }
+  } catch { /* none yet, or unreadable: nothing is private, and the next switch writes it whole */ }
+  return PRIVATE;
+}
+/** the sessions private now */
+export const privateIds = (): string[] => Object.entries(privates()).filter(([, st]) => st.some(([, to]) => to === null)).map(([id]) => id);
+/** private now: nothing carrying this session is counted */
+export const isPrivate = (id: unknown): boolean => typeof id === "string" && !!privates()[id]?.some(([, to]) => to === null);
+/** private at that moment (ms): a line Claude Code or Codex wrote then is not counted (src/track-files.ts) */
+export const wasPrivate = (id: unknown, at: number): boolean => typeof id === "string" && !!privates()[id]?.some(([from, to]) => at >= from && (to === null || at < to));
+/** private at any moment of [since, until] (ms): a Codex session's growth over that time is not counted (#1287) */
+export const wasPrivateDuring = (id: unknown, since: number, until: number): boolean => typeof id === "string" && !!privates()[id]?.some(([from, to]) => from <= until && (to === null || to > since));
+/** Turn one session private, or back; written whole at once. False when the id is not a session's or the file cannot be written. */
+export function setPrivate(id: string, on: boolean): boolean {
+  if (!HOME || !SESSION.test(id)) return false;
+  const all = privates(), st = all[id] ?? [], now = clock().getTime();
+  const open = st.find(([, to]) => to === null);
+  if (on && !open) st.push([now, null]);
+  if (!on && open) open[1] = now;
+  if (st.length) all[id] = st;
+  try {
+    mkdirSync(trackDir(), { recursive: true });
+    writeFileSync(privateFile() + ".tmp", JSON.stringify({ v: 1, sessions: all }) + "\n", { mode: 0o600 });
+    renameSync(privateFile() + ".tmp", privateFile());
+    return true;
+  } catch (err) {
+    if (!warned) { warned = true; console.log(`track: private list not written: ${err instanceof Error ? err.message : err}`); }
+    return false;
+  }
+}
 
 /** The tester code: made once on this Mac, kept in home/track/id; the key of every line (who it is: whoNow()). */
 export function testerCode(): string {
@@ -119,11 +173,15 @@ function salt(): string {
 }
 /** a name as a word: anything that is not a letter, a digit or . _ : - becomes -, at most 64 long, "" when nothing is left */
 export const asWord = (v: unknown): string => String(v ?? "").replace(/[^A-Za-z0-9._:-]+/g, "-").replace(/^[^A-Za-z0-9]+/, "").slice(0, MAX_WORD);
-/** who this tester is, as two words: the Sol name on the team's cloud ("" when not signed in) and the Mac's user name */
+/** a Sol ID as Supabase writes one: a UUID; anything else is "" (never a word someone typed) */
+const SOL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const asSolId = (v: unknown): string => (typeof v === "string" && SOL_ID.test(v) ? v.toLowerCase() : "");
+/** who this tester is, as three words: the Sol name on the team's cloud ("" when not signed in), the Sol ID ("" when
+ *  none, #1607) and the Mac's user name */
 export function whoNow(): Who {
-  let w: Who = { name: "", user: "" };
+  let w: Who = { name: "", id: "", user: "" };
   try { w = who(); } catch { /* unknown */ }
-  return { name: asWord(w.name), user: asWord(w.user) };
+  return { name: asWord(w.name), id: asSolId(w.id), user: asWord(w.user) };
 }
 
 /** Every value small and plain, or the name of the first key that is not. */
@@ -158,6 +216,9 @@ export const IN: Record<string, Row> = {
   "browser.open": { name: "browser.open" },
   "browser.close": { name: "browser.close" },
   "browser.navigate": { name: "browser.navigate", pick: (m) => dropUndefined({ action: word(m.action) }) },
+  // the stage's browser block (#1314, mac Screencast `counted`): each tab's first frame, or a blank stage and whether it had a size
+  "browser.shown": { name: "build.browser.open", pick: (m) => dropUndefined({ where: word(m.where), secs: num(m.secs, 1) }) },
+  "browser.blank": { name: "build.browser.fail", pick: (m) => dropUndefined({ where: word(m.where), seen: m.seen === true }) },
   "face.broken": { name: "face.broken", pick: (m) => dropUndefined({ site: word(m.site) }) },
   "face.mended": { name: "face.mended", pick: (m) => dropUndefined({ site: word(m.site) }) },
   hello: { name: "face.hello", pick: (m) => dropUndefined({ face: word(m.face) }) },
@@ -169,10 +230,10 @@ export const IN: Record<string, Row> = {
   "team.room.take": { name: "room.take" },
   "team.room.follow": { name: "room.follow" },
 };
-// too often, or a read with nothing to count: the heartbeat, focus and idle, the eye, audio frames, keystrokes in
+// too often, or a read with nothing to count: the heartbeat, focus and idle, audio frames, keystrokes in
 // the browser pane, the partial dictation clips, and every get, list and peek
-export const IN_SKIP = new Set(["ping", "presence", "eye", "call.audio", "browser.input", "browser.watch", "browser.select", "list", "open", "models", "arrange.get", "desk.get", "goback.plan", "run.stop", "notify.seen", "notify.ack"]);
-const quietIn = (t: string) => IN_SKIP.has(t) || /\.(get|list|peek|state|poll)$/.test(t) || t.startsWith("eye.");
+export const IN_SKIP = new Set(["work.private", "work.privates", "ping", "presence", "call.audio", "browser.input", "browser.watch", "browser.select", "list", "open", "models", "arrange.get", "desk.get", "goback.plan", "run.stop", "seen"]);
+const quietIn = (t: string) => IN_SKIP.has(t) || /\.(get|list|peek|state|poll)$/.test(t);
 
 /** Engine to face. Only what is here is counted: the rest is the stream itself (text, frames, lists, output). */
 export const OUT: Record<string, Row> = {
@@ -183,7 +244,8 @@ export const OUT: Record<string, Row> = {
   error: { name: "error", pick: () => ({ kind: "engine" }) },
   "work.error": { name: "error", pick: () => ({ kind: "work" }) },
   "team.error": { name: "error", pick: () => ({ kind: "team" }) },
-  notify: { name: "ping.sent", pick: (m) => dropUndefined({ dest: word(m.dest) }) },
+  notify: { name: "ping.sent", pick: (m) => dropUndefined({ dest: word(m.dest) }) },   // the old sender's; kept for track.test.ts
+  moment: { name: "moment.sent", pick: (m) => dropUndefined({ kind: word(m.kind) }) },   // the one notification (#845, notify.ts)
   engine: { name: "engine.up", pick: (m) => (m.phase === "up" ? {} : null) },
   "goback.done": { name: "goback.done", pick: (m) => ({ ok: m.ok === true }) },
   changing: { name: "face.changed", pick: (m) => (m.done ? dropUndefined({ kind: word(m.kind), ok: m.ok !== false }) : null) },
@@ -193,6 +255,18 @@ export const OUT: Record<string, Row> = {
   "team.talk.line": { name: "talk.line" },
   "team.letin": { name: "letin.asked", pick: (m) => ({ asks: count(m.asks) }) },
 };
+// the face's word for how an agent's move went (#1437): its event by `ev`, and only these fields, each plain; the session
+// as a hash so one session's moves read in order. The measure: sol/stage-measure (work/stageMeasure.ts)
+const FELT = new Set(["made", "after", "hand", "undo", "lens"]);
+const FELT_WORDS = ["why", "how", "what", "verb", "by", "kind", "width"], FELT_NUMS = ["n", "secs", "waited_ms"], FELT_BOOLS = ["made", "brought", "agent", "page", "found", "go", "say"];
+export function feltOf(m: any): { name: string; props: Props } | null {
+  if (!FELT.has(m?.ev)) return null;
+  const p: Record<string, number | boolean | string | undefined> = { sess: typeof m.sessionId === "string" ? hashOf(m.sessionId) : undefined };
+  for (const k of FELT_WORDS) p[k] = word(m[k]);
+  for (const k of FELT_NUMS) p[k] = num(m[k], 1);
+  for (const k of FELT_BOOLS) if (typeof m[k] === "boolean") p[k] = m[k];
+  return { name: `stage.${m.ev}`, props: dropUndefined(p) };
+}
 const modeOf = (t: string): Mode => (t.startsWith("work.") ? "work" : t.startsWith("team.") ? "cowork" : "home");
 const seatOf = (m: any): string => (m?.seat === "claude" || m?.seat === "codex" ? m.seat : "");
 
@@ -209,9 +283,9 @@ function write(e: Event, kind = ""): boolean {
       else return false;
     } else c.n++;
     mkdirSync(trackDir(), { recursive: true });
-    if (c.n === 1 && e.name !== "tester.who") {   // a day's first line says who: the name on the cloud and the Mac's user (not against the cap)
+    if (c.n === 1 && e.name !== "tester.who") {   // a day's first line says who: the name on the cloud, the Sol ID and the Mac's user (not against the cap)
       const w = whoNow();
-      appendFileSync(file, JSON.stringify({ ...e, face: "", mode: "home", seat: "", name: "tester.who", props: { name: w.name || "none", user: w.user || "none" } }) + "\n");
+      appendFileSync(file, JSON.stringify({ ...e, face: "", mode: "home", seat: "", name: "tester.who", props: { name: w.name || "none", id: w.id || "none", user: w.user || "none" } }) + "\n");
     }
     appendFileSync(file, JSON.stringify(e) + "\n");
     return true;
@@ -243,8 +317,8 @@ export function trackIn(from: object, m: any): void {
   if (!HOME) return;
   try {
     const t = typeof m?.type === "string" ? m.type : "";
-    if (!t) return;
-    if (t === "hello" && (m.face === "window" || m.face === "notch" || m.face === "phone")) faces.set(from, m.face);
+    if (!t || isPrivate(m.sessionId)) return;   // a private session (#1242): nothing of it, the switch included (IN_SKIP)
+    if (t === "hello" && (m.face === "window" || m.face === "phone")) faces.set(from, m.face);
     const ctx = { face: faces.get(from) ?? "", mode: modeOf(t), seat: seatOf(m) };
     if (t === "arrange.used") {   // the rails' presses, batched a minute by the face: one event per button
       const counts = m.counts && typeof m.counts === "object" ? m.counts : {};
@@ -253,6 +327,11 @@ export function trackIn(from: object, m: any): void {
         // a shipped button by its id; a person's own button (its id is a name an agent picked from their words) as a hash
         track("button.press", { id: SHIPPED.has(id) ? id : `own:${hashOf(id)}`, n: Math.round(n) }, ctx);
       }
+      return;
+    }
+    if (t === "work.stage.felt") {   // how the agent's moves on the stage went (#1437, mac pieces/felt.ts): one event each
+      const f = feltOf(m);
+      if (f) track(f.name, f.props, ctx);
       return;
     }
     const row = IN[t];
@@ -277,6 +356,7 @@ export function trackOut(to: object, m: any): void {
     const t = typeof m.type === "string" ? m.type : "";
     if (!t || seen.has(m)) return;
     seen.add(m);
+    if (isPrivate(m.sessionId)) return;   // a private session (#1242)
     const row = OUT[t];
     if (!row) return;
     const ctx = { face: faces.get(to) ?? "", mode: modeOf(t), seat: seatOf(m) };
@@ -307,40 +387,46 @@ function markSent(file: string, as: "sent" | "refused" = "sent") {
 }
 let sending: Promise<Sent> | null = null;   // the send under way: a second tick while it runs joins it
 
+/** one day's file put where usage is kept (seams/store.ts): its headers and body; the answer's HTTP status, 0 when
+ *  nothing answered. 2xx and 409 (kept already) are done; any other 4xx but 429 is refused for good */
+export type Put = (headers: Record<string, string>, body: string) => Promise<number>;
+/** a put as one POST to an address (the hub's /relay/track, or SOL_TRACK_URL) */
+export const postTo = (url: string, f: typeof fetch = fetch): Put => (headers, body) =>
+  f(url, { method: "POST", headers, body, signal: AbortSignal.timeout(20_000) }).then((res) => res.status, () => 0);
+
 /**
- * The days before today that were not sent yet go to `url`, one POST each; a file that went is renamed .sent.
- * Files older than KEEP_DAYS go. No url, or usage off: only the ageing out (a day written before usage was turned
- * off stays on the Mac and ages out unsent).
+ * The days before today that were not sent yet go to `to` (an address, one POST each, or a put), one file each; a
+ * file that went is renamed .sent. Files older than KEEP_DAYS go. Nowhere to go, or usage off: only the ageing out (a
+ * day written before usage was turned off stays on the Mac and ages out unsent).
  */
-export function sendPending(url: string | null, f: typeof fetch = fetch): Promise<Sent> {
+export function sendPending(to: string | Put | null, f: typeof fetch = fetch): Promise<Sent> {
   if (sending) return sending;
-  const p = sendNow(url, f).finally(() => { if (sending === p) sending = null; });
+  const p = sendNow(typeof to === "string" ? postTo(to, f) : to).finally(() => { if (sending === p) sending = null; });
   sending = p;
   return p;
 }
-async function sendNow(url: string | null, f: typeof fetch): Promise<Sent> {
+async function sendNow(put: Put | null): Promise<Sent> {
   const r: Sent = { sent: [], failed: [], pruned: [] };
   if (!HOME || !existsSync(trackDir())) return r;
-  if (!consent().usage) url = null;
+  if (!consent().usage) put = null;
   const w = whoNow();
+  // my sign-in's token, once a send: the store that knows it (Supabase) binds the Sol ID from it, never from a header anyone
+  // could write; a store that does not (the hub) is handed the post without it (seams/store.ts hubStore)
+  let auth = "";
+  if (put) { try { auth = await bearer(); } catch { auth = ""; } }
   const now = clock(), today = day(now);
   const oldest = day(new Date(now.getTime() - KEEP_DAYS * 86_400_000));
   for (const name of readdirSync(trackDir()).sort()) {
     const old = OLD_FILE.exec(name);
     if (old && old[1] < oldest) { try { unlinkSync(join(trackDir(), name)); r.pruned.push(name); } catch {} continue; }
     const m = DAY_FILE.exec(name);
-    if (!m || m[1] >= today || !url) continue;
+    if (!m || m[1] >= today || !put) continue;
     const file = join(trackDir(), name);
     let body: string;
     try { body = readFileSync(file, "utf8"); } catch { continue; }
     if (!body.trim()) { try { markSent(file); } catch {} continue; }
     const sha = createHash("sha256").update(body).digest("hex");
-    const status = await f(url, {
-      method: "POST",
-      headers: { "content-type": "application/x-ndjson", "x-sol-tester": testerCode(), "x-sol-day": m[1], "x-sol-sha256": sha, "x-sol-version": VERSION, "x-sol-who": w.name, "x-sol-user": w.user },
-      body,
-      signal: AbortSignal.timeout(20_000),
-    }).then((res) => res.status, () => 0);
+    const status = await put({ "content-type": "application/x-ndjson", "x-sol-tester": testerCode(), "x-sol-day": m[1], "x-sol-sha256": sha, "x-sol-version": VERSION, "x-sol-who": w.name, "x-sol-user": w.user, ...(auth ? { authorization: `Bearer ${auth}` } : {}) }, body);
     const ok = (status >= 200 && status < 300) || status === 409;   // 409: the box has this one already
     // a 4xx that is not "slow down" will not change by asking again (too big, a day too old, a code the box was told to
     // refuse after a delete): kept here as .refused
@@ -360,10 +446,10 @@ export function trackUrlOf(hub: string): string | null {
 }
 
 let timer: NodeJS.Timeout | null = null;
-/** Once at start and then every hour: send what waits, age out what is old. The address may be null: nothing is sent. */
-export function startTrackSender(url: () => string | null, f: typeof fetch = fetch) {
+/** Once at start and then every hour: send what waits, age out what is old. Where may be null: nothing is sent. */
+export function startTrackSender(to: () => string | Put | null, f: typeof fetch = fetch) {
   if (timer) clearInterval(timer);
-  const tick = () => { void sendPending(url(), f).catch(() => {}); };
+  const tick = () => { void sendPending(to(), f).catch(() => {}); };
   setTimeout(tick, 30_000).unref();
   timer = setInterval(tick, SEND_EVERY_MS);
   timer.unref();

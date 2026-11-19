@@ -5,7 +5,7 @@
 // The row's words are a person's (#948): what they will see change, nothing of how it is built.
 import { useState } from "react";
 import { Switch, useShell } from "../../settingsShell";
-import { askEngine } from "../Timeline";
+import { askEngine } from "../askEngine";
 import { v3On } from "./flag";   // the switch's one reading
 import "./switch.css";
 

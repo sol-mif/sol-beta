@@ -1,3 +1,4 @@
+import { Pearl } from "./kit";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 // The Settings shell (2026-10-27, Marco's "hyper intuitive, everything easy to find, icons and visuals"): a rail on the
@@ -34,26 +35,40 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
 
 // every section the page knows: its rail group, icon, title, one line of what it is for, and the words a search finds
 // it by (the row labels inside, and the words a person would type). A drawer missing here still shows, under "more".
-type Sec = { group: string; icon: IconName; title: string; line: string; words: string };
+// `scope` (2026-11-11, Marco: two settings, never the same section in both): "build" is Build's own, opened from Build's
+// side; the rest is Sol's, the same in every view, opened from the spine's mark.
+export type Scope = "sol" | "build";
+type Sec = { group: string; icon: IconName; title: string; line: string; words: string; scope?: "build" };
 export const SECTIONS: Record<string, Sec> = {
-  "me": { group: "you", icon: "me", title: "me", line: "your name, your sign-ins and the projects you are in", words: "name github org sol google sign in projects project rooms room groups group forget profile login" },
+  "me": { group: "you", icon: "me", title: "me", line: "your name, your sign-ins and the projects you are in", words: "name github org sol google sign in projects project rooms room groups group forget profile login screens screen monitor monitors display displays windows" },
   "my accounts": { group: "you", icon: "key", title: "accounts", line: "Claude and Codex on this machine, and which one answers a new chat", words: "claude code codex sign in subscription who answers new chat session seat login" },
   "my machines": { group: "you", icon: "screens", title: "machines", line: "the Sols this window can use; switching reloads the window", words: "machine nucbox mac address wss add remove use switch engine computer" },
   "my agent": { group: "your agent", icon: "agent", title: "my agent", line: "where it may speak for you, and which pings it brings to you", words: "github cowork discord whatsapp speak post sign signed pings dials clash contract claim decision named chat card" },
-  "what leaves this machine": { group: "your agent", icon: "shield", title: "what leaves", line: "what stays on this Mac, and the few things that may go", words: "privacy prompts memory transcripts audit share project room group sessions show quiet sign-ins logins browser cookies data" },
-  "defaults": { group: "chats", icon: "chip", title: "models", line: "the model and effort a new conversation starts with", words: "model effort codex claude opus sonnet gpt default work may permission mode plan bypass accept edits auto" },
+  "what leaves this machine": { group: "your agent", icon: "shield", title: "what leaves", line: "what stays on this Mac, and the few things that may go", words: "privacy prompts memory transcripts audit share project room group sessions show quiet give ask past sign-ins logins browser cookies data" },
+  "how work is drawn": { group: "view", icon: "screens", title: "view", line: "app, TUI, CLI or IDE: how all of Build draws your work. The look changes, the work does not", words: "lens app tui cli ide terminal editor view drawn cosmetic look", scope: "build" },
+  "sidebar": { scope: "build", group: "view", icon: "session", title: "sidebar", line: "how your sessions are sorted, how long quiet work stays, and whether the list moves", words: "side sidebar sort order needs you pinned running folder orchestration under promote demote earlier stay motion animation move rows list organise organize" },
+  "home": { group: "view", icon: "dot", title: "home", line: "Home's own parts still being tried: on or off in this window", words: "home world 3d island place folders stickies pieces tools due try trying experimental sound" },
+  "switches": { scope: "build", group: "view", icon: "dot", title: "switches", line: "parts of Build still being tried: on or off in this window", words: "switch switches try trying new stage sorted sidebar projects tickets snap pieces on off experimental" },
+  "yours": { scope: "build", group: "view", icon: "palette", title: "yours", line: "what Build kept for you from what you repeat: where each came from, and undo", words: "yours mine kept tools rules offers repeat repeated personal personalize personalise undo made for me" },
+  "defaults": { scope: "build", group: "chats", icon: "chip", title: "models", line: "the model and effort a new conversation starts with", words: "model effort codex claude opus sonnet gpt default work may permission mode plan bypass accept edits auto" },
   "voice": { group: "chats", icon: "wave", title: "voice", line: "how Sol sounds when it talks, and when it answers", words: "voice speak sound patience pause language english dutch cantonese hear sample gemini" },
   "microphone": { group: "chats", icon: "mic", title: "microphone", line: "which input Sol hears", words: "mic microphone input audio device allow record dictation" },
   "look": { group: "look", icon: "palette", title: "look", line: "the window's colour, the glass, and your bubble", words: "colour color base opacity transparency blur glass bubble text size font theme appearance dark" },
-  "work": { group: "work", icon: "branch", title: "folders & branches", line: "where side copies live, where new sessions start, branch names and tidying up", words: "side copies folder worktree new sessions start branch prefix archive pull request untouched" },
-  "sessions": { group: "work", icon: "session", title: "sessions", line: "what a Claude session may do, and how it writes", words: "suggested prompts box tab browser drive pages output style writing" },
-  "side copies": { group: "work", icon: "copies", title: "side copies", line: "the scratch copies sessions work in, and what they hold", words: "worktree copies stale remove clean disk size transcripts" },
-  "pings": { group: "work", icon: "bell", title: "pings", line: "how a session gets your attention when Sol is not in front", words: "notification badge banner bounce dock sound permission question turn done" },
+  "work": { scope: "build", group: "work", icon: "branch", title: "folders & branches", line: "where side copies live, where new sessions start, branch names and tidying up", words: "side copies folder worktree new sessions start branch prefix archive pull request untouched" },
+  "sessions": { scope: "build", group: "work", icon: "session", title: "sessions", line: "what a Claude session may do, and how it writes", words: "suggested prompts box tab browser drive pages output style writing" },
+  "side copies": { scope: "build", group: "work", icon: "copies", title: "side copies", line: "the scratch copies sessions work in, and what they hold", words: "worktree copies stale remove clean disk size transcripts" },
+  "notifications": { group: "work", icon: "bell", title: "notifications", line: "which moments tell you", words: "notification notify moment ping turn done your move question permission failed run build pr green hand stable banner" },
   "machine": { group: "system", icon: "power", title: "awake & log", line: "keep the machine awake while a session works; versions and the log", words: "awake caffeinate battery sleep versions node sdk claude code log machine" },
   "engine": { group: "system", icon: "pulse", title: "engine", line: "is Sol running, which one this window uses, and the way back", words: "engine status up down which address face hot bundled go back gemini key dictation error" },
-  "my tools": { group: "system", icon: "tools", title: "tools", line: "the skills, plugins and servers Claude Code loads", words: "skills plugins agents mcp servers tools" },
+  "my tools": { scope: "build", group: "system", icon: "tools", title: "tools", line: "the skills, plugins and servers Claude Code loads", words: "skills plugins agents mcp servers tools" },
 };
 const ORDER = Object.keys(SECTIONS);
+/** which settings a section belongs to: Build's own, or Sol's (a drawer SECTIONS does not know is Sol's) */
+export const scopeOf = (name: string): Scope => SECTIONS[name]?.scope ?? "sol";
+const SCOPE_WORDS: Record<Scope, { title: string; other: string }> = {
+  sol: { title: "Sol settings", other: "build settings" },
+  build: { title: "Build settings", other: "Sol settings" },
+};
 
 type Shell = { sel: string; add: (n: string) => () => void };
 const ShellCtx = createContext<Shell | null>(null);
@@ -68,7 +83,7 @@ export function ShellSection({ name, children }: { name: string; children: React
   return (
     <section className="spane" data-name={name}>
       <header className="sp-head">
-        <span className="sp-ic"><Icon name={m?.icon ?? "dot"} size={22} /></span>
+        <span className="sp-ic">{name === "yours" ? <Pearl w={20} h={20} r={10} /> : <Icon name={m?.icon ?? "dot"} size={22} />}</span>
         <div><h2>{m?.title ?? name}</h2>{m?.line && <p>{m.line}</p>}</div>
       </header>
       <div className="sp-body">{children}</div>
@@ -78,8 +93,10 @@ export function ShellSection({ name, children }: { name: string; children: React
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
-export function SettingsShell({ open, setOpen, peek, top, children }: {
+export function SettingsShell({ open, setOpen, peek, top, scope, onScope, children }: {
   open: string; setOpen: (n: string) => void;
+  scope?: Scope;                      // only this half's sections show; none: every section, as before the split
+  onScope?: (to: Scope) => void;      // the line at the rail's foot that crosses to the other half
   peek?: Record<string, ReactNode>;   // a small sign of what a section is set to now, beside its name in the rail
   top?: ReactNode;                    // a line over the pane (the engine is down, or older than this window)
   children: ReactNode;
@@ -91,10 +108,17 @@ export function SettingsShell({ open, setOpen, peek, top, children }: {
   }, []);
   const [q, setQ] = useState("");
   const terms = norm(q).split(" ").filter(Boolean);
-  const ordered = useMemo(() => [...names].sort((a, b) => (ORDER.indexOf(a) + 1 || 999) - (ORDER.indexOf(b) + 1 || 999)), [names]);
+  // the half asked for; a half with nothing drawn (the engine is down: only its own section is) falls back to all
+  const ordered = useMemo(() => {
+    const all = [...names].sort((a, b) => (ORDER.indexOf(a) + 1 || 999) - (ORDER.indexOf(b) + 1 || 999));
+    const mine = scope ? all.filter((n) => scopeOf(n) === scope) : all;
+    return mine.length ? mine : all;
+  }, [names, scope]);
   const finds = (n: string) => { const m = SECTIONS[n]; const hay = norm(`${n} ${m?.title ?? ""} ${m?.group ?? ""} ${m?.words ?? ""} ${m?.line ?? ""}`); return terms.every((t) => hay.includes(t)); };
   const shown = ordered.filter(finds);
-  const sel = names.includes(open) ? open : ordered[0] ?? open;
+  // nothing here, something in the other half (Build's settings asked for "screens", it is in Sol's): say so, one press
+  const across = scope && onScope && terms.length && !shown.length ? [...names].filter((n) => scopeOf(n) !== scope).find(finds) : undefined;
+  const sel = ordered.includes(open) ? open : ordered[0] ?? open;
   const shell = useMemo(() => ({ sel, add }), [sel, add]);
 
   // a search moves the pane to the first section it finds, unless the one open is a find
@@ -128,6 +152,7 @@ export function SettingsShell({ open, setOpen, peek, top, children }: {
         <nav className="srail" aria-label="settings sections" onKeyDown={(ev) => {
           if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); step(ev.key === "ArrowDown" ? 1 : -1); }
         }}>
+          {scope && <div className="sscope" data-scope={scope}>{SCOPE_WORDS[scope].title}</div>}
           <label className="ssearch">
             <Icon name="search" size={14} />
             <input ref={search} value={q} placeholder="search settings" spellCheck={false} aria-label="search settings"
@@ -145,13 +170,17 @@ export function SettingsShell({ open, setOpen, peek, top, children }: {
               last = g;
               return [head,
                 <button key={n} className={`sitem ${n === sel ? "on" : ""}`} data-name={n} aria-current={n === sel ? "page" : undefined} onClick={() => setOpen(n)}>
-                  <Icon name={m?.icon ?? "dot"} />
+                  {/* #1089: yours is marked by the kit's Pearl at 14, not a palette (the designer, NOW 05:35 3) */}
+                  {n === "yours" ? <span className="sicon" style={{ display: "inline-grid", placeItems: "center" }} aria-hidden="true"><Pearl w={14} h={14} r={7} /></span> : <Icon name={m?.icon ?? "dot"} />}
                   <span className="st">{m?.title ?? n}</span>
-                  {peek?.[n] !== undefined && <span className="speek">{peek[n]}</span>}
+                  {peek?.[n] !== undefined && <span className="speek" data-v={typeof peek[n] === "string" ? peek[n] as string : undefined}>{peek[n]}</span>}
                 </button>];
             })}
-            {!shown.length && <p className="snone">nothing called “{q}”</p>}
+            {!shown.length && !across && <p className="snone">nothing called “{q}”</p>}
+            {across && <button className="sitem" data-name={across} onClick={() => { onScope!(scope === "build" ? "sol" : "build"); setOpen(across); }}>
+              <Icon name={SECTIONS[across]?.icon ?? "dot"} /><span className="st">{SECTIONS[across]?.title ?? across}</span><span className="speek">{SCOPE_WORDS[scope!].other}</span></button>}
           </div>
+          {scope && onScope && <button className="sother" onClick={() => onScope(scope === "build" ? "sol" : "build")}><span>{SCOPE_WORDS[scope].other}</span><span aria-hidden>→</span></button>}
         </nav>
         <div className="spane-wrap" ref={pane}>
           {top}

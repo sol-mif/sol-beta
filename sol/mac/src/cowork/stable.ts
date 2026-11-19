@@ -4,9 +4,12 @@
 //               this checkout behind it); asked once on every link up (team.stable.get), so a window opened later still
 //               learns it. A dev release installs itself at a quiet moment (engine/src/team/ship.ts), so a dev offer
 //               stands here only when it could not (a */mine Sol, a dirty tree)
-//   Later       a sha put off on this Mac: localStorage, so the notch and the window (same app, same storage) agree,
+//   Later       a sha put off on this Mac: localStorage, so every page of the app agrees,
 //               the `storage` event carrying a Later from one to the other; it lasts 12 hours, then the offer is back
 //   the asks    teamAsk (team.update, and other modules' team.* asks) with a rid, answered by the same type and rid
+//   the count   team.runs { tag, who, until } (#1150, engine team/runs.ts): who has the newest release, each team
+//               person ✓ or waiting with their Sol's reason, and their channel; shown with the release word until `until`, an hour on.
+//               #1153: it names the iteration, and each person's drift: Frank ✓ dev (3 off, 1 iteration)
 import { useEffect, useSyncExternalStore } from "react";
 import { link, type Link } from "../socket";
 import { ENGINE } from "../useEngine";
@@ -17,15 +20,19 @@ export type Offer = { sha: string; tag: string; by: string; mine: string; behind
 // release by themselves. session: a side copy and a session carry them; ready: Use it; failed: set aside or stay;
 // moving: the Sol moves over at a quiet moment. `said` is the words, plain, as the engine says them.
 export type CarryStage = "session" | "ready" | "failed" | "moving";
-export type Carry = { stage: CarryStage; kind: "update" | "back"; said: string; tag?: string; aside?: string; session?: string };
+// auto (#1150): the release came by itself, and the Sol moves over once it is carried, with no press
+export type Carry = { stage: CarryStage; kind: "update" | "back"; said: string; tag?: string; aside?: string; session?: string; auto?: boolean };
+// off, iterations (#1153): the person's files off the iteration, and how many iterations the oldest has missed
+export type Has = { login: string; name: string; has: boolean; why?: string; channel?: string; off?: number; iterations?: number };
+export type Runs = { tag: string; who: Has[]; until: number; iteration?: string };
 export type Aside = { name: string; at: string; left: number; pushed: boolean };
 // what Update is doing, shown in place of the offer's line: the words, and whether it went wrong (then only Later)
 export type Doing = { said: string; failed?: boolean; updating?: boolean; carrying?: boolean } | null;
 
 const LATER_KEY = "sol.stable.later", LATER_MS = 12 * 3600_000;
 
-type State = { offer: Offer | null; doing: Doing; later: Record<string, number>; carry: Carry | null };
-let S: State = { offer: null, doing: null, later: readLater(), carry: null };
+type State = { offer: Offer | null; doing: Doing; later: Record<string, number>; carry: Carry | null; runs: Runs | null };
+let S: State = { offer: null, doing: null, later: readLater(), carry: null, runs: null };
 const subs = new Set<() => void>();
 const set = (p: Partial<State>) => { S = { ...S, ...p }; for (const f of [...subs]) f(); };
 
@@ -52,8 +59,9 @@ function wire(): Link | null {
     if (w) { waits.delete(String(m.rid)); w(m); }
     if (m.type === "team.stable") take(m);
     if (m.type === "team.carry") takeCarry(m);
+    if (m.type === "team.runs") takeRuns(m);
   });
-  l.onLink((up) => { if (up) { l.send({ type: "team.stable.get" }); l.send({ type: "team.carry.get" }); } });
+  l.onLink((up) => { if (up) { l.send({ type: "team.stable.get" }); l.send({ type: "team.carry.get" }); l.send({ type: "team.runs.get" }); } });
   window.addEventListener("storage", (e) => { if (e.key === LATER_KEY) set({ later: readLater() }); });
   return l;
 }
@@ -69,9 +77,22 @@ const STAGES: CarryStage[] = ["session", "ready", "failed", "moving"];
 /** team.carry from the engine: the carry under way, or `stage: null` when there is none (exported for the tests) */
 export function takeCarry(m: any) {
   if (!STAGES.includes(m?.stage)) { if (S.carry) set({ carry: null, doing: S.doing?.carrying ? null : S.doing }); return; }
-  const carry: Carry = { stage: m.stage, kind: m.kind === "back" ? "back" : "update", said: String(m.said ?? ""), ...(m.tag ? { tag: String(m.tag) } : {}), ...(m.aside ? { aside: String(m.aside) } : {}), ...(m.session ? { session: String(m.session) } : {}) };
+  const carry: Carry = { stage: m.stage, kind: m.kind === "back" ? "back" : "update", said: String(m.said ?? ""), ...(m.tag ? { tag: String(m.tag) } : {}), ...(m.aside ? { aside: String(m.aside) } : {}), ...(m.session ? { session: String(m.session) } : {}), ...(m.auto === true ? { auto: true } : {}) };
   set({ carry, doing: { said: carry.said, carrying: true, failed: carry.stage === "failed" } });
 }
+
+let ends = 0;
+/** team.runs from the engine (#1150): the count stands until `until`, then it goes by itself (exported for the tests) */
+export function takeRuns(m: any) {
+  const until = Number(m?.until);
+  if (typeof m?.tag !== "string" || !m.tag || !Array.isArray(m.who) || !Number.isFinite(until)) { if (S.runs) set({ runs: null }); return; }
+  const who: Has[] = m.who.filter((x: any) => x && typeof x.name === "string").map((x: any) => ({ login: String(x.login ?? ""), name: x.name, has: x.has === true, ...(typeof x.why === "string" ? { why: x.why } : {}), ...(typeof x.channel === "string" ? { channel: x.channel } : {}), ...(Number(x.off) > 0 ? { off: Number(x.off), iterations: Number(x.iterations) || 0 } : {}) }));
+  set({ runs: { tag: m.tag, who, until, ...(typeof m.iteration === "string" && m.iteration ? { iteration: m.iteration } : {}) } });
+  window.clearTimeout(ends);
+  if (until > Date.now()) ends = window.setTimeout(() => set({ runs: S.runs?.until === until ? { ...S.runs } : S.runs }), Math.min(until - Date.now() + 50, 2 ** 31 - 1));
+}
+/** who has it, in words (pure): "Marco ✓ dev · Frank ✓ dev (3 off, 1 iteration) · Isaac waiting (busy) beta" */
+export const hasLine = (who: Has[]) => who.map((p) => `${p.has ? `${p.name} ✓` : `${p.name} waiting${p.why ? ` (${p.why})` : ""}`}${p.channel ? ` ${p.channel}` : ""}${p.off ? ` (${p.off} off, ${p.iterations ?? 0} iteration${p.iterations === 1 ? "" : "s"})` : ""}`).join(" · ");
 
 let n = 0;
 type Answer<T> = T & { error?: string };
@@ -126,7 +147,7 @@ export async function asides(): Promise<Aside[]> {
 /** bring back: an aside's changes carried onto the Sol as it is now, by the same steps */
 export const bringBack = (name: string) => carryAsk("team.aside.back", { name });
 
-/** Later: this release is put off on this Mac for 12 hours (both the notch and the window) */
+/** Later: this release is put off on this Mac for 12 hours */
 export function later(sha = S.offer?.sha) {
   if (!sha) return;
   const l = { ...readLater(), [sha]: Date.now() + LATER_MS };
@@ -144,6 +165,13 @@ export function shown(s: State = S): Shown | null {
   if (s.doing) return { ...o, doing: s.doing, carry: null };
   if (!o.behind || (s.later[o.sha] ?? 0) > Date.now()) return null;
   return { ...o, doing: null, carry: null };
+}
+
+/** the count to show with the release word: within its hour only */
+export function useRuns(): Runs | null {
+  useEffect(() => { wire(); }, []);
+  const s = useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, () => S);
+  return s.runs && s.runs.who.length && s.runs.until > Date.now() ? s.runs : null;
 }
 
 export function useStable(): Shown | null {

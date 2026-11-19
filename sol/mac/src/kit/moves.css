@@ -1,0 +1,52 @@
+/* The hand moves' motion (#692, slice F): ink written in, the doubt's slow wave, a proposal kept, the back turning
+   over, a pinch, the circled loop. Only the motion and the shapes live here; every colour, size and corner comes from
+   tokens.ts through the pieces' own style (set as --k-* on each piece), every duration and curve from palette.css
+   (tokens.json, palette.motion). Under reduced motion every piece is drawn settled and still. */
+
+/* ink: ghost words written in one by one, in the pearl at low strength */
+.ink-ghost { color: var(--k-ghost); }
+.ink-w { animation: ink-in var(--d-pour) var(--e-arrive) both; }
+@keyframes ink-in { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: none; } }
+
+/* the wave: the jelly's bands under the doubtful words, cut to a wave, swaying slowly; a tap opens its card */
+.ink-wave { position: relative; cursor: pointer; }
+.ink-wave::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 4px; pointer-events: none;
+  background: var(--jelly); opacity: var(--k-wave);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='4'%3E%3Cpath d='M0 2 Q2.5 0 5 2 T10 2' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x 0 0 / 10px 4px;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='4'%3E%3Cpath d='M0 2 Q2.5 0 5 2 T10 2' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x 0 0 / 10px 4px;
+  animation: ink-sway calc(var(--d-pour) * 4) var(--e-move) infinite alternate;
+}
+@keyframes ink-sway { to { -webkit-mask-position: 10px 0; mask-position: 10px 0; } }
+.ink-wave.open::after { opacity: 1; }
+
+/* the dash: a proposal's dashed outline, solid the moment it is kept, then it settles into set ink */
+.ink-dash { outline: 1px dashed var(--k-line); outline-offset: 2px; border-radius: var(--k-r); cursor: pointer; }
+.ink-dash.kept { outline-style: solid; animation: ink-settle var(--d-pour) var(--e-leave) both; }
+@keyframes ink-settle { to { outline-color: transparent; } }
+
+/* the wave's card and the circle's acts lift in from where they were asked */
+.k-pop { animation: k-pop var(--d-turn) var(--e-arrive) both; }
+@keyframes k-pop { from { opacity: 0; transform: translateY(-3px) scale(.98); } }
+
+/* the back: a pearl card turning over to a little tilt */
+.back-card { transform-origin: 50% 50%; transform: perspective(900px) rotate(var(--k-tilt)); animation: back-turn var(--d-pour) var(--e-pour) both; }
+@keyframes back-turn { from { transform: perspective(900px) rotateY(-90deg); opacity: .4; } }
+.peel-front { transition: transform var(--d-turn) var(--e-move); }
+.peel-front.lift { transform: perspective(900px) rotateY(-14deg) translateX(-2px); }
+.peel-corner { transition: transform var(--d-turn) var(--e-move); transform-origin: 100% 0; }
+.peel:hover .peel-corner { transform: scale(1.6); }
+
+/* pinch: the box eases to the height of the version showing; the other fades */
+.pinch-box { transition: height var(--d-pour) var(--e-pour); }
+.pinch-face { animation: pinch-in var(--d-turn) var(--e-arrive) both; }
+@keyframes pinch-in { from { opacity: 0; transform: scale(.985); } }
+
+/* the circled loop draws itself, then stays dashed */
+.circle-loop path { animation: loop-draw var(--d-pour) var(--e-arrive) both; }
+@keyframes loop-draw { from { stroke-dashoffset: 40; opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-w, .ink-wave::after, .ink-dash.kept, .k-pop, .back-card, .pinch-face, .circle-loop path { animation: none; }
+  .pinch-box, .peel-front, .peel-corner { transition: none; }
+}

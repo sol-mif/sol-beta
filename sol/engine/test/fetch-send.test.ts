@@ -18,9 +18,11 @@ import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { fetchRefusal, fetchFor, httpsSend, useSend, type Send } from "../src/bigroom.ts";
 import { columnsOf, type Columns } from "../src/record.ts";
+import { freePort } from "./test-engine.ts";
 
 const OPENSSL = "/usr/bin/openssl";
-const PORT = 8405, KEY = "ghp_SECRETKEY_999", MAX = 8 * 1024 * 1024;
+// the port a server here listens on: the system names a free one (#938, #1144)
+const PORT = await freePort(), KEY = "ghp_SECRETKEY_999", MAX = 8 * 1024 * 1024;
 const cols = (r: Record<string, unknown>) => (columnsOf(r) as { columns: Columns }).columns;
 const c = cols({ room: "big", needs: { why: "x", keys: ["github"], domains: [`localhost:${PORT}`] } });
 

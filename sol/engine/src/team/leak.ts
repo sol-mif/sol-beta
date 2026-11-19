@@ -13,7 +13,9 @@
 //                  refuses a team rule, stops refusing what protects a Sol user, or names the team's tools in its words;
 //   a team word    in what speaks to a tester's agent (sol/home, any CLAUDE.md or AGENTS.md, the sol skill, sol/HELP.md,
 //                  the README, .claude/settings.json, the guard's refusals): a team member's name or login (read from
-//                  docs/people of the release itself), sol-dev, MY SOL, the team's tools and pages, the nights' buttons.
+//                  docs/people of the release itself), sol-dev, MY SOL, the team's tools and pages, the nights' buttons;
+//   a word kept back  in any file that ships, code included: a word marketing has not made public yet (read from
+//                  NOT_YET_PUBLIC of the release itself, a team file that is never exported; #1323).
 // It runs before every export (mirror → exportTree) and on every sol-dev PR (ci.yml, job `leak`:
 // `npx tsx src/team/leak.ts --check <sha>` in sol/engine builds the export of the PR's merge commit and checks it,
 // writing nothing). The full answer (what of a Sol is a person's, a team's or everyone's) waits on personalization.
@@ -55,21 +57,17 @@ The desk: a study space they open beside the chat. desk_show puts a card on it: 
 a question, an exam (questions on a clock), a page of a file (a PDF under school/), a board, a timer. Make the
 cards yourself, on the fly, from what they are studying: a fresh set, a different style of question, a cheat-sheet
 note. Teach example first, then one question at a time; grade what they answer in the chat. What they do on the
-desk comes with their next message. Keep a set they will want again with \`keep\`, bring it back with \`load\`. Pin a
-timer or a card to the notch with desk_pin when they study on a clock.
+desk comes with their next message. Keep a set they will want again with \`keep\`, bring it back with \`load\`.
 
-Changing Sol itself: when they ask you to change how Sol looks or behaves in its windows (the chat, the notch, the
-island), you do it, here, without handing it off: this side is allowed to edit Sol's face, and only that:
-\`../mac/src\` (React and CSS; the notch is \`notch/Notch.tsx\`, the creature is \`creature/\`, a pinned desk card
-reaches the notch as \`pin\`) and \`../design\`. Never the engine, never \`src-tauri\`. When they have the face hot
+Changing Sol itself: when they ask you to change how Sol looks or behaves in its window, you do it, here, without handing it off: this side is allowed to edit Sol's face, and only that:
+\`../mac/src\` (React and CSS; the creature is \`creature/\`) and \`../design\`. Never the engine, never \`src-tauri\`. When they have the face hot
 (Settings, engine, face), each save shows in their running app within a second, so read the file first and keep
 every edit small and whole. The face is cut into sites, and they watch you work on them: the part you are editing
-is taped off while you work (stripes in your seat's colour, your last sentence in its corner), the notch's creature
-goes down to work beside it, and a part that breaks shows "broke it, Sol is fixing it" while the rest of the window
+is taped off while you work (stripes in your seat's colour, your last sentence in its corner), and a part that breaks shows "broke it, Sol is fixing it" while the rest of the window
 keeps working. The sites: sidebar (Sidebar, sideFloat, ModeSwitch, work/WorkSidebar), composer (work/Composer,
 Picker), talk (Message, History, Trail, work/ThreadPane, WorkTalk, WorkSteps), desk (Desk, work/Cards), browser
 (Browser), settings (Settings, work/WorkSettings), panes (work/Panes, the *Pane files, Show, Overview, Diff, Split),
-notch (notch/), creature (creature/, Mark, ../design); any other file is the whole face (it may blink: say so).
+creature (creature/, Mark, ../design); any other file is the whole face (it may blink: say so).
 Before an edit, say in one line which site you are changing and what for: that line is the tape's. One edit per
 site at a time: finish it, see it land, then the next. After each change that landed, run
 \`../mutate "<one line: what changed>"\` (no ; | & > < or $ in the line): it makes it one commit and takes the tape
@@ -82,7 +80,7 @@ work. Keep the house style: motion slides, never fades. (On Codex the sandbox ke
 the Claude seat.)
 
 Pinging them: when you finish something they asked to be told about, call \`ping\` with one line (what is done, in
-their words). It rings the notch and lights a cell beside this conversation until they look; never for anything else.
+their words). It shows in Sol's window, or as one banner when Sol is not on their screen; never for anything else.
 
 Groups: when the person is doing something with others (teammates, classmates, friends, a group project), offer a
 group once with suggest_group; never twice in a conversation.
@@ -106,6 +104,9 @@ const TEAM_FILES = new Set(["sol/take", "sol/brief", "sol/night", "sol/release",
   "sol/engine/systemd/user/sol-night.service", "sol/engine/systemd/user/sol-night.timer",
   "sol/engine/systemd/user/sol-release.service", "sol/engine/systemd/user/sol-release.timer",
   "sol/engine/systemd/user/sol-morning.service", "sol/engine/systemd/user/sol-morning.timer",
+  // the drift runner and the nightly integration (#1153): the team's own, on the NucBox only
+  "sol/drift", "sol/engine/systemd/user/sol-drift.service", "sol/engine/systemd/user/sol-drift.timer",
+  "sol/integrate", "sol/engine/systemd/user/sol-integrate.service", "sol/engine/systemd/user/sol-integrate.timer",
   // our machines as CI runners (#638): only the team's sol/runner writes it
   "sol/engine/systemd/user/sol-runner.service"]);
 /** the only files under a team folder, or sol/skills or sol/mine, that a Sol tester gets (BETA_KEEP names them) */
@@ -198,8 +199,8 @@ function firstWord(text: string, names: string[]): { word: string; at: number } 
 export function teamWord(text: string, names: string[] = []): string | null {
   return firstWord(allowedOut("", text), names)?.word ?? null;
 }
-// a person's own home folder: /Users/<name>/ or /home/<name>/, but a placeholder or a runner's
-const HOME_PATH = /(?<![\w.$-])\/(?:Users|home)\/(?!(?:you|me|user|someone(?:-else)?|runner|name|example|test|ci|shared|Shared|Library|computer|[A-Za-z]{1,2})\/)[A-Za-z0-9][A-Za-z0-9._-]*\//;
+// a person's own home folder: /Users/<name>/ or /home/<name>/, but a placeholder or a runner's (an address's own path, sol://home/block/<id>, is not one)
+const HOME_PATH = /(?<![\w.$-])(?<![a-z]:\/)\/(?:Users|home)\/(?!(?:you|me|user|someone(?:-else)?|runner|name|example|test|ci|shared|Shared|Library|computer|[A-Za-z]{1,2})\/)[A-Za-z0-9][A-Za-z0-9._-]*\//;
 
 // ---- reading a file: text in any of its encodings, a known image or font, or refused ----
 const ASSETS: Record<string, (b: Buffer) => boolean> = {
@@ -254,6 +255,15 @@ export function teamNames(people: ExportFile[]): string[] {
     if (heading) out.add(heading);
   }
   return [...out].filter((n) => n.length >= 3);
+}
+
+/** where marketing keeps the words it has not made public yet; a team file (docs/), so never exported itself (#1323) */
+export const NOT_YET_PUBLIC = "docs/marketing/not-yet-public.txt";
+/** the words kept back (pure), from NOT_YET_PUBLIC of the release: one word or phrase a line, a line starting with # a
+ * note, three letters or more (a shorter one would stop the export on everyday code); none when the release has none */
+export function notYetPublic(list?: ExportFile): string[] {
+  if (!list) return [];
+  return list.body.toString("utf8").split("\n").map((l) => l.trim()).filter((l) => l.length >= 3 && !l.startsWith("#"));
 }
 
 /** the fence's list, read the way the guard reads it: `const FENCE = [...]`, with or without a type */
@@ -331,10 +341,12 @@ function settingsLeak(body: Buffer): string | null {
   return null;
 }
 
-/** every team file, team rule or team word in an export tree (pure), each as "path[:line]: what". `names` are the
- * team's (teamNames of the release's docs/people). The guard's behaviour is checked apart, by guardProbe */
-export function leaksIn(files: ExportFile[], names: string[] = []): string[] {
+/** every team file, team rule, team word or word kept back in an export tree (pure), each as "path[:line]: what".
+ * `names` are the team's (teamNames of the release's docs/people), `kept` the words marketing has not made public yet
+ * (notYetPublic of the release's NOT_YET_PUBLIC). The guard's behaviour is checked apart, by guardProbe */
+export function leaksIn(files: ExportFile[], names: string[] = [], kept: string[] = []): string[] {
   const out: string[] = [];
+  const keptWord = nameWord(kept);   // a whole word or phrase, any case, any space between its words
   for (const { path, body } of files) {
     if (isTeamFile(path)) { out.push(`${path}: a team file`); continue; }
     if (path.startsWith("sol/home/")) {
@@ -349,6 +361,9 @@ export function leaksIn(files: ExportFile[], names: string[] = []): string[] {
     const lineOf = (at: number) => text.slice(0, at).split("\n").length;
     const home = HOME_PATH.exec(text);
     if (home) out.push(`${path}:${lineOf(home.index)}: a person's home folder, ${home[0]}`);
+    // the whole text, before any allowance: in code, an EXEMPT file and an ALLOWED line alike (a comment ships too)
+    const held = keptWord?.exec(read.text);
+    if (held) out.push(`${path}:${read.text.slice(0, held.index).split("\n").length}: a word marketing has not made public, "${held[0].replace(/\s+/g, " ")}"`);
     if (CODE.test(path) && CODE_EXT.test(path)) continue;   // code: its words are code (above)
     // an EXEMPT file: only its comment lines (the rest blanked, so a word never joins across code)
     const words = path in EXEMPT ? exemptWords(path, text) : text;
@@ -359,7 +374,7 @@ export function leaksIn(files: ExportFile[], names: string[] = []): string[] {
   return harness ? [...out, harness] : out;
 }
 /** the first of leaksIn (pure), or null */
-export const leakIn = (files: ExportFile[], names: string[] = []): string | null => leaksIn(files, names)[0] ?? null;
+export const leakIn = (files: ExportFile[], names: string[] = [], kept: string[] = []): string | null => leaksIn(files, names, kept)[0] ?? null;
 
 /** the neutral name every export commit carries, and the only message it may have */
 export const EXPORT_IDENT = { name: "Sol release runner", email: "release@sol.invalid" };
@@ -513,7 +528,7 @@ if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.
   const sha = process.argv[3] || "HEAD";
   // not awaited at the top: ship.ts imports this module, which must finish loading first
   import("./ship.js").then(({ exportCheck }) => exportCheck(process.cwd(), sha)).then(
-    ({ files, left }) => console.log(`leak check: the export of ${sha} (${files} files) holds no team file, team rule or team word`
+    ({ files, left }) => console.log(`leak check: the export of ${sha} (${files} files) holds no team file, team rule or team word, nor a word marketing keeps back`
       + (left.length ? `; left out as the team's: ${left.join(", ")}` : "")),
     (e) => { console.error(`leak check: ${(e as Error).message}`); process.exit(1); });
 }

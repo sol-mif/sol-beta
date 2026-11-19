@@ -386,7 +386,7 @@ function Board({ card, onMark }: { card: Card; onMark: (m: Mark) => void }) {
   );
 }
 
-// ---- a timer: one clock, big; the engine keeps whether it runs, so the notch can count too ----
+// ---- a timer: one clock, big; the engine keeps whether it runs ----
 function useNow(on: boolean) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {

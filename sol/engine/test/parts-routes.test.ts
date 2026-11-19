@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
@@ -19,6 +19,7 @@ const dir = mkdtempSync(join(tmpdir(), "sol-parts-routes-"));
 const HOME = join(dir, "home");
 mkdirSync(join(HOME, "pics"), { recursive: true });
 writeFileSync(join(HOME, "a.txt"), "hello from the home\n");
+writeFileSync(join(dir, "outside.txt"), "next to the home, not in it\n");   // on every system, unlike /etc/hostname (#1258)
 const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082", "hex");
 writeFileSync(join(HOME, "pics", "p.png"), PNG);
 writeFileSync(join(dir, "accounts.json"), JSON.stringify({ "https://cloud.example.net": { login: "amy", refresh: "r".repeat(43), at: 1 } }));
@@ -51,7 +52,7 @@ test("files (parts/files.ts): GET /file, /pane-image, /pane-asset/ answer as bef
   const f = await fetch(`${at}/file?path=${encodeURIComponent(join(HOME, "a.txt"))}`);
   assert.equal(f.status, 200);
   assert.equal(await f.text(), "hello from the home\n");
-  assert.equal((await fetch(`${at}/file?path=${encodeURIComponent("/etc/hostname")}`)).status, 403, "only inside home/");
+  assert.equal((await fetch(`${at}/file?path=${encodeURIComponent(join(dir, "outside.txt"))}`)).status, 403, "only inside home/");
   assert.equal((await fetch(`${at}/file`)).status, 400);
   assert.equal((await fetch(`${at}/file`, { method: "POST" })).status, 404, "GET only");
   const img = await fetch(`${at}/pane-image?path=${encodeURIComponent(join(HOME, "pics", "p.png"))}`);
@@ -92,7 +93,7 @@ test("cloud (parts/cloud.ts): sign in, sign out, move and the accounts answer as
   assert.equal((await fetch(`${at}/nothing-here`)).status, 404, "what no part takes falls through to the engine's 404");
 });
 
-test("messages (parts/arrange.ts, goback.ts, dictations.ts, browser.ts): answered as before", { timeout: 60_000 }, async () => {
+test("messages (parts/arrange.ts, goback.ts, browser.ts): answered as before", { timeout: 60_000 }, async () => {
   await up();
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}`);
   const got: any[] = [];
@@ -110,12 +111,9 @@ test("messages (parts/arrange.ts, goback.ts, dictations.ts, browser.ts): answere
     ws.send(JSON.stringify({ type: "goback.plan" }));
     const g = await next("goback.plan");
     assert.equal(typeof g.line, "string");
-    ws.send(JSON.stringify({ type: "dictated", raw: "hi there", typed: "Hi there.", app: "Notes", title: "a note", seconds: 2, went: true }));
     ws.send(JSON.stringify({ type: "browser.select", tab: "no-such-tab" }));
-    const days = join(HOME, "voice", "dictations");
-    for (let t = 0; t < 100 && !existsSync(days); t++) await new Promise((r) => setTimeout(r, 50));
-    const lines = readdirSync(days).map((f) => readFileSync(join(days, f), "utf8")).join("");
-    assert.match(lines, /"typed":"Hi there\."/);
+    ws.send(JSON.stringify({ type: "goback.plan" }));
+    await next("goback.plan");   // answered after the select, so a select's error would be in by now
     assert.equal(got.filter((m) => m.type === "error").length, 0, "no error for a tab nobody has");
   } finally { ws.close(); }
 });

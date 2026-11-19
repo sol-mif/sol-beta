@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Drawer } from "../Settings";
 import { Seg, OnOff, Field } from "../work/WorkSettings";
+import { WHERE_IT_GOES } from "../cowork/asks";   // ask for a session (#335)
 import { Xterm } from "../work/TermPane";
 import { ENGINE, FAR_NAME, LIVE, NEXT, pickEngine, sameEngine, type Machine } from "../useEngine";
 import { useControl, DEV, DIAL_DEFAULTS, type Team, type Room, type Accounts, type PingKind, type Dial } from "./useControl";
 import { meets } from "../cowork/rooms";
+import { WakeRows } from "./Wake";   // who may wake my agent (#1151)
+import { ChannelRow } from "./ChannelRow";
 import { inShell, shell } from "../cowork/thingView";
 import "./control.css";
 
@@ -173,6 +176,8 @@ export function ControlDrawers({ open, toggle, onSet, flash }: {
         <div className="lab"><span>GitHub org</span><small>when set, the team knows people by their GitHub sign-in; the key is no longer needed</small></div>
         <span className="ctl-namefield"><Field value={t?.org ?? ""} placeholder="none yet" onSave={(v) => void c.set({ org: v.trim() })} /></span>
       </div>
+      {/* --- Updates (#1150): dev or beta, read live by the engine */}
+      {(t || DEV) && <ChannelRow ask={c.ask} set={c.set} off={off && !DEV} />}
       {/* --- Rooms (#154): the rooms I am in, the one I am in now, and a new one */}
       <Rooms team={t} onSwitch={(id) => void c.set({ room: id })} onSave={(rooms) => void c.set({ rooms })} />
       {/* --- end Rooms */}
@@ -225,6 +230,7 @@ export function ControlDrawers({ open, toggle, onSet, flash }: {
         <OnOff on={t?.speak.whatsapp ?? false} disabled={off} set={(v) => void c.set({ speak: { whatsapp: v } })} />
       </div>
       <p className="hint-line">Sol refuses a post where this says no, and tells every new turn these lines</p>
+      <WakeRows t={t} off={off} set={c.set} />
       {/* --- Pings and dials (#100): five rows, each a three-way pick; a flip is said once, as what my agent learned */}
       <div className="ctl-sub">what reaches me</div>
       <p className="hint-line top">every ping lands on my agent first; this says which ones it brings to me as a card. A card never stops anything</p>
@@ -249,6 +255,11 @@ export function ControlDrawers({ open, toggle, onSet, flash }: {
       <div className="field-r">
         <div className="lab"><span>an audit</span><small>{t?.leaves.audit === "never" ? "a teammate's request is turned down" : "a teammate asks; I see what would go and say yes or no"}</small></div>
         <Seg value={t?.leaves.audit ?? "ask"} disabled={off} options={[["ask", "asks me first"], ["never", "never"]]} onChange={(v) => void c.set({ leaves: { audit: v } })} />
+      </div>
+      {/* a past group session a teammate's agent asks for (#335): one press each time, or never; said where it goes */}
+      <div className="field-r">
+        <div className="lab"><span>give my past group sessions when asked</span><small>{(t?.leaves.give ?? "ask") === "never" ? "a teammate's ask is turned down at once, and nobody is offered to ask" : `a teammate asks; I press give or not now. ${WHERE_IT_GOES}`}</small></div>
+        <Seg value={t?.leaves.give ?? "ask"} disabled={off} options={[["ask", "ask me each time"], ["never", "never"]]} onChange={(v) => void c.set({ leaves: { give: v } })} />
       </div>
       <p className="hint-line">GitHub always has what I commit and push; nothing else goes on its own</p>
       {/* a session started under a room shows to that room while it runs, live, never kept off this Mac (#238, #189) */}

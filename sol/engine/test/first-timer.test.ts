@@ -177,8 +177,7 @@ test("the stage's engine: its own home, state and team, nothing counted, nothing
   assert.equal(env.SOL_STATE, "/run/state/work.json");
   assert.equal(env.SOL_TEAM, "/run/team.json");
   assert.equal(env.SOL_FACE, "http://127.0.0.1:4001");
-  for (const k of ["SOL_TRACK", "SOL_TRACK_URL", "SOL_HUB"]) assert.equal(env[k], "off");
-  assert.equal(env.SOL_NO_RENEW, "1");
+  assert.equal(env.SOL_QUIET, "1");   // one switch: no relay, no tracking, no renew, no writes outward (src/quiet.ts)
   assert.equal(env.SOL_PORT, "4000");
   // #495's review: nothing of the person reaches the stage
   assert.equal(env.HOME, "/run/os-home", "an empty HOME of the run's: no ~/.claude, ~/.codex, gh or keys");

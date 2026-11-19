@@ -1,0 +1,1280 @@
+{
+  "_source": "written by the face's own code (the Home face branch at commit fa6becaf: sol/mac/src/home/whole/reads.ts readOf, receiptLine, thingOf, and today.ts weekOf for the weeks), run on test/fixtures/home/sentences.ts with no folders; times as local YYYY-MM-DD HH:mm. SOL_BASELINE=write rewrites it from the engine's port",
+  "weeks": {
+    "mon": [
+      {
+        "id": "w-bio-lecture",
+        "kind": "event",
+        "at": "2026-11-09 10:00",
+        "end": "2026-11-09 11:30",
+        "label": "bio 201 lecture"
+      },
+      {
+        "id": "w-chem-lab",
+        "kind": "event",
+        "at": "2026-11-10 14:00",
+        "end": "2026-11-10 17:00",
+        "label": "chem lab"
+      },
+      {
+        "id": "w-stats-group",
+        "kind": "event",
+        "at": "2026-11-11 16:00",
+        "end": "2026-11-11 17:30",
+        "label": "stats group"
+      },
+      {
+        "id": "w-study",
+        "kind": "proposal",
+        "at": "2026-11-11 19:00",
+        "end": "2026-11-11 21:00",
+        "label": "study block?"
+      },
+      {
+        "id": "w-bio-exam",
+        "kind": "big",
+        "at": "2026-11-12 10:00",
+        "end": "2026-11-12 12:00",
+        "label": "bio exam"
+      },
+      {
+        "id": "w-dentist",
+        "kind": "you",
+        "at": "2026-11-13 09:00",
+        "label": "book the dentist",
+        "yours": true
+      },
+      {
+        "id": "w-shopify",
+        "kind": "due",
+        "at": "2026-11-14 17:00",
+        "label": "Shopify closes"
+      },
+      {
+        "id": "w-grandma",
+        "kind": "event",
+        "at": "2026-11-15 11:00",
+        "end": "2026-11-15 12:00",
+        "label": "call grandma"
+      }
+    ],
+    "tue": [
+      {
+        "id": "w-chem-lab",
+        "kind": "event",
+        "at": "2026-11-10 14:00",
+        "end": "2026-11-10 17:00",
+        "label": "chem lab"
+      },
+      {
+        "id": "w-stats-group",
+        "kind": "event",
+        "at": "2026-11-11 16:00",
+        "end": "2026-11-11 17:30",
+        "label": "stats group"
+      },
+      {
+        "id": "w-study",
+        "kind": "proposal",
+        "at": "2026-11-11 19:00",
+        "end": "2026-11-11 21:00",
+        "label": "study block?"
+      },
+      {
+        "id": "w-bio-exam",
+        "kind": "big",
+        "at": "2026-11-12 10:00",
+        "end": "2026-11-12 12:00",
+        "label": "bio exam"
+      },
+      {
+        "id": "w-dentist",
+        "kind": "you",
+        "at": "2026-11-13 09:00",
+        "label": "book the dentist",
+        "yours": true
+      },
+      {
+        "id": "w-shopify",
+        "kind": "due",
+        "at": "2026-11-14 17:00",
+        "label": "Shopify closes"
+      },
+      {
+        "id": "w-grandma",
+        "kind": "event",
+        "at": "2026-11-15 11:00",
+        "end": "2026-11-15 12:00",
+        "label": "call grandma"
+      },
+      {
+        "id": "w-bio-lecture",
+        "kind": "event",
+        "at": "2026-11-16 10:00",
+        "end": "2026-11-16 11:30",
+        "label": "bio 201 lecture"
+      }
+    ]
+  },
+  "sentences": [
+    {
+      "text": "call Sam about the offer Thursday",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "call Sam about the offer Thursday",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "jobs",
+          "at": "2026-11-12 13:00",
+          "after": "bio exam"
+        }
+      ],
+      "receipt": "jobs · for you, Thursday 13:00, after your bio exam · it joins this list Thursday morning, prepared",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "jobs",
+          "words": "call Sam",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "none",
+          "due": "2026-11-12 13:00",
+          "card": {
+            "source": "sol",
+            "title": "Call Sam about the offer.",
+            "why": "Only you do it, after your bio exam; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "call Sam"
+          }
+        }
+      ]
+    },
+    {
+      "text": "bio exam thursday, make notes from the slides",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "bio exam thursday",
+          "read": "date",
+          "p": {
+            "note": 0.05,
+            "date": 0.91,
+            "you": 0.01,
+            "job": 0.01,
+            "make": 0.01
+          },
+          "folder": "school › bio 201",
+          "found": "w-bio-exam",
+          "at": "2026-11-12 10:00"
+        },
+        {
+          "text": "make notes from the slides",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "school › bio 201"
+        }
+      ],
+      "receipt": "bio exam · already on your calendar, nothing added; school › bio 201 · a job, started",
+      "things": [
+        null,
+        {
+          "id": "t-1",
+          "folder": "school › bio 201",
+          "words": "make notes from the slides",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-09 14:40"
+        }
+      ]
+    },
+    {
+      "text": "bio exam thursday, make notes from the slides; call mum and then book the dentist",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "bio exam thursday",
+          "read": "date",
+          "p": {
+            "note": 0.13,
+            "date": 0.78,
+            "you": 0.03,
+            "job": 0.03,
+            "make": 0.03
+          },
+          "folder": "school › bio 201",
+          "at": "2026-11-12 10:00"
+        },
+        {
+          "text": "make notes from the slides",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "school › bio 201"
+        },
+        {
+          "text": "call mum",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "life"
+        },
+        {
+          "text": "book the dentist",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "life"
+        }
+      ],
+      "receipt": "bio exam · on your calendar, Thursday 10:00; school › bio 201 · a job, started; life · for you · on this list now; life · for you · on this list now",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school › bio 201",
+          "words": "bio exam",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-12 10:00"
+        },
+        {
+          "id": "t-1",
+          "folder": "school › bio 201",
+          "words": "make notes from the slides",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-09 14:40"
+        },
+        {
+          "id": "t-2",
+          "folder": "life",
+          "words": "call mum",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "you",
+          "card": {
+            "source": "sol",
+            "title": "Call mum.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "call mum"
+          }
+        },
+        {
+          "id": "t-3",
+          "folder": "life",
+          "words": "book the dentist",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "you",
+          "card": {
+            "source": "sol",
+            "title": "Book the dentist.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "book the dentist"
+          }
+        }
+      ]
+    },
+    {
+      "text": "call Sam about the offer Thursday",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "call Sam about the offer Thursday",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "jobs",
+          "at": "2026-11-12 10:00"
+        }
+      ],
+      "receipt": "jobs · for you, Thursday 10:00 · it joins this list Thursday morning, prepared",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "jobs",
+          "words": "call Sam",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "none",
+          "due": "2026-11-12 10:00",
+          "card": {
+            "source": "sol",
+            "title": "Call Sam about the offer.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "call Sam"
+          }
+        }
+      ]
+    },
+    {
+      "text": "dinner friday",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "dinner friday",
+          "read": "date",
+          "p": {
+            "note": 0.13,
+            "date": 0.78,
+            "you": 0.03,
+            "job": 0.03,
+            "make": 0.03
+          },
+          "folder": "life",
+          "at": "2026-11-13 10:00"
+        }
+      ],
+      "receipt": "dinner · on your calendar, Friday 10:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "dinner",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-13 10:00"
+        }
+      ]
+    },
+    {
+      "text": "thursday",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "thursday",
+          "read": "date",
+          "p": {
+            "note": 0.06,
+            "date": 0.52,
+            "you": 0.29,
+            "job": 0.06,
+            "make": 0.06
+          },
+          "folder": "life",
+          "at": "2026-11-12 10:00"
+        }
+      ],
+      "receipt": " · on your calendar, Thursday 10:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-12 10:00"
+        }
+      ]
+    },
+    {
+      "text": "the blue one was nicer",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "the blue one was nicer",
+          "read": "note",
+          "p": {
+            "note": 0.4,
+            "date": 0.08,
+            "you": 0.08,
+            "job": 0.36,
+            "make": 0.08
+          },
+          "folder": "life"
+        }
+      ],
+      "receipt": "life · a note, kept",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "the blue one was nicer",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "note",
+          "state": "read",
+          "waitsOn": "none"
+        }
+      ]
+    },
+    {
+      "text": "call Sam about the offer Thursday",
+      "day": "tue",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "call Sam about the offer Thursday",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "jobs",
+          "at": "2026-11-12 13:00",
+          "after": "bio exam"
+        }
+      ],
+      "receipt": "jobs · for you, Thursday 13:00, after your bio exam · it joins this list Thursday morning, prepared",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "jobs",
+          "words": "call Sam",
+          "at": "2026-11-10 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "none",
+          "due": "2026-11-12 13:00",
+          "card": {
+            "source": "sol",
+            "title": "Call Sam about the offer.",
+            "why": "Only you do it, after your bio exam; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "call Sam"
+          }
+        }
+      ]
+    },
+    {
+      "text": "bio exam thursday, make notes from the slides",
+      "day": "tue",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "bio exam thursday",
+          "read": "date",
+          "p": {
+            "note": 0.05,
+            "date": 0.91,
+            "you": 0.01,
+            "job": 0.01,
+            "make": 0.01
+          },
+          "folder": "school › bio 201",
+          "found": "w-bio-exam",
+          "at": "2026-11-12 10:00"
+        },
+        {
+          "text": "make notes from the slides",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "school › bio 201"
+        }
+      ],
+      "receipt": "bio exam · already on your calendar, nothing added; school › bio 201 · a job, started",
+      "things": [
+        null,
+        {
+          "id": "t-1",
+          "folder": "school › bio 201",
+          "words": "make notes from the slides",
+          "at": "2026-11-10 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-10 14:40"
+        }
+      ]
+    },
+    {
+      "text": "make a tracker for job applications",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "make a tracker for job applications",
+          "read": "make",
+          "p": {
+            "note": 0.03,
+            "date": 0.03,
+            "you": 0.03,
+            "job": 0.16,
+            "make": 0.74
+          },
+          "folder": "life"
+        }
+      ],
+      "receipt": "life · a thing to make, ready on Build's stage",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "make a tracker for job applications",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "make",
+          "state": "read",
+          "waitsOn": "none"
+        }
+      ]
+    },
+    {
+      "text": "summarize the chem lecture tomorrow at 3pm",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "summarize the chem lecture tomorrow at 3pm",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "school › chem 110",
+          "found": "w-chem-lab",
+          "at": "2026-11-10 14:00"
+        }
+      ],
+      "receipt": "school › chem 110 · a job, started · ready Tomorrow 14:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school › chem 110",
+          "words": "summarize the chem lecture at 3pm",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-10 14:00"
+        }
+      ]
+    },
+    {
+      "text": "pay rent today",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "pay rent today",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "life",
+          "at": "2026-11-09 10:00"
+        }
+      ],
+      "receipt": "life · for you, Today 10:00 · it joins this list now, prepared",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "pay rent",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "you",
+          "due": "2026-11-09 10:00",
+          "card": {
+            "source": "sol",
+            "title": "Pay rent.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "pay rent"
+          }
+        }
+      ]
+    },
+    {
+      "text": "stats group meeting wednesday at 16:00",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "stats group meeting wednesday at 16:00",
+          "read": "date",
+          "p": {
+            "note": 0.05,
+            "date": 0.91,
+            "you": 0.01,
+            "job": 0.01,
+            "make": 0.01
+          },
+          "folder": "school › stats 140",
+          "found": "w-stats-group",
+          "at": "2026-11-11 16:00"
+        }
+      ],
+      "receipt": "stats group meeting at 16:00 · already on your calendar, nothing added",
+      "things": [
+        null
+      ]
+    },
+    {
+      "text": "draft a cover letter for the Shopify application",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "draft a cover letter for the Shopify application",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "jobs"
+        }
+      ],
+      "receipt": "jobs · a job, started",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "jobs",
+          "words": "draft a cover letter for the Shopify application",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-09 14:40"
+        }
+      ]
+    },
+    {
+      "text": "meet Maya friday 11am",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "meet Maya friday 11am",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "school › stats 140",
+          "at": "2026-11-13 11:00"
+        }
+      ],
+      "receipt": "school › stats 140 · for you, Friday 11:00 · it joins this list Friday morning, prepared",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school › stats 140",
+          "words": "meet Maya 11am",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "none",
+          "due": "2026-11-13 11:00",
+          "card": {
+            "source": "sol",
+            "title": "Meet Maya 11am.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "meet Maya 11am"
+          }
+        }
+      ]
+    },
+    {
+      "text": "chem lab tuesday",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "chem lab tuesday",
+          "read": "date",
+          "p": {
+            "note": 0.05,
+            "date": 0.91,
+            "you": 0.01,
+            "job": 0.01,
+            "make": 0.01
+          },
+          "folder": "school › chem 110",
+          "found": "w-chem-lab",
+          "at": "2026-11-10 14:00"
+        }
+      ],
+      "receipt": "chem lab · already on your calendar, nothing added",
+      "things": [
+        null
+      ]
+    },
+    {
+      "text": "a deck for the bio presentation",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "a deck for the bio presentation",
+          "read": "make",
+          "p": {
+            "note": 0.03,
+            "date": 0.03,
+            "you": 0.03,
+            "job": 0.16,
+            "make": 0.74
+          },
+          "folder": "school › bio 201"
+        }
+      ],
+      "receipt": "school › bio 201 · a thing to make, ready on Build's stage",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school › bio 201",
+          "words": "a deck for the bio presentation",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "make",
+          "state": "read",
+          "waitsOn": "none"
+        }
+      ]
+    },
+    {
+      "text": "check the survey data and then text Maya",
+      "day": "tue",
+      "week": "none",
+      "parts": [
+        {
+          "text": "check the survey data",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "school › stats 140"
+        },
+        {
+          "text": "text Maya",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "school › stats 140"
+        }
+      ],
+      "receipt": "school › stats 140 · a job, started; school › stats 140 · for you · on this list now",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school › stats 140",
+          "words": "check the survey data",
+          "at": "2026-11-10 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-10 14:40"
+        },
+        {
+          "id": "t-1",
+          "folder": "school › stats 140",
+          "words": "text Maya",
+          "at": "2026-11-10 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "you",
+          "card": {
+            "source": "sol",
+            "title": "Text Maya.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "text Maya"
+          }
+        }
+      ]
+    },
+    {
+      "text": "lunch with Ana tomorrow",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "lunch with Ana tomorrow",
+          "read": "date",
+          "p": {
+            "note": 0.13,
+            "date": 0.78,
+            "you": 0.03,
+            "job": 0.03,
+            "make": 0.03
+          },
+          "folder": "life",
+          "at": "2026-11-10 10:00"
+        }
+      ],
+      "receipt": "lunch · on your calendar, Tomorrow 10:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "lunch",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-10 10:00"
+        }
+      ]
+    },
+    {
+      "text": "call grandma sunday",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "call grandma sunday",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "life",
+          "found": "w-grandma",
+          "at": "2026-11-15 11:00"
+        }
+      ],
+      "receipt": "life · for you, Sunday 11:00 · it joins this list Sunday morning, prepared",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "call grandma",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "none",
+          "due": "2026-11-15 11:00",
+          "card": {
+            "source": "sol",
+            "title": "Call grandma.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "call grandma"
+          }
+        }
+      ]
+    },
+    {
+      "text": "buy a new charger",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "buy a new charger",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "life"
+        }
+      ],
+      "receipt": "life · for you · on this list now",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "buy a new charger",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "you",
+          "card": {
+            "source": "sol",
+            "title": "Buy a new charger.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "buy a new charger"
+          }
+        }
+      ]
+    },
+    {
+      "text": "remember the wifi password is on the fridge",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "remember the wifi password is on the fridge",
+          "read": "note",
+          "p": {
+            "note": 0.4,
+            "date": 0.08,
+            "you": 0.08,
+            "job": 0.36,
+            "make": 0.08
+          },
+          "folder": "life"
+        }
+      ],
+      "receipt": "life · a note, kept",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "remember the wifi password is on the fridge",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "note",
+          "state": "read",
+          "waitsOn": "none"
+        }
+      ]
+    },
+    {
+      "text": "outline the essay by friday; book the dentist",
+      "day": "mon",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "outline the essay by friday",
+          "read": "job",
+          "p": {
+            "note": 0.02,
+            "date": 0.02,
+            "you": 0.02,
+            "job": 0.82,
+            "make": 0.11
+          },
+          "folder": "life",
+          "at": "2026-11-13 10:00"
+        },
+        {
+          "text": "book the dentist",
+          "read": "you",
+          "p": {
+            "note": 0.02,
+            "date": 0.08,
+            "you": 0.86,
+            "job": 0.02,
+            "make": 0.02
+          },
+          "folder": "life"
+        }
+      ],
+      "receipt": "life · a job, started · ready Friday 10:00; life · for you · on this list now",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "life",
+          "words": "outline the essay",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "job",
+          "state": "moving",
+          "waitsOn": "agent",
+          "due": "2026-11-13 10:00"
+        },
+        {
+          "id": "t-1",
+          "folder": "life",
+          "words": "book the dentist",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "you",
+          "state": "you",
+          "waitsOn": "you",
+          "card": {
+            "source": "sol",
+            "title": "Book the dentist.",
+            "why": "Only you do it; Sol has it prepared.",
+            "chips": [],
+            "answers": [
+              "done",
+              "move it"
+            ],
+            "touches": [],
+            "edge": "book the dentist"
+          }
+        }
+      ]
+    },
+    {
+      "text": "homework set 7 thursday",
+      "day": "tue",
+      "week": "calendar",
+      "parts": [
+        {
+          "text": "homework set 7 thursday",
+          "read": "date",
+          "p": {
+            "note": 0.06,
+            "date": 0.52,
+            "you": 0.29,
+            "job": 0.06,
+            "make": 0.06
+          },
+          "folder": "school",
+          "at": "2026-11-12 13:00",
+          "after": "bio exam"
+        }
+      ],
+      "receipt": "homework set 7 · on your calendar, Thursday 13:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school",
+          "words": "homework set 7",
+          "at": "2026-11-10 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-12 13:00"
+        }
+      ]
+    },
+    {
+      "text": "interview with the recruiter on monday at 9",
+      "day": "tue",
+      "week": "none",
+      "parts": [
+        {
+          "text": "interview with the recruiter on monday at 9",
+          "read": "date",
+          "p": {
+            "note": 0.13,
+            "date": 0.78,
+            "you": 0.03,
+            "job": 0.03,
+            "make": 0.03
+          },
+          "folder": "jobs",
+          "at": "2026-11-16 09:00"
+        }
+      ],
+      "receipt": "interview · on your calendar, Monday 9:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "jobs",
+          "words": "interview",
+          "at": "2026-11-10 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-16 09:00"
+        }
+      ]
+    },
+    {
+      "text": "the midterm is tonight",
+      "day": "mon",
+      "week": "none",
+      "parts": [
+        {
+          "text": "the midterm is tonight",
+          "read": "date",
+          "p": {
+            "note": 0.13,
+            "date": 0.78,
+            "you": 0.03,
+            "job": 0.03,
+            "make": 0.03
+          },
+          "folder": "school › bio 201",
+          "at": "2026-11-09 10:00"
+        }
+      ],
+      "receipt": "the midterm is · on your calendar, Today 10:00",
+      "things": [
+        {
+          "id": "t-0",
+          "folder": "school › bio 201",
+          "words": "the midterm is",
+          "at": "2026-11-09 08:40",
+          "links": [],
+          "made": [],
+          "read": "date",
+          "state": "read",
+          "waitsOn": "none",
+          "due": "2026-11-09 10:00"
+        }
+      ]
+    }
+  ]
+}

@@ -16,11 +16,19 @@ export function askedDrawer(detail: unknown): string | null {
   return typeof detail === "string" && detail ? detail : null;
 }
 
+/** the section Settings opens on when asked from a Home with its own (#1124): Home's own, never Build's */
+export const HOME_DRAWER = "home";
+
 /** how the window answers an ask for Settings while `view` shows: the view to hop to first (null: stay), and the
- *  view closing Settings returns to (null: stay in Build; Cowork is another mode, with its own Settings) */
-export function settingsPlan(view: View): { hop: View | null; back: View | null } {
+ *  view closing Settings returns to (null: stay in Build). Cowork too goes back: its "project settings" are a project's
+ *  rhythm and reviewers, not the app's Settings, which live only on the spine (2026-11-11).
+ *  #1124: a Home drawn from the one onboarding's record (`ownHome`, the one Home since #1223) keeps the ask: Settings opens over
+ *  Home on Home's own section (`here`), so a newcomer's first Settings is not Build's folders and branches. Without
+ *  it, as before. */
+export function settingsPlan(view: View, ownHome = false): { hop: View | null; back: View | null; here?: string } {
   if (view === "build") return { hop: null, back: null };
-  return { hop: "build", back: view === "cowork" ? null : view };
+  if (view === "home" && ownHome) return { hop: null, back: null, here: HOME_DRAWER };
+  return { hop: "build", back: view };
 }
 
 /** where closing Settings goes: back to the view it was asked from, if the person is still in Build */

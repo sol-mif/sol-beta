@@ -11,11 +11,11 @@ import { Fold } from "../MotionKit";
 import { CFG, enter } from "../motion";
 import type { Card, PR } from "./useTeam";
 import { Sig, StateMark, Who, since } from "./bits";
-import { handTo, later, pass, passing, take, unlater, useHands, type HandRow, type Handed } from "./handed";
+import { handTo, later, pass, take, unlater, useHands, type HandRow, type Handed } from "./handed";
 import { openUrl } from "./util";
 import "./hands.css";
 
-const HOW: Record<HandRow["how"], string> = { hand: "handed", taken: "taken", passed: "passed back", review: "review asked" };
+const HOW: Record<HandRow["how"], string> = { hand: "handed", taken: "taken", passed: "passed back", review: "review asked", back: "pulled back" };
 /** the brief in one dim line: its lines without the title and the headings Sol writes ("the plan:", "where it stands:") */
 const briefLine = (b: string) => b.split("\n").map((l) => l.trim().replace(/^- /, "")).filter((l, i) => l && !(i === 0 && /^#\d+/.test(l)) && !/:$/.test(l)).slice(0, 3).join(" · ");
 
@@ -74,7 +74,7 @@ export function HandsRecord() {
 
 /** over the stage: a hand to me, Take · Pass · Later; a review asked, Open · Later */
 export function HandLine({ onTaken }: { onTaken: (sessionId: string, repo: string) => void }) {
-  const { current: h, passing: passingId } = useHands();
+  const { current: h } = useHands();
   const [asking, setAsking] = useState(false);
   const [why, setWhy] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -85,9 +85,7 @@ export function HandLine({ onTaken }: { onTaken: (sessionId: string, repo: strin
     window.addEventListener("sol:hand-taken", on);
     return () => window.removeEventListener("sol:hand-taken", on);
   }, []);
-  // the notch's Pass: the field opens here
-  useEffect(() => { if (h && passingId === h.id && !h.review) { setAsking(true); requestAnimationFrame(() => field.current?.focus()); } }, [h?.id, passingId]); // eslint-disable-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => { setWhy(""); if (!(h && passingId === h.id)) setAsking(false); }, [h?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { setWhy(""); setAsking(false); }, [h?.id]);
   useEffect(() => { if (ref.current && h) enter(ref.current, { y: -8, cfg: CFG.travel }); }, [h?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!h) return null;
   const d = h.doing;
@@ -115,9 +113,9 @@ export function HandLine({ onTaken }: { onTaken: (sessionId: string, repo: strin
       <Fold open={asking} gap={0} from={{ y: -6 }}>
         <div className="hpass">
           <input ref={field} value={why} placeholder={`why, in one line, for ${h.from}`} onChange={(e) => setWhy(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setAsking(false); passing(""); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setAsking(false); } }} />
           <button className="wbtn" disabled={!why.trim()} onClick={send}>Pass back</button>
-          <button className="wbtn ghost" onClick={() => { setAsking(false); passing(""); }}>keep it</button>
+          <button className="wbtn ghost" onClick={() => setAsking(false)}>keep it</button>
         </div>
       </Fold>
     </div>

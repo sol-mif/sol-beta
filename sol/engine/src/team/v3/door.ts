@@ -10,6 +10,7 @@
 // Loaded only with the switch on: everything that imports this is itself imported behind coworkV3().
 import { v3 } from "./index.js";
 import { projectFor, roomFor } from "./project-id.js";
+import { pointTo } from "./pointer.js";
 import type { Draft, TrailEvent } from "./trail.js";
 
 const AGENT = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -43,7 +44,9 @@ export function door(t = v3()): Door {
     machine: keys.machineName,
     append(d) {
       const by = d.by.agent ? { person: d.by.person, agent: d.by.agent } : { person: d.by.person, machine: keys.machineName };
-      return out(trail.append({ ...d, project: projectFor(d.project), by }));
+      const e = trail.append({ ...d, project: projectFor(d.project), by });
+      pointTo(e);   // one line on the local log that points at it (pointer.ts; off unless its switch is on)
+      return out(e);
     },
     since: (room, seq = 0, limit = 100_000) => trail.since(projectFor(room), seq, limit).map(out),
     all(seq = 0) { return trail.projects().flatMap((p) => trail.since(p, seq, 100_000)).sort((a, b) => a.seq - b.seq).map(out); },

@@ -1,0 +1,107 @@
+{
+  "agents.mode": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/agents"
+  },
+  "build.one": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/build/one"
+  },
+  "build.one.long": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/build/one/long"
+  },
+  "build.one.team": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/build/one/team"
+  },
+  "build.snap": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/build/snap"
+  },
+  "cross": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/build/cross"
+  },
+  "home.whole": {
+    "station": "concept",
+    "side": "engine",
+    "id": "product/home/engine-half"
+  },
+  "identity.supabase": {
+    "station": "product",
+    "side": "engine",
+    "id": "engine/sign-in"
+  },
+  "log.kinds": {
+    "station": "concept",
+    "side": "engine",
+    "id": "engine/log"
+  },
+  "look.shown": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/home/look-shown"
+  },
+  "onboarding.reads": {
+    "station": "concept",
+    "side": "engine",
+    "id": "product/onboarding/ask"
+  },
+  "open.for": {
+    "station": "concept",
+    "side": "engine",
+    "id": "product/settings/open-for",
+    "offers": [
+      "open_pane",
+      "open_settings",
+      "set_setting"
+    ]
+  },
+  "reach.room": {
+    "station": "concept",
+    "side": "engine",
+    "id": "product/cowork/room",
+    "offers": [
+      "agents_room"
+    ]
+  },
+  "reach.tools": {
+    "station": "concept",
+    "side": "engine",
+    "id": "engine/team/reach",
+    "offers": [
+      "ask_agent",
+      "ask_turn_on",
+      "hand_over",
+      "hand_reply",
+      "offer_take"
+    ]
+  },
+  "side.sorted": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/build/sorted-sidebar"
+  },
+  "stage.whole": {
+    "station": "settled",
+    "side": "engine",
+    "id": "product/build/stage-whole"
+  },
+  "tools.cards": {
+    "station": "product",
+    "side": "engine",
+    "id": "engine/mcp-tools/from-cards"
+  },
+  "work.liveContext": {
+    "station": "concept",
+    "side": "engine",
+    "id": "product/build/context-ring"
+  }
+}

@@ -48,7 +48,8 @@ export const GLYPHS = Object.keys(PATHS) as GlyphName[];
 export const glyphColour = (hover: boolean | undefined, over: boolean) => ((hover ?? over) ? dim : mute);
 
 /** a glyph at 24, mute at rest and dim under the pointer; `hover` set holds it at dim or at mute, unset follows the pointer */
-export function Glyph({ name, hover, title }: { name: GlyphName; hover?: boolean; title?: string }) {
+/** `color` sets its ink for a holder on another ground (the rail on cream); otherwise the glyph's own grey, lit on hover */
+export function Glyph({ name, hover, title, color }: { name: GlyphName; hover?: boolean; title?: string; color?: string }) {
   const [over, setOver] = useState(false), pad = (GLYPH.size - GLYPH.grid) / 2;
   // one element, written without JSX so the engine's tests (tsx, their own tsconfig) load it as the face's build does
   return createElement("svg", {
@@ -66,7 +67,7 @@ export function Glyph({ name, hover, title }: { name: GlyphName; hover?: boolean
     "aria-hidden": title ? undefined : true,
     onPointerEnter: () => setOver(true),
     onPointerLeave: () => setOver(false),
-    style: { display: "block", flex: "none", color: glyphColour(hover, over), transition: `color ${TIMED.turn}ms ease-out` },
+    style: { display: "block", flex: "none", color: glyphColour(hover, over), ...(color ? { color } : {}), transition: `color ${TIMED.turn}ms ease-out` },
     // ui.html's own markup, a constant above: ported, not redrawn
     dangerouslySetInnerHTML: { __html: PATHS[name] },
   });

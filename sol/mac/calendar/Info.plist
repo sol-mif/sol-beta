@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The calendar helper's own page for macOS: its name and the sentence the Mac shows when it asks the person to let
+     Sol read their calendars. Baked into bin/calendar by build-calendar.sh, so the prompt can appear at all. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>sol.calendar</string>
+	<key>CFBundleName</key>
+	<string>Sol calendar</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Home reads your calendars seven days ahead, to know when things are. It reads only: nothing is added, moved or deleted.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Home reads your calendars seven days ahead, to know when things are. It reads only: nothing is added, moved or deleted.</string>
+</dict>
+</plist>

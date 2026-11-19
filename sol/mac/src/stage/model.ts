@@ -5,7 +5,7 @@
 import { chipWords, isRunBody } from "./kinds/runs.ts";
 
 /** the kinds a block can be; browser and terminal draw in sitting 5 */
-export type Kind = "page" | "list" | "shots" | "card" | "table" | "diff" | "browser" | "terminal";
+export type Kind = "page" | "list" | "shots" | "card" | "table" | "diff" | "browser" | "terminal" | "system" | "session" | "clock" | "systems";
 /** a block's state, as its frame shows it: live green dot, working the bands drift, waits yellow, frozen pearl, dead gone */
 export type State = "live" | "working" | "waits" | "frozen" | "dead";
 export type Version = { n: number; at: number; by: string };
@@ -17,14 +17,31 @@ export type Block = {
   body?: unknown;
   /** the project's (#703): it shows in every session of the project (a run's list), folded to its chip until opened */
   scope?: "project";
+  /** when it was made (the engine's block.json) */
+  at?: number;
+  /** it asks the person (#1298): the press at its foot; answered once */
+  asks?: Asks;
 };
+/** a block's ask (#1298, the engine's blocks.ts Asks): the question, its choices, who asks, and the answer once pressed */
+export type Asks = { q: string; choices: string[]; by: string; from?: { login: string; agent: boolean }; about?: number;
+  ref: { kind: "self" | "hand" | "offer" | "answer" | "issue" | "ask"; id: string }; /** the day it was pressed later */ later?: string; answer?: { choice: string; by: string; at: number } };
+/** this session's own: made here (the first session it was on), or asking for you, or being worked on. The rest was
+ *  carried in from earlier sessions and is shown as one count until asked for */
+export const ownHere = (b: Block, session: string): boolean => b.sessions[0] === session || b.state === "waits" || b.state === "working";
+/** blocks by the session that made each (the first it was on), the newest block's group first; `titleOf` names a group
+ *  by its session's title, "an earlier session" when it is not known */
+export function madeIn(blocks: Block[], titleOf?: (session: string) => string | undefined): { from: string; name: string; blocks: Block[] }[] {
+  const by = new Map<string, Block[]>();
+  for (const b of blocks) { const k = b.sessions[0] ?? ""; by.set(k, [...(by.get(k) ?? []), b]); }
+  return [...by].map(([from, bs]) => ({ from, name: titleOf?.(from) ?? "an earlier session", blocks: bs })).reverse();
+}
+/** the file a block shows, short: its folder and name ("atlas-1109/redundancy.html"); "" when it is bound to none */
+export const fileOf = (b: Block): string => (b.bind?.source ?? "").replace(/^file:\/\//, "").split(/[?#]/)[0].split("/").filter(Boolean).slice(-2).join("/");
 /** one line of ledger.jsonl: composed · bound · ran · waits · yes · frozen · carried · closed */
 export type Line = { at: number; by: string; what: string };
 /** a block's place on one session's stage */
 export type Place = {
   id: string; x: number; y: number; w: number; h: number; z: number; folded?: boolean;
-  /** pinned to the notch (#701, desk_pin's successor): folded here, a chip with its state dot on the notch */
-  pinned?: boolean;
   /** popped out (#701): its own window over the desktop; the stage keeps its slot as a chip */
   popped?: boolean;
   /** folded by a lens (#701): leaving the lens unfolds it where it was */
@@ -68,7 +85,7 @@ export const MIN = { w: 200, h: 120 }, KEEP = 60, HEAD = 36;
  *  v4: joins slot (#737) — the live slot lays these spans on the grid itself, and this stays the one place they live */
 export const SIZES: Record<Kind, [number, number]> = ((tw: number, th: number) => {
   const t = (c: number, r: number): [number, number] => [c * tw + (c - 1) * GAP, r * th + (r - 1) * GAP];
-  return { card: t(2, 1), list: t(2, 2), table: t(3, 2), terminal: t(3, 2), shots: t(3, 2), diff: t(3, 3), page: t(3, 4), browser: t(3, 4) };
+  return { card: t(2, 1), list: t(2, 2), table: t(3, 2), terminal: t(3, 2), shots: t(3, 2), diff: t(3, 3), page: t(3, 4), browser: t(3, 4), system: t(6, 5), session: t(2, 2), clock: t(6, 4), systems: t(6, 5) };
 })(136, 96);
 
 /** a guide line where a snap held: x for a vertical line, y for a horizontal one */
@@ -184,7 +201,7 @@ export function stateWords(b: Block, shown?: number): string {
 // The room is the session's column: the talk and the stage beside it. The talk keeps reading width (64ch), never under
 // 44ch; the stage takes the rest and packs tighter when blocks come, never the talk's room. A bottom dock is a row at the
 // foot (200 px, rising to 46% of the room while you write); full is the talk alone.
-export const TALK = { read: 64, floor: 44, row: 200, rising: 0.46, lines: 2 } as const;
+export const TALK = { read: 64, floor: 44, row: 300, rowMin: 200, rowShare: 0.42, rising: 0.46, lines: 2 } as const;
 /** #954, behind stage.whole: whole.html draws the talk at one width in every scene, blocks or none: 384 px (the window's
  *  talk column, from the spine to the stage), never under the floor */
 export const TALK_WHOLE = 384;
@@ -197,10 +214,16 @@ export const DEFAULT_TALK: Talk = { dock: "left" };
 
 /** the talk's width in px for a column dock: its kept share of the room, else reading width; never under the floor, and
  *  never so wide the stage is less than its floor (the floor wins when the room is narrower than both) */
-export function talkWidth(roomW: number, ch: number, width?: number, open?: number): number {
-  // #954: whole.html keeps the talk at one width (TALK_WHOLE) however many blocks are open; the yield is gone
-  const floor = TALK.floor * ch, want = width !== undefined ? width * roomW : open === undefined ? TALK.read * ch : Math.max(floor, TALK_WHOLE);
-  return Math.round(Math.max(floor, Math.min(want, roomW - STAGE_FLOOR)));
+export function talkWidth(roomW: number, ch: number, width?: number, stage = STAGE_FLOOR): number {
+  const floor = TALK.floor * ch, want = width !== undefined ? width * roomW : TALK.read * ch;
+  return Math.round(Math.max(floor, Math.min(want, roomW - Math.max(stage, STAGE_FLOOR))));
+}
+
+/** #954, behind stage.whole: the talk at one width (TALK_WHOLE) however many blocks are open, never under its floor and
+ *  never over the stage's (main's talkWidth with `open` given; here his talkWidth keeps its own fourth argument) */
+export function talkWholeWidth(roomW: number, ch: number): number {
+  const floor = TALK.floor * ch;
+  return Math.round(Math.max(floor, Math.min(Math.max(floor, TALK_WHOLE), roomW - STAGE_FLOOR)));
 }
 
 /** the seam dragged: the share of the room the talk takes with its edge at x (from the room's left), held to the floors */
@@ -209,8 +232,11 @@ export function seamShare(dock: Dock, roomW: number, ch: number, x: number): num
   return talkWidth(roomW, ch, Math.max(0, w) / roomW) / roomW;
 }
 
-/** the bottom dock's height: the row, risen while the person writes, never past the room */
-export const talkRow = (roomH: number, writing: boolean) => Math.round(Math.min(roomH, writing ? Math.max(TALK.row, TALK.rising * roomH) : TALK.row));
+/** the bottom dock's height: the row, risen while the person writes, never past the room. At rest it holds the box and
+ *  the last message's first lines above it (#872 pass 2: at 900 px the talk was only its box), up to 300 px and never
+ *  more than 0.42 of the room, never under 200 */
+const restRow = (roomH: number) => Math.max(TALK.rowMin, Math.min(TALK.row, TALK.rowShare * roomH));
+export const talkRow = (roomH: number, writing: boolean) => Math.round(Math.min(roomH, writing ? Math.max(restRow(roomH), TALK.rising * roomH) : restRow(roomH)));
 
 /** the four ghosts the lifted talk shows, as shares of the room (v4.html's GH, the grid's ghost waiting for step 2) */
 export const DOCK_GHOSTS: Record<Dock, Rect> = {
@@ -272,6 +298,61 @@ export function roomFor(dock: Dock, roomW: number, roomH: number, talkW: number,
   if (dock === "full") return true;
   if (dock === "bottom") return roomH - talkH >= MIN.h + 2 * PAD;
   return roomW - talkW >= STAGE_FLOOR;
+}
+
+/** the stage laid by rule (#872, the full material, 2026-11-10): every open block in a cell, none touching another, the
+ *  cells sized by the stage and the count, so a window resized, a block opened, folded or closed re-lays them all. The
+ *  candidates are the grids (cols × rows, the last row's cells stretched so no hole is left) and, for three, one big
+ *  beside two; the one whose smallest cell reads best wins (its short side, a cell's height counted 1.4 times as it
+ *  carries more lines), ties to the big beside two. `order` is reading order (the first top left); `big` the block the big
+ *  cell is for (the one asking for the eye, else the newest). When not even the floor fits (MIN per cell), the first in
+ *  order that is not `big` fold until it does: `folded` names them. A focused, popped or folded block is not laid (pure) */
+export function flow(stage: Size, places: Place[], order: string[], big?: string | null): { places: Place[]; folded: string[] } {
+  const shown = order.filter((id) => places.some((p) => p.id === id && !p.folded && !p.popped));
+  const W = stage.w - 2 * PAD, H = stage.h - 2 * PAD;
+  if (!shown.length || W <= 0 || H <= 0) return { places, folded: [] };
+  const read = (c: Rect[]) => Math.min(...c.map((r) => Math.min(r.w, r.h * 1.4)));
+  const ok = (c: Rect[]) => c.every((r) => r.w >= MIN.w - 0.5 && r.h >= MIN.h - 0.5);
+  const grid = (n: number, cols: number): Rect[] => {
+    const rows = Math.ceil(n / cols), ch = (H - GAP * (rows - 1)) / rows, out: Rect[] = [];
+    for (let r = 0; r < rows; r++) {
+      const inRow = Math.min(cols, n - r * cols), cw = (W - GAP * (inRow - 1)) / inRow;
+      for (let c = 0; c < inRow; c++) out.push({ x: PAD + c * (cw + GAP), y: PAD + r * (ch + GAP), w: cw, h: ch });
+    }
+    return out;
+  };
+  // three: the big one beside (a wide stage) or over (a tall one) the other two
+  const bigThree = (): Rect[] => W >= H
+    ? (() => { const w = (W - GAP) / 2, h = (H - GAP) / 2; return [{ x: PAD, y: PAD, w, h: H }, { x: PAD + w + GAP, y: PAD, w, h }, { x: PAD + w + GAP, y: PAD + h + GAP, w, h }]; })()
+    : (() => { const h = (H - GAP) / 2, w = (W - GAP) / 2; return [{ x: PAD, y: PAD, w: W, h }, { x: PAD, y: PAD + h + GAP, w, h }, { x: PAD + w + GAP, y: PAD + h + GAP, w, h }]; })();
+  const ids = [...shown], folded: string[] = [];
+  for (;;) {
+    const n = ids.length;
+    let best: { cells: Rect[]; score: number; three: boolean } | null = null;
+    for (let cols = 1; cols <= n; cols++) {
+      const c = grid(n, cols);
+      if (ok(c) && (!best || read(c) > best.score + 0.5)) best = { cells: c, score: read(c), three: false };
+    }
+    if (n === 3) { const c = bigThree(); if (ok(c) && (!best || read(c) >= best.score - 0.5)) best = { cells: c, score: read(c), three: true }; }
+    if (best || n === 1) {
+      const cells = best?.cells ?? [{ x: PAD, y: PAD, w: Math.max(W, MIN.w), h: Math.max(H, MIN.h) }];
+      // the big cell is the first: the block it is for goes there, the rest keep their order
+      const laid = best?.three && big && ids.includes(big) ? [big, ...ids.filter((i) => i !== big)] : ids;
+      const at = new Map(laid.map((id, i) => [id, cells[i]]));
+      const round = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.floor(r.w), h: Math.floor(r.h) });
+      return { places: places.map((p) => (at.has(p.id) ? { ...p, ...round(at.get(p.id)!) } : folded.includes(p.id) ? { ...p, folded: true } : p)), folded };
+    }
+    const out = ids.findIndex((id) => id !== big);
+    folded.push(ids.splice(out < 0 ? 0 : out, 1)[0]);
+  }
+}
+
+/** reading order of the open blocks as they stand: by row (a block's top within half a head of another's is the same
+ *  row), then left to right; the ones not placed yet last, in the order given */
+export function readingOrder(places: Place[], later: string[] = []): string[] {
+  const open = places.filter((p) => !p.folded && !p.popped && !later.includes(p.id));
+  open.sort((a, b) => (Math.abs(a.y - b.y) < HEAD / 2 ? a.x - b.x : a.y - b.y));
+  return [...open.map((p) => p.id), ...later.filter((id) => places.some((p) => p.id === id))];
 }
 
 // B9 (#772): the whole stage's geometry, feel.md's numbers, for the stage behind stage.whole; today's stage reads the above

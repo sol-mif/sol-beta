@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, runGate, summary, slug, RESULT_DIR, type GateResult, type Step } from "../src/team/gate.ts";
+import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, type GateResult, type Step } from "../src/team/gate.ts";
 
 const EVAL = (status: string, body = "") => `# fr-12 · Open Sol: evals
 
@@ -286,6 +286,25 @@ test("an approved eval with nothing to run or list is red, and so is one with a 
   assert.equal(r.step.ok, false);
 });
 
+test("an eval check that ran no test is red (#1540): a name pattern that matches nothing exits 0 but checks nothing", async () => {
+  assert.equal(ranNoTest("✔ x (1ms)\nℹ tests 1\nℹ pass 1\n"), false);
+  assert.equal(ranNoTest("ℹ tests 0\nℹ pass 0\n"), true);
+  assert.equal(ranNoTest("1..0\n# tests 0\n# pass 0\n"), true);
+  assert.equal(ranNoTest("ℹ tests 10\n"), false, "ten is not zero");
+  assert.equal(ranNoTest("✔ test/x.test.ts (40ms)\nℹ tests 1\nℹ pass 1\n"), true, "the file counted as its own one test");
+  assert.equal(ranNoTest("✔ the one asked for (1ms)\nℹ tests 1\n✔ test/x.test.ts (40ms)\nℹ tests 1\n"), true, "one run of two ran nothing");
+  const root = repo();
+  put(root, "t.test.mjs", 'import { test } from "node:test";\ntest("a cowork session is in its fold", () => {});\n');
+  // the gate's own test runner hands its children NODE_TEST_CONTEXT; a real gate run has none
+  const run = (pattern: string) => `env -u NODE_TEST_CONTEXT "${process.execPath}" --test --test-name-pattern '${pattern}' t.test.mjs`;
+  put(root, "specs/features/fr-30-folds/eval.md", `Status: Approved by marcocyl04-ux on 2026-11-18\n\n## Ways to use it\n- [E1] named right · check: \`${run("a cowork session is in its fold")}\`\n- [E2] named wrong · check: \`${run("no test has this name")}\`\n`);
+  const said: string[] = [];
+  const r = await evalStep(root, null, (s) => said.push(s));
+  assert.deepEqual(r.evals, [{ feature: "fr-30", id: "E1", ok: true }, { feature: "fr-30", id: "E2", ok: false }]);
+  assert.deepEqual(r.step.failed, ["eval:fr-30:E2"]);
+  assert.ok(said.includes("    the check ran no test"));
+});
+
 const sh = (cwd: string, ...a: string[]) => execFileSync("git", a, { cwd, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@example.invalid", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@example.invalid" } }).trim();
 const gitRepo = () => {
   const root = repo();
@@ -353,4 +372,18 @@ test("the old goo kit: refused outside the legacy list, words in comments and st
     "lint:goo:sol/mac/src/kit/Word.tsx",
   ]);
   assert.ok(GOO_LEGACY.includes("sol/mac/src/creature/goo.tsx"), "the old kit itself is on the list");
+});
+
+test("the e2e cap grows with the suite: 15 s a path, never under 15 minutes, 25 minutes when the count is unknown (#1583)", () => {
+  assert.equal(e2eCapMs(10), E2E_FLOOR_MS);
+  assert.equal(e2eCapMs(60), E2E_FLOOR_MS);
+  assert.equal(e2eCapMs(107), 1_605_000);   // the suite that ran 1064 s on nucbox and hit the old flat 900 s
+  assert.ok(e2eCapMs(107) > 1064_000 * 1.5);
+  assert.equal(e2eCapMs(null), E2E_FALLBACK_MS);
+  assert.equal(e2eCapMs(0), E2E_FALLBACK_MS);
+  // run.mjs counts its paths without a browser, and the count is what the gate caps by
+  const run = join(import.meta.dirname, "../../test/e2e/run.mjs");
+  const all = JSON.parse(execFileSync(process.execPath, [run, "--count"], { encoding: "utf8" }).trim()).count;
+  assert.ok(Number.isInteger(all) && all > 50, `run.mjs --count said ${all}`);
+  assert.equal(JSON.parse(execFileSync(process.execPath, [run, "--count", "--only", "open-sol"], { encoding: "utf8" }).trim()).count, 1);
 });

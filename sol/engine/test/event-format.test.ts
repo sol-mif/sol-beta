@@ -139,7 +139,12 @@ test("2. every kind the engine writes is family.action and has its row; no old b
     "seatlog.ts: kind",                         // line(kind: SeatKind): its four callers, walked above
     "seatlog.ts: kind: SeatKind",               // line's own declaration
     join("work", "runs.ts") + ": a",            // Run.note(a): a run's own note, not the log
+    join("home", "log.ts") + ": w.kind",        // Home's one door (#790): its kinds through the kernel's append, every one a row
+    "way-own.ts: d.kind",                       // a person's own ways' one door (4c): way.* drafts through the kernel's append, every one a row
   ].sort());
+  assert.equal(text(join(SRC, "home", "log.ts")).match(/\bk\.append\(/g)?.length, 1, "Home writes through the kernel's append, once, nowhere else");
+  assert.equal(text(join(SRC, "way-own.ts")).match(/\.append\(/g)?.length, 1, "a person's own ways write through the kernel's append, once, nowhere else");
+  assert.match(text(join(SRC, "way-own.ts")), /door\.append\(d\.kind, d\.item, written\(d, ids\)/, "and only a way's drafts, each a way.* kind with its row");
   assert.match(kernel, /note: \(kind, value\) => \{[^}]*this\.append\(kind, b\.id, value\)/s, "the one name passed on in the kernel is the big room's note");
   assert.match(text(join(SRC, "bigroom.ts")), /note\(kind: "plugin\.wake" \| "plugin\.sleep", value/, "which takes two kinds only");
   for (const kind of written) {
@@ -233,8 +238,7 @@ test("3. an event is the v1 body of the design's §6.1; its id is the SHA-256 of
 
 test("4. free text lives in a value file; log.erase removes a content and the chain still verifies", async () => {
   const d = dir("log");
-  const mirror: string[] = [];
-  const log = dayTrail(d, undefined, (l) => mirror.push(l));
+  const log = dayTrail(d);
   const words = "meet Marco at the harbour at nine";
   const load = log.append({ by: ENG, kind: "plugin.load", item: "week", value: { v: 1 } });
   const said = log.append({ by: { person: "engine", agent: "week" }, kind: "plugin.line", item: "week", value: { line: words } });
@@ -257,7 +261,6 @@ test("4. free text lives in a value file; log.erase removes a content and the ch
   assert.equal(sha(kept), said.hash, "so its SHA-256 is its name");
   assert.equal(again.hash, said.hash);
   assert.deepEqual(readdirSync(join(d, "values")).sort(), [`${said.hash}.json`, `${other.hash}.json`].sort(), "the same content is one file");
-  assert.ok(mirror.join("").length > 0 && !mirror.join("").includes("harbour"), "the mirror is told the same lines: no free text there");
   // read back: the value is on the event again (this engine, the next one, and a plain read of the folder)
   assert.deepEqual(log.since("home").map((e) => e.value), [{ v: 1 }, { line: words }, { line: words }, { why: "it threw: no such file /Users/me/plan.txt" }]);
   assert.deepEqual(dayTrail(d).since("home").map((e) => e.value), log.since("home").map((e) => e.value));
@@ -317,7 +320,7 @@ test("4. free text lives in a value file; log.erase removes a content and the ch
   const line = k.since().find((e) => e.kind === "plugin.line") as LogEv;
   assert.ok(existsSync(valueFile(join(h, "lab-log"), line.hash)));
   const text = JSON.stringify(line.value);
-  assert.ok(!readFileSync(join(h, "log", "log.jsonl"), "utf8").includes(text), "the mirror in the home holds no free text");
+  assert.ok(!existsSync(join(h, "log", "log.jsonl")), "nothing at the old place in the home");
   const e = k.erase(line.id);
   assert.deepEqual([e.kind, e.item, e.by], ["log.erase", line.id, { person: "person" }]);
   assert.equal(k.lastSeq(), e.seq);
@@ -501,7 +504,7 @@ test("6. v0 lines already on disk stay readable, read only, through the registry
   // the kernel hands them the same way (what GET /log answers with)
   const h = dir("home");
   mkdirSync(join(h, "things"), { recursive: true });
-  const k = new Kernel(h, { logDir: d, appDir: join(h, "app"), mirror: null });
+  const k = new Kernel(h, { logDir: d, appDir: join(h, "app"), old: null });
   assert.equal(k.lastSeq(), v0.length + 2);
   const got = k.since();
   assert.deepEqual(got.slice(0, 3).map((e) => [e.v, e.kind, (e as OldEv).old]), [[0, "plugin.line", "line"], [0, "plugin.load", "load"], [0, "plugin.release", "release"]]);
@@ -569,7 +572,7 @@ test("7. hears is checked against the registry, not a list of its own; engine.st
   const h2 = dir("home");
   mkdirSync(join(h2, "things"), { recursive: true });
   let at = new Date(2026, 10, 10, 12, 0, 0).getTime(), zone = { tz: "Asia/Taipei", offset: 480 };
-  const k = new Kernel(h2, { logDir: join(h2, "lab-log"), appDir: join(h2, "app"), mirror: null, now: () => at, zone: () => zone });
+  const k = new Kernel(h2, { logDir: join(h2, "lab-log"), appDir: join(h2, "app"), old: null, now: () => at, zone: () => zone });
   k.append("plugin.off", "x");
   assert.deepEqual(k.since().map((e) => e.kind), ["plugin.off"], "a kernel that was not started says nothing of its own");
   k.started({ release: "v0.0.1", commit: "abc1234", mine: 2 });

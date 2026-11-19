@@ -22,3 +22,25 @@
 .st-tlive { position: absolute; overflow: hidden; pointer-events: none; }
 .st-tlivein { transform-origin: 0 0; color: var(--dim); font-size: var(--t-body); line-height: var(--t-body-line); }
 .st-tterm { margin: 0; font-family: var(--mono); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); white-space: pre; overflow: hidden; }
+/* 2026-11-12: the artifacts put away are written by name (WholeTray.tsx). The row: the newest names, one line, what does
+   not fit is in the list; the list: every one, its name and what it is */
+.st-wtray.names { gap: var(--s3); }
+.st-tnames { flex: 1; min-width: 0; height: var(--h-chip); display: flex; flex-wrap: wrap; gap: var(--s1); overflow: hidden; }
+.st-tname { flex: none; max-width: calc(var(--s8) * 6); height: var(--h-chip); box-sizing: border-box; display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s2); border-radius: var(--r-chip); color: var(--dim); cursor: default; transition: background var(--d-turn) var(--e-move), color var(--d-turn) var(--e-move); }
+.st-tname:hover { background: var(--line); color: var(--ink); }
+.st-tname.new { animation: st-bump var(--tray-bump) var(--e-arrive); }
+.st-tmk { flex: none; display: grid; place-items: center; }
+.st-tw { min-width: 0; display: flex; flex-direction: column; }
+.st-tt, .st-ts { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-tall { appearance: none; flex: none; border: 0; background: none; font: inherit; color: var(--mute); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); cursor: default; }
+.st-tall:hover, .st-wtray.open .st-tall { background: var(--line); color: var(--ink); }
+.st-tshelf.st-tlist { left: auto; width: min(calc(var(--s8) * 12), calc(100% - var(--s6))); max-height: 70%; flex-direction: column; gap: var(--s3); padding: var(--s2); overflow: hidden auto; }
+.st-tlist .st-tgroup { gap: 0; }
+.st-tlist .st-tgroup h6 { padding: var(--s1) var(--s2); }
+.st-tfind { appearance: none; flex: none; border: 0; outline: 0; background: var(--line); color: var(--ink); font: inherit; height: var(--s8); padding: 0 var(--s3); border-radius: var(--r-row); }
+.st-tfind::placeholder { color: var(--mute); }
+.st-trow { display: flex; align-items: center; gap: var(--s3); min-height: calc(var(--h-row) + var(--s3)); padding: 0 var(--s2); border-radius: var(--r-row); cursor: default; }
+.st-trow:hover { background: var(--line); }
+.st-trow .st-tt { color: var(--ink); font-weight: 500; }
+.st-trow .st-ts, .st-tnone { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-tnone { margin: 0; padding: var(--s2); }

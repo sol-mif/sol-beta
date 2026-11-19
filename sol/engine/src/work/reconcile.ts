@@ -9,6 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { query, forkSession, deleteSession, renameSession, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import { claudeDefault } from "../models.js";
 import { threadMap, transcriptPath, type Segment, type ThreadMap, type Writer } from "./thread.js";
 import { heldElsewhere, holders, HOLDER_NAME, moving, type Holder } from "./holders.js";
 import { getRun, startingRun } from "./runs.js";
@@ -58,7 +59,7 @@ async function write(cwd: string, opts: { resume: string; at?: string; fork?: bo
     prompt: one(),
     options: {
       cwd, resume: opts.resume, ...(opts.at ? { resumeSessionAt: opts.at } : {}), ...(opts.fork ? { forkSession: true } : {}),
-      settingSources: [], model: "claude-opus-5-5",   // no hooks, no project settings: nothing runs, nothing is asked
+      settingSources: [], model: claudeDefault(),   // no hooks, no project settings: nothing runs, nothing is asked
     },
   });
   try {

@@ -14,7 +14,7 @@ import { Component, useEffect, useLayoutEffect, useRef, useSyncExternalStore, ty
 import { register, unregister } from "./creature/loop";
 import { FAMILY, bayer, rgba, PAPER, type RGB } from "./creature/ring";
 import { FUNCTIONAL } from "./creature/palette";
-import { current, subscribe, broke, mended, useRenovation, pingLine, pingColour, LAND_MS, PEEL_MS, type Entry } from "./renovation";
+import { current, subscribe, broke, mended, LAND_MS, PEEL_MS, type Entry } from "./renovation";
 import type { SiteName } from "./sites";
 
 // ---- where each part is on this page ----
@@ -109,19 +109,6 @@ function Field({ box }: { box: Box | null }) {
   }, []);
   const b = box ?? { x: 0, y: 0, w: 240, h: 160 };
   return <div className="site-broken" style={{ position: "fixed", left: b.x, top: b.y, width: b.w, height: b.h, zIndex: 40 }}><canvas ref={c} style={{ width: "100%", height: "100%", display: "block" }} /></div>;
-}
-
-// a ping Marco has not seen, beside its conversation's title in the side (Life and Work): one lit cell in the seat's
-// colour, two when there are two, until the conversation is opened
-export function Unseen({ sessionId }: { sessionId?: string | null }) {
-  const r = useRenovation();
-  const mine = sessionId ? r.pings.filter((p) => p.sessionId === sessionId) : [];
-  if (!mine.length) return null;
-  return (
-    <span className="unseen" title={pingLine(mine[mine.length - 1])} style={{ display: "inline-flex", gap: 2, marginLeft: 6, flex: "none", alignItems: "center" }}>
-      {mine.slice(-2).reverse().map((p) => <i key={p.id} style={{ width: 6, height: 6, display: "block", background: rgba(pingColour(p)) }} />)}
-    </span>
-  );
 }
 
 // ---- the overlay ----

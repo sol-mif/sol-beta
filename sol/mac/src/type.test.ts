@@ -61,7 +61,7 @@ test("no kit CSS sets text-transform uppercase or small caps", () => {
 });
 
 test("the stage's meta and its crumb chip are the label step, and face.css's shared labels are not capitals", () => {
-  assert.match(readFileSync(join(src, "stage/kinds/Frame.tsx"), "utf8"), /className="st-meta t-label"/);
+  assert.match(readFileSync(join(src, "stage/kinds/Frame.tsx"), "utf8"), /className=\{?[`"]st-meta t-label\b/);   // his window's frame adds "cut" in a template (#872)
   assert.match(readFileSync(join(src, "stage/BarChips.tsx"), "utf8"), /className="st-cchip t-label"/);
   assert.doesNotMatch(readFileSync(join(src, "stage/kinds/Page.tsx"), "utf8"), /small-caps|uppercase/);
   const face = readFileSync(join(src, "face.css"), "utf8");

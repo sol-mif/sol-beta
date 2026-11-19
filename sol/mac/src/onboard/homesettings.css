@@ -1,0 +1,5 @@
+/* Settings over a Home made by the one onboarding (HomeSettings.tsx, #1124): the clean Home's sheet (home/home.css
+   .hc-sheet), with palette.css's tokens only, since home.css is not loaded in Home */
+.ob1-sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: var(--c-scrim); }
+.ob1-sheetcard { width: min(880px, 92vw); height: 88vh; position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--c-lift); border: 1px solid var(--edge); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; box-shadow: var(--shadow-sheet); }
+.ob1-sheetcard .settings-x { position: absolute; top: var(--s3); right: var(--s3); }

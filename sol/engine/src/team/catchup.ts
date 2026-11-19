@@ -13,8 +13,8 @@
 //              npm ci, tsc), the new engine starts, and the run checks: /health ok, its `data` says every step ran
 //              (version equal to latest, nothing failed), the engine reads a memory note back (/file) and its settings
 //              (settings.get on its socket), and every fact the old release kept is still there after it stopped.
-//   isolated   the engines get a short allowlist of the environment, a scratch HOME, no relay (SOL_HUB=off), no
-//              tracking, no update check, no renew: nothing leaves the machine and nothing of the person's is read.
+//   isolated   the engines get a short allowlist of the environment, a scratch HOME, SOL_QUIET (no relay, no
+//              tracking, no update check, no renew: nothing leaves the machine) and nothing of the person's is read.
 //   the report one comment, the first line `**Catch-up passed** on <machine>: …` or `**Catch-up failed** …`, which the
 //              feed shows as a line of the room (feed.ts reviewedText) beside the review's folds and the build updates;
 //              a red one names the day's dev reviewer (`.sol/rhythm.json`'s `dev`) so GitHub pings them.
@@ -26,6 +26,7 @@ import { createServer } from "node:net";
 import { hostname, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isQuiet } from "../quiet.js";
 
 export const DAYS = 30;
 export const RELEASE_TAG = /^(dev|stable)-(\d{8})(?:-(\d{4}))?$/;
@@ -211,6 +212,7 @@ export function engineEnv(base: NodeJS.ProcessEnv, home: string, port: number): 
   for (const k of PASS) { const v = base[k]; if (v !== undefined) env[k] = v; }
   return {
     ...env, HOME: home, PORT: String(port), SOL_PORT: String(port),
+    SOL_QUIET: "1",   // quiet (src/quiet.ts, #1293); the releases before it read only the list below, so it stays until they are 30 days old
     SOL_HUB: "off", SOL_TRACK: "off", SOL_TRACK_URL: "off", SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1",
     GIT_TERMINAL_PROMPT: "0",
   };
@@ -425,6 +427,7 @@ async function main(argv: string[]): Promise<number> {
 
 /** the report on the standing issue (made once, by whoever posts first): gh with the job's token */
 async function postReport(repo: string, text: string, cwd: string): Promise<string> {
+  if (isQuiet()) return "catchup: quiet (SOL_QUIET), the report is not posted";
   const env = { ...buildEnv(process.env), ...(process.env.GH_TOKEN ? { GH_TOKEN: process.env.GH_TOKEN } : {}), ...(process.env.GITHUB_TOKEN ? { GITHUB_TOKEN: process.env.GITHUB_TOKEN } : {}) };
   const find = await sh("gh", ["issue", "list", "-R", repo, "--state", "open", "--search", `"${ISSUE_TITLE}" in:title`, "--json", "number,title", "--limit", "20"], cwd, env, 60_000);
   let n = 0;

@@ -8,8 +8,8 @@
 //   glide   a flick's landing                           lift    press, grab, a stamp
 //   fade    steps back, close, opacity
 // A spring never passes its target by more than SPRING.clamp (4, in the value's own unit: px for a position) — the
-// integrator clamps, and stops it there. The timed tokens: reveal 120 · turn 150 (main's; ui.md says 160, a separate
-// decision, #993) · glass 220 · pour (the body) 850 · breath 4800 · lag 140.
+// integrator clamps, and stops it there. The timed tokens: reveal 120 · turn 160 · glass 220 · pour (the body) 850 ·
+// breath 4800 · lag 140.
 //
 // Slow (×4, the debug toggle): every spring steps at a quarter of real time, every duration is four times as long, in
 // code (dur) and in the css (--d-<name> is rewritten on the root). Never the hand: Spring.set (a drag following the
@@ -22,12 +22,14 @@ import { EASE, SPRING, TIMED } from "./kit/tokens.ts";
 
 export type SpringName = "settle" | "travel" | "glide" | "lift" | "fade";
 /** a spring: one of the five by name (k, c from tokens.json), and the precision it rests at in its own unit */
-export type Cfg = { readonly name: SpringName; readonly k: number; readonly c: number; eps?: number };
+/** clamp: how far past its target this one may pass (default CLAMP); the jelly's own material lifts it (Body.tsx, #872) */
+export type Cfg = { readonly name: SpringName; readonly k: number; readonly c: number; eps?: number; clamp?: number };
 const of = (name: SpringName): Cfg => Object.freeze({ name, k: SPRING[name].k, c: SPRING[name].c });
 export const CFG = { settle: of("settle"), travel: of("travel"), glide: of("glide"), lift: of("lift"), fade: of("fade") } as const;
-/** the same five under the name #939 gave them; the drafts behind switches import it (#993) */
-export const SPRINGS = CFG;
 export const MASS = SPRING.mass, CLAMP = SPRING.clamp;
+/** main's name for the same five (#936 landed them beside its old springs as SPRINGS); here they are CFG itself, so a
+ *  part written on main reads the same springs */
+export const SPRINGS = CFG;
 
 // ---- the timed tokens ----
 export type Timed = keyof typeof TIMED;
@@ -102,14 +104,14 @@ export class Spring {
   private go() { if (!this.on) { this.on = true; active.add(this); } wake(); }
   /** one step of `dt` seconds of motion time (the loop has already divided real time by the slow factor) */
   step(dt: number): boolean {
-    const { k, c, eps = 0.01 } = this.cfg;
+    const { k, c, eps = 0.01, clamp = CLAMP } = this.cfg;
     let left = dt;
     while (left > 1e-6) {
       const h = left > 1 / 240 ? 1 / 240 : left;
       this.vel += ((-(this.v - this.target) * k - c * this.vel) / MASS) * h;
       this.v += this.vel * h;
       // the clamp: past the target by more than CLAMP, it stops on the clamp's line
-      if (this.side && (this.v - this.target) * this.side < -CLAMP) { this.v = this.target - this.side * CLAMP; this.vel = 0; }
+      if (this.side && (this.v - this.target) * this.side < -clamp) { this.v = this.target - this.side * clamp; this.vel = 0; }
       left -= h;
     }
     if (Math.abs(this.v - this.target) < eps && Math.abs(this.vel) < eps * 8) {
@@ -123,14 +125,6 @@ export class Spring {
 
 const active = new Set<Spring>();
 let raf = 0, last = 0, guard = 0;
-/** told once per stall, with the silence in ms (the notch logs it) */
-let onStall: ((ms: number) => void) | null = null;
-export function setOnStall(f: ((ms: number) => void) | null) { onStall = f; }
-/** called once per frame after every spring has stepped (the notch's scene draws here, on the springs' clock) */
-let frameHook: (() => void) | null = null;
-export function onFrame(f: (() => void) | null) { frameHook = f; }
-/** one frame on the loop's clock even with no spring moving (a drawing marked dirty outside a step) */
-export function requestFrame() { wake(); }
 function stepAll(dt: number, now: number) {
   for (const s of [...active]) {
     if (s.at && now < s.at) continue;
@@ -145,38 +139,18 @@ export function advance(ms: number, frame = 1000 / 60) {
 }
 /** how many springs are moving */
 export const running = () => active.size;
-/** one motion run (from the first spring moving to the last at rest): the frame gaps and the work in each frame, for a
- *  smoothness report (the notch logs it): frames, the longest gap, how many gaps ran past 20 ms, the work's p95 */
-export type RunReport = { frames: number; ms: number; maxGap: number; longGaps: number; workP95: number; workMax: number };
-let onRun: ((r: RunReport) => void) | null = null;
-export function setOnRun(f: ((r: RunReport) => void) | null) { onRun = f; }
-let runStart = 0, runFrames = 0, runMaxGap = 0, runLong = 0;
-const runWork: number[] = [];
 function frame(now: number) {
   raf = -1;   // inside the frame: a wake from a spring's apply is this frame's (it used to schedule a second callback)
   const gap = now - last;
   const dt = Math.min(gap / 1000, 1 / 20);
   last = now;
-  if (!runFrames) runStart = now; else { if (gap > runMaxGap) runMaxGap = gap; if (gap > 20) runLong++; }
-  runFrames++;
-  const t0 = performance.now();
   stepAll(dt, now);
-  frameHook?.();
-  runWork.push(performance.now() - t0);
   raf = 0;
-  if (active.size) raf = requestAnimationFrame(frame);
-  else {
-    stopGuard();
-    if (onRun && runFrames > 3) {
-      const w = [...runWork].sort((a, b) => a - b);
-      onRun({ frames: runFrames, ms: Math.round(now - runStart), maxGap: Math.round(runMaxGap), longGaps: runLong, workP95: +w[Math.floor(w.length * 0.95)].toFixed(2), workMax: +w[w.length - 1].toFixed(2) });
-    }
-    runFrames = 0; runMaxGap = 0; runLong = 0; runWork.length = 0;
-  }
+  if (active.size) raf = requestAnimationFrame(frame); else stopGuard();
 }
 // The frame clock is WebKit's and it stops whenever WebKit holds the window to be out of sight (a display plugged or
-// unplugged, a full-screen Space, the lid, sleep). A spring in flight then froze where it was: the notch's moon left
-// short with its discs half faded, the creature halfway from the wing (Marco's two shots, 2026-10-26). The guard is a
+// unplugged, a full-screen Space, the lid, sleep). A spring in flight then froze where it was: a moon left short
+// with its discs half faded, the creature halfway from the wing (Marco's two shots, 2026-10-26). The guard is a
 // plain timer: while any spring moves and no frame has come for 120 ms, it steps every spring up to the real time
 // itself, so a motion always ends where it was told to go, seen or not.
 // A silence is not always a stall: the page busy for a few hundred ms (a long render) silences the frames too, and
@@ -190,12 +164,10 @@ function startGuard() {
     if (!active.size) { stopGuard(); return; }
     const now = performance.now(), silent = now - last;
     if (silent < 120) return;
-    onStall?.(silent);
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     const unseen = silent > STALL || (typeof document !== "undefined" && document.hidden);
     let left = unseen ? silent / 1000 : 1 / 20;
     while (left > 0 && active.size) { const h = Math.min(left, 1 / 20); stepAll(h, now); left -= h; }
-    frameHook?.();
     last = now;
     if (active.size) raf = requestAnimationFrame(frame); else stopGuard();
   }, 60);
@@ -363,7 +335,7 @@ export function growTo(el: HTMLElement, from?: number, cfg: Cfg = CFG.travel) {
 // The reader is anchored to the bottom edge: when the scroller itself changes height (the box growing under it as
 // he types, the window), the line that sat just above the box stays just above the box, so typing never moves what
 // he scrolled to and never hides it under the box (Marco, 2026-10-14).
-// Free while Sol writes (notch buttons #6, review 10/11): his hand releases the follow at once, whatever the distance
+// Free while Sol writes (#6, review 10/11): his hand releases the follow at once, whatever the distance
 // from the end. A wheel, a touch, a press on the bar, a scroll key, and one rule that needs no flag: a scroll whose
 // scrollTop is above (smaller than) what the follow last wrote is his, because the spring only ever scrolls down.
 // Programmatic writes are told apart by value, so a spring frame landing in the same tick cannot swallow his gesture.

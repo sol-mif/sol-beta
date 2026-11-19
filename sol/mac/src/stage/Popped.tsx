@@ -30,7 +30,7 @@ export function Popped({ e, id, session }: { e: E; id: string; session: string }
   // closed from here: the stage gets it back
   useEffect(() => { const f = () => tell({ back: id }); window.addEventListener("pagehide", f); return () => window.removeEventListener("pagehide", f); }, [id]);
   const goBack = () => { tell({ back: id }); window.close(); };
-  if (!b) return <div className="st-popped" data-popped={id}><div className="st-head" data-tauri-drag-region><span className="st-t">{seen.ready === false ? "…" : "this block is not on that stage any more"}</span></div></div>;
+  if (!b) return <div className="st-popped" data-popped={id}><div className="st-head" data-tauri-drag-region><span className="st-t">{seen.ready === false ? "…" : "this artifact is not on that stage any more"}</span></div></div>;
   const Kind = KINDS[b.kind];
   return (
     <div className="st-popped" data-popped={id}>

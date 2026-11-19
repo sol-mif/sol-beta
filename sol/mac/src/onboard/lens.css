@@ -1,0 +1,85 @@
+/* The lens and its rail (Lens.tsx, #1088). Steps and type are palette.css's; the yellow is the person's call. */
+.obl-rail { display: flex; gap: var(--s2); }
+.obl-stop { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; width: 44px; height: 44px; border-radius: 12px; border: 0; padding: 0; background: rgba(235,235,232,.05); color: var(--ink, #ebebe8); cursor: pointer; transition: background .2s, opacity .2s, transform .35s cubic-bezier(.3,1.12,.6,1); }
+.obl-stop svg { width: 18px; height: 18px; }
+.obl-stop span { font-size: 10px; line-height: 10px; height: 10px; color: rgba(235,235,232,.7); font-variant-numeric: tabular-nums; }
+.obl-stop:hover { background: rgba(235,235,232,.1); }
+.obl-stop:focus-visible { outline: 1px solid #e6e1d8; outline-offset: 2px; }
+.obl-stop.wait { opacity: .85; }   /* the sources still to come can be seen: the order is hers to read and stop */
+.obl-stop.done span { color: #ebebe8; }
+.obl-stop.at { opacity: 1; background: rgba(235,235,232,.14); transform: translateY(-2px); box-shadow: 0 0 18px rgba(230,225,216,.18); }
+.obl-stop.closed, .obl-stop.refused { opacity: .35; }
+/* on the ask each stop wears its name beside its glyph, and the row wraps */
+.obl-rail.named { flex-wrap: wrap; }
+.obl-rail.named .obl-stop { flex-direction: row; gap: var(--s2); width: auto; height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); }
+.obl-rail.named .obl-stop svg { width: 16px; height: 16px; }
+.obl-rail.named .obl-stop span { height: auto; font-size: var(--t-label); line-height: var(--t-label-line); }
+.obl-rail.named .obl-stop.closed::after { left: var(--s2); right: var(--s2); top: 50%; transform: none; }
+.obl-stop.closed::after, .obl-stop.refused::after { content: ""; position: absolute; left: 9px; right: 9px; top: 21px; height: 1px; background: #ebebe8; transform: rotate(-38deg); }
+.obl-stop.ghost { outline: 1px dashed rgba(235,235,232,.4); outline-offset: -1px; }
+
+.obl { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding: var(--s6); box-sizing: border-box; color: var(--ink, #ebebe8); overflow: hidden auto; scrollbar-width: none; border-radius: inherit; }
+.obl::-webkit-scrollbar { display: none; }
+.obl > * { flex: none; margin: auto 0; }   /* centred while it fits; from the top, and followed, once it is longer than the lens */
+.obl > .obl-cal { flex: 1; margin: 0; min-height: 0; }
+.obl > .obl-tree { margin: 0 0 auto; }
+.obl i, .obl em { font-style: normal; }
+.obl [data-lens-fact] { animation: obl-in .18s ease-out both; transition: opacity .4s; }
+.obl .gone { opacity: .58; }
+.obl.paused { filter: saturate(.6); opacity: .8; }
+@keyframes obl-in { from { opacity: 0; transform: translateY(6px); } }
+
+.obl-machine { display: flex; flex-direction: column; align-items: center; gap: var(--s6); }
+.obl-tiles, .obl-plugs { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); max-width: 360px; }
+.obl-tiles i, .obl-plugs i { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(235,235,232,.1); font-size: var(--t-read); font-weight: 600; margin-bottom: var(--s4); }
+.obl-tiles i span, .obl-plugs i span, .obl-sites i span { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; font-size: 10px; line-height: 12px; font-weight: 400; color: rgba(235,235,232,.7); white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
+.obl-plugs { position: relative; padding-top: var(--s8); gap: var(--s4); }
+.obl-plugs .obl-wire { position: absolute; left: 0; right: 0; top: var(--s4); height: 1px; background: rgba(235,235,232,.3); }
+.obl-plugs i { border-radius: 50%; animation: obl-plug .32s cubic-bezier(.3,1.12,.6,1) both; }
+.obl-plugs i::before { content: ""; position: absolute; left: 50%; bottom: 100%; width: 1px; height: var(--s4); background: rgba(235,235,232,.3); }
+@keyframes obl-plug { from { opacity: 0; transform: translateY(18px); } }
+
+.obl-discs { display: flex; gap: var(--s6); }
+.obl-discs > div { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 112px; height: 112px; border-radius: 50%; background: rgba(235,235,232,.08); box-shadow: inset 0 0 0 1px #e6e1d8; }
+.obl-discs > div.obl-ask { background: none; box-shadow: none; outline: 1px dashed var(--yellow-strong); color: var(--yellow-strong); }
+.obl-discs b { font-size: var(--t-read); font-weight: 600; }
+.obl-discs span { font-size: var(--t-label); color: rgba(235,235,232,.7); }
+.obl-discs .obl-ask span { color: inherit; }
+
+.obl-cal { width: 100%; height: 100%; display: flex; flex-direction: column; gap: var(--s3); }
+.obl-week { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; min-height: 0; }
+.obl-week .col { position: relative; min-height: 260px; border-radius: 8px; background: rgba(235,235,232,.035); }
+.obl-week .col > span { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(235,235,232,.55); }
+.obl-week .col i { position: absolute; left: 1px; right: 1px; min-height: 40px; padding: 4px 3px 4px 4px; letter-spacing: -.02em; border-radius: 7px; background: rgba(230,225,216,.92); color: #0a0a0b; font-size: 10px; line-height: 12px; font-weight: 600; overflow: hidden; box-sizing: border-box; }
+.obl-dates { display: flex; gap: var(--s2); flex-wrap: wrap; min-height: 44px; }
+.obl-dates i { display: flex; flex-direction: column; padding: var(--s1) var(--s2); border-radius: 8px; background: rgba(235,235,232,.08); font-size: var(--t-label); line-height: var(--t-label-line); }
+.obl-dates b { font-weight: 600; color: #e6e1d8; }
+
+.obl-tree { width: 100%; display: flex; flex-direction: column; gap: var(--s4); }
+.obl-tree .dir > span { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); font-weight: 500; }
+.obl-tree .dir > div { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); padding: var(--s2) 0 0 var(--s6); border-left: 1px solid rgba(235,235,232,.1); margin-left: 9px; }
+.obl-tree .dir i { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); color: rgba(235,235,232,.85); }
+.obl-tree svg { width: 18px; height: 18px; flex: none; }
+
+.obl-repos { display: flex; flex-direction: column; gap: var(--s3); width: 100%; }
+.obl-repos > div { display: grid; grid-template-columns: 20px 1fr; column-gap: var(--s3); padding: var(--s3) var(--s4); border-radius: 18px; background: rgba(235,235,232,.06); }
+.obl-repos svg { width: 18px; height: 18px; grid-row: span 2; align-self: center; }
+.obl-repos b { font-size: var(--t-body); font-weight: 600; }
+.obl-repos span { font-size: var(--t-label); color: rgba(235,235,232,.7); }
+
+.obl-sites { display: flex; flex-direction: column; gap: var(--s2); width: 100%; }
+.obl-sites > div { display: grid; grid-template-columns: 28px minmax(0, 1.2fr) 1fr; align-items: center; column-gap: var(--s3); height: 40px; padding: 0 var(--s3); border-radius: 12px; background: rgba(235,235,232,.05); }
+.obl-sites i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(235,235,232,.12); font-size: var(--t-label); font-weight: 600; }
+.obl-sites b { font-size: var(--t-body); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obl-sites .obl-bar { display: block; height: 4px; border-radius: 2px; background: rgba(235,235,232,.08); overflow: hidden; }
+.obl-sites .obl-bar em { display: block; height: 100%; border-radius: 2px; background: #e6e1d8; animation: obl-bar .5s cubic-bezier(.45,0,.2,1) both; transform-origin: 0 50%; }
+@keyframes obl-bar { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .obl [data-lens-fact], .obl-plugs i, .obl-sites .obl-bar em { animation: none; } }
+
+/* a source just opened: its glyph in a ring, breathing, until the first thing is read (the lens is never a black box) */
+.obl > .obl-open { display: grid; place-items: center; width: 88px; height: 88px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(230,225,216,.35); animation: obl-open 1.6s ease-in-out infinite; }
+.obl > .obl-open + * { display: none; }
+.obl-open svg { width: 32px; height: 32px; }
+.obl.paused .obl-open { animation-play-state: paused; }
+@keyframes obl-open { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .obl > .obl-open { animation: none; opacity: .8; } }

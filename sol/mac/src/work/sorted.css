@@ -1,0 +1,12 @@
+/* Build's sidebar, sorted (#1016, side.sorted): the search's row the arrows are on, and a code project's Home area */
+.wrow.kb { background: var(--raised); color: var(--ink); box-shadow: inset 2px 0 0 var(--glow); }
+.wsec .group.tog .warea { margin-left: 4px; font-size: 10px; letter-spacing: 0; font-variant-caps: normal; color: var(--dim);
+  border: 1px solid var(--line); border-radius: var(--pill); padding: 0 5px; line-height: 14px; }
+.wsec .group.tog .warea + small { margin-left: auto; }
+.wsec .group.tog:focus-visible { outline: none; color: var(--ink); box-shadow: inset 2px 0 0 var(--glow); }
+/* the mark on a session that started others: how many, how many at work (a click shows them all, or the first few) */
+.wrow .tag.wkids { max-width: none; cursor: pointer; }
+.wrow .tag.wkids.on { color: var(--ink); border-color: var(--glow); }
+/* a session the engine moved under the one that sent to it or read it (#1336): the mark is its undo */
+.wrow button.tag.grouped { max-width: none; cursor: pointer; background: none; font-family: inherit; border-style: dashed; }
+.wrow button.tag.grouped:hover { color: var(--ink); border-style: solid; border-color: var(--ink); }

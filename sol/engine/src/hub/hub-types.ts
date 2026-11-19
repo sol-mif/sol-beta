@@ -8,13 +8,19 @@ export const LOGIN = /^[A-Za-z0-9-]{0,39}$/;
  *  registry.ts exports it as the code's own */
 export const CODE = /^[A-HJ-NP-Z2-9]{6}$/;
 
-export const KINDS = ["hello", "roster", "presence", "changed", "hand", "stable", "ping", "talk", "show", "room", "watch", "event"] as const;
+export const KINDS = ["hello", "roster", "presence", "changed", "hand", "stable", "ping", "talk", "show", "room", "watch", "event", "runs", "drift", "agents", "ask", "give", "signal"] as const;
+// signal (#1377, the plan on #229): a wake with no content in it, who → whom, a kind (1 GitHub, 2 group chat, 3 other)
+// and a link; the receiver fetches the words itself (team/signal.ts)
+// ask, give (#335): ask a teammate for one of their past group sessions, and their one press gives its lines (team/ask.ts)
+// runs (#1150): what a Sol runs, its release and HEAD, and why a dev release did not install itself (team/runs.ts)
+// agents (#1166): an ask, answer, hand-over, offer or reply between the team's agents, the Agents' room (team/reach.ts)
+// drift (#1153): each person's files off the iteration and how many iterations old, said daily by the runner (team/drift.ts)
 export type Kind = (typeof KINDS)[number];
 export type From = { login: string; agent: boolean };
 export type RelayMsg = { kind: Kind; from: From; at: number; spooled?: boolean; [k: string]: unknown };
 /** what the spool keeps and hands back: only what the relay already carried, and only these. Never `event` (#328): the
  *  cloud keeps a room's build updates itself and a hello hands back the last 50 (`events.recent`) */
-export const SPOOLED: readonly Kind[] = ["talk", "ping", "room"];
+export const SPOOLED: readonly Kind[] = ["talk", "ping", "room", "agents", "ask", "signal"];   // agents (#1166): a hand-over reaches who is away; never a give (#335): its lines are live only
 /** the hub's own word on a hello in a room whose talk it keeps (#315, the cloud): one thread's last lines, `{ thread,
  *  lines }`. Never a kind a client may send (not in KINDS) */
 export const TALK_HISTORY = "talk.history";
@@ -26,7 +32,7 @@ export type RosterThing = { id: string; name: string; source: "face" | "agent"; 
  *  are ever said; a private Work or Life session never is */
 export type RosterSession = { id: string; title: string; thing?: string };
 export type RosterEntry = { who: string; agent: boolean; machine: string; state: PresenceState; session?: { title: string; repo?: string }; since: number;
-  thing?: RosterThing; sessions?: RosterSession[]; quiet?: true;   // quiet (#238): they turned "show my room sessions" off here
+  thing?: RosterThing; sessions?: RosterSession[]; quiet?: true; never?: true;   // quiet (#238): they turned "show my room sessions" off here; never (#335): their past group sessions are never given
   github?: boolean;   // github (#320): GitHub is signed in on their Sol; a boolean only, never a login or a token
   version?: SolVersion };   // version (#417): the release their Sol sits on and their own commits over it; none: an older Sol, "unknown"
 /** what a Sol runs (#417): the release it sits on (a release tag, or the branch `stable` / `main` when no tag marks that
@@ -271,4 +277,64 @@ export function pollsOf(v: unknown): string[] | undefined {
   const out: string[] = [];
   for (const x of v) if (typeof x === "string" && REPO.test(x) && !out.some((o) => o.toLowerCase() === x.toLowerCase()) && out.length < POLLS_MAX) out.push(x);
   return out.length ? out : undefined;
+}
+
+// ---- Ask for a session (#335, the Cowork PRD §9.8; PROTOCOL.md round 113): a teammate's agent, or the teammate, asks
+// for one of my past group sessions (`ask`, kept like a ping for a day), and my one press gives it (`give`, pages of
+// lines, live only, never kept). Both are directed: they reach `to` and nobody else, and the hub rebuilds them field by
+// field, so nothing a sender adds rides along (a path, a tool's output, a file) ----
+
+/** an ask lives a day (#335): on the hub's spool and in the asked person's Sol; past that it is gone, unanswered */
+export const ASK_MS = 86_400_000;
+/** a give's page carries at most this many lines, each at most GIVE_TEXT_MAX characters, and a give at most GIVE_MAX
+ *  lines in all: the person's and the agent's words and the tools' names of one session, never more */
+export const GIVE_LINES = 200, GIVE_TEXT_MAX = 400, GIVE_MAX = 2000;
+export type GiveLine = { role: (typeof SHOW_ROLES)[number]; text: string; at: number };
+export type AskWire = { to: string; session: string; title: string };
+/** page 1..of of a give; of 0 is "not now" (page 0, no lines) */
+export type GiveWire = { to: string; session: string; page: number; of: number; lines: GiveLine[] };
+const TO = /^[A-Za-z0-9-]{1,39}$/;
+
+/** an ask as the hub passes it (#335): to, the session's id and its title as the asker read it, each checked; else null */
+export function askOf(v: Record<string, unknown>): AskWire | null {
+  if (typeof v.to !== "string" || !TO.test(v.to) || typeof v.session !== "string" || !SESSION_ID.test(v.session)) return null;
+  return { to: v.to, session: v.session, title: line(v.title, 120) };
+}
+
+/** a give's page as the hub passes it (#335): to, the session, the page and how many there are, and at most GIVE_LINES
+ *  lines of a show's roles, each text cut to GIVE_TEXT_MAX; a page with no line left is not one. "not now" is of 0 with
+ *  no lines. Anything else, null: not carried */
+export function giveOf(v: Record<string, unknown>): GiveWire | null {
+  if (typeof v.to !== "string" || !TO.test(v.to) || typeof v.session !== "string" || !SESSION_ID.test(v.session)) return null;
+  const page = Number(v.page), of = Number(v.of);
+  if (!Number.isInteger(of) || of < 0 || of > GIVE_MAX) return null;
+  if (of === 0) return { to: v.to, session: v.session, page: 0, of: 0, lines: [] };
+  if (!Number.isInteger(page) || page < 1 || page > of || !Array.isArray(v.lines)) return null;
+  const lines: GiveLine[] = [];
+  for (const l of v.lines.slice(0, GIVE_LINES)) {
+    if (!isObj(l) || !SHOW_ROLES.includes(l.role as never)) continue;
+    const t = text(l.text, GIVE_TEXT_MAX);
+    if (t) lines.push({ role: l.role as GiveLine["role"], text: t, at: typeof l.at === "number" && Number.isFinite(l.at) && l.at > 0 ? Math.floor(l.at) : 0 });
+  }
+  return lines.length ? { to: v.to, session: v.session, page, of, lines } : null;
+}
+
+/** a signal's caps (#1377): signals one person may send in a UTC day, and to any one person in it */
+export const SIGNALS_A_DAY = 200, SIGNALS_TO_ONE = 30;
+/** what a ping-like kind may say on a signal, so the receiver's dials still route it (a word, never content) */
+export const SIGNAL_PK = ["clash", "contract", "claim", "decision", "chat"] as const;
+export type SignalWire = { to: string; sk: 1 | 2 | 3; link: string; pk?: (typeof SIGNAL_PK)[number] };
+/** a signal as the hub passes it (#1377): to, a kind 1|2|3, an https link of at most 500 characters (a GitHub one for
+ *  kinds 1 and 2) and, if said, its ping kind. Nothing else: no line, no text. Anything else, null: not carried */
+export function signalOf(v: Record<string, unknown>): SignalWire | null {
+  if (typeof v.to !== "string" || !TO.test(v.to)) return null;
+  const sk = Number(v.sk);
+  if (sk !== 1 && sk !== 2 && sk !== 3) return null;
+  if (typeof v.link !== "string" || v.link.length > 500 || /[\s\u0000-\u001f\u007f]/.test(v.link)) return null;
+  let u: URL;
+  try { u = new URL(v.link); } catch { return null; }
+  if (u.protocol !== "https:" || u.username || u.password) return null;
+  if (sk !== 3 && u.hostname !== "github.com") return null;
+  const pk = SIGNAL_PK.includes(v.pk as never) ? (v.pk as SignalWire["pk"]) : undefined;
+  return { to: v.to, sk, link: u.href, ...(pk ? { pk } : {}) };
 }

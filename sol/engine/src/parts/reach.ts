@@ -1,0 +1,148 @@
+// Reach (#1166, team/reach.ts): my agent asks a teammate's agent, theirs answers on its own; hand-overs between agents;
+// the Agents' room. Wired here: the relay's `agents` kind heard, an ask for me answered in a bare session held as
+// #1151's woken ones (marked `woken: "others"` before it starts: work/runs.ts holds every run of it bare), and the
+// thread read. GET /agents → { me, answering, tools, room, thread, holds }: tools and room are the two switches (#1276). Read-only
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import type { Parts } from "../parts.js";
+import { startReach, heard, threadNow, answering, tallyNow, heldCard, lateCard, type Given, type Held, type Answer, type Refused, type Reply, type Entry } from "../team/reach.js";
+import * as stage from "../work/blocks.js";
+import { placeFor, type Seat } from "../work/asks.js";
+import { reachTools, reachRoom } from "../settings.js";
+import { getTeam, wakeLineOn } from "../team/settings.js";
+import { holdsOf } from "../team/reach.js";
+import { onRelay, sendRelay, hubLogin } from "../team/relay.js";
+import { peopleOf, runsNow } from "../team/runs.js";
+import { driftFor } from "../team/drift.js";
+import { versionNow } from "../version.js";
+import { quietGh } from "../quiet.js";
+import { STATE_DIR, mark } from "../work/state.js";
+import { getRun } from "../work/runs.js";
+import { sessionItems, sessionInfo, workSessions } from "../work/sessions.js";
+import { giveTool } from "../work/tools.js";
+import { sayWork, nameWhenWritten } from "../work/wire.js";
+
+const run = promisify(execFile);
+// the repository: four up from src/parts/ under tsx, dist/parts/ when built
+const TOP = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const git = (args: string[]) => run("git", args, { cwd: TOP, timeout: 10_000, maxBuffer: 4 * 1024 * 1024 }).then((r) => r.stdout).catch(() => "");
+const gh = (args: string[]) => Promise.resolve().then(() => quietGh(args)).then(() => run("gh", args, { cwd: TOP, timeout: 15_000 })).then((r) => r.stdout).catch(() => "");
+
+/** this Sol's state, read-only, as words: what an answering session may say */
+async function state(): Promise<string> {
+  const me = hubLogin();
+  const v = versionNow();
+  const [branch, head, log, prs, issues] = await Promise.all([
+    git(["branch", "--show-current"]), git(["rev-parse", "HEAD"]), git(["log", "--oneline", "-8"]),
+    gh(["pr", "list", "--author", "@me", "--state", "open", "--json", "number,title,headRefName,isDraft", "--limit", "10"]),
+    gh(["issue", "list", "--assignee", "@me", "--state", "open", "--json", "number,title", "--limit", "15"]),
+  ]);
+  const mine = runsNow().filter((w) => w.person.toLowerCase() === me.toLowerCase());
+  const tag = v?.release ?? "";
+  const drift = tag ? driftFor(me, tag) : null;
+  const held = holdsOf(threadNow()).filter((h) => h.holder.toLowerCase() === me.toLowerCase() || (h.state === "open" && h.to.toLowerCase() === me.toLowerCase()));
+  const list = (s: string, f: (x: any) => string) => { try { const a = JSON.parse(s); return Array.isArray(a) && a.length ? a.map(f).join("\n") : "none"; } catch { return "not readable now"; } };
+  return [
+    `person: ${me}`,
+    `release this Sol runs: ${v ? `${v.release} (commit ${v.commit}${v.mine ? `, ${v.mine} of its own on top` : ""}${v.behind ? `, ${v.behind} behind` : ""})` : "unknown"}`,
+    `branch: ${branch.trim() || "?"}, HEAD ${head.trim().slice(0, 12)}`,
+    `what this person's Sols said on the relay (runs): ${mine.length ? mine.map((w) => `${w.machine}: ${w.tag || "no tag"} ${w.branch}${w.channel ? ` ${w.channel}` : ""}${w.why ? `, did not install itself: ${w.why}` : ", installed"} (${new Date(w.at).toISOString().slice(0, 16)}Z)`).join("; ") : "none heard"}`,
+    `drift: ${drift ? `${drift.off} file(s) off the iteration, ${drift.iterations} iteration(s) old` : "none known"}`,
+    "last commits:", log.trim() || "none",
+    "open PRs by this person:", list(prs, (p) => `#${p.number} ${p.title} (${p.headRefName}${p.isDraft ? ", draft" : ""})`),
+    "open issues assigned to this person:", list(issues, (i) => `#${i.number} ${i.title}`),
+    "hand-overs this person holds or is asked to take:", held.length ? held.map((h) => `${h.issue ? `#${h.issue} ` : ""}${h.what.split("\n")[0].slice(0, 100)} (${h.state}, from ${h.from})`).join("\n") : "none",
+  ].join("\n");
+}
+
+/** a committed file at HEAD, cut */
+async function file(path: string): Promise<string> {
+  const text = await git(["show", `HEAD:${path}`]);
+  if (!text) return `no committed file ${path} here`;
+  return text.length > 60_000 ? `${text.slice(0, 60_000)}\n[cut at 60000 characters]` : text;
+}
+
+async function lastWords(id: string): Promise<string> {
+  const r = getRun(id);
+  const list = r ? r.items.list : (await sessionItems(id)).list;
+  const you = list.filter((i: any) => i.kind === "you" && String(i.text ?? "").trim());
+  return String(you[you.length - 1]?.text ?? "");
+}
+
+// ---- where a word lands for the person (#1298) ----
+/** a session counts as where the person is for this long after its last turn */
+const HERE_MS = 8 * 3600_000;
+/** the person's sessions as placement reads them: not woken by others, not archived, a turn within HERE_MS */
+async function seats(): Promise<Seat[]> {
+  const { sessions } = await workSessions();
+  const now = Date.now();
+  // a side session (marked parent) builds in the background: never where the person is
+  return sessions.filter((s) => !s.woken && !s.archived && !s.parent && now - s.updatedAt < HERE_MS)
+    .map((s) => ({ id: s.id, issue: getRun(s.id)?.issue ?? null, last: s.updatedAt, ...(s.gone ? { gone: true } : {}) }));
+}
+const turn = async (sessionId: string, text: string) => {
+  if (!(await sessionInfo(sessionId).catch(() => undefined)) && !getRun(sessionId)) throw new Error("no such session");
+  await sayWork({ sessionId, text });
+};
+/** E4: a hand-over or an offer for me, a card that asks in the session where the person is; one block, carried */
+async function arrived(h: Held, sessionId?: string): Promise<boolean> {
+  const to = sessionId ?? placeFor(h.issue, await seats().catch(() => []));
+  if (!to) return false;
+  const c = heldCard(h), w = await stage.whoFor(to), by = { ...w, by: `${h.from}'s agent` };
+  const had = stage.getBlock(w.project, c.id);
+  if (had) { if (!had.sessions.includes(to)) stage.place({ ...by, sessionId: had.sessions[0] ?? to }, { id: c.id, carry: to }); return true; }
+  // person: never a ghost; the press is what it is there for
+  stage.compose(by, { id: c.id, kind: "card", title: c.title, body: c.body, person: true, asks: c.asks });
+  return true;
+}
+/** E3: a late answer or reply, a card in the session that asked and a turn there; a session gone, the Room's top */
+async function late(sessionId: string, e: Answer | Refused | Reply, of: Entry | undefined) {
+  const c = lateCard(e, of);
+  // the turn first: the agent has the words, so the card is settled, nothing to answer. Only when the session is gone
+  // does the card ask (the fixed choices, Frank's agent on #1298), so it waits on top of the Room
+  const told = await turn(sessionId, c.text).then(() => true, () => false);
+  try {
+    const w = await stage.whoFor(sessionId);
+    stage.compose({ ...w, by: `${e.from}'s agent` }, { kind: "card", title: c.title, body: c.body, person: true,
+      ...(told ? {} : { asks: { q: "Follow it up?", ref: { kind: "answer" as const, id: e.id }, from: { login: e.from, agent: true }, ...(c.about ? { about: c.about } : {}) } }) });
+  } catch (err) { console.error("reach: a late answer's card was not made", err); }
+}
+
+export default function (p: Parts) {
+  p.atStart(() => {
+    const home = join(STATE_DIR, "reach", "work");
+    startReach({
+      me: () => hubLogin(),
+      team: () => peopleOf(TOP).map((x) => x.login),
+      send: (payload) => sendRelay("agents", payload, true),
+      say: async (sessionId, text, cwd) => {
+        mark(sessionId, { woken: "others" });   // before its first run: bare, as #1151's woken by another person
+        await sayWork({ sessionId, text, fresh: true, cwd, mode: "default" });
+      },
+      give: (sessionId, tools: Given[]) => { for (const t of tools) giveTool(sessionId, t); },
+      name: (id, title) => { void nameWhenWritten(id, title); },
+      working: (id) => !!getRun(id)?.working,
+      lastWords,
+      state,
+      file,
+      file_: join(STATE_DIR, "reach.json"),
+      room: join(STATE_DIR, "reach", "room.md"),
+      home,
+      late: (sid, e, of) => { void late(sid, e, of); },
+      arrived,
+      // my yes to the one question (#1313): their agents may ask mine, in the group I answered for, while it is the
+      // GitHub group with an org it was asked in (wake.ts groupYes), and only with a team list to hold the askers to
+      asked: () => {
+        const t = getTeam(), room = t.rooms.find((r) => r.id === t.room);
+        return wakeLineOn(t.wakeAsk, t.room, "asks") && room?.provider === "github" && !!room.org && peopleOf(TOP).length > 0;
+      },
+    });
+    onRelay("agents", (m) => heard(m));
+  });
+  p.route("GET", "/agents", ({ res }) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ me: hubLogin(), answering: answering(), tools: reachTools(), room: reachRoom(), thread: threadNow(), holds: holdsOf(threadNow()), tally: tallyNow() }));
+  });
+}

@@ -1,0 +1,36 @@
+/* A run's steps (#692, slice A, RunLog.tsx): lines, no box of its own; it sits inside a sticky or a folder's log.
+   Every value from the scale (tokens.json through palette.css); the meaning colours are the fixed ones. */
+.p2-runlog { display:flex; flex-direction:column; gap:var(--s3); min-width:0; font-size:var(--t-label); line-height:var(--t-label-line); color:var(--dim); }
+.p2-run-host { color:var(--mute); }
+.p2-run { display:flex; flex-direction:column; gap:var(--s1); min-width:0; padding-top:var(--s2); border-top:var(--hair) solid var(--line); }
+.p2-runlog > .p2-run:first-child, .p2-run-host + .p2-run { border-top:0; padding-top:0; }
+.p2-run-head { display:flex; align-items:center; gap:var(--s2); min-width:0; }
+.p2-run-head b { color:var(--ink); font-weight:600; flex:none; }
+.p2-run-head span { flex:none; color:var(--mute); }
+.p2-run-head .p2-run-words { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dim); }
+.p2-run-head em { flex:none; font-style:normal; color:var(--mute); }
+.p2-run.s-running .p2-run-head em, .p2-run.s-queued .p2-run-head em { color:var(--green-strong); }
+.p2-run.s-asks .p2-run-head em { color:var(--yellow-strong); }
+.p2-run.s-failed .p2-run-head em { color:var(--red-strong); }
+.p2-run-steps { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; min-width:0; }
+.p2-run-steps li { display:flex; align-items:center; gap:var(--s2); min-width:0; }
+.p2-run-steps time { flex:none; color:var(--mute); font-variant-numeric:tabular-nums; }
+.p2-run-steps span { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.p2-run-steps li:last-child span { color:var(--ink); }
+.p2-run-steps .k-made span, .p2-run-steps .k-ok span { color:var(--green-strong); }
+.p2-run-steps .k-ask span { color:var(--yellow-strong); }
+.p2-run-steps .k-ask small { font-size:var(--t-label); color:var(--dim); }
+.p2-run-steps .k-error span, .p2-run-steps .k-fail span { color:var(--red-strong); white-space:normal; }
+.p2-run.s-running .p2-run-steps li:last-child span { animation:p2-run-breath var(--d-pour) var(--e-move) infinite; }
+@keyframes p2-run-breath { 50% { opacity:0.45; } }
+.p2-run-made { display:flex; flex-direction:column; gap:var(--s1); }
+.p2-run-made > div { display:flex; align-items:center; gap:var(--s2); min-width:0; color:var(--ink); }
+.p2-run-made > div > span { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.p2-run-made > div > small { flex:none; color:var(--mute); font-size:var(--t-label); }
+.p2-run-made > .undone { color:var(--mute); text-decoration:line-through; }
+.p2-run-why { margin:0; color:var(--red-strong); }
+.p2-run-ask { margin:0; color:var(--yellow-strong); }
+.p2-run-ask span { color:var(--dim); }
+.p2-run-acts { display:flex; gap:var(--s1); }
+.p2-run-acts:empty { display:none; }
+@media (prefers-reduced-motion: reduce) { .p2-run.s-running .p2-run-steps li:last-child span { animation:none; } }

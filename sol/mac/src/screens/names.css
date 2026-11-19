@@ -1,0 +1,12 @@
+/* The names at the seam (#1090): place and motion; the glass and rows are the kit's. Inside Seam.tsx's layer. They come
+   out of the seam (12 px of travel) and go back into it. */
+.nm { position: absolute; pointer-events: none; opacity: 0; transition: opacity var(--d-turn) var(--e-arrive), transform var(--d-glass) var(--e-reveal); }
+.nm.open { pointer-events: auto; opacity: 1; }
+.nm.right { right: var(--s3); transform: translateX(var(--s3)); }
+.nm.left { left: var(--s3); transform: translateX(calc(-1 * var(--s3))); }
+.nm.top { top: var(--s3); transform: translateY(calc(-1 * var(--s3))); }
+.nm.bottom { bottom: var(--s3); transform: translateY(var(--s3)); }
+.nm.open.right, .nm.open.left, .nm.open.top, .nm.open.bottom { transform: none; }
+.nm-in { padding: 6px; display: flex; flex-direction: column; }
+.nm-more { display: flex; align-items: center; padding: 0 var(--s3); }
+@media (prefers-reduced-motion: reduce) { .nm { transition: none; } }

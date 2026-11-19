@@ -336,8 +336,13 @@ export function ghOf(cmd) {
   const rest = p.slice(1).map((x) => x.t);
   // gh's own flags before the command (-R owner/repo, --repo x) are not its path
   const head = [];
-  while (rest.length && /^(-R|--repo)$/.test(rest[0])) head.push(rest.shift(), rest.shift() ?? "");
-  while (rest.length && /^--repo=/.test(rest[0])) head.push(rest.shift());
+  // in any order and spelling gh takes: -R x, -Rx, -R=x, --repo x, --repo=x (#1126)
+  for (;;) {
+    if (rest.length && /^(-R|--repo)$/.test(rest[0])) head.push(rest.shift(), rest.shift() ?? "");
+    else if (rest.length && /^--repo=/.test(rest[0])) head.push(rest.shift());
+    else if (rest.length && /^-R./.test(rest[0])) { const w = rest.shift(); head.push("-R", w.slice(2).replace(/^=/, "")); }
+    else break;
+  }
   const path = [];
   while (rest.length && !rest[0].startsWith("-") && path.length < 2) path.push(rest.shift());
   return { path, args: [...rest, ...head], dir: cmd.dir };

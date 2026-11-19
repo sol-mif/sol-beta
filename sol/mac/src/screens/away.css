@@ -1,0 +1,13 @@
+/* The box, away (#1090): layout and motion only. The room is a column so the outline stands at its foot whatever the
+   front holds, and stays there while the front scrolls. It is as wide as the card in front
+   (Away.tsx, frontW) on the same middle, and as tall as the box at rest. */
+/* (builder) scoped to the anchor's room: .sf-room is also first-run's class (firstrun.css) */
+.sf-room.sc-anchorroom { display: flex; flex-direction: column; }
+.sf-room.sc-anchorroom > .sf { flex: 0 0 auto; }
+.aw { flex: none; position: sticky; bottom: var(--s6); margin: auto auto var(--s6); height: calc(var(--s8) * 2 + var(--s6));
+  display: flex; align-items: flex-start; padding: var(--s4); box-sizing: border-box; cursor: pointer; background: none; color: var(--c-pearl-line);
+  border: 1px dashed var(--c-pearl-line); border-radius: var(--r-l);
+  transition: border-color var(--d-turn) var(--e-arrive), color var(--d-turn) var(--e-arrive); animation: pk-in var(--d-glass) var(--e-arrive) both; }
+.aw:hover, .aw:focus-visible { border-color: var(--c-pearl); color: var(--c-pearl); outline: 0; }
+.aw.offered { border: 1px solid var(--c-pearl); color: var(--c-pearl); }
+@media (prefers-reduced-motion: reduce) { .aw { animation: none; transition: none; } }

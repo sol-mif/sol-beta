@@ -3,7 +3,7 @@
 import type { Kind } from "../model";
 
 /** each kind's glyph, the design's (v4.html KIND) */
-export const GLYPH: Record<Kind, string> = { page: "Aa", list: "≡", card: "▤", diff: "±", shots: "▣", browser: "↗", terminal: "›_", table: "⊞" };
+export const GLYPH: Record<Kind, string> = { page: "Aa", list: "≡", card: "▤", diff: "±", shots: "▣", browser: "↗", terminal: "›_", table: "⊞", system: "◎", session: "◐" , clock: "◷", systems: "⊚" };
 
 export function Mark({ kind, onClick, label }: { kind: Kind; onClick?: () => void; label?: string }) {
   const g = GLYPH[kind] ?? GLYPH.page;

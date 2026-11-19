@@ -1,0 +1,33 @@
+/* The map (#1090): the layout only; every colour comes from the kit through ScreenMap.tsx. Top centre of the layer
+   Seam.tsx draws (replaces .sc-mark, .sc-markin, .sc-shape, .sc-plus, .sc-swap). */
+.sm {
+  position: absolute; top: var(--s2); left: 50%; transform: translateX(-50%); pointer-events: auto;
+  height: 28px; padding: 0 var(--s3); border-radius: var(--r-pill);
+  display: inline-flex; align-items: center; gap: var(--s3);
+  transition: background var(--d-turn) var(--e-arrive);
+  -webkit-user-select: none; user-select: none;
+}
+.sm-rects { flex: none; overflow: visible; }
+.sm-rect.other { cursor: pointer; }
+.sm-rect.other rect { transition: stroke var(--d-turn) var(--e-arrive); }
+.sm-rect.other:hover > rect { stroke: var(--c-pearl); }
+/* the trade: the two shapes slide past each other, then the record's answer redraws them in their new rects */
+.sm.trading .sm-rect.mine .sm-shape { animation: sm-trade-a 180ms var(--e-reveal) both; }
+.sm.trading .sm-rect.other .sm-shape { animation: sm-trade-b 180ms var(--e-reveal) both; }
+@keyframes sm-trade-a { to { transform: translateX(25px); opacity: 0.2; } }
+@keyframes sm-trade-b { to { transform: translateX(-25px); opacity: 0.2; } }
+.sm-fact { display: inline-flex; align-items: center; gap: var(--s1); background: none; border: 0; padding: 0; font: inherit; }
+button.sm-fact { cursor: pointer; }
+.sm-run { flex: none; animation: sm-run 1600ms linear infinite; }
+@keyframes sm-run { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sm.trading .sm-shape, .sm-run { animation: none; } }
+
+/* builder: the map as a child of Build's head row (design NOW 01:30 #2): centred between the title and the keys, the
+   title ends in an ellipsis --s4 before it (Top.tsx `mid`). No base under it. */
+.sm.in-head { position: static; transform: none; flex: none; margin: 0 var(--s4); }
+.hc-bar:has(.hc-mid) .hc-where-at { min-width: 0; overflow: hidden; flex: 0 1 auto; }
+.hc-bar:has(.hc-mid) .hc-title, .hc-bar:has(.hc-mid) .hc-where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-mid { flex: none; display: flex; align-items: center; }
+
+/* an arrangement offered (Jev 0.45 to 0.7): the map comes forward, a dashed pearl hairline round it (design NOW 02:30 #3) */
+.sm.in-head:has(.sm-shape [stroke-dasharray]) { transform: scale(1.8); transform-origin: 50% 0; outline: 1px dashed var(--c-pearl-line); outline-offset: var(--s1); border-radius: var(--r-s); z-index: 3; transition: transform var(--d-glass) var(--e-reveal); }

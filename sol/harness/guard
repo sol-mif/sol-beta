@@ -3,10 +3,13 @@
 // Claude Code runs this before every Bash, Edit, Write and MultiEdit call (.claude/settings.json, committed), and on a
 // few more calls for the team's locks (#484). It reads the call on stdin and either says nothing (the call goes ahead)
 // or refuses it with one plain line.
-// Refused: a commit on main; work on another person's branch; a branch made without Take; merging, or moving
+// Refused: a commit on main; work on another person's branch; a branch made without Take; merging outside a PR
+// (a git merge into main, an API merge, gh pr merge --admin, a PR into stable, live or another person's branch), or moving
 // stable or live; committing home data or a key; editing the fence from inside a running Sol; a PR without a
-// test note; a push or PR from a base branch while another person's base branch is open (#98); parking the face-hot flag,
-// installing, opening or quitting Sol.app, restarting the engine's jobs, moving where Sol lives (#116; #114, the window is the person's). Pressing the review session's card (#416, rule tonight). Marking a PR ready or draft from a shell (#420, rule hand-in). Sending back by hand (#421, rule sent-back).
+// test note; parking the face-hot flag,
+// installing, opening or quitting Sol.app, restarting the engine's jobs, moving where Sol lives (#116; #114, the window is the person's). Pressing the review session's card (#416, rule tonight). Sending back by hand (#421, rule sent-back).
+// Let through since #1126 (one flow: merge when green, the night checks): gh pr merge of a PR into main or your own
+// branch, GitHub's checks being the gate; gh pr ready; a base branch beside another person's.
 // #484: a rule judges what a command does, not the words in it, and where it runs (a cd before it, git -C, env -C), not
 // where the session started: a commit message, a grep or a PR body that names a rule's words is never the thing itself,
 // and a command run inside another (bash -c, $( ), eval, xargs) is judged as itself. In the team's own repository the
@@ -30,7 +33,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realp
 import { createHash } from "node:crypto";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const TMP = (name, key) => join(tmpdir(), `sol-guard-${name}-${createHash("sha1").update(key).digest("hex").slice(0, 12)}.json`);
 const readJson = (file, maxAge = Infinity) => { try { if (Date.now() - statSync(file).mtimeMs < maxAge) return JSON.parse(readFileSync(file, "utf8")); } catch {} return undefined; };
@@ -504,7 +507,7 @@ function teamLocks() {
   const byRoot = (d) => repoAt(d, cwd);
   let hit = null;
   try {
-    hit = locks.judge({ tool, args, role, cwd, sessionId: input.session_id, plan: steps, writesOf, gitOf, at, does, ownSource, acting, message, real,
+    hit = locks.judge({ tool, args, role, cwd, sessionId: input.session_id, plan: steps, writesOf, gitOf, ghOf, at, does, ownSource, acting, message, real,
       pressed: real(PRESSED_PATH), pressedNames: PRESSED_NAMES,
       head: (d) => headOf(byRoot(d)), dirty: (d) => dirtyOf(byRoot(d)), ahead: (d) => aheadOf(byRoot(d)) });
   } catch (e) { if (solDev) failClosed(`a team lock broke on this call (${String(e?.message ?? e).split("\n")[0].slice(0, 160)}).`); }
@@ -611,7 +614,6 @@ const TONIGHT_WHY = `the review session's buttons are the reviewer's own presses
 // (#476's rule, id and words, the same: rule hand-in-card)
 const HANDIN_TEXT = /team\.handin|\bhandin\.(press|key)\b|["'`]team\.?["'`][\s\S]{0,60}["'`]\.?handin\b/;
 const HANDIN_WHY = `the hand-in card's buttons are your human's own presses in Sol's window; a session never asks for the card's key or sends a press (team.handin.*), in a shell line or a script. Tell your human the card is there, and leave the press to them.`;
-const HAND_IN_WHY = `handing in is marking a PR ready, your human's own press, and Sol has the button for it: once the PR's checks are green, a hand-in card ("… is ready. Bring it in?") shows in the session that opened it, yours included when your background agents opened it. Tell your human to press Bring it in there; to merge too, end your turn with wrap_up and a merge button naming the PR (pr). No Terminal line for them to type.`;
 // a slight send back (#421, engine/src/team/sentback.ts) is the one road where an agent's judgement leads to a merge, so
 // its start is the reviewer's press alone: a session never puts on or takes off a sent-back label, nor writes the
 // marker the re-check reads, in a shell line or in a script outside Sol's own source and docs
@@ -695,11 +697,8 @@ for (const x of steps) {
   if (h.path[0] === "label") labels.push(h.args.join(" ") + " " + (h.path[1] ?? ""));
   if (labels.some((v) => SENT_LABEL(v.split(",").join(" ")))) refuse("sent-back", SENT_WHY, atAll());
 }
-// handing in (#420, engine/src/team/handin.ts) is marking a PR ready: the person's own press, or the hand-in session's
-// tool hand_in where the project lets agents pick (it asks the project's setting). Never a shell's gh pr ready, nor the
-// GraphQL mutations behind it. Not a wall either: the tool's checks and the session's words are the others
-if (steps.some((x) => { const h = ghOf(x); return h && h.path[0] === "pr" && h.path[1] === "ready"; })
-  || does((s) => /markPullRequestReadyForReview|convertPullRequestToDraft/.test(s))) refuse("hand-in", HAND_IN_WHY, atAll());
+// marking a PR ready (gh pr ready) goes through since #1126: a draft is not checked by CI, and a ready PR whose checks are
+// green is merged by its author or their agent. The hand-in card (#476) stays, no longer the only road
 // a let-through is the person's: no shell writes it either, nor a program whose code names it
 if (steps.some((x) => { const w = writesOf(x); return [...w.writes, ...w.appends, ...w.deletes].some(LET_FILE); }) || does((s) => /harness\.local\.json/i.test(s) && /allow|rule|until/i.test(s)))
   refuse("let-through", LET_WHY, atAll());
@@ -760,7 +759,50 @@ function plainCommit(l) {
   return PLAIN_COMMIT.test(one);
 }
 const MOVE_WHY = `stable and live move by a human's hand only (the release, sol/promote). Leave one line for them.`;
-const MERGE_WHY = `merging is a person's press, never an agent's; an agent opens a draft PR and stops. For a PR of your human's, end your turn with wrap_up and a merge button naming it (action merge, pr): their press there marks it ready and merges it once its checks are green. No Terminal line for them to type.`;
+const MERGE_WHY = `main takes a change only as a PR whose checks are green: mark it ready (gh pr ready), and once GitHub's checks pass merge it with gh pr merge <n> --merge (or --auto). Never around the checks (--admin), by the API, or into stable, live or another person's branch.`;
+/** gh pr merge's arguments the way gh (pflag) reads them: --x=v and -Xv split, an option gh does not know or a short
+ * flags bundle is null, so the guard refuses what it cannot read (#1126) */
+const MERGE_BOOL = new Set(["--admin", "--auto", "--delete-branch", "-d", "--disable-auto", "--merge", "-m", "--rebase", "-r", "--squash", "-s", "--help", "-h"]);
+const MERGE_VALUED = new Set(["--body", "-b", "--body-file", "-F", "--match-head-commit", "--subject", "-t", "--author-email", "-A", "--repo", "-R"]);
+function mergeArgs(raw) {
+  const out = [];
+  for (let k = 0; k < raw.length; k++) {
+    const a = raw[k];
+    if (a === "--") { out.push(...raw.slice(k)); break; }
+    let m;
+    if (out.length && /^-/.test(a) && valuedSeen(out, a)) return null;   // a valued option twice: gh keeps the last, so refuse
+    if ((m = /^(--[a-z-]+)=(.*)$/s.exec(a))) { if (MERGE_BOOL.has(m[1])) out.push(m[1]); else if (MERGE_VALUED.has(m[1])) out.push(m[1], m[2]); else return null; continue; }
+    if (/^--/.test(a)) { if (MERGE_BOOL.has(a)) out.push(a); else if (MERGE_VALUED.has(a)) { out.push(a, raw[k + 1] ?? ""); k++; } else return null; continue; }
+    if (/^-[^-]/.test(a)) {
+      const f = a.slice(0, 2), rest = a.slice(2).replace(/^=/, "");
+      if (MERGE_VALUED.has(f)) { if (rest) out.push(f, rest); else { out.push(f, raw[k + 1] ?? ""); k++; } continue; }
+      if (MERGE_BOOL.has(f) && !rest) { out.push(f); continue; }
+      return null;
+    }
+    out.push(a);
+  }
+  return out;
+}
+const MERGE_SAME = { "-R": "--repo", "-b": "--body", "-F": "--body-file", "-t": "--subject", "-A": "--author-email" };
+function valuedSeen(out, a) {
+  const name = (/^(--[a-z-]+)/.exec(a) ?? /^(-[A-Za-z])/.exec(a) ?? [])[1] ?? "";
+  const long = MERGE_SAME[name] ?? name;
+  if (!MERGE_VALUED.has(long)) return false;
+  return out.some((o) => MERGE_VALUED.has(o) && (MERGE_SAME[o] ?? o) === long);
+}
+/** the branch a gh pr merge would merge into, asked of GitHub; "" when it cannot say (#1126) */
+function prBase(r, h) {
+  const repo = flag(h.args, "--repo", "-R");
+  const target = positional(h.args, ["--repo", "-R", "--subject", "-t", "--body", "-b", "--body-file", "-F", "--match-head-commit", "--author-email", "-A"])[0];
+  try {
+    const out = execFileSync("gh", ["pr", "view", ...(target ? [target] : []), ...(repo ? ["--repo", repo] : []), "--json", "baseRefName,url", "-q", '.baseRefName + " " + .url'],
+      { cwd: r.root || h.dir || process.cwd(), encoding: "utf8", timeout: 8000, stdio: ["ignore", "pipe", "ignore"] });
+    const [base = "", url = ""] = out.trim().split(/\s+/);
+    return { base, repo: repoSlug(url) };
+  } catch { return { base: "", repo: "" }; }
+}
+/** owner/name from a GitHub URL or remote (https, ssh, a PR's page), "" when it is not GitHub */
+function repoSlug(u) { const m = /github\.com[:/]+([^/\s]+\/[^/\s]+?)(?:\.git)?(?:\/|$)/i.exec(String(u || "")); return m ? m[1] : ""; }
 /** a branch another person of the team writes on: its prefix names someone on the team's pages (a name or a login) who is not me */
 function othersBranch(here, b) {
   const prefix = b.includes("/") ? b.split("/")[0] : "";
@@ -880,14 +922,23 @@ for (let k = 0; k < steps.length; k++) {
   if (g) {
     // a branch is made by Take, nowhere else (a */mine branch is the person's own Sol and may be made by hand)
     let made = "";
+    // a local copy of a branch GitHub already has, under its own name (git branch x origin/x, checkout -t origin/x), starts
+    // no work: the branch was made by its Take, and what is done on it is judged as on it (#1159). Never main, stable,
+    // live, dev or beta
+    const copyOfGitHubs = (b, start) => !!b && !PROTECTED.test(b) && !/[$`]/.test(b) && (start === `origin/${b}` || start === `refs/remotes/origin/${b}`)
+      && !!gitIn(here.root, ["rev-parse", "-q", "--verify", `refs/remotes/origin/${b}^{commit}`]);
     if (g.sub === "checkout" || g.sub === "switch") {
       const i = g.args.findIndex((a) => (g.sub === "checkout" ? /^(-b|-B|--orphan)$/ : /^(-c|-C|--create|--force-create|--orphan)$/).test(a));
       if (i >= 0) made = g.args[i + 1] ?? "";
-      else if (g.args.some((a) => /^(-t|--track)(=.*)?$/.test(a))) made = switchedTo(g, here) ?? "";   // -t origin/x makes x
+      else if (g.args.some((a) => /^(-t|--track)(=.*)?$/.test(a))) {   // -t origin/x makes x
+        made = switchedTo(g, here) ?? "";
+        if (made !== UNKNOWN && copyOfGitHubs(made, positional(g.args, ["--conflict", "--orphan"])[0])) made = "";
+      }
     }
     if (g.sub === "branch" && !g.args.some((a) => /^(-[dDmMcCfr]|--delete|--move|--copy|--force|-l|--list|-a|-r|--all|--remotes|--show-current|--contains|--merged|--no-merged|--points-at|-u|--set-upstream-to|--unset-upstream|--edit-description|-v|-vv)$/.test(a))) {
-      const pos = positional(g.args, ["--format", "--sort", "-t", "--track"]);
-      if (pos[0]) made = pos[0];
+      // git branch's -t / --track take no word of their own (--track=direct does): git branch -t x origin/x makes x
+      const pos = positional(g.args, ["--format", "--sort"]);
+      if (pos[0] && !copyOfGitHubs(pos[0], pos[1])) made = pos[0];
     }
     if (g.sub === "worktree" && g.args[0] === "add") { const i = g.args.findIndex((a) => /^(-b|-B)$/.test(a)); if (i >= 0) made = g.args[i + 1] ?? ""; }
     if (g.sub === "remote" && /^(set-url|rename|remove|rm|add|set-head|set-branches|prune)$/.test(g.args.find((a) => !a.startsWith("-")) ?? "")) refuse("remote", REMOTE_WHY, [here]);
@@ -946,8 +997,10 @@ for (let k = 0; k < steps.length; k++) {
       if (dsts.some((d) => d === "main" || d === UNKNOWN)) refuse("main-push", `that push lands on main, which takes nothing but a PR the lead merges; push your own branch and open a draft PR.`, [here]);
       // what the push carries: no Scoped or Approved line the press's record does not hold (#484; a mark committed by a
       // road the guard did not read is caught here, before it leaves this Mac)
-      // every refspec's source, each one commit; a delete (:dst) carries nothing
-      for (const spec of specs.length ? specs : ["HEAD"]) {
+      // every refspec's source, each one commit; a delete (:dst) carries nothing. A remote the team's locks name as a
+      // deploy, not GitHub, is not judged (#1159)
+      const cloudBox = locks?.CLOUD_DEPLOY instanceof RegExp && locks.CLOUD_DEPLOY.test(remoteUrl);
+      for (const spec of cloudBox ? [] : specs.length ? specs : ["HEAD"]) {
         const src = spec.replace(/^\+/, "").split(":")[0];
         if (spec.replace(/^\+/, "").startsWith(":")) continue;
         const marked = unrecordedMarks(here, !src || src === "HEAD" || src === "@" ? (tb && tb !== UNKNOWN ? tb : "HEAD") : src, "", k);
@@ -987,7 +1040,9 @@ for (let k = 0; k < steps.length; k++) {
       const staged = zList(["diff", "--cached", "--name-only", "-z"]).split("\0").filter(Boolean);
       const status = (() => { const out = [], parts = zList(["status", "--porcelain", "-z", "--untracked-files=all"]).split("\0"); for (let i = 0; i < parts.length; i++) { const e = parts[i]; if (e.length < 4) continue; out.push(e.slice(3)); if (/^[RC]/.test(e)) i++; } return out; })();
       const addSteps = steps.filter((y) => { const yg = gitOf(y); return yg && (yg.sub === "add" || yg.sub === "stage") && repoAt(yg.dir, cwd).root === here.root; });
-      let all = g.args.some((a) => /^-[a-zA-Z]*a[a-zA-Z]*$/.test(a) || a === "--all") ? status : [];
+      const dashA = g.args.some((a) => /^-[a-zA-Z]*a[a-zA-Z]*$/.test(a) || a === "--all");
+      let all = dashA ? status : [];
+      const added = [];   // what this line's git add stages (all, above, also holds -a's untracked files, which -a leaves out)
       // what each git add of the line would stage, as git itself says (--dry-run, the same arguments and folder): globs,
       // pathspec magic, combined flags and -f as git reads them. One git cannot answer for refuses (fail closed)
       for (const y of addSteps) {
@@ -995,7 +1050,7 @@ for (let k = 0; k < steps.length; k++) {
         let out;
         try { out = execFileSync("git", ["-c", "core.quotepath=false", "add", "--dry-run", ...yg.args.filter((w) => w !== "-n" && w !== "--dry-run")], { cwd: yg.dir, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "pipe"] }); }
         catch (e) { if (/:/.test(yg.args.join(" ")) || String(e?.stderr ?? "").trim()) refuse("home-data", `the guard cannot tell what this git add stages (git itself would not say: ${String(e?.stderr ?? e?.message ?? "").split("\n")[0].slice(0, 80)}), so it cannot see whether a person's own data or a key goes in. Name the files plainly.`, [here]); out = ""; }
-        for (const l of out.split("\n")) { const m = /^add '(.*)'$/.exec(l); if (m) all.push(m[1]); }   // git names them from the repository's root
+        for (const l of out.split("\n")) { const m = /^add '(.*)'$/.exec(l); if (m) { all.push(m[1]); added.push(m[1]); } }   // git names them from the repository's root
       }
       all = [...new Set(all)];
       const files = [...new Set([...staged, ...all])];
@@ -1006,6 +1061,30 @@ for (let k = 0; k < steps.length; k++) {
       const text = gat(["diff", "--cached"]) + "\n" + all.map((f) => readText(join(here.root, f))).join("\n");
       const hit = text.match(SECRET_TEXT);
       if (hit) refuse("key", `something that looks like a key is in the commit (${hit[0].slice(0, 12)}…). A key that is committed is a key that leaks; take it out first.`, [here]);
+      // records in the commit (#1296): a commit touching a path a record covers changes a record under sol/systems/records
+      // too, or the map goes stale. One decision, the checkout's own (sol/systems/rule.mjs, read by the PR check the same).
+      // What the commit takes: the index, this line's git add, -a's tracked changes, and with --amend what HEAD already
+      // carries. Finishing a merge is left out (what it brings was judged on its own branch), and so is a checkout without
+      // the rule. A developer's own run may skip it, SOL_RECORDS_SKIP=1 in the session's environment or before the
+      // commit, and the skip is logged
+      if (solDev && isSolDev(here) && !existsSync(join(here.gitDir, "MERGE_HEAD")) && existsSync(join(here.root, "sol/systems/rule.mjs"))) {
+        const takes = [...staged, ...added, ...(dashA ? zList(["diff", "--name-only", "-z"]).split("\0").filter(Boolean) : []),
+          ...(g.args.includes("--amend") ? zList(["diff", "--name-only", "-z", "HEAD~1", "HEAD"]).split("\0").filter(Boolean) : [])];
+        // a rule that does not load is said and stepped over, never a wall: its own fix is a commit too, and the PR
+        // check, which runs the same file, is red on it
+        let v = { ok: true };
+        try {
+          const rule = await import(pathToFileURL(join(here.root, "sol/systems/rule.mjs")).href);
+          const reg = await import(pathToFileURL(join(here.root, "sol/systems/registry.mjs")).href);
+          v = rule.judge(takes, reg.load(join(here.root, "sol/systems/records"), here.root).records, { issue: rule.issueOf(tb) });
+        } catch (e) { process.stderr.write(`harness: records in the commit could not be judged (${String(e?.message ?? e).split("\n")[0].slice(0, 120)}); the PR check will read it.\n`); }
+        if (!v.ok) {
+          if (process.env.SOL_RECORDS_SKIP === "1" || x.prog.env?.SOL_RECORDS_SKIP === "1") {
+            logLock("records", "let-through", [here]);
+            process.stderr.write(`harness: records in the commit skipped (SOL_RECORDS_SKIP=1, logged); the PR check "records in the commit" still reads the PR's whole diff.\n`);
+          } else refuse("records", `${v.words} A developer's own run can skip it: SOL_RECORDS_SKIP=1 before the commit (logged); the PR check reads the whole PR the same.`, [here]);
+        }
+      }
       // Scoped and Approve (#482's check, carried here the same): judged on what would be committed, not on the
       // command's flags. Every feature's prd.md and eval.md, in the index and in the working tree, against HEAD (and what
       // a merge, cherry-pick or revert being finished brings): a new Scoped mark goes in only when the press's record
@@ -1040,7 +1119,22 @@ for (let k = 0; k < steps.length; k++) {
 
   if (h) {
     if (h.path[0] === "pr" && h.path[1] === "checkout" && here.root) onBranch.set(here.root, UNKNOWN);
-    if (h.path[0] === "pr" && h.path[1] === "merge") refuse("merge", MERGE_WHY, [here]);
+    // gh pr merge goes through since #1126 (one flow: merge when green): GitHub's ruleset on main takes a PR only once
+    // its checks passed, and the night pass reads what went in. Refused still: --admin (around the checks), a PR whose
+    // base is not main nor a branch of mine (stable, live, dev, another person's), and a PR GitHub cannot name
+    if (solDev && h.path[0] === "pr" && h.path[1] === "merge") {
+      const args = mergeArgs(h.args) ?? [];
+      if (!mergeArgs(h.args)) refuse("merge", `the guard could not read that gh pr merge's options, so it is not merged from here; write them plainly (gh pr merge <n> --merge, -R owner/repo). ${MERGE_WHY}`, [here]);
+      if (args.includes("--admin")) refuse("merge", MERGE_WHY, [here]);
+      // alone on its line: nothing before it may change which repo, host, folder or PR base gh will act on (#1126)
+      if (steps.length !== 1 || /\bGH_[A-Z_]+=|^\s*(env|export|sudo|command|exec)\b/.test(x.text) || x.depth > 0)
+        refuse("merge", `gh pr merge runs alone on its own line, with no GH_ variable, cd or other command beside it: gh pr merge <n> --merge [-R owner/repo]. ${MERGE_WHY}`, [here]);
+      const { base, repo } = prBase(here, { ...h, args });
+      const mine = namesAt(here), home = repoSlug(gitIn(here.root, ["remote", "get-url", "origin"]));
+      if (!base) refuse("merge", `GitHub did not say which branch that PR goes into, so it is not merged from here. ${MERGE_WHY}`, [here]);
+      else if (!home || repo.toLowerCase() !== home.toLowerCase()) refuse("merge", `that PR is in ${repo || "a repository GitHub did not name"}, not this checkout's ${home || "origin"}; only the team's own repository merges from here (the beta repo moves by the export alone). ${MERGE_WHY}`, [here]);
+      else if (base !== "main" && !(base.includes("/") && mine.includes(base.split("/")[0]))) refuse("merge", `that PR goes into ${base}, not main nor a branch of yours. ${MERGE_WHY}`, [here]);
+    }
     const ends = h.path[0] === "api" ? [h.path[1] ?? "", ...h.args].filter((a) => a && !a.startsWith("-")) : [];   // the endpoint, wherever it sits
     const writesApi = h.path[0] === "api" && /(-X\s*|--method[\s=]+)(PUT|POST|PATCH|DELETE)\b|\s(-f|-F|--field|--raw-field|--input)(\s|=)/i.test(x.text);
     if (ends.some((a) => /(^|\/)pulls\/\d+\/merge\/?$/.test(a)) && /(-X\s*|--method[\s=]+)PUT\b/i.test(x.text)) refuse("merge", MERGE_WHY, [here]);
@@ -1056,18 +1150,9 @@ for (let k = 0; k < steps.length; k++) {
       refuse("main-by-api", `writing to main through GitHub's API is a commit on main with no PR. A setting (who leads a label) is a proposal in Cowork's project settings, and CODEOWNERS follows by a PR; anything else goes on your branch and a draft PR.`, [here]);
   }
 
-  // base allows one open branch at a time (#98, PRD section 7): a push or a PR from a base branch stops while another
-  // person's base branch has an open PR. My own second base branch goes through: Take already asked, and I can override.
+  // base's one open branch at a time (#98) was dropped by #1126: two people build base at once, the claims and the
+  // nightly check's conflict comments say where they meet
   const pushes = g?.sub === "push", opens = !!h && h.path[0] === "pr" && h.path[1] === "create";
-  if (solDev && (pushes || opens) && here.root) {
-    const from = opens ? (flag(h.args, "--head", "-H") ?? tb) : tb;
-    if (/^[^/]+\/base-/.test(from)) {
-      const mine = namesAt(here);
-      const other = openPrs(here).find((p) => /^[^/]+\/base-/.test(p.headRefName) && p.headRefName !== from
-        && !mine.includes(p.headRefName.split("/")[0]) && !mine.includes(String(p.author?.login ?? "")));
-      if (other) refuse("base-second-branch", `base allows one open branch at a time; #${other.number} (${other.author?.login ?? other.headRefName.split("/")[0]}) is open: build on that branch or wait.`, [here]);
-    }
-  }
 
   // the window is the person's, in both folders (#114): no session parks the face-hot flag, installs or opens or quits
   // Sol.app, or touches the engine's launchd or systemd jobs. The person switches the face from the menu bar; a merge on
@@ -1100,7 +1185,9 @@ for (let k = 0; k < steps.length; k++) {
   // earlier in the same line or not, a heredoc), never the words around it
   if (opens && here.root) {
     const base = flag(h.args, "--base", "-B"), head = flag(h.args, "--head", "-H");
-    const marked = unrecordedMarks(here, head && !head.includes(":") ? head : (tb && tb !== UNKNOWN ? tb : "HEAD"), base, k);
+    // a --head that is on GitHub only (no local branch) is judged as GitHub has it, origin/<head> (#1159)
+    const remoteOnly = (b) => !/[*?[\]$`]/.test(b) && !gitIn(here.root, ["rev-parse", "-q", "--verify", `refs/heads/${b}`]) && gitIn(here.root, ["rev-parse", "-q", "--verify", `refs/remotes/origin/${b}^{commit}`]) ? `refs/remotes/origin/${b}` : b;
+    const marked = unrecordedMarks(here, head && !head.includes(":") ? remoteOnly(head) : (tb && tb !== UNKNOWN ? tb : "HEAD"), base, k);
     if (marked) refuse("eval-sealed", marked, [here]);
   }
   if (opens) {

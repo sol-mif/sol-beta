@@ -7,15 +7,42 @@ import { Meter } from "../../kit";
 import type { KindProps, ListBody, Step } from "./types";
 import { RunRows } from "./RunRows";
 import { isRunBody } from "./runs";
+import { PieceBlock, isPieceBlock } from "../../folderPieces/PieceBlock";   // #1092: a piece's block draws its front
 
 const stOf = (s: Step) => (s.ok ? "done" : s.st);
 export const doneOf = (body?: ListBody) => (body?.steps ?? []).filter((s) => stOf(s) === "done").length;
 /** the word at a step's right: its note, else what its dot says */
 const WORD: Record<string, string> = { half: "now", wait: "waits on you", done: "done" };
 
-export function List({ body, act }: KindProps<ListBody>) {
+export function List({ b, body, act }: KindProps<ListBody>) {
+  if (isPieceBlock(b.id)) return <PieceBlock b={b} body={body} act={act} />;
   if (isRunBody(body)) return <RunRows body={body} />;
-  return <Steps body={body} act={act} />;
+  // an open block always shows its content or says why not (#872 pass 2): steps, else the steps its markdown ticks
+  // ("- [x] …"), else its words, else one line
+  if (body?.steps?.length) return <Steps body={body} act={act} />;
+  const text = textOf(body), md = text ? stepsFromMd(text) : [];
+  if (md.length) return <Steps body={{ steps: md }} act={() => {}} />;   // read only: a tick would write json over the markdown
+  if (text) return <pre className="st-text">{text}</pre>;
+  return <p className="st-note">nothing in this list yet</p>;
+}
+
+/** a body's words when it came as markdown or text rather than steps */
+function textOf(body: unknown): string {
+  if (typeof body === "string") return body.trim();
+  const o = body as { text?: unknown; md?: unknown; markdown?: unknown } | null | undefined;
+  const t = o?.text ?? o?.md ?? o?.markdown;
+  return typeof t === "string" ? t.trim() : "";
+}
+/** "- [x] done" and "- [ ] not yet" lines as steps (the first open one is "now") */
+export function stepsFromMd(md: string): { t: string; st: "" | "done" | "half" }[] {
+  const out: { t: string; st: "" | "done" | "half" }[] = [];
+  for (const l of md.split("\n")) {
+    const m = /^\s*[-*]\s+\[([ xX])\]\s+(.+)$/.exec(l);
+    if (m) out.push({ t: m[2].replace(/\*\*/g, "").trim(), st: m[1] === " " ? "" : "done" });
+  }
+  const first = out.findIndex((x) => x.st === "");
+  if (first >= 0) out[first].st = "half";
+  return out;
 }
 
 function Steps({ body, act }: Pick<KindProps<ListBody>, "body" | "act">) {
@@ -32,7 +59,7 @@ function Steps({ body, act }: Pick<KindProps<ListBody>, "body" | "act">) {
             <div key={i} className={`st-step ${st}`} data-part={`step ${i + 1}`}>
               <i aria-hidden />
               <span className="st-steptext">{s.t}</span>
-              {st === "wait" ? <button className="st-yes" onClick={() => yes(i)}>yes</button> : <small>{s.note ?? WORD[st] ?? ""}</small>}
+              {st === "wait" ? <button className="st-yes" onClick={() => yes(i)}>yes</button> : <small data-words={s.note ? undefined : ""}>{s.note ?? WORD[st] ?? ""}</small>}
             </div>
           );
         })}
@@ -40,7 +67,7 @@ function Steps({ body, act }: Pick<KindProps<ListBody>, "body" | "act">) {
       {steps.length > 0 && (
         <div className="st-listfoot" ref={foot}>
           {w > 0 && <Meter w={w} h={4} value={done / steps.length} label={`${done} of ${steps.length} done`} />}
-          <span>{done} of {steps.length}</span>
+          <span data-words>{done} of {steps.length}</span>
         </div>
       )}
     </div>

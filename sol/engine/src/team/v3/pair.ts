@@ -15,6 +15,7 @@
 import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { canonical } from "./trail.js";
 import { certOk, LOGIN, NAME, type Cert, type Keys } from "./keys.js";
+import { quietFetch } from "../../quiet.js";
 
 /** where the two sides wait: the cloud's /relay/pair, or memory in the tests */
 export type Mailbox = {
@@ -132,6 +133,7 @@ export function httpMailbox(o: { base: string; ticket: () => string | Promise<st
   const url = (slot: string, side: string) => `${o.base.replace(/\/+$/, "")}/relay/pair/${slot}?side=${side}`;
   return {
     async put(slot, side, body) {
+      quietFetch(o.base);   // a quiet Sol leaves nothing in the cloud (#1293)
       const r = await f(url(slot, side), { method: "POST", headers: { authorization: `Bearer ${await o.ticket()}`, "content-type": "application/json" }, body: JSON.stringify({ body }), signal: AbortSignal.timeout(15_000) });
       if (r.ok) return "";
       const v = await r.json().catch(() => null) as { error?: string } | null;

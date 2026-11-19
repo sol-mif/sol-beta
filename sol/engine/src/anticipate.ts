@@ -1,6 +1,6 @@
 // Anticipate (#253): Sol hears a
-// conversation Marco is in and helps fast. A press on the notch starts a talk and Stop in the drawer ends it, never
-// ambient. While it is on, a small helper (sol/mac/listen, Swift) hears both sides on the Mac and prints one JSON line a
+// conversation Marco is in and helps fast. `anticipate.start` starts a talk and Stop ends it, never ambient (their
+// press was the notch's, gone with #1584; a talk has no way in from the window until one is made). While it is on, a small helper (sol/mac/listen, Swift) hears both sides on the Mac and prints one JSON line a
 // turn; this file keeps those turns and writes them to home/voice/talks/<stamp>.jsonl (words only, the audio never
 // leaves the helper). **The talk file is the one record**: turns, names, every shown card's text, every ask with its
 // answer, the recap, the review and the questions are lines in it, and `anticipate.talk` answers a face from it.
@@ -13,7 +13,7 @@
 // Recap and Who, which need the whole talk, go to Gemini flash with the whole transcript. The buttons are the skill's.
 // Names learn themselves (names.ts): "them" becomes "Frank" once the talk gives it away, or by a click.
 //
-// Ask is a thread: one session on the Claude seat for the whole talk (door "notch"), each answer returned, broadcast as
+// Ask is a thread: one session on the Claude seat for the whole talk (no door), each answer returned, broadcast as
 // `anticipate.asked` and written as an `ask` line. Holding the globe key (`anticipate.hold`) makes Marco's own words
 // the question instead of the transcript. Stop answers at once; the recap, the review and the questions are written
 // in the background; the talk waits in Conversations (talks.ts), which keeps it (`keepTalk`) once its questions are done.
@@ -151,7 +151,7 @@ export function parseTurn(line: string): Turn | { error: string } | null {
 // other side (a tap without the permission hears silence instead of failing), prefixed "them: only silence so far".
 const PERMISSION = "permission: ";
 const SILENCE = /^them: only silence so far/;
-/** a stderr line of the helper as the sentence the notch shows (it still carries the Settings address, the notch
+/** a stderr line of the helper as the sentence a face shows (it still carries the Settings address, the face
  *  strips it from the line and opens it on a press), or null for any other line (pure) */
 export function permissionLine(line: string): string | null {
   const i = line.indexOf(PERMISSION);
@@ -726,7 +726,7 @@ async function startOnce(): Promise<{ talk: string } | { error: string }> {
       onTurn(t, p);
     });
     // stderr: diagnostics for the log; a permission sentence also answers the start (in its first second) and, after
-    // it, reaches every face as the talk's state with its error, so the notch says it on the line (RUBRIC A14)
+    // it, reaches every face as the talk's state with its error, so a face says it on the line (RUBRIC A14)
     createInterface({ input: child.stderr }).on("line", (l) => {
       console.log(`listen: ${l}`);
       const why = permissionLine(l);
@@ -962,7 +962,7 @@ export async function handleAnticipate(face: Face, msg: { type: string; [k: stri
         return answer({ ok: true });
       }
       case "anticipate.answer": {
-        // sitting 1's questions in the notch: kept for an old face only; the questions are Conversations' now (talks.answer)
+        // sitting 1's questions, as the first face asked them; the questions are Conversations' now (talks.answer)
         const e = last;
         if (!e) return answer({ error: "no talk to keep" });
         const i = Number(msg.i);

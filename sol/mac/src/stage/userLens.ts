@@ -5,6 +5,12 @@
 import { useSyncExternalStore } from "react";
 import type { Lens } from "./model";
 import { LENSES } from "./lens";
+import { stageWhole } from "../flag";
+import { spineOn } from "../spine/flag";
+
+/** the lens is one setting, not a pill per session: behind stage.whole (#954), and with the spine on (2026-11-11, Marco:
+ *  the view is a Build setting, "mostly cosmetics": pick one and all of Build runs your projects that way) */
+export const oneLens = () => stageWhole() || spineOn();
 
 const KEY = "sol.lens";
 const subs = new Set<() => void>();

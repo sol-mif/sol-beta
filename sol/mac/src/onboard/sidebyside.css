@@ -1,0 +1,32 @@
+/* Your setup, side by side (SideBySide.tsx, #1423): two columns, theirs and Jelly's, inside the closing moment's glass */
+.obs { display: flex; flex-direction: column; padding: var(--s4); gap: var(--s2); min-height: 0; }
+.obs-head { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); color: var(--dim); padding-bottom: var(--s1); border-bottom: 1px solid var(--edge); }
+.obs-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s3); padding: 1px; }
+.obs-list section { display: flex; flex-direction: column; gap: var(--s1); }
+.obs-list h4 { margin: 0; color: var(--mute); font-weight: 500; }
+.obs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2px var(--s4); font-size: var(--t-body); line-height: 1.35; color: var(--ink); }
+.obs-row > div { display: flex; flex-direction: column; min-width: 0; }
+.obs-row em, .obs-row i { font-style: normal; font-size: var(--t-label); color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obs-row.agree .both { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: var(--s2); }
+.obs-row.agree .both span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obs-row.agree .both i { margin-left: auto; color: var(--dim); }
+.obs-row.adds .j span, .obs-row.differ .j span { color: var(--dim); }
+.obs-row.mine[data-owner="team"] span { color: var(--dim); }
+/* a disagreement: the only rows that ask; outlined until pressed */
+.obs-row.differ:not(.later) { padding: var(--s2); border-radius: 10px; outline: 1px dashed rgb(from var(--on) r g b / .3); outline-offset: -1px; }
+.obs-row.differ.settled { outline: 0; background: rgb(from var(--on) r g b / .05); }
+.obs-row.differ.later { opacity: .6; }
+.obs-row > .obs-pick, .obs-row > .obs-won { flex-direction: row; align-items: baseline; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); padding-top: var(--s1); }
+.obs-pick button, .obs-won button { border: 0; background: none; padding: 0; font: inherit; font-size: var(--t-label); color: var(--dim); cursor: pointer; }
+.obs-pick button:hover, .obs-won button:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.obs-pick button[data-pick="yours"] { color: var(--ink); }
+.obs-won span { font-size: var(--t-label); color: var(--ink); flex: 1; min-width: 0; }
+.obs-more { color: var(--mute); }
+.obs-foot { display: flex; align-items: center; gap: var(--s3); padding-top: var(--s2); border-top: 1px solid var(--edge); }
+.obs-foot > :first-child { color: var(--dim); }
+.obs-foot > :last-child { margin-left: auto; }
+/* how far Jelly may change their own files: the level's words, one row under it */
+.obs-reach { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s4); }
+.obs-reach [role="radiogroup"] { display: grid; grid-template-columns: repeat(3, 1fr); }
+.obs-reach button { white-space: nowrap; border: 0; background: none; padding: 0; text-align: left; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); cursor: pointer; }
+.obs-reach button.on { color: var(--ink); }

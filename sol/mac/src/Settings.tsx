@@ -1,3 +1,4 @@
+import { OnboardRow } from "./onboard/OnboardRow";
 import { useEffect, useState } from "react";
 import { Fold, Turn } from "./MotionKit";
 import { CFG } from "./motion";
@@ -9,16 +10,39 @@ import { CellRange, Status } from "./creature/indicators";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useRenovation } from "./renovation";
+import { useSidePrefs, setSidePrefs, useKnown, folderEdit, type SidePrefs } from "./home/sidePrefs";
 import { applyLook, BUBBLES, LOOK_DEFAULT, SKINS, SWATCHES } from "./look";
 import { PinRows } from "./cowork/Pin";   // pin, and go back to a release of the last thirty days (#426)
 import { AsidesRows } from "./cowork/Asides";   // what was set aside, and bring back (#425)
-import { SettingsShell, ShellSection, useShell } from "./settingsShell";
-import { TimelineMini, askEngine } from "./cowork/Timeline";   // the small timeline: only me (#424)
+import { SettingsShell, ShellSection, Switch, useShell, type Scope } from "./settingsShell";
+import { askEngine } from "./cowork/askEngine";
+import { ReleasesMini } from "./cowork/Releases";   // only me: the release I run and whether I am behind (#1299)
 import { SwitchRow } from "./cowork/v3/SwitchRow";   // fr-30 slice 8: the Cowork v3 switch, under me
+import { OldRow } from "./cowork/whole/OldRow";   // Cowork, whole (#1173): "old Cowork", for one release
 import { CleanRow, FrameRow } from "./home/CleanRow";
-import { stageWhole } from "./flag";   // #954: the lens, one setting
+import { TryingRows } from "./TryingRows";   // MY SOL only: the night's build switches as rows
+import { AgentsRow } from "./agents/Row";   // #1327: Agents mode's switch
+import { ShownRow } from "./shown/ShownRow";
+import { useShown } from "./shown/flag";
+import { CrossRow } from "./cross/CrossRow";
+import { ScreensRow } from "./screens/ScreensRow";   // #1090: Jelly across screens
+import { useSaidRows } from "./cross/moving";   // #1031: Home and Build, one place
 import { LENSES, LENS_NAMES } from "./stage/lens";
-import { LENS_HINTS, setUserLens, useUserLens } from "./stage/userLens";   // #589: the clean Home's switch, under me
+import { LENS_HINTS, oneLens, setUserLens, useUserLens } from "./stage/userLens";
+import { KINDS as MOMENT_KINDS } from "./notify/moments";   // the one notification (#845): Settings' one list   // #589: the clean Home's switch, under me
+import { SortedRow } from "./work/sorted";   // #1016: the sorted sidebar's switch, under me
+import { OneRow } from "./one/OneRow";   // #1002: the one session's switch, under me
+import { TeamRow } from "./one/TeamRow";   // #1002: the team size's switch, under the one session's
+import { SnapRow } from "./snap/SnapRow";   // #1024: pieces that snap, under the team size's
+import { YoursList, YoursRow } from "./yours/YoursSettings";
+import { useBuildYours } from "./yours/live";   // #1089: Build becomes yours, its switch and its list
+import { PiecesRow } from "./folderPieces/PiecesRow";   // #1092: pieces in Build's project folders
+import { HomePiecesRow } from "./folderPieces/HomePiecesRow";   // #1092: pieces in Home's folders, in Settings › home (#1123)
+import { LongRow } from "./one/LongRow";   // #1002: the long project's switch, under the one session's
+import { WorldRow } from "./home/world3d/WorldRow";   // #1093: Home's world, in Home's own section
+import { ConnectionsRow } from "./onboard/ConnectionsRow";   // #1229: what Sol reads, each way in with its state, in Home's own section
+import { useTicketsOn, setTicketsOn } from "./one/tickets";   // build.tickets: an orchestration session routes to tickets
+import { SpaceRow } from "./pieces/SpaceRow";   // build.space: Build as one space of pieces
 
 // Mutable mode (lib.rs, hot.rs): the app's windows load Vite's dev pages, so edits to sol/mac/src appear in place.
 // Only inside Sol.app; in a plain browser there is no shell to ask.
@@ -39,25 +63,22 @@ function useFace(): [Face | null, (hot: boolean) => void] {
   return [face, set];
 }
 
-// #954, stage.whole (whole.html scene 11): how work is drawn, one setting for you, read by Home, Build and Cowork; the
-// per-session lens pill is gone
-function LensDrawer({ open, onToggle }: { open: boolean; onToggle: () => void }) {
-  const lens = useUserLens();
+// Takes the place of the talk and the box. One drawer open at a time; the height animates with a grid row.
+// build.tickets (off by default): an orchestration session hands each piece of work to its own session; Build's own, so it lives here
+function TicketsRow() {
+  const sh = useShell();
+  const on = useTicketsOn();
+  if (!sh || sh.sel !== "switches") return null;
   return (
-    <Drawer name="how work is drawn" open={open} onToggle={onToggle}>
-      <p className="hint-line top">one setting for you, on every machine you open: the same blocks, drawn four ways</p>
-      <div className="lens-pick" role="radiogroup" aria-label="how work is drawn">
-        {LENSES.map((l) => (
-          <button key={l} role="radio" aria-checked={lens === l} className={lens === l ? "on" : ""} onClick={() => setUserLens(l)}>
-            <b>{LENS_NAMES[l]}</b><span>{LENS_HINTS[l]}</span>
-          </button>
-        ))}
+    <div className="v3-switch">
+      <div className="field-r">
+        <div className="lab"><span>tickets</span><small>an orchestration session hands each piece of work to its own session and keeps only a summary</small></div>
+        <Switch on={on} set={setTicketsOn} label="tickets" />
       </div>
-    </Drawer>
+    </div>
   );
 }
 
-// Takes the place of the talk and the box. One drawer open at a time; the height animates with a grid row.
 export function Drawer({ name, open, onToggle, children }: { name: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
   if (useShell()) return <ShellSection name={name}>{children}</ShellSection>;   // in Settings: one section of the rail, drawn when picked
   return (
@@ -105,14 +126,18 @@ export const FALLBACK: S = {
 // A slider shows live while it drags (applyLook on the root) and tells the engine once, at the end, like patience.
 export function LookDrawer({ s, off, onSet, open, onToggle }: { s: S; off: boolean; onSet: (patch: object) => void; open: boolean; onToggle: () => void }) {
   const look = s.look ?? LOOK_DEFAULT;
+  const shownOn = useShown();
   const [live, setLive] = useState<{ alpha?: number; blur?: number; text?: number }>({});
   const alpha = live.alpha ?? look.alpha, blur = live.blur ?? look.blur, text = live.text ?? look.text ?? LOOK_DEFAULT.text;
   const drag = (k: "alpha" | "blur" | "text", v: number) => { setLive((l) => ({ ...l, [k]: v })); applyLook({ ...look, ...live, [k]: v }); };
   const drop = (k: "alpha" | "blur" | "text") => { if (live[k] !== undefined) { onSet({ look: { [k]: live[k] } }); setLive((l) => ({ ...l, [k]: undefined })); } };
   const custom = !SWATCHES.some(([c]) => c === look.color);
+  // #1031, say it and Settings moves: the rows a sentence moved light up, and a slider glides from where it was
+  const lit = useSaidRows((k, v) => setLive((l) => ({ ...l, [k]: v })));
+  const mv = (row: string) => (lit.has(row) ? { "data-cross-moving": "1" } : {});
   return (
     <Drawer name="look" open={open} onToggle={onToggle}>
-      <div className="field-r">
+      <div {...mv("base")} className="field-r">
         <div className="lab"><span>base</span><small>the window's colour, over the desktop</small></div>
         <div className="swatches">
           {SWATCHES.map(([c, name]) => (
@@ -124,7 +149,7 @@ export function LookDrawer({ s, off, onSet, open, onToggle }: { s: S; off: boole
           </label>
         </div>
       </div>
-      <div className="field-r">
+      <div {...mv("opacity")} className="field-r">
         <div className="lab"><span>opacity</span><small>how much of the desktop shows through</small></div>
         <div className="range">
           <CellRange min={50} max={100} step={1} value={Math.round(alpha * 100)} aria-label="opacity" disabled={off}
@@ -132,7 +157,7 @@ export function LookDrawer({ s, off, onSet, open, onToggle }: { s: S; off: boole
           <span className="val">{alpha.toFixed(2)}</span>
         </div>
       </div>
-      <div className="field-r">
+      <div {...mv("blur")} className="field-r">
         <div className="lab"><span>blur</span><small>of the desktop behind</small></div>
         <div className="range">
           <CellRange min={0} max={64} step={1} value={blur} aria-label="blur" disabled={off}
@@ -140,7 +165,7 @@ export function LookDrawer({ s, off, onSet, open, onToggle }: { s: S; off: boole
           <span className="val">{blur} px</span>
         </div>
       </div>
-      <div className="field-r">
+      <div {...mv("text")} className="field-r">
         <div className="lab"><span>text</span><small>the chat's words alone; nothing around them grows</small></div>
         <div className="range">
           <CellRange min={12} max={24} step={1} value={text} aria-label="text size" disabled={off}
@@ -148,19 +173,19 @@ export function LookDrawer({ s, off, onSet, open, onToggle }: { s: S; off: boole
           <span className="val">{text} px</span>
         </div>
       </div>
-      <div className="field-r bubbles">
+      <div {...mv("skin")} className="field-r bubbles">
         <div className="lab"><span>home's skin</span><small>{SKINS.find(([k]) => k === (look.skin ?? LOOK_DEFAULT.skin))?.[2]}</small></div>
         <div className="pair">
           {SKINS.map(([k, name]) => (
-            <button key={k} className={`bpill ${(look.skin ?? LOOK_DEFAULT.skin) === k ? "on" : ""}`} disabled={off} onClick={() => onSet({ look: { skin: k } })}>{name}</button>
+            <button key={k} className={`bpill ${(look.skin ?? LOOK_DEFAULT.skin) === k ? "on" : ""}`} title={name} aria-label={name} disabled={off} onClick={() => onSet({ look: { skin: k } })}>{shownOn ? <span className={`sh-skin ${k}`} aria-hidden="true" /> : name}</button>
           ))}
         </div>
       </div>
-      <div className="field-r bubbles">
+      <div {...mv("bubble")} className="field-r bubbles">
         <div className="lab"><span>your bubble</span><small>a cosmetic pick; the seat's colour stays the one hue</small></div>
         <div className="pair">
           {BUBBLES.map(([k, name]) => (
-            <button key={k} className={`bpill ${look.bubble === k ? "on" : ""}`} disabled={off} onClick={() => onSet({ look: { bubble: k } })}>{name}</button>
+            <button key={k} className={`bpill ${look.bubble === k ? "on" : ""}`} title={name} aria-label={name} disabled={off} onClick={() => onSet({ look: { bubble: k } })}>{shownOn ? <span className="sh-bub" data-bubble={k} aria-hidden="true"><span className="msg me" /></span> : name}</button>
           ))}
         </div>
       </div>
@@ -180,16 +205,77 @@ type Voiced = S & { voiceVendor?: "auto" | "gemini" | "elevenlabs"; elevenVoice?
 function Shut({ onClose }: { onClose: () => void }) {
   return <button className="barbtn settings-x" onClick={onClose} title="close (esc)" aria-label="close settings">×</button>;
 }
+// #954, stage.whole (whole.html scene 11): how work is drawn, one setting for you, read by Home, Build and Cowork; the
+// per-session lens pill is gone
+function LensDrawer({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const lens = useUserLens();
+  return (
+    <Drawer name="how work is drawn" open={open} onToggle={onToggle}>
+      <p className="hint-line top">one pick for all of Build: the same sessions and artifacts, drawn four ways</p>
+      <div className="lens-pick" role="radiogroup" aria-label="how work is drawn">
+        {LENSES.map((l) => (
+          <button key={l} role="radio" aria-checked={lens === l} className={lens === l ? "on" : ""} onClick={() => setUserLens(l)}>
+            <b>{LENS_NAMES[l]}</b><span>{LENS_HINTS[l]}</span>
+          </button>
+        ))}
+      </div>
+    </Drawer>
+  );
+}
 
-export function Settings({ s: real, stale, info, up, health = null, goBack = null, send, models, efforts, sampling, onSet, onHear, first = "voice", more, onClose }: {
+
+// Build's side, set by the person (home/sidePrefs.ts, 2026-11-11): the sort, how long quiet work stays, motion
+function SideDrawer({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const p = useSidePrefs();
+  const known = useKnown(), keys = known.map((k) => k.key);   // the side's folders in its order, hidden ones too (Side.tsx tells them)
+  const step = (i: number, by: -1 | 1) => { const to = i + by; if (to < 0 || to >= keys.length) return; folderEdit.move(keys, keys[i], by < 0 ? keys[to] : keys[to + 1] ?? null); };
+  return (
+    <Drawer name="sidebar" open={open} onToggle={onToggle}>
+      <p className="hint-line top">Sol sorts the list for you; here you say how. Pins are on the rows: point at one, press its pin</p>
+      <div className="field-r">
+        <div className="lab"><span>sorted</span><small>{p.sort === "needs" ? "what waits on you first, then pinned, running, each folder's recent work, and earlier" : "each folder with its sessions, newest first"}</small></div>
+        <Pick value={p.sort} options={[["needs", "by what needs you"], ["folder", "by folder"]]} onChange={(v) => setSidePrefs({ sort: v as SidePrefs["sort"] })} />
+      </div>
+      <div className="field-r">
+        <div className="lab"><span>quiet work stays</span><small>how long a session you have not touched keeps its place before it folds into earlier</small></div>
+        <Pick value={String(p.stay)} disabled={p.sort !== "needs"} options={[["1", "a day"], ["3", "three days"], ["7", "a week"]]} onChange={(v) => setSidePrefs({ stay: Number(v) as SidePrefs["stay"] })} />
+      </div>
+      <div className="field-r">
+        <div className="lab"><span>rows move</span><small>a session that changes place is seen travelling there</small></div>
+        <Switch on={p.motion} label="rows move" set={(v) => setSidePrefs({ motion: v })} />
+      </div>
+      <p className="hint-line">folders: the same list as the side's edit. Name one your way, move it up or down, or keep it off the side; its sessions that need you still show</p>
+      {known.map((k, i) => (
+        <div className="field-r" key={k.key} data-folder-row={k.key}>
+          <div className="lab">
+            <input className="side-fname" defaultValue={k.name} key={k.name} aria-label={`the name of ${k.name}`} spellCheck={false}
+              onKeyDown={(ev) => { if (ev.key === "Enter") ev.currentTarget.blur(); }} onBlur={(ev) => { if (ev.currentTarget.value.trim() !== k.name) folderEdit.name(k.key, ev.currentTarget.value); }} />
+            <small title={k.key}>{k.key.replace(/^\/Users\/[^/]+/, "~")} · {k.n} {k.n === 1 ? "session" : "sessions"}</small>
+          </div>
+          <span className="side-fmove">
+            <button type="button" disabled={i === 0} aria-label={`move ${k.name} up`} onClick={() => step(i, -1)}>↑</button>
+            <button type="button" disabled={i === known.length - 1} aria-label={`move ${k.name} down`} onClick={() => step(i, 1)}>↓</button>
+          </span>
+          <Switch on={!p.hidden.includes(k.key)} label={`${k.name} on the side`} set={(v) => folderEdit.hide(k.key, !v)} />
+        </div>
+      ))}
+      {!known.length && <p className="hint-line">the folders show here once Build's side is open, sorted by what needs you</p>}
+    </Drawer>
+  );
+}
+
+export function Settings({ s: real, stale, info, up, health = null, goBack = null, send, subscribe, models, efforts, sampling, onSet, onHear, first = "voice", more, scope, onScope, onClose }: {
   s: S | null; stale: boolean; info: EngineInfo | null; up: boolean; health?: Health | null; models: Models; efforts: Effort[]; sampling: boolean;
   goBack?: GoBackPlan | null; send?: (o: object) => void;   // the Go back row (#18): what a click would do, and the wire to ask
+  subscribe?: (fn: (m: any) => void) => () => void;   // the wire's answers: Settings › home's ways in ask the engine (#1229)
   onSet: (patch: object) => void; onHear: (voice: string) => void;
   first?: string;   // the drawer open at first
   more?: (open: string, toggle: (n: string) => void) => React.ReactNode;   // Work's own drawers, after the shared ones
+  scope?: Scope; onScope?: (to: Scope) => void;   // the half shown (Sol's or Build's), and the way across (settingsShell.tsx)
   onClose: () => void;   // back to the chat
 }) {
   const [open, setOpen] = useState(up ? first : "engine");
+  const yoursOn = useBuildYours();   // #1089: off, only its switch's row shows (no "yours" section)
   const note = useRenovation().note;   // a compile or page error with no part to show it in (issue #15)
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [now, setNow] = useState(Date.now());
@@ -247,7 +333,7 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
         {face && <><dt>face</dt><dd><Pick value={face.hot ? "hot" : "bundled"} options={[["bundled", "bundled"], ["hot", "hot, edits appear live"]]} onChange={(v) => setFace(v === "hot")} /></dd>
           <dt /><dd className={`face-state ${face.state === "hot" ? "hot" : face.state === "dev server down" ? "down" : ""}`}>{face.state}</dd></>}
         <dt>address</dt><dd className="mono">{ENGINE}</dd>
-        {up && <><dt>release</dt><dd><TimelineMini ask={askEngine} /></dd></>}
+        {up && <><dt>release</dt><dd><ReleasesMini ask={askEngine} /></dd></>}
         <PinRows up={up} />
         {health && <><dt>kept</dt><dd>{health.kept ? "by its keeper" : "not by its keeper"}{health.build ? `; build watcher ${health.build.alive ? "alive" : "dead"}${health.build.errors ? `, ${health.build.errors} error${health.build.errors > 1 ? "s" : ""}` : ""}` : ""}</dd></>}
         {up && send && <><dt>go back</dt><dd className="goback">
@@ -275,7 +361,7 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
   );
   if (!up || (!real && !stale)) {
     return (
-      <SettingsShell open="engine" setOpen={setOpen} peek={{ engine: <i className={`sdot ${up ? "up" : "down"}`} /> }}
+      <SettingsShell open="engine" setOpen={setOpen} scope={scope} onScope={onScope} peek={{ engine: <i className={`sdot ${up ? "up" : "down"}`} /> }}
         top={<><Shut onClose={onClose} /><p className="hint-line top stale">{up ? "loading…" : "the engine is down; it comes back by itself under its keeper, or pick the other one"}</p></>}>
         {engineDrawer}
       </SettingsShell>
@@ -312,13 +398,37 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
   };
 
   return (
-    <SettingsShell open={open} setOpen={setOpen} peek={peek}
+    <SettingsShell open={open} setOpen={setOpen} peek={peek} scope={scope} onScope={onScope}
       top={<><Shut onClose={onClose} />{off && <p className="hint-line top stale">the engine is older than this window; restart it to change these</p>}</>}>
       <div className={off ? "settings-off" : ""} style={{ display: "contents" }}>
         <ControlDrawers open={open} toggle={toggle} onSet={onSet} />
         <SwitchRow s={real} off={off} onSet={onSet} />
+        <OldRow />
         <CleanRow />
+        <CrossRow />
+        <ScreensRow />
         <FrameRow />
+        <OnboardRow />
+        {/* Marco, 2026-11-12: a switch dedicated to one mode lives in that mode's own settings; Build's are here */}
+        <Drawer name="switches" open={open === "switches"} onToggle={() => toggle("switches")}>
+          <TryingRows />
+          <AgentsRow />
+          <SortedRow />
+          <OneRow />
+          <TeamRow />
+          <LongRow />
+          <SnapRow />
+          <YoursRow />
+          <PiecesRow />
+          <TicketsRow />
+          <SpaceRow />
+        </Drawer>
+        {yoursOn && <Drawer name="yours" open={open === "yours"} onToggle={() => toggle("yours")}><YoursList /></Drawer>}
+        <Drawer name="home" open={open === "home"} onToggle={() => toggle("home")}>
+          <ConnectionsRow wire={up && send && subscribe ? { send, subscribe } : undefined} />
+          <WorldRow />
+          <HomePiecesRow />
+        </Drawer>
         <Drawer name="voice" open={open === "voice"} onToggle={() => toggle("voice")}>
           <div className="field-r">
             <div className="lab"><span>maker</span><small>who hears and talks on a call</small></div>
@@ -389,8 +499,22 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
           <p className="hint-line">what Claude does without asking in a session, and in every session a card starts</p>
         </Drawer>
 
-        {stageWhole() && <LensDrawer open={open === "drawn"} onToggle={() => toggle("drawn")} />}
+        <Drawer name="notifications" open={open === "notifications"} onToggle={() => toggle("notifications")}>
+          <p className="hint-line top">one moment, one place: in this window while Sol is on your screen, one banner from the Mac while it is not</p>
+          {MOMENT_KINDS.map(([k, label]) => (
+            <div className="field-r" key={k}>
+              <div className="lab"><span>{label}</span></div>
+              <Switch on={s.notify?.moments?.[k] !== false} disabled={off} label={label}
+                set={(v) => onSet({ notify: { ...s.notify, moments: { ...s.notify?.moments, [k]: v } } })} />
+            </div>
+          ))}
+        </Drawer>
+
+        {oneLens() && <LensDrawer open={open === "drawn"} onToggle={() => toggle("drawn")} />}
+        <SideDrawer open={open === "sidebar"} onToggle={() => toggle("sidebar")} />
+
         <LookDrawer s={s} off={off} onSet={onSet} open={open === "look"} onToggle={() => toggle("look")} />
+        <ShownRow />
         {engineDrawer}
         {more?.(open, toggle)}
       </div>

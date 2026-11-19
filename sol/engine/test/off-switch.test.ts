@@ -20,7 +20,7 @@ process.env.SOL_APPDIR = join(root, "app");
 process.env.SOL_LOGDIR = join(root, "log");
 const { syncKernel, kernelNow } = await import("../src/kernel.ts");
 const { Kernel } = await import("./kernels.ts");
-const { SOL_TOOLS, seatTools, runSolTool } = await import("../src/tools.ts");
+const { SOL_TOOLS, seatTools, solToolsNow, runSolTool } = await import("../src/tools.ts");
 const { INSTALL_TOOLS } = await import("../src/install.ts");
 
 const ENGINE = resolve(import.meta.dirname, "..");
@@ -72,9 +72,9 @@ async function stop(c: ChildProcess) {
   if (c.exitCode === null && c.signalCode === null) { c.kill("SIGKILL"); await gone; }
 }
 /** the tools a Codex seat is offered: Sol's stdio MCP server (mcp-stdio.ts), started as Codex starts it, against this engine */
-async function codexTools(url: string): Promise<string[]> {
+async function codexTools(url: string, kernel = false): Promise<string[]> {
   const client = new Client({ name: "off-switch-test", version: "1.0.0" });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: ["--import", "tsx", "src/mcp-stdio.ts"], cwd: ENGINE, env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ENGINE_URL: url }, stderr: "ignore" }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: ["--import", "tsx", "src/mcp-stdio.ts"], cwd: ENGINE, env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ENGINE_URL: url, ...(kernel ? { SOL_KERNEL: "on" } : {}) }, stderr: "ignore" }));
   try { return (await client.listTools()).tools.map((t) => t.name); } finally { await client.close(); }
 }
 /** a route's answer, as status and body */
@@ -93,7 +93,7 @@ test("a real engine with the frame off: no log folder, no folder of Sol's own, m
     // the tools a seat is offered are main's list: no `things` (it could only say "the frame is off"), no block's tool
     const names = await codexTools(url);
     assert.ok(!names.includes("things") && !names.includes("tracker") && !names.some((n) => n.startsWith("thing_")), names.join(", "));
-    assert.deepEqual(names, SOL_TOOLS.map((t) => t.name), "the Codex seat's list is Sol's tools as main has them");
+    assert.deepEqual(names, solToolsNow().map((t) => t.name), "the Codex seat's list is Sol's tools as main has them (reach's behind their switches, #1276)");
 
     // the kernel's own routes: with the frame off the engine has none of them, as main has none, so each answers as a
     // route nobody has does, and no key, press or folder is written
@@ -112,7 +112,7 @@ test("a real engine with the frame off: no log folder, no folder of Sol's own, m
     }
 
     // nothing of the kernel's anywhere: not under this HOME (~/Library/Application Support/Sol, ~/.local/share/sol), no log
-    // folder in the home (the old place, the mirror), no log or app folder beside it
+    // folder in the home (the old place), no log or app folder beside it
     assert.equal(existsSync(join(me, "Library", "Application Support", "Sol")), false, "no ~/Library/Application Support/Sol");
     assert.equal(existsSync(join(me, ".local", "share", "sol")), false, "no ~/.local/share/sol");
     assert.equal(existsSync(join(home, "log")), false, "no log folder in the home");
@@ -130,7 +130,7 @@ test("the same engine with the frame on: the install tool and the blocks' tools 
       log = await (await fetch(`${url}/log`)).json();
       await new Promise((r) => setTimeout(r, 200));
     }
-    const names = await codexTools(url);
+    const names = await codexTools(url, true);   // as index.ts starts it with the kernel there
     assert.ok(names.includes("things"), `the install tool is offered with the frame on (${names.join(", ")})`);
     assert.ok(names.includes("thing_sticky_note"), "and a block's tool");
     const key = JSON.stringify({ name: "github", key: "ghp_" + "x".repeat(36), purpose: "a test", hosts: ["api.github.com"] });
@@ -147,15 +147,15 @@ test("in the engine's process: a seat is offered the install tool only while the
   await syncKernel(h, false);
   assert.equal(kernelNow(), null);
   assert.ok(!SOL_TOOLS.some((t) => t.name === "things"), "Sol's tools are main's list");
-  assert.deepEqual(seatTools().map((t) => t.name), SOL_TOOLS.map((t) => t.name), "the frame off: main's list, nothing more");
+  assert.deepEqual(seatTools().map((t) => t.name), solToolsNow().map((t) => t.name), "the frame off: main's list, nothing more");
   assert.equal(text(await runSolTool("things", { action: "install", id: "week" })), "Unknown browser tool: things", "main's answer to a name it does not have");
   assert.equal(text(await runSolTool("tracker", {}, { seat: "sol:block" })), "Unknown browser tool: tracker");
   await syncKernel(h, true);
   try {
-    assert.deepEqual(seatTools().map((t) => t.name), [...SOL_TOOLS, ...INSTALL_TOOLS].map((t) => t.name), "the frame on: the install tool too");
+    assert.deepEqual(seatTools().map((t) => t.name), [...solToolsNow(), ...INSTALL_TOOLS].map((t) => t.name), "the frame on: the install tool too");
     assert.match(text(await runSolTool("things", { action: "install", id: "nope" })), /^failed: /, "and it answers as the install tool");
   } finally { await syncKernel(h, false); }
-  assert.deepEqual(seatTools(), SOL_TOOLS, "off again: gone again");
+  assert.deepEqual(seatTools(), solToolsNow(), "off again: gone again");
 });
 
 test("a kernel is never made without its two folders, so nothing can fall back on the person's own: it fails before it writes", () => {

@@ -126,7 +126,7 @@ test("switch off: no team.v3.talk / setup / join route answers (F7, this slice)"
   await W.handleTeam(face, { type: "team.v3.talk.threads", rid: "on", project: "sol" });
   assert.equal(sent.at(-1)?.type, "work.v3.talk.threads", "on: it answers, as work.v3.*");
   assert.equal(sent.at(-1)?.threads?.[0]?.id, "general");
-  await W.handleTeam(face, { type: "team.v3.talk.say", rid: "say", project: "sol", thread: "general", text: "@marco hello" });
+  await W.handleTeam(face, { type: "team.v3.talk.say", fromSol: true, rid: "say", project: "sol", thread: "general", text: "@marco hello" });
   assert.ok(sent.some((m) => m.type === "work.v3.talk.line" && m.text === "@marco hello"), "a line is pushed to the faces");
   W.removeTeamFace(face);
   process.env.SOL_COWORK_V3 = "off";

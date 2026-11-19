@@ -12,7 +12,7 @@ Object.assign(process.env, {
   GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1",
   GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t",
 });
-const { leakIn, guardProbe, importsSolDev, teamNames, readText, commitLeak, fenceOf, EXPORT_IDENT, NEUTRAL_HOME, HOME_TEXT, BETA_RULES } = await import("../src/team/leak.ts");
+const { leakIn, guardProbe, importsSolDev, teamNames, notYetPublic, readText, commitLeak, fenceOf, EXPORT_IDENT, NEUTRAL_HOME, HOME_TEXT, BETA_RULES } = await import("../src/team/leak.ts");
 const { isSolDev, solDevIn, SAFE_RULES, SOL_DEV_REPOS, TEAM_MARKS } = await import("../../harness/sol-dev.mjs");
 const { devOnly, ROOT, harnessFiles } = await import("./dev-copy.ts");
 const { exportTree, exportCheck } = await import("../src/team/ship.ts");
@@ -228,8 +228,9 @@ test("code is not read for words, but only code: notes, data and the site are; a
   for (const path of ["sol/engine/src/x.ts", "sol/mac/src/y.tsx", "sol/HELP.md"])
     assert.equal(leakIn([f(path, `const a = "${MAC}computer/x";\n`)]), `${path}:1: a person's home folder, ${MAC}`, path);
   assert.equal(leakIn([f("sol/engine/src/x.ts", `const b = '${BOX}x';\n`)]), `sol/engine/src/x.ts:1: a person's home folder, ${BOX}`);
-  for (const ok of ["/Users/someone/x", "/Users/you/Sol", "/home/runner/work", "sol/home/memory/x", "$t/home/Library/x", "~/Library/x", "/Users/m/x", "$HOME/.claude/x"])
+  for (const ok of ["/Users/someone/x", "/Users/you/Sol", "/home/runner/work", "sol/home/memory/x", "$t/home/Library/x", "~/Library/x", "/Users/m/x", "$HOME/.claude/x", "sol://home/block/x", "sol://home/folder/bio"])
     assert.equal(leakIn([f("sol/engine/src/x.ts", `const p = "${ok}";\n`)]), null, ok);
+  assert.equal(leakIn([f("sol/engine/src/x.ts", `const u = "file://${MAC}x";\n`)]), `sol/engine/src/x.ts:1: a person's home folder, ${MAC}`, "a file address is still a disk path");
   assert.equal(leakIn([f("sol/engine/launchd/com.marco.sol-engine.plist", `<string>${MAC}x</string>\n`)]), null, "the plists setup rewrites");
 });
 
@@ -404,6 +405,22 @@ test("a team word in what speaks to a tester's agent is refused, a team member's
   assert.equal(leakIn([f("sol/skills/sol/look.md", "robinson's colours, frankly\n")], names), null, "a whole word only");
 });
 
+// #1323: the words marketing has not made public yet are read from the release's own list, a team file, and refused in
+// every file that ships, code included. Made-up words here: this file ships, so a real one would stop the export
+test("a word marketing keeps back is refused in any file that ships, code and comments too, read from the release's list", () => {
+  const kept = notYetPublic(f("docs/marketing/not-yet-public.txt", "# a note\n\n  Zephyrine  \nbright name\nab\n#Quillon\n"));
+  assert.deepEqual(kept, ["Zephyrine", "bright name"], "notes, blanks and words under three letters are not words");
+  assert.deepEqual(notYetPublic(undefined), [], "no list in the release: nothing kept back");
+  assert.equal(leakIn([f("sol/engine/src/brand.ts", "const label = \"Sol\";\n// soon: zephyrine\n")], [], kept),
+    `sol/engine/src/brand.ts:2: a word marketing has not made public, "zephyrine"`, "code is read too: a comment ships");
+  assert.equal(leakIn([f("sol/mac/src/App.tsx", "the bright\n  name, at last\n")], [], kept),
+    `sol/mac/src/App.tsx:1: a word marketing has not made public, "bright name"`, "any case, any space between its words");
+  assert.equal(leakIn([f("site/index.html", "<h1>Zephyrine</h1>\n")], [], kept), `site/index.html:1: a word marketing has not made public, "Zephyrine"`);
+  assert.equal(leakIn([f("sol/setup", "#!/bin/sh\necho ZEPHYRINE\n")], [], kept), `sol/setup:2: a word marketing has not made public, "ZEPHYRINE"`);
+  assert.equal(leakIn([f("sol/mac/src/App.tsx", "zephyrines, a brightname, bright names\n")], [], kept), null, "a whole word or phrase only");
+  assert.equal(leakIn([f("sol/mac/src/App.tsx", "// soon: Zephyrine\n")]), null, "with no list, nothing is kept back");
+});
+
 // the export itself: sol-dev's home and a planted team note stay home, a team word stops it, nothing written
 function house() {
   const repo = mkdtempSync(join(tmpdir(), "sol-beta-leak-"));
@@ -438,6 +455,25 @@ test("the export writes the neutral home, never sol-dev's, and refuses a planted
     /^Error: not exported: sol\/skills\/sol\/SKILL\.md:4: a team word, "Robin"; the beta repo gets nothing until it is out$/);
   assert.equal(git(repo, "count-objects"), objects, "nothing written");
   await assert.rejects(exportCheck(join(repo, "sol"), "HEAD"), /a team word, "Robin"/, "the check alone says the same");
+});
+
+test("the export reads marketing's list from the release, never ships it, and refuses a kept-back word in code (#1323)", async () => {
+  const repo = house();
+  put(repo, "docs/marketing/not-yet-public.txt", "# the words kept back\nZephyrine\n");
+  git(repo, "add", "-A"); git(repo, "commit", "-qm", "marketing's list");
+  const { files } = await exportCheck(join(repo, "sol"), "HEAD");
+  const { commit } = await exportTree(join(repo, "sol"), git(repo, "rev-parse", "HEAD"), "dev-20261116");
+  const shipped = git(repo, "ls-tree", "-r", "--name-only", commit).split("\n");
+  assert.equal(shipped.length, files);
+  assert.ok(!shipped.some((p) => p.startsWith("docs/")), "the list itself stays home");
+
+  put(repo, "sol/engine/src/index.ts", "export {};   // Zephyrine, soon\n");
+  git(repo, "commit", "-qam", "a word too early");
+  const objects = git(repo, "count-objects");
+  await assert.rejects(exportTree(join(repo, "sol"), git(repo, "rev-parse", "HEAD"), "dev-20261117"),
+    /^Error: not exported: sol\/engine\/src\/index\.ts:1: a word marketing has not made public, "Zephyrine"; the beta repo gets nothing until it is out$/);
+  assert.equal(git(repo, "count-objects"), objects, "nothing written");
+  await assert.rejects(exportCheck(join(repo, "sol"), "HEAD"), /a word marketing has not made public, "Zephyrine"/, "the check alone says the same");
 });
 
 test("ci's leak job: leak.ts --check exits 1 naming a planted team file's rule, 0 once it is out", () => {
@@ -476,7 +512,7 @@ test("the guard outside sol-dev: the team's rules step aside, home data, keys an
     assert.equal(t.bash("git commit -m x"), "", "a commit on main is theirs to make");
     assert.equal(t.bash("git merge feature"), "", "merging is theirs");
     assert.equal(t.bash("gh pr create --title x"), "", "no test note asked");
-    assert.equal(t.bash("gh pr ready 3"), "", "no hand-in");
+    assert.equal(t.bash("gh pr ready 3"), "", "marking ready is theirs");
     assert.equal(t.call("Write", { file_path: join(t.dir, "x.sh"), content: "curl localhost:7777/tonight" }), "", "no nights");
     assert.equal(t.bash("open -a Sol"), "window", "the window is still the person's");
     put(t.dir, "sol/home/memory/me.md", "a fact\n");
@@ -489,5 +525,5 @@ test("the guard outside sol-dev: the team's rules step aside, home data, keys an
   assert.equal(dev.bash("git merge feature"), "merge", "in sol-dev the team's rules hold");
   assert.equal(dev.bash("git switch -c my-idea"), "branch-without-take");
   assert.equal(dev.bash("git commit -m x"), "main-commit");
-  assert.equal(checkout("git@github.com:sol-mif/sol-dev").bash("gh pr ready 3"), "hand-in", "ssh, no .git: still sol-dev");
+  assert.equal(checkout("git@github.com:sol-mif/sol-dev").bash("git switch -c my-idea"), "branch-without-take", "ssh, no .git: still sol-dev");
 });

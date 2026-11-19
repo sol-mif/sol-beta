@@ -6,14 +6,13 @@
 // API: play(scene, box?, data?) starts a scene or feeds it new data; end(scene, data?) lets it finish its beat and leave
 // clean (never a half-scene). The window draws every running scene on one full-window canvas (Widget.tsx <SceneLayer>,
 // up only while a scene runs), ticked by the shared loop. If there is no box or no room beside it, the scene does not draw and the state draws alone.
-// The notch gets only a 24 px gesture (Sol directing while EDIT runs, notch/Crew.tsx), told over a BroadcastChannel.
 //
 // Tempo is design data, sol/design/tempo.json: every move lasts moveMs (never under minMoveMs) on a slow sine ease, a
 // beat is a move plus beatPauseMs, and two to four hands move at once. Every time below is a multiple of those.
 //
 // The four scenes:
 //   EDIT       a Work turn edits files: three hands rewrite the changed files' rows inside a quiet boundary; the rows
-//              settle, a tick is drawn; Sol directs from the notch.
+//              settle, a tick is drawn.
 //   DICTATE    dictation: a hand holds a notepad beside the box, a second writes the words as they arrive; on send the
 //              notepad is handed into the box.
 //   UNPLUGGED  the engine is down: two hands bring a loose cable and set the plug down near the creature; Marco drags the
@@ -159,13 +158,11 @@ type Run = {
 const runs = new Map<SceneName, Run>();
 let defaultBox: Box | null = null;
 const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-const chan = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("sol-scenes") : null;
 // who wants to know whether a scene runs here (the window's <SceneLayer> mounts its canvas only then)
 const runSubs = new Set<() => void>();
 export const onRuns = (f: () => void) => { runSubs.add(f); return () => { runSubs.delete(f); }; };
 export const running = () => runs.size > 0;
 const announce = () => {
-  chan?.postMessage({ names: [...runs.keys()] });
   if (!runs.size) cursor(false);
   for (const f of runSubs) f();
 };
@@ -248,7 +245,7 @@ let cursorOn = false;
 function cursor(on: boolean) { if (on === cursorOn) return; cursorOn = on; document.documentElement.style.cursor = on ? (drag ? "grabbing" : "grab") : ""; }
 
 // ---- EDIT ------------------------------------------------------------------------------------------------------------
-// Beat 0 the boundary draws itself in as three hands come down from the notch (where Sol directs). Beat 1 the cursor
+// Beat 0 the boundary draws itself in as three hands come down from the top. Beat 1 the cursor
 // selects the first row and rewrites it, the brush repaints the second, the third hand carries the new row in. Beat 2
 // the rows settle, a tick is drawn, the hands go back up. Beat 3 the boundary undraws with its rows, nothing left over.
 // While the turn keeps editing it runs again with the latest files; end() lets the cycle finish.
@@ -597,8 +594,3 @@ function sample(n: SceneName) {
   return {};
 }
 
-// ---- the notch: Sol directing, a 24 px gesture ------------------------------------------------------------------------
-let notchNames: string[] = q?.get("scene") ? [q.get("scene")!] : [];
-chan?.addEventListener("message", (e) => { if (Array.isArray(e.data?.names)) notchNames = e.data.names; });
-/** what the notch may draw of the running scenes: only EDIT's direction (Sol conducting the hands from the notch) */
-export const notchGesture = (): "direct" | null => (notchNames.includes("edit") ? "direct" : null);

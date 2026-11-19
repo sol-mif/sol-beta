@@ -22,7 +22,7 @@ import { featureIn, type Feature } from "./featuremap.js";
 
 const WORD = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-const KINDS = new Set(["uncaught", "turn", "work", "team", "desk", "browser"]);
+const KINDS = new Set(["uncaught", "turn", "work", "team", "desk", "browser", "face"]);
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
 const word = (v: unknown) => (typeof v === "string" && WORD.test(v) ? v : "");

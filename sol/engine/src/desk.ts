@@ -4,6 +4,7 @@
 // remembered as one short paragraph that rides on his next say. Both seats get the desk tools on the
 // MCP server "sol": Claude in-process, Codex through src/mcp-stdio.ts (POST /tool on the engine).
 
+import { sealedFor } from "./agent/seal.js";   // a folder with .agent/ is sealed (the folder's agent)
 import { z } from "zod";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -26,8 +27,6 @@ export function setDeskHome(dir: string) {
 }
 
 const desks = new Map<string, Card[]>(); // sessionId ("" = none) -> cards
-const pins = new Map<string, string>(); // sessionId -> pinned card id
-let pinnedSession: string | undefined; // the conversation whose pin the notch shows
 const faces = new Set<Face>();
 const key = (s?: string) => s ?? "";
 
@@ -37,15 +36,9 @@ export function getDesk(sessionId?: string): Card[] {
 export function deskMsg(sessionId?: string) {
   return { type: "desk", sessionId: sessionId ?? "", cards: getDesk(sessionId) };
 }
-export function pinMsg() {
-  const id = pinnedSession === undefined ? undefined : pins.get(pinnedSession);
-  const card = id ? getDesk(pinnedSession).find((c) => c.id === id) : undefined;
-  return { type: "pin", card: card ?? null };
-}
 export function addFace(f: Face) {
   faces.add(f);
   for (const k of desks.keys()) f.send(deskMsg(k));
-  f.send(pinMsg());
 }
 export function removeFace(f: Face) {
   faces.delete(f);
@@ -53,8 +46,6 @@ export function removeFace(f: Face) {
 function changed(sessionId?: string) {
   const m = deskMsg(sessionId);
   for (const f of faces) f.send(m);
-  const p = pinMsg();
-  for (const f of faces) f.send(p);
 }
 
 // A new conversation opens its desk under the face's draft id; once the seat names it, it is the session's.
@@ -62,8 +53,6 @@ export function adoptDesk(from: string | undefined, to: string) {
   if (!from || from === to || !desks.has(from)) return;
   desks.set(to, [...(desks.get(to) ?? []), ...desks.get(from)!]);
   desks.delete(from);
-  const pin = pins.get(from);
-  if (pin) { pins.set(to, pin); pins.delete(from); if (pinnedSession === from) pinnedSession = to; }
   const lines = notes.get(from);
   if (lines) { notes.set(to, lines); notes.delete(from); }
   const m = { type: "desk", sessionId: from, cards: [] };
@@ -124,6 +113,7 @@ async function inHome(path: string): Promise<{ real: string; rel: string }> {
     throw new Error(`No such file: ${path}`);
   });
   if (!real.startsWith(root + sep)) throw new Error("The desk only shows files inside home/.");
+  if (sealedFor(real, root, root)) throw new Error("That file is in a folder its own agent keeps (sealed, agent/seal.ts); the desk does not show it from here.");
   return { real, rel: real.slice(root.length + 1) };
 }
 
@@ -209,7 +199,6 @@ function drop(sessionId: string | undefined, ids?: string[]) {
   const list = getDesk(sessionId);
   const keep = ids ? list.filter((c) => !ids.includes(c.id)) : [];
   desks.set(key(sessionId), keep);
-  if (pins.has(key(sessionId)) && !keep.some((c) => c.id === pins.get(key(sessionId)))) pins.delete(key(sessionId));
   changed(sessionId);
 }
 
@@ -391,8 +380,7 @@ export const DESK_TOOLS: DeskTool[] = [
         if (c.kind === "timer") bits.push(`${mmss(c.seconds)} timer, ` + (c.startedAt ? `running, ${mmss(remaining(c))} left` : `paused, ${mmss(c.left ?? c.seconds)} left`));
         return bits[0] + ": " + bits.slice(1).join(" | ");
       });
-      const pin = pins.get(key(turn.sessionId));
-      return text(lines.join("\n") + (pin ? `\nPinned to the notch: ${pin}` : ""));
+      return text(lines.join("\n"));
     },
   },
   {
@@ -416,30 +404,7 @@ export const DESK_TOOLS: DeskTool[] = [
       return text(l.length ? l.join("\n") : "The shelf is empty.");
     },
   },
-  {
-    name: "desk_pin",
-    description: "Pin a card (a timer, a flashcard set, a score) to the notch so Marco sees it while he works elsewhere. Pass `id: null` (or leave it out) to unpin.",
-    shape: { id: z.string().nullable().optional().describe("The card's id, or null to unpin.") },
-    line: (a) => {
-      if (!a.id) return "unpinning the notch";
-      const c = [...desks.values()].flat().find((x) => x.id === a.id);
-      return `pinning the ${c?.kind ?? "card"}`;
-    },
-    run: async (a, turn) => {
-      const id = a.id ? String(a.id) : null;
-      if (id && !getDesk(turn.sessionId).some((c) => c.id === id)) throw new Error(`No card "${id}" on the desk.`);
-      pinCard(turn.sessionId, id);
-      return text(id ? `Pinned ${id} to the notch.` : "Unpinned.");
-    },
-  },
 ];
-
-export function pinCard(sessionId: string | undefined, id: string | null) {
-  if (id) { pins.set(key(sessionId), id); pinnedSession = key(sessionId); }
-  else { pins.delete(key(sessionId)); if (pinnedSession === key(sessionId)) pinnedSession = undefined; }
-  const m = pinMsg();
-  for (const f of faces) f.send(m);
-}
 
 // Run one desk tool by name for one conversation. Tells the face what is happening, never throws.
 export async function runDeskTool(name: string, args: unknown, turn: TurnCtx = {}): Promise<ToolResult> {

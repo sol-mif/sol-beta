@@ -5,7 +5,7 @@
 // off not a byte of this, its css or the generated tokens reaches the face.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ENGINE_HTTP } from "../engine";
-import { declarePlace, declared, onPlaces, loadThings, htmlFault, srcdoc, stateOf, flip, ordered, engineFault, canUndo, wroteNow, releaseLines, pressRelease, type Fault, type Loaded, type Refused, type ReleaseWire, type ThingWire } from "./frameRules";
+import { declarePlace, declared, onPlaces, loadThings, htmlFault, srcdoc, stateOf, flip, ordered, engineFault, canUndo, wroteNow, releaseLines, pressRelease, logStep, logAsk, slowDue, type LogLook, type Fault, type Loaded, type Refused, type ReleaseWire, type ThingWire } from "./frameRules";
 import "../tokens.css";
 import tokensCss from "../tokens.css?raw";
 import paletteCss from "../palette.css?raw";
@@ -49,6 +49,7 @@ export const meta = {
 
 const PINS = "sol.frame.pins", CLOSED = "sol.frame.closed";
 const LOG_MS = 2000;   // how often the frame asks the log what happened (#633): a poll, not motion
+const SLOW_MS = 30000;   // with the narrow look, the things are read again this often anyway while the window is seen (#691 step 3)
 const keptList = (k: string): string[] => { try { const v = JSON.parse(localStorage.getItem(k) ?? "[]"); return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []; } catch { return []; } };
 const keepList = (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private */ } };
 const CSS = `${paletteCss}\n${tokensCss}`;
@@ -67,25 +68,39 @@ export function Things() {
   const readRef = useRef<() => void>(() => {});
   useEffect(() => declarePlace("card", "Home"), []);
   useEffect(() => {
-    let live = true, last = -1;
+    let live = true, last = -1, narrow = false, readAt = Date.now(), seqAtRead = -1, failed = false, asking = false;
     const read = () => fetch(`${ENGINE_HTTP}/things`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`the engine answered ${r.status}`))))
-      .then((j) => { if (live) { setWire(j); setDown(null); setNow(Date.now()); } }, (e: Error) => { if (live) setDown(e.message || "no answer"); });
+      .then((j) => { if (live) { failed = false; setWire(j); setDown(null); setNow(Date.now()); } }, (e: Error) => { if (live) { failed = true; setDown(e.message || "no answer"); } });
     readRef.current = read;
     read();
-    const again = () => { if (document.visibilityState === "visible") read(); };
+    const reread = () => { read(); readAt = Date.now(); seqAtRead = last; };
+    const again = () => { if (document.visibilityState === "visible") reread(); };
     window.addEventListener("focus", again);
     document.addEventListener("visibilitychange", again);
     // the log (#633): a step since the last look reads the things again, so a load, a break, an undo or a write shows
-    // as it happens; an engine with the frame off (or older) says so once and is not asked again
+    // as it happens; an engine with the frame off (or older) says so once and is not asked again. With the engine's
+    // narrow look on (log.kinds, #691 step 3) it is asked only for the kinds that can change the things (logStep), the
+    // first time for its newest seq alone; then a slow read at most every SLOW_MS, while the window is seen and only when
+    // the log grew (slowDue), covers what changes the things without a line of its own (the after-release card)
+    // one ask at a time: a look while one is out waits for the next tick, and a cut page's follow-up is the same ask
+    const ask = (): void => {
+      asking = true;
+      fetch(`${ENGINE_HTTP}/log?${logAsk(last)}`).then((r) => (r.ok ? r.json() : null)).then((j: LogLook | null) => {
+        if (!live) return;
+        const step = logStep(last, j);
+        narrow = !!j?.kinds;
+        if (seqAtRead < 0) seqAtRead = step.last;   // the read on mount saw the log as the first answer says it
+        last = step.last;
+        if (step.read) reread();
+        if (step.more) ask(); else asking = false;
+      }, () => { asking = false; });
+    };
     const look = window.setInterval(() => {
       if (document.visibilityState !== "visible" || last === -2) return;
-      fetch(`${ENGINE_HTTP}/log?since=${Math.max(0, last)}`).then((r) => (r.ok ? r.json() : null)).then((j: { off?: boolean; last?: number } | null) => {
-        if (!live) return;
-        if (!j || j.off) { last = -2; return; }
-        if (last >= 0 && (j.last ?? 0) > last) read();
-        last = j.last ?? 0;
-        setNow(Date.now());
-      }, () => {});
+      setNow(Date.now());   // every look, whatever the log says: "wrote X" goes when its four seconds are up
+      // a read that failed is tried again at the next look, as any step on the log did before the narrow look
+      if (failed || (narrow && slowDue({ now: Date.now(), readAt, seqAtRead, last }, SLOW_MS))) reread();
+      if (!asking) ask();
     }, LOG_MS);
     return () => { live = false; window.clearInterval(look); window.removeEventListener("focus", again); document.removeEventListener("visibilitychange", again); };
   }, [again]);
@@ -101,7 +116,8 @@ export function Things() {
       .then((r) => r.json().catch(() => ({ ok: false, why: `the engine answered ${r.status}` })))
       .then((j: { ok?: boolean; why?: string }) => { if (!j.ok) setSaid(`${id}: undo refused, ${j.why ?? "no reason"}`); readRef.current(); }, (e: Error) => setSaid(`${id}: undo, ${e.message}`));
   };
-  if (down) return <div className="fr-note" role="status">things: the engine did not answer ({down})</div>;
+  // inside its row like every note: bare in the talk (a column), the note's flex-basis 100% took the talk's whole height
+  if (down) return <div className="fr-things"><div className="fr-note" role="status">things: the engine did not answer ({down})</div></div>;
   const release = wire?.release ?? null;
   // the card's two presses: the engine does the step, then the home is read again (the card goes with its pass); a
   // refusal stays on the card with its reason, and nothing is read again as if it worked

@@ -4,6 +4,9 @@
 
 .st-stage { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); user-select: none; -webkit-user-select: none; }
 .st-stage.dragging iframe { pointer-events: none; }
+/* #1001: the block in the hand stays in view past the stage's edge (over the talk, onto a session's row to carry it);
+   it vanished under the talk and the side while held. Only while held (drag.ts adds .held), never at rest */
+.st-stage.held { overflow: visible; }
 .st-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); font-size: var(--t-read); line-height: var(--t-read-line); text-align: center; }
 .st-empty b { display: block; color: var(--dim); font-weight: 500; }
 
@@ -38,6 +41,19 @@
 .st-pick { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 4; }
 .st-pick path { fill: none; stroke: var(--sun); stroke-width: 1; }
 .st-block.moving { transition: left var(--d-pour) var(--e-pour), top var(--d-pour) var(--e-pour), width var(--d-pour) var(--e-pour), height var(--d-pour) var(--e-pour); }
+/* the full material (#872, the pick of 2026-11-10): the stage re-laid moves on the jelly page's "full" spring, a pour
+   of 760 ms that passes its place by about 7% and settles back, so a block arriving reads as poured, not slid */
+.st-stage { --st-move: 760ms; --st-over: cubic-bezier(0.34, 1.28, 0.5, 1); }
+.st-stage .st-block.moving { transition: left var(--st-move) var(--st-over), top var(--st-move) var(--st-over), width var(--st-move) var(--st-over), height var(--st-move) var(--st-over); }
+/* one thing asks for the eye (#872): every block but that one keeps its state still, in its words and a quiet rim */
+.st-block.still.waits::before { box-shadow: none; }
+.st-block.still.waits .st-rim { opacity: 0.4; }
+.st-block.still .st-sweep { opacity: 0; animation: none; }
+/* a block waits on you: the composer's drifting heat holds still meanwhile, so the waiting block is the one thing moving */
+.st-room:has(.st-block.waits:not(.still)) :is(.eheat-b, .kheat) { animation-play-state: paused !important; }
+/* words in a block read at 4.5:1 at least over its glass (#872): the quietest words there are the dim ones (5.8:1 over
+   the glass on white), so "mute" inside a block is dim */
+.st-block .st-in { --mute: var(--dim); }
 .st-block.born { animation: st-born var(--d-pour) var(--e-pour) both; }
 @keyframes st-born { from { transform: scale(0.72); } to { transform: scale(1); } }
 .st-block.born .st-warm { animation: st-cool var(--d-pour) var(--e-leave) both; }
@@ -54,7 +70,15 @@
    and pop (a popped window's head is the same row, Popped.tsx) */
 .st-head { position: relative; z-index: 2; flex: none; height: var(--h-head); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s2) 0 var(--s3); cursor: grab; color: var(--ink); font-size: var(--t-head); line-height: var(--t-head-line); white-space: nowrap; overflow: hidden; }
 .st-head:active { cursor: grabbing; }
-.st-t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; flex: none; max-width: 60%; }   /* the title keeps its room; the hover words give theirs first */
+/* the title wraps to a second line before it is cut (#872 pass 2), so the head grows rather than cutting it mid-word */
+.st-t { font-weight: 500; flex: 0 1 auto; min-width: 0; white-space: normal; overflow-wrap: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.st-head:has(> .st-t) { height: auto; min-height: var(--h-head); padding-block: var(--s1); }
+/* the state's words, whole or not at all: when they do not fit beside the title (Frame useCut) they give way to a dot */
+.st-head > .st-meta { flex: none; white-space: nowrap; }
+.st-meta.cut { width: 0; }
+.st-block.waits .st-meta.cut, .st-block.working .st-meta.cut { width: 8px; height: 8px; border-radius: 50%; background: var(--sun); opacity: 1; }
+.st-block.working .st-meta.cut { background: var(--mute); }
+.st-twin { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; left: 0; top: 0; display: flex; gap: 0; }
 .st-meta, .st-st { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .st-meta { opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
 .st-block:hover .st-meta, .st-block:focus-within .st-meta, .st-block.waits .st-meta { opacity: 1; }
@@ -81,10 +105,12 @@
 .st-mark.k-browser { --mark: var(--c-mark-browser); }
 .st-mark.k-terminal { --mark: var(--c-mark-terminal); }
 .st-mark.k-table { --mark: var(--c-mark-table); }
+.st-mark.k-system { --mark: var(--c-pearl); }   /* the system block (#1091): the pearl, the colour of what feeds */
+.st-mark.k-session { --mark: var(--c-pearl); }   /* a session under an orchestrator (step 4): the pearl too, no colour of its own yet */
 .marks-pearl .st-mark { background: var(--c-mark-pearl); color: var(--c-pearl); box-shadow: none; }
 .marks-pearl .st-block:hover .st-mark, .marks-pearl .st-block:focus-within .st-mark, .marks-pearl .st-chip:hover .st-mark { background: var(--sheen-mark), var(--mark); color: var(--c-mark-ink); box-shadow: var(--shadow-mark); }
 
-/* a state, as a dot: the side's rows, the notch's chips and a popped window's head; the stage's frame has none */
+/* a state, as a dot: the side's rows and a popped window's head; the stage's frame has none */
 .st-dot { appearance: none; border: 0; padding: 0; width: var(--s2); height: var(--s2); flex: none; border-radius: 50%; background: var(--mute); cursor: default; }
 .st-dot.live { background: var(--live); }
 .st-dot.working { background: var(--jelly); animation: st-spin calc(var(--d-pour) * 2) linear infinite; }
@@ -107,7 +133,15 @@
 .st-vers { display: flex; flex: none; margin-left: auto; }
 
 /* the folded chips at the stage's foot; the toast that names a verb once (the key hints are not burned into a frame) */
-.st-folds { position: absolute; left: var(--s3); bottom: var(--s2); display: flex; gap: var(--s1); z-index: 950; }
+.st-folds { position: absolute; left: var(--s3); right: var(--s3); bottom: var(--s2); display: flex; flex-wrap: wrap-reverse; gap: var(--s1); z-index: 950; pointer-events: none; }
+.st-folds > * { pointer-events: auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.st-chipmore { padding: 0 var(--s2); color: var(--mute); }
+/* the earlier blocks asked for: the list on its own ground, over the blocks, until one is picked */
+.st-folds.all { padding: var(--s2); border-radius: var(--r-card); background: var(--pop); border: var(--hair) solid var(--edge); pointer-events: auto; }
+.st-heremore { color: var(--mute); }
+.st-herefrom { padding: var(--s2) var(--s3) 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-chipgroup { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); min-width: 0; }
+.st-chipfrom { flex-basis: 100%; padding-top: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the tray (#739, Tray.tsx): a hairline with a count at the stage's foot, folded by default; open, the miniatures over it,
    the stage's own in front solid-small, the project's others as outlines in groups by the session that made them. A
    miniature is the frame at 1/6 (its size inline, trayRules.ts miniSize), its kind's mark and its title in the head */
@@ -143,6 +177,17 @@
 
 /* the kinds, each its own drawing at the type scale: 13 body, 15 titles, 11 mono, even figures (v4 §4) */
 /* a page: the agent's html in its own frame, read at the reading type (Page.tsx lays the type under its own styles) */
+/* a page in a block (#872 pass 2, pageFit.ts): laid out at its comfortable width, scaled whole to the block; too small to
+   read, a still of it under its title */
+.st-body:has(> .st-pagebox) { overflow: hidden; }
+.st-pagebox { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.st-pagescale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.st-pagebox.still .st-pagescale { opacity: 0.6; }
+/* a page too small to read: a still of it, the head above names it, and one solid line under it says why and how to
+   read it; nothing of the page shows through the words */
+.st-pagestill { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 2px; padding: var(--s2) var(--s3); background: var(--pop); border-top: var(--hair) solid var(--line); }
+.st-pagestill b { display: none; }
+.st-pagestill span { color: var(--dim); font-size: var(--t-label); line-height: var(--t-label-line); }
 .st-page { display: block; width: 100%; height: 100%; border: 0; background: transparent; color-scheme: normal; }   /* the page's own scheme: a dark face around a light page paints the frame opaque */
 /* a list: step dots (the bands turn while a step runs, green done, yellow waits) and a thin meter */
 .st-list { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s1); }
@@ -178,6 +223,17 @@
 .st-still:hover .st-picks { opacity: 1; }
 .st-picks button { appearance: none; border: 0; background: transparent; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); padding: 0 var(--s1); border-radius: var(--r-chip); color: var(--dim); cursor: default; }
 .st-picks button.on { background: var(--c-pearl); color: var(--c-deep); }
+/* a still, large over the window (Stills.tsx Zoom) */
+.st-frame.opens { cursor: zoom-in; }
+.st-zoom { position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column; background: color-mix(in srgb, var(--c-deepest) 94%, transparent); -webkit-backdrop-filter: blur(var(--s3)); backdrop-filter: blur(var(--s3)); animation: st-zoomin var(--d-turn) var(--e-arrive); }
+@keyframes st-zoomin { from { opacity: 0; } }
+.st-zoomroom { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: var(--s6) var(--s6) var(--s2); cursor: zoom-out; touch-action: none; }
+.st-zoomroom img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--r-chip); cursor: zoom-in; user-select: none; -webkit-user-select: none; will-change: transform; }
+.st-zoom.in .st-zoomroom img { cursor: grab; border-radius: 0; }
+.st-zoomfoot { flex: none; display: flex; align-items: center; gap: var(--s4); padding: var(--s2) var(--s6) var(--s4); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); }
+.st-zoomfoot b { color: var(--ink); font-weight: inherit; }
+.st-zoomkeys { flex: 1; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-zoomfoot .st-picks { position: static; opacity: 1; }
 .st-ask { display: flex; align-items: center; gap: var(--s2); color: var(--ink); }
 .st-ask::before { content: ""; flex: none; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--mute); }
 .st-block.waits .st-ask::before { background: var(--sun); box-shadow: 0 0 0 var(--s1) color-mix(in srgb, var(--sun) 18%, transparent); }
@@ -190,6 +246,22 @@
 .st-say.waits { color: var(--write); }
 .st-say.wrong { color: var(--error); }
 .st-sub { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* one line small: a 2 × 1 card holds no second */
+/* a session under an orchestrator (step 4): its state word with its meaning dot, where, its last line, its question with
+   its buttons, the steer box (the browser's address pill), the presses (the ledger card's chips); each line fits or ends in … */
+.st-session { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s1); min-width: 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.st-sword { display: flex; align-items: center; gap: var(--s2); color: var(--ink); font-weight: 600; }
+.st-sword > i { flex: none; width: var(--s2); height: var(--s2); border-radius: 50%; background: currentColor; color: var(--mute); }
+.st-sword.working > i { color: var(--live); }
+.st-sword.needs-you > i { color: var(--write); }
+.st-sword.failed > i { color: var(--error); }
+.st-swhere, .st-slast { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-swhere { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-slast { color: var(--dim); }
+.st-sask { display: flex; flex-direction: column; gap: var(--s1); color: var(--ink); min-width: 0; }
+.st-sacts { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.st-spress { display: flex; align-items: center; gap: var(--s1); margin-top: auto; }
+.st-spress button { appearance: none; border: 0; height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--line); color: var(--ink); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); cursor: default; }
+.st-spress button:hover { background: var(--edge); }
 /* a table: a quiet head, numbers right-aligned in even figures, a row's state as its meaning dot */
 .st-table { width: 100%; border-collapse: collapse; font-size: var(--t-body); line-height: var(--t-body-line); }
 .st-table td, .st-table th { padding: var(--s1) var(--s2); border-bottom: var(--hair) solid var(--line); text-align: left; color: var(--dim); font-weight: 400; white-space: nowrap; }
@@ -226,7 +298,6 @@
 .st-hererow:hover { background: var(--line); }
 .st-heret { overflow: hidden; text-overflow: ellipsis; }
 .st-heren { margin-left: auto; font-size: var(--t-label); opacity: 0.7; }
-:root[data-whole] .st-heren { opacity: 1; }   /* #891: dim words are not dimmed again */
 
 /* the join (#709): a block whose six are still in the air is not drawn yet; it is born warm as they land (useJelly) */
 .st-block.coming { visibility: hidden; }
@@ -280,7 +351,10 @@ input.st-addr:focus { color: var(--ink); }
 .st-shot:hover:not(:disabled) { color: var(--ink); }
 .st-shot:disabled { color: var(--mute); }
 .st-wheel { flex: none; display: flex; }
-.st-view { flex: 1; min-height: 0; position: relative; background: var(--raised); border-radius: var(--r-row); overflow: hidden; }
+.st-view { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; background: var(--raised); border-radius: var(--r-row); overflow: hidden; }
+/* the agent's hand draws through Screencast, whose root (.stage, face.css) only has a height as a flex item: a plain
+   box let it collapse to 0, so the frame was never watched and the page read black (#1314) */
+.st-view > .stage { flex: 1; min-height: 0; }
 .st-view > .st-note { padding: var(--s3); }
 .st-child { position: absolute; inset: 0; }
 .st-child .st-note { padding: var(--s3); }
@@ -292,7 +366,7 @@ input.st-addr:focus { color: var(--ink); }
 .st-termhost .xterm, .st-termhost .xterm-viewport { background: transparent !important; }
 .st-termgone { position: absolute; left: var(--s3); bottom: var(--s1); margin: 0; color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); }
 
-/* ── the lenses, pop out, the notch (#701; lens.ts, pop.ts, LensPill.tsx) ─────────────────────────────────────── */
+/* ── the lenses, pop out (#701; lens.ts, pop.ts, LensPill.tsx) ─────────────────────────────────────── */
 /* TUI: the terminal's lines (the other blocks, one each) over its shell */
 .st-body.st-tui { display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; }
 /* a grid, so the states stand in one column beside the titles, as a terminal pads them */
@@ -305,7 +379,7 @@ input.st-addr:focus { color: var(--ink); }
 .st-tuis { color: var(--mute); }
 .st-tuiline b { font-weight: 500; color: var(--mute); }
 .st-tuiterm { position: relative; flex: 1; min-height: 0; }
-/* a chip's word: on the notch, popped out */
+/* a chip's word: popped out */
 .st-chipk { color: var(--mute); }
 /* CLI: the talk full until a block asks (StageColumn.tsx); IDE: the file column at the stage's left (FilePane, search
    first), the talk docked beside */
@@ -319,9 +393,6 @@ input.st-addr:focus { color: var(--ink); }
 .st-popped > .st-head .st-acts { opacity: 1; }
 .st-popped > .st-head .st-acts button { width: auto; padding: 0 var(--s2); font-size: var(--t-label); }
 .st-popped > .st-body { flex: 1; height: auto; }
-/* the notch's chips: a block pinned there, with its state dot */
-.st-notchpins { display: flex; gap: var(--s1); flex-wrap: wrap; }
-.st-notchpins .st-chip { --live: var(--green-strong); }
 
 /* ── what runs in the background (#703; the design: runs.html): a list whose steps are runs (kinds/RunRows.tsx) ── */
 .st-runs { display: flex; flex-direction: column; }
@@ -421,6 +492,11 @@ a:has(> .st-run-tag) { text-decoration: none; }
 .st-docks svg rect { fill: none; stroke: currentColor; stroke-width: 1.2; }
 .st-docks svg rect.f { fill: currentColor; stroke: none; }
 .st-talkhead .st-runchips { margin-left: var(--s2); }
+/* stage.whole: no head, so the docks are a small grip at the talk's top edge, shown as the head's docks were: while the pointer or the focus is in the talk (at rest it would sit on the first line said) */
+.st-dockgrip { position: absolute; top: var(--s2); right: var(--s2); z-index: 3; display: flex; padding: var(--hair); border-radius: var(--r-row); background: var(--pop); box-shadow: inset 0 0 0 var(--hair) var(--edge); cursor: grab; opacity: 0; transition: opacity var(--d-turn) var(--e-move); user-select: none; -webkit-user-select: none; }
+.st-talk:hover .st-dockgrip, .st-talk:focus-within .st-dockgrip, .st-room.lifting .st-dockgrip { opacity: 1; }
+.st-dockgrip:active { cursor: grabbing; }
+.st-dockgrip .st-docks { margin-left: 0; opacity: 1; }
 
 /* the talk's lines: the session's whole chat, at reading width; the box under them; the folded blocks when it is full */
 /* the talk's box in the room: its own class (face.css's .talk-wrap is LifeTalk's; a class is worn by one file) */
@@ -458,7 +534,18 @@ a:has(> .st-run-tag) { text-decoration: none; }
    still dictates), then the row wraps; no pill is squeezed under its words */
 .st-talk .picker.inrow { flex-wrap: wrap; row-gap: var(--s1); }
 .st-talk .picker.inrow > * { flex-shrink: 0; }
+/* the + keeps the old box's foot and the kit box's top (home.css .hc .wplus, .hc .ask-inner.kit .wplus) only where the
+   row sits on its bottom or top; this row is centred */
+.hc .st-talk .picker.inrow > .wplus { margin-bottom: 0; align-self: center; }
 @container (width < 360px) { .st-talk .picker.inrow > .wmic { display: none; } }
+.st-twin > span:first-child { font-weight: 500; }
+.st-twin > span:last-child { font-size: var(--t-label); }
+/* one thing asks for the eye (#872): a waiting block that is not the one asked keeps its words and dot, quietly */
+.st-block.still.waits .st-meta { color: var(--mute); }
+.st-block.still .st-meta.cut { opacity: 0.45; }
+/* the window itself never scrolls (#872 pass 2: a focus moved by a chip's click scrolled the document 93 px sideways at
+   900 px, the spine and the talk's start off the window); clip, so nothing can scroll it, not even scrollIntoView */
+html:has(.st-room), html:has(.st-room) body { overflow: clip; }
 
 /* moving between blocks and ghosts (#737). The block that holds the keys comes forward by a hairline and wears the pearl's
    hairline; its content scrolls and zooms (.st-zoom). A ghost is the frame alone at a hairline, dashed, its title in the

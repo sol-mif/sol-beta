@@ -15,6 +15,16 @@ const MEANT = new Set([
   "me+msg",   // away.css's .me is the Away page's own line; that page never draws a chat message
   "ccols+tb-board", "cgantt+tb-tl",   // a table's board and timeline (#434) are the dashboard's own, on any table
   "v5-box+v5-open",   // Join's link box (fr-30 slice 5) is Setup's answer box, capped in width on purpose
+  // Marco's window (marco/mine-window, joined 2026-11-10): these pairs are drawn there today and the test was red on that
+  // branch alone; kept as his window draws them, each to be given its own name when its part is next touched
+  "hb-node+pulse", "hb-reader+hc-sheetcard", "hb-settings+hc-sheetcard", "bar+hc-bar", "pick+s2-row", "p2w-stream+pick", "st-chip+st-chipmore",
+  // the night of 2026-11-13 (run branch), each a variant drawn on its base on purpose (morning round)
+  "pb+pbench-back",   // the bench is a piece's back being made (front.css styles .pbench-back's .pb-notch on .pb's own)
+  "fh+fh-folder", "fh-folder+obf",   // #1088: the onboarding's folder is Home's folder drawn as pieces (onboard/Folder.tsx)
+  "sc-wallrest+st-home",   // #1090: a wall's jelly home is the stage's, a point on the seam (wall.css, Wall.tsx sets where)
+  // marco/mine joined to main (#1146), each a variant drawn on its base on purpose
+  "ha-row+hs-folder", "ha-row+hs-rest", "ha-row+hs-ses",   // every session (sideAll.tsx) is the artifacts card's rows, side.css's .hs-* on .ha-row
+  "pc+st-room", "st-room+st-stage",   // one space (pieces/Space.tsx): the stage's room drawn as a piece (pieces.css .pc.st-room.whole)
 ]);
 
 const root = new URL(".", import.meta.url).pathname;

@@ -17,7 +17,7 @@ Setup broken? Run `bash sol/setup --check`: it says what is missing and how to g
    ```
 
    `~/Sol` is where the install put Sol; a Sol you cloned yourself lives where you put it (on the team's Macs
-   `~/computer/personal/projects/ecosystem`, on the NucBox `~/sol-live`), and the line is the same with that folder
+   `~/computer/personal/projects/sol`, on the NucBox `~/sol-live`), and the line is the same with that folder
    in place of `~/Sol`. It puts the last good engine build back, takes back the last change Sol made to its own
    face (an unsaved edit is set aside, nothing is lost), and starts the engine and its build watcher again. It
    says what it did, line by line, and ends with "the engine answers; open Sol".

@@ -15,6 +15,7 @@ writeFileSync(TEAM, JSON.stringify({ me: { login: "tester", name: "T" }, repos: 
 process.env.SOL_HOME = HOME;
 process.env.SOL_TEAM = TEAM;
 process.env.SOL_TEAM_OFFLINE = "1";
+process.env.SOL_STAGE_WHOLE = "off";   // the stage before stage.whole (a lens per session), on by default since #691; on, a lens goes to settings.json
 
 const S = await import("../src/work/blocks.ts");
 S.setStageBus(() => {});
@@ -42,17 +43,6 @@ test("a layout keeps the lens and the face's marks: popped, folded by a lens, th
   const bad = S.layout(project, SID, { blocks: [{ id: t.id, x: 1, y: 1, w: 300, h: 200, z: 1, folded: false, was: { x: "a" } }] } as never);
   assert.equal(bad.blocks[0].was, undefined);
   assert.equal(S.layout(project, SID, { lens: "nope" } as never).lens, "tui", "an unknown lens changes nothing");
-});
-
-test("the notch's chips: every block pinned to it, with its session, title and state; a closed one is gone", () => {
-  const b = S.compose(who("sess-lens2222"), { kind: "list", title: "the gate", body: "[]" });
-  assert.deepEqual(S.pinnedAll(), []);
-  S.place(who("sess-lens2222"), { id: b.id, pin: true });
-  const p = S.pinnedAll();
-  assert.equal(p.length, 1);
-  assert.deepEqual({ ...p[0] }, { project: S.projectName(project), sessionId: "sess-lens2222", id: b.id, title: "the gate", kind: "list", state: "live" });
-  S.place(who("sess-lens2222"), { id: b.id, close: true });
-  assert.deepEqual(S.pinnedAll(), []);
 });
 
 test("the talk's dock and width are kept in stage.json (#734); a bad one changes nothing, a layout without one keeps it", () => {

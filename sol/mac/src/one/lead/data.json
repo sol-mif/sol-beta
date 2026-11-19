@@ -1,0 +1,721 @@
+{
+ "at": "2026-11-11 13:07",
+ "prs": [
+  {
+   "n": 1058,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "the one session is one per project, kept across restarts, behind"
+  },
+  {
+   "n": 1057,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "the one session is Build's own chat bar, talk and stage; its pie"
+  },
+  {
+   "n": 1043,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "work",
+   "t": "a block that leaves the stage leaves the box's \"on\" with it (#10"
+  },
+  {
+   "n": 1041,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "Home's pieces that snap, behind home.snap: folders as plates, a "
+  },
+  {
+   "n": 1038,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "life",
+   "t": "Home's own screens drawn, not said, under look.shown (#1036, sta"
+  },
+  {
+   "n": 1035,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "work",
+   "t": "Home and Build, one place: things carried between them by hand, "
+  },
+  {
+   "n": 1033,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "pieces that snap in the one session, behind build.snap (#1024)"
+  },
+  {
+   "n": 1032,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "work",
+   "t": "Settings opened from Home closes back into Home (#1029)"
+  },
+  {
+   "n": 1027,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "Build as the one session that runs the others, behind build.one;"
+  },
+  {
+   "n": 1025,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "life",
+   "t": "show, don't say behind look.shown: the screens that read most as"
+  },
+  {
+   "n": 1021,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "Home's walk behind home.walk: tell, show, let it look, and the j"
+  },
+  {
+   "n": 1018,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "Build's sidebar keeps Build's folders, Home's fold away and show"
+  },
+  {
+   "n": 1014,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "base",
+   "t": "the voice-model test waits on the model's fetch itself (#961)"
+  },
+  {
+   "n": 1005,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "work",
+   "t": "the stage and Settings walked as a first-time user: eighteen rou"
+  },
+  {
+   "n": 987,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "engine",
+   "t": "a way of working as data: thirteen way kinds and the pure way en"
+  },
+  {
+   "n": 983,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: the new back end, layer 4 of 4: Home's engine half, unit"
+  },
+  {
+   "n": 982,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: the new back end, layer 3 of 4: four seams on the kernel"
+  },
+  {
+   "n": 981,
+   "who": "them",
+   "ready": true,
+   "st": "stopped",
+   "area": "product",
+   "t": "engine: the new back end, layer 2 of 4: the kernel's foundation "
+  },
+  {
+   "n": 973,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "work",
+   "t": "the runs view removed, not landed (#947)"
+  },
+  {
+   "n": 962,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: the new back end as one tree, to compare with its layers"
+  },
+  {
+   "n": 933,
+   "who": "them",
+   "ready": true,
+   "st": "stopped",
+   "area": "product",
+   "t": "engine: three document checks, links, sections and length (Part "
+  },
+  {
+   "n": 932,
+   "who": "them",
+   "ready": true,
+   "st": "stopped",
+   "area": "product",
+   "t": "engine: the gate runs a PR's check lines when its body is handed"
+  },
+  {
+   "n": 931,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: a block is born in its band inside the stage's size, wit"
+  },
+  {
+   "n": 930,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: the lens is one setting, every session's stage in it, wi"
+  },
+  {
+   "n": 929,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: a block is born as its frame first, with stage.whole on "
+  },
+  {
+   "n": 928,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "product",
+   "t": "engine: a block leaves a stage, and a carry moves it, with stage"
+  },
+  {
+   "n": 927,
+   "who": "them",
+   "ready": true,
+   "st": "red",
+   "area": "product",
+   "t": "engine: the switch stage.whole, off unless set (Part of #821)"
+  },
+  {
+   "n": 925,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "product",
+   "t": "Part B of #751 is in: Build's whole stage behind stage.whole, jo"
+  },
+  {
+   "n": 924,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "product",
+   "t": "Part B joined: a fitted block never lands over another, and the "
+  },
+  {
+   "n": 918,
+   "who": "them",
+   "ready": true,
+   "st": "red",
+   "area": "product",
+   "t": "Allow and chips answer on the press: the session list kept as an"
+  },
+  {
+   "n": 907,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "product",
+   "t": "Part A joined: the stage's clamp read from the one motion module"
+  },
+  {
+   "n": 888,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "work",
+   "t": "Sol knows its screens; a second window shows the stage, Home or "
+  },
+  {
+   "n": 884,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "work",
+   "t": "the jelly as the stage's material, one playable page (#872)"
+  },
+  {
+   "n": 868,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "base",
+   "t": "three Checks lines per PR, in the template and CONTRIBUTING (#84"
+  },
+  {
+   "n": 864,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "",
+   "t": "Models follow each company's newest flagship (#863)"
+  },
+  {
+   "n": 862,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "base",
+   "t": "Claude Fable 5.2 in the Claude seat's list (#861)"
+  },
+  {
+   "n": 852,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "base",
+   "t": "one notification, one moment, one place (#845)"
+  },
+  {
+   "n": 849,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "base",
+   "t": "the reviewer capped at five findings a PR; 48 h unanswered close"
+  },
+  {
+   "n": 844,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "base",
+   "t": "CI red means something: runners off PR checks, the voice model t"
+  },
+  {
+   "n": 757,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "cowork",
+   "t": "a merged PR takes `now` off its issue the same night (#618)"
+  },
+  {
+   "n": 756,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "product",
+   "t": "the night run of 2026-11-09, reviews, the loop, Build and Home d"
+  },
+  {
+   "n": 755,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "work",
+   "t": "the composer with judgement, Jev System One behind the stage.jud"
+  },
+  {
+   "n": 736,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "backend beta",
+   "t": "the kernel as built, the final design to talk through before we "
+  },
+  {
+   "n": 725,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "cowork",
+   "t": "designed from nothing, one playable page (#723)"
+  },
+  {
+   "n": 720,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the sticky note as Sol's own block in the small room; the rest l"
+  },
+  {
+   "n": 715,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "file it as Sol's own block in the big room (step 7 of the design"
+  },
+  {
+   "n": 714,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the seat seam, Claude and Codex as Sol's own seats, a block may "
+  },
+  {
+   "n": 713,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "a block's own data goes back with its version, remove, back to f"
+  },
+  {
+   "n": 712,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the gate's five checks and the card (step 4 of the design)"
+  },
+  {
+   "n": 708,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the big room, a block in its own sandboxed process, used then pu"
+  },
+  {
+   "n": 706,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the record's four new columns: room, needs, stores, hears (step "
+  },
+  {
+   "n": 705,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the log is one file a day, the newest in memory, the rest read b"
+  },
+  {
+   "n": 694,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "home",
+   "t": "the design pack, and pass 1 on its own stage (#692)"
+  },
+  {
+   "n": 690,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "engine",
+   "t": "the log moves out of the home and the seats' own steps go on it "
+  },
+  {
+   "n": 686,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "layer",
+   "t": "the side, rail and bar on one tree; enter interrupts, option-ent"
+  },
+  {
+   "n": 681,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "The sidebar",
+   "t": "what exists, against the system (#680)"
+  },
+  {
+   "n": 673,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "The legacy map",
+   "t": "old UI still on screen, one issue per piece (#659)"
+  },
+  {
+   "n": 645,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "Marketing plan for beta (#644)",
+   "t": "cut friction, gather data, then personas, pricing and presales"
+  },
+  {
+   "n": 640,
+   "who": "me",
+   "ready": false,
+   "st": "green",
+   "area": "product",
+   "t": "errors per release on /health, and \"this broke\" from inside Sol "
+  },
+  {
+   "n": 626,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "product",
+   "t": "The body, rendering A, in the notch behind sol.body.a (#625)"
+  },
+  {
+   "n": 624,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "marketing",
+   "t": "Who meets Sol first: marketing and distribution from the brand"
+  },
+  {
+   "n": 622,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "product",
+   "t": "Brand handover to marketing: the brand so far in one folder"
+  },
+  {
+   "n": 604,
+   "who": "me",
+   "ready": false,
+   "st": "green",
+   "area": "product",
+   "t": "The ui skill: the twelve stops, and the gate refuses a flow tick"
+  },
+  {
+   "n": 586,
+   "who": "me",
+   "ready": true,
+   "st": "green",
+   "area": "internal",
+   "t": "fr-30: Scoped and Approved, pressed in Sol (#553)"
+  },
+  {
+   "n": 501,
+   "who": "them",
+   "ready": false,
+   "st": "green",
+   "area": "Tracking",
+   "t": "nothing is sent before the counting card's OK (#500)"
+  },
+  {
+   "n": 411,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "Browser",
+   "t": "a typed \".\" reaches the page as \".\", not Delete (#401)"
+  },
+  {
+   "n": 400,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "CI on our own machines (#399)",
+   "t": "the runner part of #277"
+  },
+  {
+   "n": 387,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "The scenes (#382, from #302)",
+   "t": "the work order, the black box and the update wave; the old pixel"
+  },
+  {
+   "n": 386,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "Watch it land and the update run (#381, from #302)",
+   "t": "a change lands through a checked copy; Update runs four legs and"
+  },
+  {
+   "n": 385,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "The floor (#380, from #302)",
+   "t": "update off to the side, one paint at launch, one true repair lin"
+  },
+  {
+   "n": 371,
+   "who": "me",
+   "ready": false,
+   "st": "none",
+   "area": "The website before it is the beta link (#370)",
+   "t": "the first open, what you need, real footer links, the pages, sha"
+  },
+  {
+   "n": 365,
+   "who": "them",
+   "ready": true,
+   "st": "red",
+   "area": "Tracking (#356)",
+   "t": "the counting card asks for an email, so the team can match count"
+  },
+  {
+   "n": 352,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "Analytics",
+   "t": "what Sol could track in beta, what each item answers, where it c"
+  },
+  {
+   "n": 349,
+   "who": "them",
+   "ready": false,
+   "st": "none",
+   "area": "Website (#304)",
+   "t": "the Cowork section draws groups, as the app does since #314"
+  },
+  {
+   "n": 338,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "Cowork (#335)",
+   "t": "a teammate's agent may ask for one of my past group sessions, an"
+  },
+  {
+   "n": 311,
+   "who": "them",
+   "ready": false,
+   "st": "red",
+   "area": "CI (#298)",
+   "t": "a new push to a PR cancels its older run; main's commits are eac"
+  },
+  {
+   "n": 305,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "Sol's website",
+   "t": "a first full draft for marketing to tune for marketing (#304)"
+  },
+  {
+   "n": 301,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "A stranger's Mac (#169)",
+   "t": "the one line tried on a fresh macOS runner after each release, p"
+  },
+  {
+   "n": 293,
+   "who": "me",
+   "ready": false,
+   "st": "red",
+   "area": "How we run beta",
+   "t": "the Roundup, two checkouts, team state and the Cowork foundation"
+  },
+  {
+   "n": 277,
+   "who": "me",
+   "ready": false,
+   "st": "stopped",
+   "area": "product",
+   "t": "Sol on Windows, natively (fr-31, #271): Sol.exe from the site, t"
+  },
+  {
+   "n": 263,
+   "who": "me",
+   "ready": false,
+   "st": "green",
+   "area": "",
+   "t": "The Sol README says how Sol runs now, not its history"
+  },
+  {
+   "n": 260,
+   "who": "me",
+   "ready": true,
+   "st": "red",
+   "area": "Three kinds of work, two rules",
+   "t": "main stays green, the core gets a second read (#259)"
+  },
+  {
+   "n": 150,
+   "who": "me",
+   "ready": false,
+   "st": "green",
+   "area": "Home",
+   "t": "chat folders, a format menu with Student, and a Study preset (#8"
+  }
+ ],
+ "look": {
+  "home": {
+   "current": 20,
+   "legacy": 8,
+   "unsure": 0
+  },
+  "build": {
+   "current": 8,
+   "legacy": 4,
+   "unsure": 0
+  },
+  "side": {
+   "current": 7,
+   "legacy": 0,
+   "unsure": 0
+  },
+  "settings": {
+   "current": 0,
+   "legacy": 0,
+   "unsure": 18
+  },
+  "jelly": {
+   "current": 0,
+   "legacy": 19,
+   "unsure": 11
+  },
+  "cowork": {
+   "current": 0,
+   "legacy": 7,
+   "unsure": 0
+  },
+  "first run": {
+   "current": 0,
+   "legacy": 0,
+   "unsure": 7
+  },
+  "kit": {
+   "current": 1,
+   "legacy": 1,
+   "unsure": 0
+  }
+ },
+ "lookOther": {
+  "current": 51,
+  "legacy": 12,
+  "unsure": 1
+ },
+ "parts": {
+  "current": 76,
+  "legacy": 115,
+  "unsure": 53
+ }
+}

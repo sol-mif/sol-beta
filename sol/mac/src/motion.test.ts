@@ -79,7 +79,7 @@ test("slow ×4 makes a settle four times longer, and every timed token four time
     assert.ok(Math.abs(slow / normal - 4) < 0.15, `normal ${normal.toFixed(0)} ms, slow ${slow.toFixed(0)} ms`);
     for (const n of ["reveal", "turn", "glass", "pour", "breath"] as const) assert.equal(dur(n), TIMED[n] * 4, n);
   } finally { setSlow(false); }
-  assert.equal(dur("turn"), 150);   // main's 150 stays (#993); ui.md's 160 is a separate decision
+  assert.equal(dur("turn"), 160);
   assert.equal(dur("reveal"), 120);
   assert.equal(dur("glass"), 220);
   assert.equal(dur("pour"), 850);

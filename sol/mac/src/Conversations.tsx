@@ -2,7 +2,7 @@
 // Anticipate heard, as a page of Home like Settings. Left the talks, newest first; right the open one, reviewed as a
 // page: what I promised, what they asked me, decisions, names and dates (each line's time scrolls the words to its
 // turn), then the words with a search, the cards, the asks, and the questions the stop left. It asks THIS Mac's
-// engine (NEXT, the one link the notch keeps too), never the window's pick: the talks and their ears are this Mac's.
+// engine (NEXT), never the window's pick: the talks and their ears are this Mac's.
 // Nothing reads a talk twice per open: one talks.get, a talks.review only when the file has none.
 // Dev: ?page=conversations&demo=1 draws three made-up talks and opens the first, no engine.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -120,7 +120,7 @@ export function Conversations({ onOpenChat }: { onOpenChat: (sessionId: string, 
       <aside className="convo-list" aria-label="talks">
         <h1>Conversations</h1>
         {talks === null && !err && <p className="convo-quiet">reading the talks…</p>}
-        {talks?.length === 0 && <p className="convo-quiet">No talks yet. Press the notch's Anticipate pill in a call, and the talk lands here after Stop.</p>}
+        {talks?.length === 0 && <p className="convo-quiet">No talks yet.</p>}
         {talks?.map((t) => (
           <button key={t.file} className={`convo-row ${t.file === open ? "on" : ""} ${t.seen ? "" : "new"}`} onClick={() => setOpen(t.file)} aria-current={t.file === open}>
             <span className="r1"><b>{dayOf(t.started)}</b><span className="len">{hm(t.started)} · {clock(t.seconds)}</span><span className="who">{t.who.join(" · ")}</span></span>

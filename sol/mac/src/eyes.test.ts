@@ -9,7 +9,7 @@ import { SHADE } from "./kit/tokens.ts";
 import { ATTENTION, mover, moves } from "./attention.ts";
 import { resizeEnd, resizeTo } from "./stage/resize.ts";
 import { PAD, drawnSolid, type Room } from "./stage/geometry.ts";
-import { TALK, TALK_WHOLE, STAGE_FLOOR, MIN, roomFor, talkWidth } from "./stage/model.ts";
+import { TALK, TALK_WHOLE, STAGE_FLOOR, MIN, roomFor, talkWidth, talkWholeWidth } from "./stage/model.ts";
 
 /** WCAG's relative luminance of a grey (0..255) and the ratio of two */
 const lum = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -76,7 +76,7 @@ test("a resize never carries a block past the stage, though another block's edge
 test("the talk keeps one width as blocks open, never under its floor nor leaving the stage under its own (check 5)", () => {
   const ch = 7.5;
   for (const W of [600, 900, 1100, 1300]) {
-    const one = talkWidth(W, ch, undefined, 1), three = talkWidth(W, ch, undefined, 3), six = talkWidth(W, ch, undefined, 6);
+    const one = talkWholeWidth(W, ch), three = talkWholeWidth(W, ch), six = talkWholeWidth(W, ch);   // his Sol: the whole talk's width asks no count (StageColumn.tsx)
     assert.ok(one === three && three === six, `${W}: ${one} = ${three} = ${six}`);
     for (const t of [one, three, six]) {
       assert.ok(t >= Math.min(TALK.floor * ch, W - STAGE_FLOOR) - 0.5 || t >= TALK.floor * ch - 0.5);
@@ -88,29 +88,11 @@ test("the talk keeps one width as blocks open, never under its floor nor leaving
   assert.equal(talkWidth(1100, ch), Math.round(TALK.read * ch), "no count given: today's reading width");
 });
 
-test("Home's receipt never says the answer twice (check 6)", async () => {
-  const { receiptOf } = await import("./home/whole/today.ts");
-  const t = { card: { title: "Your Shopify application is ready. Send it?" } } as never;
-  assert.equal(receiptOf({ did: "answer", answer: "send it" } as never, t), "send it: Your Shopify application is ready.");
-  assert.equal(receiptOf({ did: "answer", answer: "hold 19–21 for it" } as never, { card: { title: "Chem 110 set 6 is due tonight." } } as never), "hold 19–21 for it: Chem 110 set 6 is due tonight.");
-  assert.equal(receiptOf({ did: "later" } as never, t), "Moved to later: Your Shopify application is ready. Send it?");
-});
-
 test("the talk at the foot holds its head, its box and two lines of words; never less than its row (check 5)", async () => {
   const { footHeight, TALK } = await import("./stage/model.ts");
   assert.equal(TALK.lines, 2);
   assert.equal(footHeight(200, 44, 180, 24), 44 + 180 + 48, "a box that alone fills the row: the row grows");
   assert.equal(footHeight(400, 44, 120, 24), 400, "a row with room: kept");
-});
-
-test("the week's labels: where both rows are taken a label is dropped, never laid over another (check 2)", async () => {
-  const { rowsOf } = await import("./home/whole/week.ts");
-  const w = (s: string) => s.length * 10;
-  const r = rowsOf([{ id: "a", x: 0, label: "stats group" }, { id: "b", x: 30, label: "bio exam" }, { id: "c", x: 60, label: "study block?" }, { id: "d", x: 200, label: "dentist" }], w);
-  assert.equal(r.get("a"), 0);
-  assert.equal(r.get("b"), 1);
-  assert.equal(r.get("c"), null, "both rows taken: dropped");
-  assert.equal(r.get("d"), 0, "room again: shown");
 });
 
 test("blocks are glass at rest and apart, solid only where two cross or while one is dragged (check 1)", () => {

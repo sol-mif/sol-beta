@@ -3,7 +3,7 @@
 // files it, Escape keeps it; the receipt "filed #120" stays a while with Open. The store is fileit.ts.
 import { useEffect, useRef, useState } from "react";
 import { composing } from "./ime";
-import { begin, cancel, clear, file, takeAsk, useFile, type FileMode } from "./fileit";
+import { begin, cancel, clear, file, useFile, type FileMode } from "./fileit";
 import "./cowork/ship.css";
 import "./cowork/hands.css";
 import "./fileit.css";
@@ -18,7 +18,6 @@ export function FileLine({ page, conversation, mode: m }: { page: string; conver
   const f = useFile();
   const [words, setWords] = useState("");
   const field = useRef<HTMLInputElement>(null);
-  useEffect(() => { takeAsk(); }, []);   // the notch's File it, pressed while this page was not showing
   useEffect(() => { if (f.open && !f.shooting) requestAnimationFrame(() => field.current?.focus()); if (!f.open) setWords(""); }, [f.open, f.shooting, f.at]);
   useEffect(() => { if (!f.said?.number) return; const t = window.setTimeout(clear, RECEIPT_MS); return () => window.clearTimeout(t); }, [f.said?.number]);
   if (!f.open && !f.said && !f.filing) return null;

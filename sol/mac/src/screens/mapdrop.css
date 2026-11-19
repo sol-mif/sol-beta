@@ -1,0 +1,21 @@
+/* Drop on the map (design Next 5; S/design/index.html moment 16, three.html moment 3). A window with no facing edge
+   is reached through the map: while a block (or the talk) is carried within 90 px of the map's middle, the map
+   doubles, growing downward, what shares the head's row with it steps back, and the carried block shrinks to the
+   hand so the shapes stay in sight. The shape under the hand wears the pearl; let go there and the block goes to
+   that window (store `put`, the same crossing as a throw: it comes in from that window's seam). Leave the 90 px
+   (130 once it is big, so it does not flutter) and all of it goes back. Tokens only.
+   The hooks, three classes and two values, all from the stage's carry (throw.ts carryMove has px, py):
+     .sm.near                 the map, while the carry is within reach
+     .sm-rect.hit             the rect under the pointer (never .mine: a block cannot be dropped where it is)
+     .st-block.to-map         the carried block; --grip-x / --grip-y: where the hand holds it, in the block's own px */
+.sm.near { scale: 2; transform-origin: 50% 0; z-index: 4; transition: scale var(--d-glass) var(--e-reveal); }
+.sm { transition: background var(--d-turn) var(--e-arrive), scale var(--d-glass) var(--e-reveal); }
+.sm.near .sm-rect.other > rect { stroke: var(--c-pearl-line); }
+.sm.near .sm-rect.hit > rect { stroke: var(--c-pearl); stroke-width: 1.5; }
+/* what shares the row steps back: the title and the tools are not what the hand is after */
+.hc-bar:has(.sm.near) > :not(.hc-mid):not(.spacer) { opacity: 0.25; transition: opacity var(--d-turn) var(--e-arrive); }
+.st-block.to-map { scale: 0.22; transform-origin: var(--grip-x, 50%) var(--grip-y, 0); opacity: 0.9; z-index: 5;
+  transition: scale var(--d-glass) var(--e-reveal), opacity var(--d-turn) var(--e-arrive); }
+/* at a fifth of its size its own hairline is gone: it wears the pearl's line, drawn five times as thick so it reads as one */
+.st-block.to-map { outline: 5px solid var(--c-pearl); outline-offset: -5px; background: var(--c-pearl-tint); }
+@media (prefers-reduced-motion: reduce) { .sm, .sm.near, .st-block.to-map { transition: none; } }

@@ -1,0 +1,82 @@
+/* The week (#692, Week.tsx), slice D: seven days from today, the hours 8–22. His events solid on the shade, Sol's
+   proposals dashed (the kit's Ink, dash) until kept, a pulled sticky with the pearl's rule. Every space, size and corner
+   a variable of the scale; every colour a token. */
+.wk { position: relative; isolation: isolate; container: wk / inline-size; display: flex; flex-direction: column; gap: var(--s2);
+  padding: var(--s3) var(--s4) var(--s4); box-sizing: border-box; min-width: 0; outline: none;
+  font-size: var(--t-body); line-height: var(--t-body-line); color: var(--dim); --wk-hour: var(--s8); --wk-gut: var(--s8); }
+.wk button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+/* the head: a label, the dates, where it reads from, ← today → */
+.wk-k { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); letter-spacing: 0.04em; }
+.wk-h { text-transform: uppercase; color: var(--dim); }
+.wk-range { color: var(--dim); font-variant-numeric: tabular-nums; }
+.wk-src { margin-left: var(--s2); }
+.wk-nav { margin-left: auto; display: flex; gap: var(--s1); }
+
+/* a flat pill: no grey at rest, the lift under the pointer (look.md) */
+.wk-opt { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); color: var(--ink); white-space: nowrap; }
+.wk-opt:is(:hover, :focus-visible) { background: var(--c-lift); outline: none; }
+
+/* the grid: an hour gutter, then the days */
+.wk-grid { display: grid; grid-template-columns: var(--wk-gut) repeat(7, minmax(0, 1fr)); gap: 0 var(--s1); min-width: 0; }
+.wk-gut, .wk-day { display: grid; grid-template-rows: var(--t-body-line) var(--s6) calc(var(--wk-hour) * 14); min-width: 0; }
+.wk-dh { padding: 0 var(--s1); color: var(--mute); white-space: nowrap; overflow: hidden; }
+.wk-dh b { font-weight: 600; color: var(--dim); }
+.wk-today .wk-dh, .wk-today .wk-dh b { color: var(--ink); }
+.wk-ad { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; overflow: hidden; }
+.wk-all { padding: 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--dim); background: var(--line); border-radius: var(--r-chip); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-hours { position: relative; }
+.wk-hours span { position: absolute; right: var(--s1); transform: translateY(-50%); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); font-variant-numeric: tabular-nums; }
+.wk-hours span:first-child { transform: none; }
+
+/* a day: its hours as faint lines; today outlined */
+.wk-col { position: relative; border-radius: var(--curve-row); box-shadow: inset 0 0 0 var(--hair) var(--line);
+  background-image: linear-gradient(to bottom, var(--line) var(--hair), transparent var(--hair)); background-size: 100% var(--wk-hour); }
+.wk-today .wk-col { box-shadow: inset 0 0 0 var(--hair) var(--edge), inset 0 0 0 calc(var(--hair) * 2) var(--line); }
+.wk[data-moving] .wk-col { cursor: crosshair; }
+.wk[data-moving] .wk-col:hover { background-color: var(--line); }
+.wk-now { position: absolute; left: 0; right: 0; height: var(--hair); background: var(--ink); opacity: 0.5; pointer-events: none; }
+
+/* an item on a day */
+.wk-it { position: absolute; box-sizing: border-box; padding: 0 var(--s1); overflow: hidden; display: flex; flex-direction: column; gap: 0;
+  border-radius: var(--r-chip); font-size: var(--t-label); line-height: var(--t-label-line); min-height: var(--t-label-line); }
+.wk-t { color: var(--mute); font-variant-numeric: tabular-nums; }
+.wk-w { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-sub { color: var(--mute); font-size: var(--t-label); line-height: var(--t-label-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* his: solid on the shade */
+.wk-ev, .wk-kept { background: var(--shade-raised); box-shadow: inset 0 0 0 var(--hair) var(--edge); }
+/* Sol's, proposed: dashed, dim words, until kept */
+.wk-prop, .wk-ghost { border: var(--hair) dashed var(--c-on-dim); background: transparent; cursor: pointer; }
+.wk-prop .wk-w, .wk-ghost .wk-w { color: var(--dim); }
+.wk-prop:hover, .wk-prop.held { background: var(--line); }
+.wk-prop.held { border-color: var(--ink); }
+.wk-prop.moving { opacity: 0.5; }
+.wk-ghost { pointer-events: none; border-color: var(--ink); }
+/* a sticky he pulled onto a day: the pearl's rule at its left */
+.wk-pulled { background: var(--shade-raised); box-shadow: inset calc(var(--hair) * 3) 0 0 var(--c-pearl), inset 0 0 0 var(--hair) var(--edge); padding-left: var(--s2); }
+
+/* a proposal held open: keep · move · no */
+.wk-card { position: absolute; isolation: isolate; right: var(--s4); bottom: var(--s4); z-index: 2; display: flex; flex-direction: column; gap: var(--s1);
+  max-width: calc(var(--s12) * 7); padding: var(--s3) var(--s4); color: var(--ink); }
+.wk-card .wk-sub { white-space: normal; }
+.wk-opts { display: flex; gap: var(--s1); margin-top: var(--s1); margin-left: calc(var(--s2) * -1); }
+
+/* the foot: the what-if line, a move's hint, what was said */
+.wk-foot { margin: 0; display: flex; align-items: center; gap: var(--s2); color: var(--dim); min-height: var(--h-chip); }
+.wk-whatif { color: var(--ink); }
+
+/* the calendar's switch-on */
+.wk-switch { min-height: calc(var(--s12) * 4); }
+.wk-ask { margin: auto 0; display: flex; flex-direction: column; gap: var(--s2); max-width: calc(var(--s12) * 10); padding: var(--s4) 0; }
+.wk-line { margin: 0; font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink); }
+.wk-ask .wk-sub { white-space: normal; font-size: var(--t-body); line-height: var(--t-body-line); }
+.wk-ask .wk-sub b { color: var(--ink); font-weight: 600; }
+.wk-plain { color: var(--ink); }
+.wk-go { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s1); }
+
+/* narrow: three days from today */
+@container wk (max-width: 560px) {
+  .wk-grid { grid-template-columns: var(--wk-gut) repeat(3, minmax(0, 1fr)); }
+  .wk-later { display: none; }
+  .wk-src { display: none; }
+}

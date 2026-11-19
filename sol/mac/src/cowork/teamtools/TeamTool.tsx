@@ -128,7 +128,7 @@ function fakeAnalytics() {
   const at = (n: number) => `${day(n)}T13:00:00.000Z`;
   return {
     window: { days: 30, from: day(29), to: day(0) }, total: { events, testers: 5 }, days,
-    names: [["turn.done", 1210, 5], ["turn.start", 1188, 5], ["engine.up", 214, 5], ["notch.open", 166, 4], ["cowork.used", 92, 3], ["mode.switch", 88, 5], ["grab.shot", 41, 2], ["update.run", 30, 5], ["other", 57, 4]]
+    names: [["turn.done", 1210, 5], ["turn.start", 1188, 5], ["engine.up", 214, 5], ["cowork.used", 92, 3], ["mode.switch", 88, 5], ["grab.shot", 41, 2], ["update.run", 30, 5], ["other", 57, 4]]
       .map(([name, ev, t]) => ({ name, events: ev, testers: t })),
     modes: [{ mode: "home", events: 1650, testers: 5 }, { mode: "work", events: 1110, testers: 4 }, { mode: "cowork", events: 326, testers: 3 }],
     parts: [{ part: "memory", events: 38, testers: 3 }, { part: "things", events: 21, testers: 2 }, { part: "goal", events: 17, testers: 3 }, { part: "decisions", events: 9, testers: 1 }, { part: "calendar", events: 7, testers: 1 }],
@@ -154,7 +154,6 @@ function fakeFeatures() {
       f("fr-01", "Open Sol", "product", "base", "the window: launch, the first paint", "approved"),
       f("fr-03", "The first message", "product", "life", "Home: the box, the answer", "draft", [], ["fr-01"]),
       f("fr-07", "A session", "product", "work", "Work: a Claude Code session", "none", [], ["fr-01"]),
-      f("fr-10", "The notch", "product", "base", "the notch: answers, the moon, pings", "none", [], ["fr-01"]),
       f("fr-20", "Cowork projects", "product", "cowork", "Cowork: a project, its people, its record", "none", ["franktsai2008-eng"], ["fr-01"]),
       f("fr-26", "The website", "marketing", "", "the website: sol.matterfold.tech", "none", ["w0ngtap"]),
       f("fr-27", "The nights", "internal", "cowork", "Cowork (Sol developers): hand-in, review, release", "none", [], ["fr-20"]),
