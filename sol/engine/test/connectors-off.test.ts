@@ -18,7 +18,7 @@ const ask = (g: CanUseTool, name: string) => g(name, {}, { signal: new AbortCont
 test("connectors: a service said not here is refused by name on the next read turn; the others read as before", async () => {
   write({ "account:Gmail": "no", "claude-sessions": "no" });
   const off = servicesOff(home);
-  assert.ok(off.has("claude_ai_Gmail"));
+  assert.ok(off.has("claude_ai_gmail"));   // lower-cased: the guard matches without case (#1656)
   const g = connectorsGuard(base, new Map(), off);
   const r = await ask(g, "mcp__claude_ai_Gmail__list_threads");
   assert.equal(r.behavior, "deny");

@@ -103,6 +103,33 @@ test("set_setting: only on the person's words from this very turn", async () => 
   r = await T.runSolTool("set_setting", { patch: { look: { text: 18 } }, yes: "text at 17" }, { sessionId: "h1", said: "what else?" });
   assert.equal(r.isError, true);
   S.patchSettings({ look: { text: 18 } });
+  // Chinese and Japanese have no spaces between words (#1639): matched by characters, four at least
+  O.heard("s5", "把字放大到18，謝謝");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 19 } }, yes: "把字放大到18" }, { sessionId: "s5" });
+  assert.ok(!r.isError, txt(r));
+  assert.equal(S.getSettings().look.text, 19);
+  O.heard("s5", "字改成 20 好了");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 20 } }, yes: "改成20" }, { sessionId: "s5" });
+  assert.ok(!r.isError, "a space beside a character does not count: " + txt(r));
+  O.heard("s5", "字可以大一點嗎？");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 21 } }, yes: "好，把字放大" }, { sessionId: "s5" });
+  assert.equal(r.isError, true, "words the agent made up");
+  O.heard("s5", "好");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 21 } }, yes: "好" }, { sessionId: "s5" });
+  assert.equal(r.isError, true, "a bare yes");
+  O.heard("s5", "好的");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 21 } }, yes: "好的" }, { sessionId: "s5" });
+  assert.equal(r.isError, true, "two characters are one word");
+  O.heard("s5", "改成180");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 18 } }, yes: "改成18" }, { sessionId: "s5" });
+  assert.equal(r.isError, true, "18 is not in 180");
+  O.heard("s5", "はい、文字を大きくしてください");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 18 } }, yes: "文字を大きくして" }, { sessionId: "s5" });
+  assert.ok(!r.isError, txt(r));
+  O.heard("s5", "はい");
+  r = await T.runSolTool("set_setting", { patch: { look: { text: 20 } }, yes: "はい" }, { sessionId: "s5" });
+  assert.equal(r.isError, true, "a bare はい");
+  assert.equal(S.getSettings().look.text, 18);
   // another conversation's words are not this one's
   r = await T.runSolTool("set_setting", { patch: { look: { text: 20 } }, yes: "thanks" }, { sessionId: "s3" });
   assert.equal(r.isError, true);

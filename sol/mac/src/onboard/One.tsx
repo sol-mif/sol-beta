@@ -689,7 +689,7 @@ export default function One({ e, onDone, onLanding }: { e: E; onDone: (home: boo
         <Folder id="you" name={name || "You"} word="this computer" facts={you} shut={shut} screens={scr(screens)} size="s" lit={lit === "you" || lit === "all"} now={now} unsure={unsure} />
         <div className={`ob-folders n${sorted.areas.length}`}>
           {sorted.areas.map((a) => (
-            <Folder key={a.id} id={a.id} name={a.name} word={a.part === "build" ? "projects" : a.part} facts={a.facts.map((id) => byId.get(id)!).filter(Boolean)} shut={shut} unsure={unsure} lit={lit === a.id || lit === "all"} now={now}
+            <Folder key={a.id} id={a.id} name={a.name} word={a.id.includes("/") ? `in ${sorted.areas.find((x) => x.id === a.id.slice(0, a.id.lastIndexOf("/")))?.name ?? a.part}` : a.part === "build" ? "projects" : a.part} facts={a.facts.map((id) => byId.get(id)!).filter(Boolean)} shut={shut} unsure={unsure} lit={lit === a.id || lit === "all"} now={now}
               onPiece={(k: PieceKind) => { const c = open5.find((x) => x.area === a.id && x.fact && (k === "week" ? byId.get(x.fact)?.repeats : true)); if (c) setFront(c.id); }} />
           ))}
           {m === "ask" && sorted.areas.length === 0 && <Folder id="none" name=" " facts={[]} />}

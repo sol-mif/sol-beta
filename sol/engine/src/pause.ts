@@ -6,7 +6,8 @@
 //   call     the default microphone went from in use to idle (CoreAudio); nothing of the call itself is read
 // Two senses closer than GAP_MS are one pause. Each pause is told to every face as { type: "pause", why, at } and lets
 // the oldest waiting question through, one per pause. Behind the switch pause.signal (settings.ts pauseSignal), off by
-// default: off, nothing is told and a question goes at once, as before. A person away for long makes one pause only,
+// default: off, nothing is told and a question goes at once, as before, and the app reads nothing: it only asks, once a
+// minute, with a POST /pause that has no why (#1640). A person away for long makes one pause only,
 // when the quiet begins; whether the quiet itself should count again later is Marco's to say (#1587).
 import { pauseSignal } from "./settings.js";
 

@@ -1,0 +1,21 @@
+/* The one voice on the page (views/agent.css): told lines, rings, the headline's proof. Roles only (the layout skill).
+   Signed: marcocyl04-ux's agent, slice 5 of the port (#1615). */
+[data-face="next"] .ag-head { position: absolute; left: var(--s8); top: var(--s6); z-index: 4; max-width: 560px; padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+[data-face="next"] .ag-hl { margin: 0; font-family: var(--serif); font-weight: 600; font-size: var(--t-title); line-height: var(--t-title-line); }
+[data-face="next"] .ag-told { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); }
+[data-face="next"] .ag-tl { display: flex; align-items: baseline; gap: var(--s2); margin: 0; color: var(--ink); }
+[data-face="next"] .ag-dot { width: var(--s2); height: var(--s2); }
+[data-face="next"] .ag-tw { min-width: 0; }
+[data-face="next"] .ag-tl small { margin-left: auto; padding-left: var(--s2); color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+[data-face="next"] .ag-rings { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+[data-face="next"] .ag-ring { position: absolute; border-radius: var(--r-lg); box-shadow: 0 0 0 1px var(--ink), 0 0 0 var(--s1) var(--hover); }
+[data-face="next"] .ag-rl { position: absolute; display: flex; align-items: center; gap: var(--s2); height: var(--h-row); max-width: 360px; padding: 0 var(--s1) 0 var(--s3); border-radius: var(--r-pill);
+  background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); color: var(--ink2); white-space: nowrap; pointer-events: auto; }
+[data-face="next"] .ag-rw { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+[data-face="next"] .ag-rl b { font-weight: 600; color: var(--ink); }
+[data-face="next"] .ag-go { flex: none; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--side); color: var(--ink); font-size: var(--t-label); }
+[data-face="next"] .ag-go:hover { background: var(--press); }
+[data-face="next"] .ag-proof { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); margin-top: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .ag-pk { color: var(--ink2); font-weight: 600; }
+[data-face="next"] .ag-ps { color: var(--ink2); }
+[data-face="next"] .ag-ps i { font-style: normal; color: var(--ink3); }

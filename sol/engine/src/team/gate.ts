@@ -233,7 +233,8 @@ const ONLY_SKIP = /\b(?:test|it|describe|suite|context|t)\.(?:only|skip|todo)\s*
 // the layout skill (.claude/skills/layout): in the face's rebuilt css, a space, a type size, a control height or a corner
 // is a variable from the scale (sol/design/system/tokens.json, palette → palette.css), never a typed number. 0 and a 1px hairline stay
 // allowed, and so does anything relative (%, fr, vw, vh). Widen LAYOUT_FILES as each area is rebuilt.
-export const LAYOUT_FILES = /^sol\/mac\/src\/home\/[^/]+\.css$/;
+// The new face (#1604, sol/mac/src/next) is held by both, at any depth, from its first file (#1615).
+export const LAYOUT_FILES = /^sol\/mac\/src\/(?:home\/[^/]+|next\/.+)\.css$/;
 const LAYOUT_PROPS = /^(?:padding|margin|gap|row-gap|column-gap|inset|top|right|bottom|left|border-radius|border-[a-z]+-radius|font-size|line-height|height|min-height|max-height|font)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?$/;
 /** the typed numbers in a css file's layout declarations, each with its line (pure) */
 export function layoutValues(css: string): { line: number; decl: string }[] {
@@ -257,7 +258,7 @@ export function layoutValues(css: string): { line: number; decl: string }[] {
 // A mask's colour is only its alpha, so masks are left alone. In code: the same inside a string, a timer's typed delay
 // (setTimeout(f, 160)), and a typed duration, delay or corner in an object (`duration: 200`, `borderRadius: 4`).
 // Widen LOOK_FILES as each area is rebuilt.
-export const LOOK_FILES = /^sol\/mac\/src\/home\/[^/]+\.(?:css|tsx?)$/;
+export const LOOK_FILES = /^sol\/mac\/src\/(?:home\/[^/]+|next\/.+)\.(?:css|tsx?)$/;
 const COLOUR = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|(?<![\w-])(?:black|white|red|green|blue|gray|grey|yellow|orange|purple|pink|silver)(?![\w-])/;
 const DURATION = /(?<![\w.#-])\d*\.?\d+m?s(?![\w-])/;
 const EASING = /(?<![\w-])(?:ease(?:-in-out|-in|-out)?|linear|step-start|step-end)(?![\w-])|\b(?:cubic-bezier|steps|linear)\(/;

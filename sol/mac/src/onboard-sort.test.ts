@@ -549,3 +549,12 @@ test("a folder from a reading is one a disk can carry: a bad id, \"you\", an unk
   assert.deepEqual(r.areas, [{ id: "ok", name: "好", part: "life", said: "s" }, { id: "no-said", name: "N", part: "build", said: "typed" }]);
   assert.deepEqual(r.off, ["messages"]);
 });
+
+test("a reading's place one level inside another it read first is kept (#1662); one whose outer is missing is not", () => {
+  const closes = () => true;
+  const { read } = readingOf({ by: "ai", areas: [
+    { id: "family", name: "Family", part: "life" }, { id: "family/chess", name: "Chess", part: "life" },
+    { id: "work/shop", name: "Shop", part: "work" }, { id: "home/x", name: "X", part: "life" }, { id: "a/b/c", name: "C", part: "life" },
+  ], off: [], unsure: [] }, "x", closes);
+  assert.deepEqual(read?.areas.map((a) => a.id), ["family", "family/chess"]);
+});

@@ -2,7 +2,9 @@
 // (parts/connections.ts answers `{ type: "connections" }` with `home.connections`). Three places know it and nothing
 // joined them in the engine:
 //   claude-account  the services connected in the person's Claude account, as the CLI reports them (connectors.ts)
-//   mac-tool        the person's own tools signed in on this Mac: gh (GitHub) and gog (Google), each asked one call
+//   mac-tool        the person's own tools signed in on this Mac: gh (GitHub) and gog (Google), each asked one call.
+//                   Google is Sol's own sign-in (the sol:drive row): gog is a tool few Macs have, so it gives a row only
+//                   where it is there, an extra one (#1641)
 //   sol             Sol's own grants (team/grant.ts): Drive today, with the ran-out record (#1440)
 // and, asked with `seats: true` while the new face is on (#1620, seatsOn), two more:
 //   seat            the AI seats signed in on this Mac: Claude Code and Codex (team/control.ts). A seat signed out is
@@ -80,7 +82,9 @@ export type ToolCheck =
   | { tool: "gh" | "gog"; there: false }
   | { tool: "gh" | "gog"; there: true; account?: string; ok: true; expires?: number }
   | { tool: "gh" | "gog"; there: true; account?: string; ok: false; said: string };
-const TOOL = { gh: { name: "GitHub", login: "gh auth login --web" }, gog: { name: "Google", login: "" } } as const;
+/** what signs each tool in again, from Sol, never a line to type (#1641): gh by Sol's own device flow (team.github.connect,
+ *  gh.ts); gog has none of its own, so its row carries no fix and Google signs in on the sol:drive row */
+const TOOL: Record<"gh" | "gog", { name: string; fix?: Fix }> = { gh: { name: "GitHub", fix: { kind: "send", type: "team.github.connect" } }, gog: { name: "Google" } };
 /** a sign-in that ran out, as the tools say it */
 const LAPSED = /invalid_grant|token (has )?expired|expired token|token .*(is )?invalid|invalid token|bad credentials|\b401\b|reauth|re-?authenticate/i;
 /** no sign-in was ever made, as the tools say it */
@@ -89,12 +93,10 @@ const NEVER = /not logged in|no (stored )?(refresh )?token|no accounts?|missing 
 /** a tool's check as a row (pure) */
 export function fromTool(c: ToolCheck): Connection {
   const t = TOOL[c.tool], base = { id: `tool:${c.tool}`, name: t.name, from: "mac-tool" as const, via: c.tool };
-  if (!c.there) return { ...base, state: "missing", why: `${c.tool} is not on this Mac` };
+  if (!c.there) return { ...base, state: "missing", why: `${c.tool} is not on this Mac` };   // sol/setup installs the GitHub CLI
   const who = c.account ? { account: c.account } : {};
   if (c.ok) return { ...base, ...who, state: "connected", ...(c.expires ? { expires: c.expires } : {}) };
-  // the line goes to a shell: an account that is not a plain email gets no line
-  const again = c.tool === "gog" ? (c.account && /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/.test(c.account) ? `gog auth add ${c.account}` : "") : t.login;
-  const fix = again ? { fix: { kind: "run" as const, run: again } } : {};
+  const fix = t.fix ? { fix: t.fix } : {};
   if (LAPSED.test(c.said)) return { ...base, ...who, state: "lapsed", why: line(c.said), ...fix };
   if (NEVER.test(c.said) || !c.said) return { ...base, ...who, state: "missing", why: line(c.said) || `${c.tool} has no account signed in`, ...fix };
   return { ...base, ...who, state: "unsure", why: line(c.said) };
@@ -184,6 +186,9 @@ export function fromGrant(g: GrantCheck): Connection {
   if (g.ranOut) return { ...base, ...(g.ranOut.email ? { account: g.ranOut.email } : {}), state: "lapsed", since: g.ranOut.at, why: "its sign-in ran out" };
   return { ...base, state: "missing" };
 }
+
+/** a tool's check that gives a row: gog only where it is on this Mac (an extra to Sol's own Google sign-in, #1641) */
+export const extra = (c: ToolCheck) => c.there || c.tool !== "gog";
 
 /** every row, ordered: what needs the person first (lapsed, unsure), then connected, then missing (pure) */
 export function listOf(rows: Connection[]): Connection[] {
@@ -299,7 +304,7 @@ async function gather(s: Sources, fresh: boolean, seats: boolean): Promise<Conne
   const withSeats = seats && !!s.seats;
   const [a, t, g, st, si] = await Promise.all([
     s.services(fresh).then(fromAccount, unsure("claude-account", "Claude account", "claude-account")),
-    s.tools(withSeats).then((cs) => cs.map(fromTool), unsure("mac-tools", "this Mac's tools", "mac-tool")),
+    s.tools(withSeats).then((cs) => cs.filter(extra).map(fromTool), unsure("mac-tools", "this Mac's tools", "mac-tool")),
     s.grants(fresh).then((gs) => gs.map(fromGrant), unsure("sol-grants", "Sol's own connections", "sol")),
     withSeats ? s.seats!().then((cs) => seatRows(cs, s.seen), unsure("seats", "the AI seats", "seat")) : Promise.resolve([]),
     withSeats && s.sites ? s.sites().then((cs) => cs.map(fromSite), unsure("sites", "the folder agents' sites", "site")) : Promise.resolve([]),

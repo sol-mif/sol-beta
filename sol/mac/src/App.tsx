@@ -33,11 +33,16 @@ import { Seams } from "./screens/Seam";
 import { useRole } from "./screens/store";   // #1090: two windows of one Jelly; draws nothing with screens.two off
 import "./cross/cross.css";
 import { isView, spineOn, useSpine, type View } from "./spine/flag";
+import { shownView, useViews } from "./spine/views";   // #1637: a tester's Sol is Build only until each card reaches product
 import { FIND_ASK, findHop, windowFinds } from "./spine/find";   // the spine's find and ⌘K, from every view
 import { useBuildRuns } from "./flag";
 import { RunsDoor } from "./runs/Door";
 import { useDoorDot } from "./runs/doorDot";
 import { VersionSwitch } from "./VersionSwitch";   // #1295: concept, complete, product, at the top of the team's window
+import { nextOn } from "./next/flag";   // #1604: the new face behind ui.next; nothing else under next/ loads while it is off
+
+// the new face (#1604, docs/port/switch.md): loaded only when ui.next is on
+const Next = lazy(() => import("./next/Next"));
 
 // the runs view (#889) behind build.runs: loaded only when it opens; `?runs=open` opens it at load (the shots)
 const RunsView = lazy(() => import("./runs/Runs").then((m) => ({ default: m.RunsView })));
@@ -52,6 +57,8 @@ const NO_WAITS = new Set<View>();
 // and Home is the record it writes (OneHome); the first run, the walk and the folders' Home went with it
 const One = lazy(() => import("./onboard/One"));
 const Visit = lazy(() => import("./onboard/Visit").then((m) => ({ default: m.Visit })));   // Build's and Cowork's first visit, one card each
+// #1637: where Home is not on (a tester's Sol), a small start takes the onboarding's place: set up, sign in, Build
+const Start = lazy(() => import("./onboard/Start"));
 const OneHome = lazy(() => import("./onboard/OneHome").then((m) => ({ default: m.OneHome })));
 // #1124: Settings over that Home, on Home's own section (spine/settings.ts settingsPlan's `here`)
 const HomeSettings = lazy(() => import("./onboard/HomeSettings").then((m) => ({ default: m.HomeSettings })));
@@ -76,6 +83,9 @@ const modeOf = (v: View): AppMode => (v === "cowork" ? "cowork" : "home");
 
 export default function App() {
   const e = useEngine();
+  const views = useViews(e.settings);   // the views this Sol shows (#1637): Build always; Home, Cowork, Social by their cards
+  const viewsNow = useRef(views); viewsNow.current = views;
+  const [started, setStarted] = useState(false);   // the start (#1637) ended in this load: signed in, or no cloud
   const [mode, setMode] = useState<AppMode>(MODE0);
   const spine = useSpine() && !SOLO;
   const [view, setView] = useState<View>(() => viewOf(MODE0, localStorage.getItem("sol.view")));
@@ -88,8 +98,8 @@ export default function App() {
   const [runsOpen, setRunsOpen] = useState(RUNS0);
   const runsShown = runsOn && runsOpen && view === "build";
   const runsDot = useDoorDot(!!runsOn && !runsShown);   // #906: the board read every 60 s while the view is closed
-  const pick = (m: AppMode) => { localStorage.setItem("sol.mode", m); setMode(m); setView((v) => (modeOf(v) === m ? v : m === "cowork" ? "cowork" : "build")); };
-  const hop = (v: View) => { localStorage.setItem("sol.view", v); setView(v); const m = modeOf(v); if (m !== mode) { localStorage.setItem("sol.mode", m); setMode(m); } };
+  const pick = (m: AppMode) => { if (m === "cowork" && !viewsNow.current.has("cowork")) return; localStorage.setItem("sol.mode", m); setMode(m); setView((v) => (modeOf(v) === m ? v : m === "cowork" ? "cowork" : "build")); };
+  const hop = (to: View) => { const v = shownView(to, viewsNow.current); localStorage.setItem("sol.view", v); setView(v); const m = modeOf(v); if (m !== mode) { localStorage.setItem("sol.mode", m); setMode(m); } };
   // #911/#1029 (main's App, fitted to yours): Settings asked from Home or Social hops to Build and opens there; a real
   // close goes back where it was asked from, any other way out forgets the way back (spine/settings.ts afterLeave)
   const back = useRef<View | null>(null);
@@ -158,6 +168,13 @@ export default function App() {
   }, [spine]);
   // #1416: a session opened from Cowork opens where sessions open (Build with the spine, Home without), with a chip back
   const away = useAwayFromCowork(mode === "cowork", () => (spine ? hopRef.current("build") : pick("home")), () => (spine ? hopRef.current("cowork") : pick("cowork")));
+  // #1637: a view the engine turned off after the load is left for Build, and Cowork's mode with it (nothing written:
+  // the view kept in storage comes back the day its card reaches product)
+  useEffect(() => {
+    if (!views.has(view)) setView("build");
+    if (mode === "cowork" && !views.has("cowork")) setMode("home");
+  }, [views]);   // eslint-disable-line react-hooks/exhaustive-deps -- turned by the views alone
+  const vw = shownView(view, views), cw = mode === "cowork" && views.has("cowork");
   // #1090: one jelly, one spine: a window of Jelly on another screen that holds no side (a wall, a stage) draws no rail
   const screenRole = useRole();
   const railed = spine && screenRole !== "wall" && screenRole !== "stage";
@@ -195,9 +212,10 @@ export default function App() {
   useOneSol();   // One Sol (#62): the main window watches the NucBox, whatever the mode shows
   if (POP) return <Suspense fallback={null}><Popped e={e} id={POP.id} session={POP.session} /></Suspense>;
   if (SOLO) return <WorkApp e={e} onMode={() => {}} solo={SOLO} />;
+  if (nextOn(e.settings)) return <Suspense fallback={null}><Next e={e} /></Suspense>;
   return (
     <>
-      {railed && <Spine view={view} onPick={(v) => { back.current = null; hop(v); }} waits={NO_WAITS} onFind={openFind} onSettings={openSettings} onJelly={() => {}}
+      {railed && <Spine view={vw} shown={views} onPick={(v) => { back.current = null; hop(v); }} waits={NO_WAITS} onFind={openFind} onSettings={openSettings} onJelly={() => {}}
         extra={runsOn || away.away ? <>{runsOn && <RunsDoor open={runsShown} dot={runsDot} onPress={() => { if (view !== "build") hop("build"); setRunsOpen((o) => view !== "build" || !o); }} />}
           {away.away && <BackToCowork inSpine onPress={() => { back.current = null; away.back(); }} />}</> : undefined} />}
       {!railed && away.away && <BackToCowork inSpine={false} onPress={away.back} />}
@@ -205,23 +223,24 @@ export default function App() {
       {railed && <Marks send={e.send} />}
       {!spine && <div className="f-lights" data-tauri-drag-region aria-hidden />}
       <VersionSwitch setSettings={e.setSettings} />
-      {spine && view === "home" ? <Suspense fallback={null}>{oneHome && <OneHome e={e} />}</Suspense> : spine && view === "social" ? <SocialView />
-        : mode === "cowork" ? <Cowork e={e} onMode={pick} />
+      {spine && vw === "home" ? <Suspense fallback={null}>{oneHome && <OneHome e={e} />}</Suspense> : spine && vw === "social" ? <SocialView />
+        : cw ? <Cowork e={e} onMode={pick} />
         : clean ? <Suspense fallback={null}><CleanHome e={e} onMode={pick} /></Suspense> : <WorkApp e={e} onMode={pick} />}
-      {spine && view === "home" && oneHome && homeSet && <Suspense fallback={null}><HomeSettings e={e} first={homeSet} onClose={() => setHomeSet(null)} /></Suspense>}
+      {spine && vw === "home" && oneHome && homeSet && <Suspense fallback={null}><HomeSettings e={e} first={homeSet} onClose={() => setHomeSet(null)} /></Suspense>}
       {cross && <CrossLayer e={e} />}
       {!POP && <Seams />}
       {/* a group's link opened in the app (#327): it asks over either mode, and opens Cowork only once joined; signed out
           (#342), its "sign in" opens Settings in Home on that drawer, once Home has mounted */}
-      <JoinAsk onJoined={() => { try { sessionStorage.setItem("sol.cowork.stage", JSON.stringify({ k: "dashboard" })); } catch { /* private */ } pick("cowork"); window.dispatchEvent(new Event("sol:cowork-group")); }}
-        onSignIn={(drawer) => { pick("home"); window.setTimeout(() => window.dispatchEvent(new CustomEvent("sol:settings", { detail: drawer })), 60); }} />
+      {views.has("cowork") && <JoinAsk onJoined={() => { try { sessionStorage.setItem("sol.cowork.stage", JSON.stringify({ k: "dashboard" })); } catch { /* private */ } pick("cowork"); window.dispatchEvent(new Event("sol:cowork-group")); }}
+        onSignIn={(drawer) => { pick("home"); window.setTimeout(() => window.dispatchEvent(new CustomEvent("sol:settings", { detail: drawer })), 60); }} />}
       {/* the one card about counting (#356): once, on the first window after the onboarding; the press is the whole face of it */}
       {!one && e.settings?.track && (!e.settings.track.told || (e.settings.errorCounts === true && e.settings.track.toldErrors === false)) &&
         <CountsCard errors={e.settings.errorCounts === true} onOk={() => e.setSettings({ track: { told: true, ...(e.settings?.errorCounts ? { toldErrors: true } : {}) } })} />}
       {/* the one question about waking (#1313): once, after the onboarding, in the counting card's spot when that one is not up */}
-      {!one && !POP && !(e.settings?.track && (!e.settings.track.told || (e.settings.errorCounts === true && e.settings.track.toldErrors === false))) && <WakeAskCard />}
-      {one ? <Suspense fallback={null}><One e={e} onLanding={() => { setLanding(true); hop("home"); }} onDone={(home) => { setOne(false); setLanding(false); if (!home) return; try { localStorage.setItem("sol.firstrun", "done"); } catch { /* private */ } hop("home"); }} /></Suspense> : null}
-      {!one && <Suspense fallback={null}><Visit e={e} where={mode === "cowork" ? "cowork" : view === "build" ? "build" : null} /></Suspense>}
+      {!one && !POP && views.has("cowork") && !(e.settings?.track && (!e.settings.track.told || (e.settings.errorCounts === true && e.settings.track.toldErrors === false))) && <WakeAskCard />}
+      {!views.has("home") && !started ? <Suspense fallback={null}><Start e={e} onDone={() => { setStarted(true); setOne(false); hop("build"); }} /></Suspense>
+        : one && views.has("home") ? <Suspense fallback={null}><One e={e} onLanding={() => { setLanding(true); hop("home"); }} onDone={(home) => { setOne(false); setLanding(false); if (!home) return; try { localStorage.setItem("sol.firstrun", "done"); } catch { /* private */ } hop("home"); }} /></Suspense> : null}
+      {!one && <Suspense fallback={null}><Visit e={e} where={cw ? "cowork" : vw === "build" ? "build" : null} /></Suspense>}
     </>
   );
 }

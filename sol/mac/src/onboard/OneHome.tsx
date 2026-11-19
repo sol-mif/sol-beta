@@ -93,7 +93,28 @@ export function OneHome({ e }: { e: E }) {
   const [checking, setChecking] = useState<Record["areas"] | null>(null), checkTaken = useRef(false);
   const [runs, setRuns] = useState<Record_<string, Run>>({});
   const [step, setStep] = useState<[string, string] | null>(null);   // Home's one line while a routine runs: the name, then three words
-  useEffect(() => { if (e.up) void readRecord(ask).then(setRec); }, [e.up, ask]);
+  // the record, as Home opens and each time the person's Claude made or moved a place (#1662, engine homeplaces.ts): read
+  // again, the open place followed to its new id, and the folders waiting in fillDirs made and filled as "+" makes them
+  const reread = async () => {
+    const r = await readRecord(ask);
+    setRec(r);
+    const wait = r?.solHome ? r.areas.filter((a) => (r.fillDirs ?? []).includes(a.id)) : [];
+    if (!r?.solHome || !wait.length) return;
+    const made = await newFolders(ask, { ...r, areas: wait }, r.solHome);
+    if (!made.length || !(await makeRecordDir(ask, made.map((id) => `${r.solHome}/${id}`)))) return;
+    const { held } = await landFolders(ask, r, r.solHome, made);
+    const n2 = await changeRecord(ask, (x) => afterLanding(x, made, made.filter((id) => !held.includes(r.areas.find((a) => a.id === id)?.name ?? id))));
+    if (n2) setRec(n2);
+  };
+  useEffect(() => {
+    if (!e.up) return;
+    void reread();
+    return e.subscribe((m: any) => {
+      if (m?.type !== "home.record") return;
+      if (Array.isArray(m.moves)) setAt((x) => (m.moves as [string, string][]).find(([f]) => f === x)?.[1] ?? x);
+      void reread();
+    });
+  }, [e.up, ask]);   // eslint-disable-line react-hooks/exhaustive-deps -- the wire, not the whole engine object
   useEffect(() => { if (rec?.built) setHomeFolders(rec.areas); }, [rec]);
   useEffect(() => { if (!rec?.built || checkTaken.current) return; checkTaken.current = true; const q = toCheck(rec); if (q.length) setChecking(q); }, [rec]);
   // a change to the record: made on the record as it is on disk now (written with the hash read), never a copy held here;

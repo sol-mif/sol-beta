@@ -20,7 +20,7 @@ export const MODES: Mode[] = ["concept", "complete", "product"];
 export type Station = Mode | "settled";
 export type Stage = "hand" | Station;
 const RANK: Record<Mode, number> = { concept: 0, complete: 1, product: 2 };
-const STATIONS: readonly string[] = [...MODES, "settled"];
+const STATIONS: readonly string[] = ["hand", ...MODES, "settled"];   // a card may stand at hand on purpose (ui.next, #1615): off until set, as with no card
 export type Side = "engine" | "window";
 
 /** the table a card set writes (pure): each switch's station and the side that reads it. A row that is not one is left
@@ -31,7 +31,7 @@ export function stationsFrom(raw: unknown): { stages: Record<string, Stage>; sid
     for (const [name, row] of Object.entries(raw as Record<string, unknown>)) {
       const r = row && typeof row === "object" ? (row as Record<string, unknown>) : {};
       if (typeof r.station !== "string" || !STATIONS.includes(r.station)) continue;
-      stages[name] = r.station as Station;
+      stages[name] = r.station as Stage;
       sides[name] = r.side === "window" ? "window" : "engine";
     }
   }
@@ -48,12 +48,18 @@ export const WINDOW_SWITCHES: readonly string[] = Object.keys(TABLE.sides).filte
 export const stageOf = (name: string, stages: Readonly<Record<string, Stage>> = STAGES): Stage => (Object.hasOwn(stages, name) ? stages[name] : "hand");
 
 const word = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
-/** the mode this Sol runs in (pure): the env's word first (SOL_VERSION, a developer's own run or a test), else the
- *  setting, else by the channel it updates on (beta: product, dev: concept). null while the channel is not known yet
- *  (the engine's first moment, before Ship has read it), so nothing is shown to someone it may not be for */
+/** the mode this Sol runs in (pure): the env's word first (SOL_VERSION, a developer's own run or a test); a Sol on beta,
+ *  a tester's, is product and nothing picked moves it (#1637, Frank 2026-11-19: the people who use Sol have no concept or
+ *  complete to switch to, whatever the settings file says); else the setting a person picked, else by the channel (dev:
+ *  concept). null while the channel is not known yet (the engine's first moment, before Ship has read it) and nobody
+ *  picked, so nothing is shown to someone it may not be for */
 export function modeOf(env: unknown, setting: unknown, channel: unknown): Mode | null {
-  for (const v of [word(env), word(setting)]) if ((MODES as string[]).includes(v)) return v as Mode;
-  return channel === "beta" ? "product" : channel === "dev" ? "concept" : null;
+  const isMode = (v: string): v is Mode => (MODES as string[]).includes(v);
+  const e = word(env), s = word(setting);
+  if (isMode(e)) return e;
+  if (channel === "beta") return "product";
+  if (isMode(s)) return s;
+  return channel === "dev" ? "concept" : null;
 }
 
 /** whether a switch at this station is on in this mode when nobody set it (pure): settled always, hand never, else

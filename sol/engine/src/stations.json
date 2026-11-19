@@ -99,6 +99,26 @@
     "side": "engine",
     "id": "engine/mcp-tools/from-cards"
   },
+  "ui.next": {
+    "station": "hand",
+    "side": "engine",
+    "id": "product/ui-next"
+  },
+  "view.cowork": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/cowork"
+  },
+  "view.home": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/home"
+  },
+  "view.social": {
+    "station": "concept",
+    "side": "window",
+    "id": "product/social"
+  },
   "work.liveContext": {
     "station": "concept",
     "side": "engine",

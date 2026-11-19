@@ -42,7 +42,7 @@ export const OPEN_TOOLS = [
     description: "Change one of the person's settings, only when they asked for that change or said yes to it in this " +
       "very turn; never before, never on a guess. `patch` is the part of the settings that changes (look: { text: 18 }; " +
       "voice: \"Kore\"; notify, language, lens …). `yes` is the person's own words from this turn that ask for it " +
-      "or agree to it, two words at least, copied exactly: the change is refused when those words are not in what they said this turn.",
+      "or agree to it, two words at least (in Chinese or Japanese, four characters), copied exactly: the change is refused when those words are not in what they said this turn.",
     shape: { patch: z.record(z.string(), z.unknown()), yes: z.string().min(2).max(400) },
   },
 ] as const;
@@ -64,12 +64,26 @@ export function heard(sessionId: string | undefined, text: string): void {
   heardIn.set(sessionId, { text, at: Date.now() });
   if (heardIn.size > 200) heardIn.delete(heardIn.keys().next().value!);
 }
-const plain = (s: string) => s.toLowerCase().replace(/[\s\p{P}]+/gu, " ").trim();
+// Chinese and Japanese put no spaces between words (#1639): a character of theirs is matched alone, a space beside it
+// does not count, and it weighs half a word, so "改成18" or "文字を大きく" asks while a bare "好" or "はい" does not
+const CJK = /[\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}]/u;
+const plain = (s: string) => s.toLowerCase().replace(/[\s\p{P}]+/gu, " ").trim()
+  .replace(/ (?=[\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}])|(?<=[\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}]) /gu, "");
+/** how many words `y` (plain) holds: a run of other letters is one, a Chinese or Japanese character half */
+const weight = (y: string) => [...y.matchAll(/[\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}]|[^ \p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}]+/gu)]
+  .reduce((n, [m]) => n + (CJK.test(m) ? 0.5 : 1), 0);
+/** a word's edge at `i` of `s`: the start or end, a space, or a Chinese or Japanese character on either side */
+const edge = (s: string, i: number) => i <= 0 || i >= s.length || s[i - 1] === " " || s[i] === " " || CJK.test(s[i - 1]) || CJK.test(s[i]);
 /** whether `yes` is in what was said this turn (pure but for the map): case, spacing and punctuation aside, as whole
  *  words in a row. Two words at least, so a bare "ok" or "yes" (an answer to anything) is never taken as asking for a change */
+/** what the person said this turn: a Home turn's own words, else a Work run's heard as it started; none for a turn they did not start */
+export const wordsThisTurn = (turn: TurnCtx): string | undefined => turn.said ?? (turn.sessionId ? heardIn.get(turn.sessionId)?.text : undefined);
 export function saidThisTurn(turn: TurnCtx, yes: string): boolean {
-  const words = turn.said ?? (turn.sessionId ? heardIn.get(turn.sessionId)?.text : undefined), y = plain(yes);
-  return typeof words === "string" && y.split(" ").length >= 2 && ` ${plain(words)} `.includes(` ${y} `);   // whole words only
+  const words = wordsThisTurn(turn), y = plain(yes);
+  if (typeof words !== "string" || !y || weight(y) < 2) return false;
+  const w = plain(words);
+  for (let i = w.indexOf(y); i >= 0; i = w.indexOf(y, i + 1)) if (edge(w, i) && edge(w, i + y.length)) return true;   // whole words only
+  return false;
 }
 
 /** a patch the seat may make (pure): only SETTABLE keys; the reason when nothing of it is */

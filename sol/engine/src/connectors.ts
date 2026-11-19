@@ -1,8 +1,9 @@
 // A read turn through the person's Claude account (moved from index.ts, #1146). index.ts wraps a `read: true` say's
 // canUseTool in connectorsGuard; parts/connectors.ts answers the face's "connectors" message with connectedServices.
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { homedir } from "node:os";
 import { query, type CanUseTool, type McpServerConfig } from "@anthropic-ai/claude-agent-sdk";
+import { ALL_OFF, sourcesOff } from "./consent.js";
 
 // A read through the person's Claude account (Home's first read, scratch/sol/onb/path.md): the services connected there
 // (the CLI loads them as source "claudeai") are refused on every turn by Home's canUseTool; a say with `read: true` may
@@ -16,17 +17,18 @@ export function standIns(): Record<string, McpServerConfig> {
 }
 /** a service's key in a tool's name: `mcp__<key>__<tool>` (the account's own come as "claude.ai <name>") */
 export const serverKey = (server: string) => server.replace(/[^A-Za-z0-9_-]/g, "_");
-/** the services the person said "not here" to by name (#1229, Settings › home): the consent's `sources`, `account:<name>`
- *  "no" (the face's onboard/connections.ts writes it), as the keys their tools carry; read once at a read turn's start */
-export function servicesOff(home: string): Set<string> {
+/** the services the person said "not here" to by name (#1229, Settings › home, or said aloud, reads.ts #1656): the
+ *  consent's `sources`, `account:<name>` "no", as the keys their tools carry, lower-cased; read once at a read turn's
+ *  start. The record is read by consent.ts (#1216), the engine's one reader of it, so the refusal stands on every switch.
+ *  It is in the person's own home (~/.sol/record/me.json, where the face writes it), never Sol's home folder (#1656) */
+export function servicesOff(home = homedir()): Set<string> {
   const off = new Set<string>();
-  try {
-    const said = JSON.parse(readFileSync(join(home, ".sol", "record", "me.json"), "utf8"))?.consent?.sources ?? {};
-    for (const [k, v] of Object.entries(said)) {
-      const m = /^account:(.+)$/.exec(k);
-      if (m && v === "no") { off.add(serverKey(m[1])); off.add(serverKey(`claude.ai ${m[1]}`)); }
-    }
-  } catch { /* no record, or one that will not read: nothing is off by name here */ }
+  const said = sourcesOff(home);
+  if (said.has(ALL_OFF)) return new Set([ALL_OFF]);   // a record that will not read: every service refused until it reads
+  for (const k of said) {
+    const m = /^account:(.+)$/.exec(k);
+    if (m) { off.add(serverKey(m[1]).toLowerCase()); off.add(serverKey(`claude.ai ${m[1]}`).toLowerCase()); }
+  }
   return off;
 }
 /** Home's check, and for a connected service's tool: allowed only when it lists or reads (`ro`: its readOnly hints), and
@@ -35,7 +37,8 @@ export function connectorsGuard(base: CanUseTool, ro: Map<string, boolean>, off:
   return async (name, input, o) => {
     const m = /^mcp__(.+?)__(.+)$/.exec(name);
     if (!m || m[1] === "sol") return base(name, input, o);
-    if (off.has(m[1])) return { behavior: "deny", message: `refused: ${m[2]}. The person said "not here" to ${m[1].replace(/^claude_ai_/, "")} (their record, ~/.sol/record/me.json, consent.sources); they turn it back on in Settings › home.` };
+    if (off.has(ALL_OFF)) return { behavior: "deny", message: `refused: ${m[2]}. The person's record (~/.sol/record/me.json) will not read, so what they said "not here" to cannot be told; nothing of their account is read until it reads.` };
+    if (off.has(m[1].toLowerCase())) return { behavior: "deny", message: `refused: ${m[2]}. The person said "not here" to ${m[1].replace(/^claude_ai_/, "")} (their record, ~/.sol/record/me.json, consent.sources); they turn it back on in Settings › home, or by saying so.` };
     return readOnlyTool(m[2], ro.get(name)) ? { behavior: "allow", updatedInput: input }
       : { behavior: "deny", message: `${m[2]} sends, writes or deletes; a read only lists and reads.` };
   };

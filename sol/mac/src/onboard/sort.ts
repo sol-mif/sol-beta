@@ -128,7 +128,9 @@ export function readingOf(m: unknown, said: string, closes: (word: string) => bo
   const areas: Reading["areas"] = [];
   for (const a of rows(o.areas)) {
     const id = str(a.id), name = oneLine(str(a.name)), part = a.part as Part;
-    if (!/^[a-z0-9][a-z0-9-]*$/.test(id) || KEPT_IDS.has(id) || !name || !PARTS.includes(part) || areas.some((x) => x.id === id)) continue;
+    // one level inside another read before it (#1662): "<outer>/<own>", its folder inside the outer's (depth.ts)
+    const up = id.includes("/") ? id.slice(0, id.indexOf("/")) : null;
+    if (!/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)?$/.test(id) || KEPT_IDS.has(up ?? id) || (up && !areas.some((x) => x.id === up)) || !name || !PARTS.includes(part) || areas.some((x) => x.id === id)) continue;
     areas.push({ id, name, part, said: str(a.said) || said });
   }
   const off: string[] = [], from: { word: string; said: string }[] = [];

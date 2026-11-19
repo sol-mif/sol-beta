@@ -1,0 +1,7 @@
+/* A tester's start (#1637, Start.tsx): the onboarding's stage, line and creature (one.css), and under the line its one
+   press. The install's progress is one thin line, as the onboarding drew it: a fraction, never a list. */
+.st-stage .st-foot { position: absolute; left: 120px; top: 132px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3, 12px); }
+.st-stage .st-said { margin: 0; max-width: 520px; color: var(--dim); }
+.st-stage .st-bar { position: absolute; left: 120px; top: 116px; width: 320px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.st-stage .st-bar i { display: block; height: 100%; background: var(--pearl, #f2f2f4); transform-origin: left center; transition: transform .6s cubic-bezier(.3, 1, .5, 1); }
+@media (prefers-reduced-motion: reduce) { .st-stage .st-bar i { transition: none; } }

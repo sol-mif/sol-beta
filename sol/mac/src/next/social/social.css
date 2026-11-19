@@ -1,0 +1,145 @@
+/* Social v2's pages (slice 9, #1615; the mockup's merge/views/social.css): Social, a friend, as a friend sees you, make a
+   link. The faces, buttons and sheets are people/people.css. Under .ppl only. Every space, size and corner is the
+   scale's, every colour the next set's roles; the look and layout lints hold this, and count 26 reads it.
+   Signed: marcocyl04-ux's agent, port slice 8+9 (#1615). */
+
+/* ---- the profile ---- */
+.ppl .prof { display: flex; gap: var(--s6); align-items: center; margin-top: var(--s2); }
+.ppl .prof .nmx { font: 600 var(--t-display)/var(--t-display-line) var(--serif); }
+.ppl .prof .wo { margin-top: var(--s2); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.ppl .prof .wo .pen { color: var(--ink4); font-size: var(--t-body); }
+.ppl .prof .wo small { color: var(--ink3); font-size: var(--t-head); }
+.ppl .lvl { margin-top: var(--s3); display: flex; align-items: center; gap: var(--s3); font-size: var(--t-body); color: var(--ink3); }
+.ppl .lvl .barx { width: 180px; padding: var(--s1) 0 0; border-radius: var(--r-chip); background: var(--side); overflow: hidden; position: relative; }
+.ppl .lvl .barx i { position: absolute; inset: 0 38% 0 0; background: linear-gradient(90deg, var(--a1), var(--a2)); }
+.ppl .lvl b { color: var(--ink); font-weight: 650; }
+.ppl .badges { display: flex; gap: var(--s2); margin-top: var(--s3); flex-wrap: wrap; }
+.ppl .badges span { font-size: var(--t-code); padding: 0 var(--s2); border-radius: var(--r-row); background: var(--side); color: var(--ink2); }
+
+/* ---- the asks: one card per kind (FX1) ---- */
+.ppl .favline { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; font-size: var(--t-body); color: var(--ink2); }
+.ppl .favline.gap { margin-top: var(--s6); }
+.ppl .favline .pickc { padding: 0 var(--s2); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font-weight: 550; cursor: pointer; }
+.ppl .favline .warn { flex-basis: 100%; color: var(--ink2); }
+.ppl .favline .used { margin-left: auto; color: var(--ink3); }
+.ppl .favline a, .ppl .shareline a, .ppl .gr a, .ppl .logfold a { text-decoration: underline; text-decoration-color: var(--ink4); cursor: pointer; }
+.ppl .req { padding: var(--s4) var(--s6); margin-top: var(--s3); }
+.ppl .req .from { gap: var(--s3); }
+.ppl .req h3 { font: 600 var(--t-read)/var(--t-read-line) var(--sans); margin-top: var(--s2); }
+.ppl .req .ctx { margin-top: var(--s3); display: flex; gap: var(--s2); flex-wrap: wrap; }
+.ppl .req .ctx span { font-size: var(--t-head); padding: 0 var(--s2); border-radius: var(--r-row); background: var(--side); color: var(--ink2); }
+.ppl .req .ctx span.need { background: color-mix(in srgb, var(--a2) 25%, var(--card)); color: var(--ink); }
+.ppl .req .need { font-weight: 650; color: var(--ink); }
+.ppl .req .note { font-size: var(--t-head); color: var(--ink3); }
+.ppl .req .srcx { margin-left: auto; font-size: var(--t-code); padding: 0 var(--s2); border-radius: var(--r-row); background: var(--side); color: var(--ink2); white-space: nowrap; }
+.ppl .req.tint { background: linear-gradient(135deg, color-mix(in srgb, var(--h1) 16%, var(--card)), var(--card) 60%); }
+.ppl .clash { color: var(--ink); }
+.ppl .shareline { margin-top: var(--s3); font-size: var(--t-body); color: var(--ink2); }
+.ppl .shareline a { color: var(--ink3); }
+.ppl .fold2 h3 { display: flex; align-items: baseline; gap: var(--s3); }
+.ppl .fold2 .rows { display: none; margin-top: var(--s3); border-top: 1px solid var(--line); }
+.ppl .fold2.open .rows { display: block; }
+.ppl .r1 { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.ppl .r1 .t { flex: 1; min-width: 0; }
+.ppl .r1 .t small { color: var(--ink3); font-size: var(--t-head); margin-left: var(--s2); }
+.ppl .r1 .need { font-size: var(--t-code); }
+.ppl .moreasks { font-size: var(--t-body); color: var(--ink3); margin-top: var(--s3); padding-left: var(--s1); }
+.ppl .tpick { display: inline-flex; gap: var(--s1); padding: var(--s1); border-radius: var(--r-row); background: var(--side); }
+.ppl .tpick span { font-size: var(--t-code); padding: 0 var(--s2); border-radius: var(--r-chip); color: var(--ink2); cursor: pointer; }
+.ppl .tpick span.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+.ppl .reports { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-body); color: var(--ink2); }
+.ppl .reports .chev { margin-left: auto; color: var(--ink3); white-space: nowrap; }
+.ppl .reports .ink { color: var(--ink); }
+
+/* ---- what you made, your close friends, your friends ---- */
+.ppl .pub { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s3); }
+.ppl .item { padding: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.ppl .item .sw2 { aspect-ratio: 3 / 1; border-radius: var(--r-row); background: linear-gradient(135deg, var(--a1), var(--a2)); }
+.ppl .item b { font-weight: 600; }
+.ppl .item small { font-size: var(--t-head); color: var(--ink3); }
+.ppl .item .n2 { font: 600 var(--t-title)/var(--t-title-line) var(--serif); }
+.ppl .item .n2s { font: 400 var(--t-head)/var(--t-head-line) var(--sans); color: var(--ink3); }
+.ppl .close { display: flex; gap: var(--s4); flex-wrap: wrap; margin-top: var(--s2); }
+.ppl .cf { width: 120px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s2); padding: var(--s3) var(--s2); border-radius: var(--r-lg); cursor: pointer; background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.ppl .cf:hover { background: var(--hover); }
+.ppl .cf b { font-weight: 600; }
+.ppl .cf small { font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); }
+.ppl .tog { width: 30px; aspect-ratio: 30 / 18; border-radius: var(--r-pill); background: var(--ink4); position: relative; flex: none; cursor: pointer; transition: background var(--d-turn) var(--ease); }
+.ppl .tog::after { content: ""; position: absolute; inset: 11%; right: auto; aspect-ratio: 1; border-radius: 50%; background: var(--card); transition: transform var(--d-turn) var(--spring); }
+.ppl .tog.on { background: var(--a3); }
+.ppl .tog.on::after { transform: translateX(80%); }
+.ppl .usual { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-body); color: var(--ink2); margin-top: var(--s3); }
+.ppl .usual .u { display: inline-flex; align-items: center; gap: var(--s2); padding: 0 var(--s2) 0 var(--s1); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.ppl .usual .u.off { color: var(--ink3); text-decoration: line-through; text-decoration-color: var(--ink4); }
+.ppl .usual .u .tog { transform: scale(0.8); }
+.ppl .findadd { display: flex; gap: var(--s2); margin-top: var(--s3); }
+.ppl .findadd input { flex: 1; min-width: 0; height: var(--h-row); border-radius: var(--r-pill); border: 0; box-shadow: inset 0 0 0 1px var(--line); background: var(--card); padding: 0 var(--s4); font: 400 var(--t-body)/var(--t-body-line) var(--sans); color: var(--ink); }
+.ppl .fchips { display: flex; gap: var(--s2); margin: var(--s3) 0 var(--s1); flex-wrap: wrap; }
+.ppl .fchips span { font-size: var(--t-head); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); cursor: pointer; }
+.ppl .fchips span.on { background: var(--ink); color: var(--card); box-shadow: none; }
+.ppl .flist { margin-top: var(--s2); background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); padding: var(--s2) var(--s4); }
+.ppl .fr { display: flex; align-items: center; gap: var(--s3); min-height: var(--h-row); padding: var(--s2); border-radius: var(--r-row); cursor: pointer; min-width: 0; }
+.ppl .fr:hover { background: var(--hover); }
+.ppl .fr b { font-weight: 600; }
+.ppl .fr .w { font-size: var(--t-body); color: var(--ink3); }
+.ppl .fr .pres { font-size: var(--t-head); color: var(--ink3); display: inline-flex; align-items: center; gap: var(--s1); }
+.ppl .fr .pres i { width: 8px; aspect-ratio: 1; border-radius: 50%; }
+.ppl .fr .newc { font-size: var(--t-label); font-weight: 650; padding: 0 var(--s1); border-radius: var(--r-chip); background: color-mix(in srgb, var(--a3) 25%, var(--card)); color: var(--ink); margin-left: var(--s2); }
+.ppl .fr .tm2 { font-size: var(--t-pill); color: var(--ink3); margin-left: var(--s2); }
+.ppl .fr.wait .face { opacity: 0.4; }
+.ppl .fr .acts2 { margin-left: auto; display: flex; gap: var(--s2); }
+.ppl .fr.foldrow { color: var(--ink2); justify-content: flex-start; }
+.ppl .fr.foldrow .chev { margin-left: auto; color: var(--ink3); }
+
+/* ---- the first open (S1): a face to pick, then one friend ---- */
+.ppl .facepick { display: flex; gap: var(--s3); margin-top: var(--s4); flex-wrap: wrap; align-items: center; }
+.ppl .facepick .face { width: 52px; cursor: pointer; }
+.ppl .facepick .face.on { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ppl .facepick .alt { height: var(--s12); padding: 0 var(--s4); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--ink4); font-size: var(--t-body); color: var(--ink2); display: inline-flex; align-items: center; cursor: pointer; }
+.ppl .firstcard { padding: var(--s6) var(--s8); margin-top: var(--s8); }
+.ppl .firstcard h3 { font: 600 var(--t-title)/var(--t-title-line) var(--sans); }
+.ppl .firstcard .findadd { margin-top: var(--s4); }
+
+/* ---- a friend ---- */
+.ppl .alsoin { display: inline-flex; align-items: center; gap: var(--s2); margin-top: var(--s3); font-size: var(--t-body); color: var(--ink2); padding: var(--s1) var(--s3) var(--s1) var(--s2); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.ppl .alsoin b { font-weight: 600; color: var(--ink); }
+.ppl .doors { display: flex; gap: var(--s2); margin-top: var(--s6); flex-wrap: wrap; }
+.ppl .doors .later { opacity: 0.55; }
+.ppl .askai { margin-top: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); color: var(--ink3); display: flex; align-items: center; gap: var(--s3); }
+.ppl .askai .end { font-size: var(--t-head); }
+.ppl .twoway { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); margin-top: var(--s8); }
+.ppl .twoway .card { padding: var(--s4) var(--s6); min-width: 0; }
+.ppl .twoway h3 { font: 600 var(--t-read)/var(--t-read-line) var(--sans); display: flex; align-items: baseline; gap: var(--s2); margin-bottom: var(--s2); flex-wrap: wrap; }
+.ppl .twoway h3 small { font-weight: 400; color: var(--ink3); font-size: var(--t-head); }
+.ppl .twoway h3 a { margin-left: auto; font-size: var(--t-head); font-weight: 500; color: var(--ink2); text-decoration: underline; text-decoration-color: var(--ink4); cursor: pointer; }
+.ppl .grants .gr { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.ppl .grants .gr div { flex: 1; min-width: 0; }
+.ppl .grants .gr b { font-weight: 600; }
+.ppl .grants .gr small { display: block; font-size: var(--t-body); color: var(--ink3); }
+.ppl .grants .gr .off3 { color: var(--ink3); font-weight: 500; }
+.ppl .gr .diffx { font-size: var(--t-label); font-weight: 650; padding: 0 var(--s1); border-radius: var(--r-chip); background: var(--side); color: var(--ink2); margin-left: var(--s2); }
+.ppl .theirs .gr .dotx { width: 9px; aspect-ratio: 1; border-radius: 50%; background: var(--a3); flex: none; }
+.ppl .theirs .gr.no .dotx { background: transparent; box-shadow: inset 0 0 0 1px var(--ink4); }
+.ppl .theirs .gr.no b { color: var(--ink3); font-weight: 500; }
+.ppl .theirs .hintx { margin-top: var(--s3); }
+.ppl .logfold { margin-top: var(--s2); font-size: var(--t-body); color: var(--ink3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.ppl .asked { font-size: var(--t-body); color: var(--ink2); padding: var(--s2) 0; display: flex; gap: var(--s3); border-bottom: 1px solid var(--line); }
+.ppl .asked span { margin-left: auto; color: var(--ink3); font-size: var(--t-head); white-space: nowrap; }
+.ppl .endrow { display: flex; gap: var(--s2); margin-top: var(--s8); flex-wrap: wrap; }
+
+/* ---- as a friend sees you; what a link opens ---- */
+.ppl .prevx { width: 360px; max-width: 100%; margin: var(--s4) auto 0; padding: var(--s6); border-radius: var(--r-lg); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); text-align: center; }
+.ppl .prevx .face { margin: 0 auto; display: block; }
+.ppl .prevx .nmx { font: 600 var(--t-title)/var(--t-title-line) var(--serif); margin-top: var(--s3); }
+.ppl .ln2 { font-size: var(--t-body); color: var(--ink2); margin-top: var(--s2); }
+.ppl .ln2.no { color: var(--ink3); }
+.ppl .fbbar { display: flex; gap: var(--s1); margin: var(--s3) auto 0; width: 260px; }
+.ppl .fbbar i { flex: 1; padding-top: var(--s3); border-radius: var(--r-chip); background: var(--card); }
+.ppl .fbbar i.b { background: var(--ink3); }
+.ppl .web { margin-top: var(--s4); border-radius: var(--r-card); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: var(--card); }
+.ppl .web .barx { height: var(--h-chip); background: var(--side); display: flex; align-items: center; gap: var(--s1); padding: 0 var(--s3); font-size: var(--t-label); color: var(--ink3); }
+.ppl .web .barx i { width: 8px; aspect-ratio: 1; border-radius: 50%; background: var(--ink4); }
+.ppl .web .bdx { padding: var(--s4); text-align: center; font-size: var(--t-body); color: var(--ink2); }
+.ppl .web .bdx .face { display: inline-block; }
+.ppl .web .bdx b { display: block; font: 600 var(--t-big)/var(--t-big-line) var(--serif); color: var(--ink); margin: var(--s2) 0 var(--s1); }
+.ppl .web .get { margin-top: var(--s3); }

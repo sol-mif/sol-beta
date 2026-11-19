@@ -8,6 +8,7 @@
 // 2026-11-14 (the fix round on two kinds of session): the helpers' line and its pref (Build settings › sidebar ›
 // helpers) are gone: only `under` folds now, under an orchestration row that says its own count, so nothing else had one.
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { viewShown } from "../spine/views";   // #1637: the mode words leave Cowork out where it is not shown
 import { createPortal } from "react-dom";
 import { MomentDot } from "../notify/InPlace";   // the one notification (#845): the row's dot
 import type { RunInfo, Work, WorkSession } from "../work/useWork";
@@ -444,7 +445,7 @@ export function Side({ w, width = SIDE, live, wide, onOpen, onBeside, onFresh, o
     <div className="hc-sidetop">
       {/* S1 the modes: the words themselves, the one you are in in ink (no pill, no pearl: the pearl is the picked row's) */}
       {!spine && <div className="hc-modes" role="group" aria-label="mode">
-        {MODES.map(([m, name]) => (
+        {MODES.filter(([m]) => m !== "cowork" || viewShown("cowork")).map(([m, name]) => (
           <button key={m} type="button" tabIndex={-1} data-mode={m} className={`hc-mode${m === "home" ? " on" : ""}`} aria-pressed={m === "home"} onClick={() => m !== "home" && onMode(m)}>
             {name}{m !== "home" && <Lift />}
           </button>

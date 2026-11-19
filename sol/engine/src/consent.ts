@@ -5,11 +5,15 @@
 //            record: the folder's agent looks and writes down what it would do; every tool that acts is refused.
 //            show and draft: it works up to the send; every tool that sends or presses in a page is refused.
 //            do: nothing is refused here (the site guards, watch mode and Home's ceiling still stand).
+//   sources  a source by name, "yes" or "no" (#1217): a named one (github, notes …) or `account:<service>`, a service of
+//            the Claude account (#1229). A "no" is "not here": sourcesOff reads it for the read turn's guard
+//            (connectors.ts) on every switch setting, and setSource writes it on the person's word (reads.ts, #1656).
 // A folder the record does not name is not this file's to judge: nothing is refused here. A record from before the
 // consent field (no `consent`) is read at its one `hands`, which is what the onboarding wrote into every folder then.
 // A record that will not read cannot say which folder is which, so it refuses nothing here; the folder's agent keeps its
 // rung from policy.md (written at the same level) and every other guard.
-import { readFileSync, realpathSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -41,7 +45,7 @@ export function consentRefusal(level: Level | null, tool: string, folder = "this
   return `refused: ${name}. The person's record (~/${RECORD}, consent.levels) sets ${folder} at ${say[level]}. Write what you would have done into the folder instead; the person raises the level in Home.`;
 }
 
-export type Consent = { levels?: Record<string, Level> };
+export type Consent = { levels?: Record<string, Level>; sources?: Record<string, "yes" | "no">; at?: string };
 type Rec = { hands?: Level; solHome?: string | null; areas?: { id: string }[]; consent?: Consent };
 const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
 const isLevel = (x: unknown): x is Level => typeof x === "string" && (LEVELS as readonly string[]).includes(x);
@@ -86,3 +90,31 @@ export function refusalIn(folder: string, home = homedir()): ((tool: string) => 
 /** two refusals as one: the first that says no */
 export const both = (a?: (t: string) => string | null, b?: (t: string) => string | null): ((t: string) => string | null) | undefined =>
   !a ? b : !b ? a : (t) => a(t) ?? b(t);
+
+/** the sources the person said "not here" to, by the record's own ids (`github`, `account:Gmail` …), read now. A record
+ *  that is missing says no "no" (none was ever said); one that is there and will not read is ALL_OFF, so a "no" in it is
+ *  never lost to a half-written or broken file */
+export const ALL_OFF = "*";
+export function sourcesOff(home = homedir()): Set<string> {
+  const rec = readRecord(home), off = new Set<string>();
+  if (rec === "missing") return off;
+  if (rec === "broken") return new Set([ALL_OFF]);
+  const said = rec.consent?.sources;
+  if (said && typeof said === "object") for (const [k, v] of Object.entries(said)) if (v === "no") off.add(k);
+  return off;
+}
+
+/** the person's "not here" (`no`) or "read it again" (`yes`) for one source, written into the record the way the face
+ *  writes it (onboard/consent.ts withSource): everything else kept, the consent's `at` moved, never a half-written file.
+ *  The reason when it cannot be written: there is no record yet (Home's setup makes it) or it will not read */
+export function setSource(id: string, said: "yes" | "no", home = homedir()): { ok: true } | { why: string } {
+  const rec = readRecord(home);
+  if (rec === "missing") return { why: "there is no record yet: Home's setup makes it" };
+  if (rec === "broken") return { why: `the record (~/${RECORD}) will not read, so nothing was written into it` };
+  const at = new Date().toISOString(), c = rec.consent && typeof rec.consent === "object" ? rec.consent : {};
+  const next = { ...rec, consent: { ...c, sources: { ...(c.sources ?? {}), [id]: said }, at } };
+  const file = join(home, RECORD), tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try { writeFileSync(tmp, JSON.stringify(next, null, 2) + "\n", { mode: 0o600, flag: "wx" }); renameSync(tmp, file); }   // a fresh name, never one already there
+  catch (e) { try { unlinkSync(tmp); } catch { /* none was made */ } return { why: `the record could not be written (${(e as Error).message})` }; }
+  return { ok: true };
+}

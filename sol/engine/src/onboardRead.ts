@@ -21,6 +21,7 @@ export const PARTS: Part[] = ["school", "work", "life", "build"];
 export type Close = "calendar" | "files" | "projects" | "browser" | "tools" | "messages";
 export const CLOSES: Close[] = ["calendar", "files", "projects", "browser", "tools", "messages"];
 
+// id: a folder's id; a part read as inside another (its `in`, #1662) is "<outer id>/<its own>", its folder inside the outer's (mac depth.ts)
 export type ReadArea = { id: string; name: string; part: Part; said: string };
 export type ReadOff = { said: string; word: string; closes: Close[] };
 export type Read = { areas: ReadArea[]; off: ReadOff[]; unsure: { said: string }[] };
@@ -48,12 +49,13 @@ export const SAYS: Record<Close, string> = { calendar: "calendar", files: "files
 
 export const SYSTEM = `You read what a person typed while setting up an assistant for the first time: a few sentences about their life, in any language, and perhaps things the assistant must not open. Their sentences come numbered. You answer with one JSON object and nothing else.
 
-{"areas":[{"name":"","en":"","part":"","from":1}],"off":[{"en":"","closes":[],"from":1}],"unsure":[1]}
+{"areas":[{"name":"","en":"","part":"","in":"","from":1}],"off":[{"en":"","closes":[],"from":1}],"unsure":[1]}
 
 areas: the parts of their life they named that deserve a folder of their own: a school, a job, clients, a business, a thing they sell on the side, a sport or hobby they train for, family, a project they build. One for each distinct thing, in the order said, at most six. An area is a whole part of their life, never a place, an event, a person or a task inside one: the stall a business sells at, its second location, its opening day and the partner it is run with all belong to the one business; a school they named is one area under its name, not also "School". When two things could be one area, they are one. Nothing named is an empty list. Never add one they did not say.
 - name: the folder's name, one to three words, lifted from their sentence in the exact characters they typed whenever the word is there (a simplified Chinese sentence gives a simplified name, a traditional one a traditional name): the proper name when they gave one ("Westbrook", "Kite"), else the plain word for it in their language (in English that would be "Clients", "Family", "Half Marathon").
 - en: the same name in English, one to three words, Latin letters only.
 - part: "school" (enrolled somewhere: a school, a university, a degree), "work" (a job, clients, their own business, selling), "life" (sport, health, a hobby or a class taken for the fun of it, family, home), "build" (software or a creative project of their own on the side, not their job).
+- in: "" almost always. Only when they themselves put one thing they keep up inside another they named ("my kids: Lia does chess and swim", "the robotics club at my school"), the inner one is its own area and its in is the outer area's name exactly as in its own name field. One level only: an area that is another's in has none of its own.
 - from: the number of the sentence that named it.
 
 off: everything they say must not be read, opened, looked at or touched, however it is said: an order, a wish, "X is private", "stay out of X", "leave X alone". One for each thing.
@@ -244,7 +246,7 @@ function tidy(raw: unknown, said: string): Read {
     // a refusal that closed nothing is not heard yet: if its sentence looks like one, it is asked as well
     if (closes.length) for (const n of from) heard.add(spaced(lines[n - 1]));
   }
-  const areas: ReadArea[] = [], taken = new Set<string>();
+  const areas: ReadArea[] = [], taken = new Set<string>(), inner: string[] = [];
   for (const x of list(o.areas)) {
     if (areas.length >= MOST_AREAS) break;
     const clean = (v: unknown) => line(typeof v === "string" ? v.replace(UNSEEN, "") : v, 40).replace(/[\\/:*?"<>|]/g, "").replace(/^\.+/, "").trim();
@@ -257,7 +259,15 @@ function tidy(raw: unknown, said: string): Read {
     if ((kept.has(bare(en)) || kept.has(bare(name))) && from.every((n) => told.has(lines[n - 1]))) continue;
     if (areas.some((a) => bare(a.name) === bare(name))) continue;
     areas.push({ id: idOf(name, en, part, taken), name, part, said: words(from) });
+    inner.push(clean(x.in));
   }
+  // one level inside another (#1662): an `in` that names another area of this answer, itself at the top, nests it there
+  // with the outer's part, the outer listed first; an `in` naming none, itself or a nested one leaves it at the top
+  const named = areas.map((_, i) => { const w = bare(inner[i] ?? ""); return w ? areas.findIndex((a, k) => k !== i && bare(a.name) === w) : -1; });
+  const outer = named.map((j) => (j >= 0 && named[j] < 0 ? j : -1));
+  const nested: ReadArea[] = [];
+  areas.forEach((a, i) => { if (outer[i] < 0) { nested.push(a); areas.forEach((b, k) => { if (outer[k] === i) nested.push({ ...b, id: `${a.id}/${b.id}`, part: a.part }); }); } });
+  areas.splice(0, areas.length, ...nested);
   const unsure: { said: string }[] = [];
   // (a sentence is itself, sign for sign: "my A-B folder" and "my AB folder" are two refusals; two spaces for one is not another sentence)
   const asked = new Set<string>();

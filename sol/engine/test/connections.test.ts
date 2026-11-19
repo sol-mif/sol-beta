@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
 import { freePort } from "./test-engine.ts";
-import { ACCOUNT_PAGE, checkTool, connections, fromAccount, fromGrant, fromTool, listOf, resetConnections, type Connection } from "../src/connections.ts";
+import { ACCOUNT_PAGE, checkTool, connections, extra, fromAccount, fromGrant, fromTool, listOf, resetConnections, type Connection } from "../src/connections.ts";
 
 const ENGINE = join(import.meta.dirname, "..");
 const dir = mkdtempSync(join(tmpdir(), "sol-connections-"));
@@ -39,18 +39,33 @@ test("the Claude account: connected, needs-auth lapsed, disabled missing, failed
   assert.deepEqual(none.map((r) => [r.id, r.state, r.why]), [["claude-account", "unsure", "not signed in to Claude"]]);
 });
 
-test("the Mac's tools: not there missing, answered connected, ran out lapsed with the line that signs in again, unknown unsure", () => {
+test("the Mac's tools: not there missing, answered connected, ran out lapsed with Sol's own sign-in and never a line to type, unknown unsure", () => {
   assert.deepEqual(fromTool({ tool: "gh", there: false }), { id: "tool:gh", name: "GitHub", from: "mac-tool", via: "gh", state: "missing", why: "gh is not on this Mac" });
   assert.equal(fromTool({ tool: "gh", there: true, account: "octo", ok: true }).state, "connected");
   const gh = fromTool({ tool: "gh", there: true, account: "octo", ok: false, said: "X The token in default is invalid." });
-  assert.equal(gh.state, "lapsed"); assert.deepEqual(gh.fix, { kind: "run", run: "gh auth login --web" });
-  assert.equal(fromTool({ tool: "gh", there: true, ok: false, said: "You are not logged into any GitHub hosts. To log in, run: gh auth login" }).state, "missing");
+  assert.equal(gh.state, "lapsed"); assert.deepEqual(gh.fix, { kind: "send", type: "team.github.connect" });
+  const never = fromTool({ tool: "gh", there: true, ok: false, said: "You are not logged into any GitHub hosts. To log in, run: gh auth login" });
+  assert.equal(never.state, "missing"); assert.deepEqual(never.fix, { kind: "send", type: "team.github.connect" });
   const gog = fromTool({ tool: "gog", there: true, account: "me@example.com", ok: false, said: "oauth2: \"invalid_grant\" \"Token has been expired or revoked.\"" });
-  assert.equal(gog.state, "lapsed"); assert.deepEqual(gog.fix, { kind: "run", run: "gog auth add me@example.com" });
-  assert.equal(fromTool({ tool: "gog", there: true, account: "me@x.com; rm -rf ~", ok: false, said: "invalid_grant" }).fix, undefined, "no shell line from an odd account");
+  assert.equal(gog.state, "lapsed"); assert.equal(gog.fix, undefined, "Google signs in on Sol's own row, not with gog's line");
   const empty = fromTool({ tool: "gog", there: true, ok: false, said: "" });
   assert.equal(empty.state, "missing"); assert.equal(empty.fix, undefined, "no account to sign in again with");
   assert.equal(fromTool({ tool: "gh", there: true, ok: false, said: "dial tcp: lookup api.github.com: no such host" }).state, "unsure");
+});
+
+test("Google is Sol's own sign-in: a gog not on this Mac gives no row, one that is there is an extra (#1641)", async () => {
+  assert.equal(extra({ tool: "gog", there: false }), false);
+  assert.equal(extra({ tool: "gog", there: true, ok: true }), true);
+  assert.equal(extra({ tool: "gh", there: false }), true, "GitHub has no other row: it says missing");
+  resetConnections();
+  const list = await connections({
+    services: async () => [],
+    tools: async () => [{ tool: "gh", there: true, account: "octo", ok: true }, { tool: "gog", there: false }],
+    grants: async () => [{ id: "drive", name: "Google Drive", connect: "team.drive.connect", grant: null, ranOut: null }],
+  }, true);
+  assert.deepEqual(list.map((r) => r.id), ["tool:gh", "sol:drive"], JSON.stringify(list));
+  assert.deepEqual(list[1].fix, { kind: "send", type: "team.drive.connect" }, "Google's own row signs in from Sol");
+  resetConnections();
 });
 
 test("Sol's own grants: held connected, ran out lapsed with when, never missing; a refresh with no answer unsure", () => {

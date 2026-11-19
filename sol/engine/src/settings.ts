@@ -34,6 +34,9 @@ export type Settings = {
   // Cowork v3 (fr-30): the switch, me layer, off unless set; written only once someone sets it, so a settings file
   // and the face's settings message are today's while it is off. coworkV3() is the one reading of it (env first)
   cowork?: { v3: boolean };
+  // the new face (#1604, docs/port/switch.md): the switch ui.next, per person, off unless set (its card stands at hand);
+  // written only once someone turns it, like cowork.v3. uiNext() is the one reading of it (env first)
+  ui?: { next: boolean };
   // the frame (#630, #633): the face's switch sol.frame, told to the engine so the kernel (kernel.ts) runs only with it
   // on; written only once someone turns it, like cowork.v3. frameOn() is the one reading of it (env first)
   frame?: boolean;
@@ -69,6 +72,10 @@ export type Settings = {
   // the pause signal (#1597, pause.ts): the Mac's own pauses (typing stops, an app switch, a call's end) told to the
   // faces, and a question held for the next one. Off unless set, written only once someone sets it. pauseSignal() is the reading (env first)
   pause?: { signal?: boolean };
+  // the person's word on what Sol reads (#1656, reads.ts): the seat's tool set_reading, which stops or resumes reading one
+  // source when the person says so this turn. Off unless set, written only once someone sets it. readsVoice() is the
+  // reading (env first). Off, "not here" still holds: the refusal reads the record, never this switch (connectors.ts)
+  reads?: { voice?: boolean };
   // the version this Sol runs as (versions.ts): concept, complete or product, picked by hand. Written only once someone
   // picks; unset, the channel decides (beta: product, dev: concept). versionMode() is the one reading of it (env first)
   version?: Mode;
@@ -169,6 +176,7 @@ export function clean(raw: unknown): Settings {
   };
   if (typeof r.mic === "string" && r.mic) out.mic = r.mic;
   if (isObj(r.cowork) && typeof r.cowork.v3 === "boolean") out.cowork = { v3: r.cowork.v3 };
+  if (isObj(r.ui) && typeof r.ui.next === "boolean") out.ui = { next: r.ui.next };
   if (typeof r.frame === "boolean") out.frame = r.frame;
   // each key under stage is kept on its own line, so a patch of one (merged, then cleaned here) never drops another
   if (isObj(r.stage)) {
@@ -186,6 +194,7 @@ export function clean(raw: unknown): Settings {
   }
   if (isObj(r.open) && typeof r.open.for === "boolean") out.open = { for: r.open.for };
   if (isObj(r.pause) && typeof r.pause.signal === "boolean") out.pause = { signal: r.pause.signal };
+  if (isObj(r.reads) && typeof r.reads.voice === "boolean") out.reads = { voice: r.reads.voice };
   if (isObj(r.onboarding) && typeof r.onboarding.reads === "boolean") out.onboarding = { reads: r.onboarding.reads };
   if (isObj(r.log) && typeof r.log.kinds === "boolean") out.log = { kinds: r.log.kinds };
   if (isObj(r.work) && typeof r.work.liveContext === "boolean") out.work = { liveContext: r.work.liveContext };
@@ -229,7 +238,7 @@ export function patchSettings(patch: unknown): Settings {
   if ("updates" in p && !(isObj(p.updates) && typeof p.updates.paused === "boolean")) delete p.updates;   // #1566
   // reach, onboarding.reads and log.kinds read on unset for the team (#1406): a key that is not a boolean is dropped from
   // the patch, so it never takes a person's false away
-  for (const [k, keys] of [["reach", ["tools", "room"]], ["onboarding", ["reads"]], ["log", ["kinds"]], ["work", ["liveContext"]], ["open", ["for"]], ["pause", ["signal"]]] as const) {
+  for (const [k, keys] of [["reach", ["tools", "room"]], ["onboarding", ["reads"]], ["log", ["kinds"]], ["work", ["liveContext"]], ["open", ["for"]], ["pause", ["signal"]], ["reads", ["voice"]]] as const) {
     if (!(k in p)) continue;
     const v = p[k];
     const kept = isObj(v) ? Object.fromEntries(keys.filter((x) => typeof v[x] === "boolean").map((x) => [x, v[x]])) : {};
@@ -249,6 +258,7 @@ export function patchSettings(patch: unknown): Settings {
   } catch (e) { try { unlinkSync(tmp); } catch { /* none was made */ } throw e; }
   current = next; // only once it is on disk: a write the disk refused leaves the engine's memory as the file is (#824)
   noteCoworkV3();
+  noteUiNext();
   noteStageWhole();
   noteFrame();
   noteHomeWhole();
@@ -264,9 +274,15 @@ let channel: "dev" | "beta" | null = null;
 export function versionMode(): Mode | null {
   return modeOf(process.env.SOL_VERSION, getSettings().version, channel);
 }
+// told when the channel is learned or changes (#1637): every face hears the settings again, so the window's readings
+// (the three views among them) are never left at what they were before the mode was known
+const channelHearers: (() => void)[] = [];
+export function onChannel(f: () => void): void { channelHearers.push(f); }
 /** Ship learned this Sol's channel, or saw it change: a switch whose reading turns with the version tells its hearers */
 export function noteChannel(c: "dev" | "beta" | null): void {
+  const was = channel;
   channel = c === "dev" || c === "beta" ? c : null;
+  if (was !== channel) for (const f of channelHearers) { try { f(); } catch { /* one hearer's trouble is never the channel's */ } }
   noteCoworkV3();
   noteStageWhole();
   noteFrame();
@@ -296,6 +312,31 @@ export function coworkV3(): boolean {
 /** what SOL_COWORK_V3 says, or "" when it says nothing (then the setting decides) */
 export function coworkV3Env(): "on" | "off" | "" {
   const env = (process.env.SOL_COWORK_V3 ?? "").trim().toLowerCase();
+  return env === "on" || env === "1" || env === "true" ? "on" : env === "off" || env === "0" || env === "false" ? "off" : "";
+}
+
+// the new face's switch turned while the engine runs (#1604): who must hear it (the beside stores, the AI's tools) hears
+// it once per change, whether the setting changed or SOL_UI_NEXT did; the same shape as Cowork v3's
+const nextHearers: ((on: boolean) => void)[] = [];
+let nextWas: boolean | null = null;
+export function onUiNext(f: (on: boolean) => void): void { nextHearers.push(f); if (nextWas === null) nextWas = uiNext(); }
+/** read the switch again and tell its hearers when it changed (patchSettings calls it; so may anyone who changed the env) */
+export function noteUiNext(): void {
+  const on = uiNext();
+  if (nextWas === on) return;
+  nextWas = on;
+  for (const f of nextHearers) { try { f(on); } catch { /* one hearer's trouble is never the setting's */ } }
+}
+/** whether the new face is on (#1604, docs/port/switch.md): env SOL_UI_NEXT=on or off decides for a developer's own run
+ *  or a dry run on a copy of a home, else the setting ui.next, else where its card's station stands in this Sol's
+ *  version (hand: off until set). Read on every message, so the setting needs no restart */
+export function uiNext(): boolean {
+  const env = uiNextEnv();
+  return env ? env === "on" : onFor("ui.next", versionMode(), getSettings().ui?.next);
+}
+/** what SOL_UI_NEXT says, or "" when it says nothing (then the setting decides) */
+export function uiNextEnv(): "on" | "off" | "" {
+  const env = (process.env.SOL_UI_NEXT ?? "").trim().toLowerCase();
   return env === "on" || env === "1" || env === "true" ? "on" : env === "off" || env === "0" || env === "false" ? "off" : "";
 }
 
@@ -373,6 +414,7 @@ export function noteHomeWhole(): void {
 export function readings(): Partial<Settings> & { window: Record<string, boolean> } {
   const s = getSettings(), out: Partial<Settings> = {};
   if (coworkV3() !== (s.cowork?.v3 === true)) out.cowork = { ...s.cowork, v3: coworkV3() };
+  if (uiNext() !== (s.ui?.next === true)) out.ui = { ...s.ui, next: uiNext() };
   if (stageWhole() !== (s.stage?.whole === true)) out.stage = { ...s.stage, whole: stageWhole() };
   if (homeWhole() !== (s.home?.whole === true)) out.home = { ...s.home, whole: homeWhole() };
   const mode = versionMode();
@@ -452,6 +494,9 @@ export const openFor = (): boolean => envOr(process.env.SOL_OPEN_FOR, "open.for"
 /** whether the pause signal runs (#1597, pause.ts): env SOL_PAUSE, else the setting pause.signal, else where versions.ts
  *  stands it (no card station: off until set). Read at each sense, so it needs no restart */
 export const pauseSignal = (): boolean => envOr(process.env.SOL_PAUSE, "pause.signal", getSettings().pause?.signal);
+/** whether a seat is offered set_reading (#1656, reads.ts): env SOL_READS_VOICE, else the setting reads.voice, else where
+ *  versions.ts stands it (no card station: off until set). Read at each turn's start and at each call, so it needs no restart */
+export const readsVoice = (): boolean => envOr(process.env.SOL_READS_VOICE, "reads.voice", getSettings().reads?.voice);
 
 /** whether the morning brings every wait on me older than a day to my first session after 05:00 (#1128 step 8,
  *  parts/waits.ts): env SOL_MORNING_WAITS=on or off decides for a Sol developer's own run or a test, else the setting

@@ -44,6 +44,24 @@ import { ConnectionsRow } from "./onboard/ConnectionsRow";   // #1229: what Sol 
 import { useTicketsOn, setTicketsOn } from "./one/tickets";   // build.tickets: an orchestration session routes to tickets
 import { SpaceRow } from "./pieces/SpaceRow";   // build.space: Build as one space of pieces
 
+// "Try the new Sol" (#1604, docs/port/switch.md): the switch ui.next, one row under me, a copy of Cowork v3's
+// (cowork/v3/SwitchRow.tsx). It sends settings.set; the engine sends it back resolved (SOL_UI_NEXT wins) and App.tsx
+// draws the new face. It reads the setting here, never from next/, so nothing outside next/ imports it but App.tsx
+function NextRow({ s, off, onSet }: { s: unknown; off: boolean; onSet: (patch: object) => void }) {
+  const sh = useShell();
+  if (!sh || sh.sel !== "me") return null;
+  const on = (s as { ui?: { next?: unknown } } | null)?.ui?.next === true;
+  return (
+    <div className="v3-switch">
+      <div className="field-r">
+        <div className="lab"><span>Try the new Sol</span>
+          <small>Your places, sessions and AIs on one canvas, with what needs you in one list. Your things stay as they are, and you can come back here any time.</small></div>
+        <Switch on={on} set={(v) => onSet({ ui: { next: v } })} disabled={off} label="Try the new Sol" />
+      </div>
+    </div>
+  );
+}
+
 // Mutable mode (lib.rs, hot.rs): the app's windows load Vite's dev pages, so edits to sol/mac/src appear in place.
 // Only inside Sol.app; in a plain browser there is no shell to ask.
 type Face = { hot: boolean; state: string };
@@ -403,6 +421,7 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
       <div className={off ? "settings-off" : ""} style={{ display: "contents" }}>
         <ControlDrawers open={open} toggle={toggle} onSet={onSet} />
         <SwitchRow s={real} off={off} onSet={onSet} />
+        <NextRow s={real} off={off} onSet={onSet} />
         <OldRow />
         <CleanRow />
         <CrossRow />

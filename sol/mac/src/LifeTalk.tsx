@@ -20,7 +20,8 @@ import { Site } from "./Site";
 import { seenSession } from "./renovation";
 import { FileLine } from "./FileLine";   // File it (#119)
 import type { Mark as Marked } from "./buttons";
-import { GroupOffer } from "./GroupOffer";   // Home offers a group once (#321)
+import { GroupOffer } from "./GroupOffer";
+import { viewShown } from "./spine/views";   // #1637: no group offer where Cowork is not shown (a tester's Sol)   // Home offers a group once (#321)
 import { cardFor, placeAt, skip } from "./homeSuggest";
 import type { AppMode } from "./ModeSwitch";
 
@@ -237,7 +238,7 @@ export function LifeTalk({ e, mark, onSwitch, onMode }: { e: ReturnType<typeof u
   const [, setSkipped] = useState(0);
   const offer = onMode ? cardFor(e.offers, e.sessionId, localStorage) : null;
   const offerAt = offer ? placeAt(e.msgs, offer.turn) : -1;
-  const card = offer && onMode ? <GroupOffer key="gsug" offer={offer} onMode={onMode} onSkip={() => { skip(localStorage, offer.sessionId); setSkipped((n) => n + 1); }} /> : null;
+  const card = offer && onMode && viewShown("cowork") ? <GroupOffer key="gsug" offer={offer} onMode={onMode} onSkip={() => { skip(localStorage, offer.sessionId); setSkipped((n) => n + 1); }} /> : null;
   // consecutive steps become one card; everything else is a message
   const blocks: React.ReactNode[] = [];
   for (let i = 0; i <= last; i++) {

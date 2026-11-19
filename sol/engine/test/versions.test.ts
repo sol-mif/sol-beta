@@ -27,10 +27,11 @@ test("the mode: the env's word, else the setting, else the channel; no channel y
   assert.equal(V.modeOf(undefined, undefined, "dev"), "concept");
   assert.equal(V.modeOf(undefined, undefined, "beta"), "product", "a tester's Sol runs as product (#1551)");
   assert.equal(V.modeOf(undefined, "complete", "dev"), "complete", "a pick wins over the channel");
-  assert.equal(V.modeOf(undefined, "complete", "beta"), "complete");
+  assert.equal(V.modeOf(undefined, "complete", "beta"), "product", "a tester's Sol has no version to pick (#1637)");
+  assert.equal(V.modeOf(undefined, "concept", "beta"), "product");
   assert.equal(V.modeOf("product", "concept", "dev"), "product", "the env can say product");
   assert.equal(V.modeOf(undefined, "Product", "dev"), "product");
-  assert.equal(V.modeOf(undefined, "concept", "beta"), "concept");
+  assert.equal(V.modeOf(undefined, "concept", "beta"), "product", "on beta a pick moves nothing (#1637)");
   assert.equal(V.modeOf("concept", "complete", "beta"), "concept", "the env wins over a pick");
   assert.equal(V.modeOf(" Complete ", "concept", "dev"), "complete");
   for (const bad of ["settled", "hand", "both", "on", "1", 1, true, {}, null]) {
@@ -86,13 +87,14 @@ test("a switch's reading: what was set by hand wins both ways, else its stage; a
   assert.equal(V.stageOf("constructor", stages), "hand");
 });
 
-// the engine's seven at concept (#1113, #1406, #1519, #1521), stage.whole settled (#1111), the window's eight at concept
-// (#1544); cowork.v3, frame and morning.waits are on no card, so they stand at hand
+// the engine's seven at concept (#1113, #1406, #1519, #1521), stage.whole settled (#1111), the window's eleven at concept
+// (#1544; the three views, #1637: a tester's Sol is Build only until each card reaches product); cowork.v3, frame and
+// morning.waits are on no card, so they stand at hand
 const ENGINE_CONCEPT = ["home.whole", "reach.tools", "reach.room", "onboarding.reads", "log.kinds", "work.liveContext", "open.for"];
-const WINDOW = ["agents.mode", "build.one", "build.one.long", "build.one.team", "build.snap", "cross", "look.shown", "side.sorted"];
+const WINDOW = ["agents.mode", "build.one", "build.one.long", "build.one.team", "build.snap", "cross", "look.shown", "side.sorted", "view.cowork", "view.home", "view.social"];
 // tools.cards (#1589) stands at product: the tools follow their cards in every mode, and in concept that drops nothing;
 // identity.supabase (#1607) at product too: a tester's Sol signs in on Supabase
-const TODAY: Record<string, string> = { "stage.whole": "settled", "tools.cards": "product", "identity.supabase": "product", ...Object.fromEntries([...ENGINE_CONCEPT, ...WINDOW].map((n) => [n, "concept"])) };
+const TODAY: Record<string, string> = { "stage.whole": "settled", "ui.next": "hand", "tools.cards": "product", "identity.supabase": "product", ...Object.fromEntries([...ENGINE_CONCEPT, ...WINDOW].map((n) => [n, "concept"])) };
 /** every switch at hand, so a test tries one station at a time */
 const allHand = () => { for (const k of Object.keys(V.STAGES)) (V.STAGES as Record<string, string>)[k] = "hand"; };
 const putBack = () => {
@@ -103,10 +105,10 @@ const putBack = () => {
 /** the window's block of the readings: each of its switches, on or off */
 const W = (on: boolean) => Object.fromEntries(WINDOW.map((n) => [n, on]));
 
-test("today's table: stage.whole on for everyone (#1111), the engine's seven and the window's eight on for the team, identity.supabase at product (#1607); cowork.v3, frame and morning.waits at hand", () => {
+test("today's table: stage.whole on for everyone (#1111), the engine's seven and the window's eleven on for the team, identity.supabase at product (#1607); cowork.v3, frame and morning.waits at hand", () => {
   assert.deepEqual(V.STAGES, TODAY);
   assert.deepEqual(V.WINDOW_SWITCHES, WINDOW);
-  for (const n of ["cowork.v3", "frame", "morning.waits"]) assert.equal(V.stageOf(n), "hand", n);
+  for (const n of ["cowork.v3", "frame", "morning.waits", "ui.next"]) assert.equal(V.stageOf(n), "hand", n);
 });
 
 test("absent, the settings are today's: no version key in what a face is sent or in the file, and no mode before Ship speaks", () => {
@@ -123,10 +125,13 @@ test("the channel decides until someone picks; a pick is in the file; null is ba
   assert.equal(S.versionMode(), "concept");
   S.noteChannel("beta");
   assert.equal(S.versionMode(), "product");
+  assert.equal(S.patchSettings({ version: "concept" }).version, "concept", "the pick is kept in the file");
+  assert.equal(S.versionMode(), "product", "but a tester's Sol stays product: on beta nothing picked moves it (#1637)");
+  S.noteChannel("dev");
   assert.equal(S.patchSettings({ version: "product" }).version, "product", "product is a pick too");
   assert.equal(S.versionMode(), "product");
   assert.equal(S.patchSettings({ version: "concept" }).version, "concept");
-  assert.equal(S.versionMode(), "concept", "a pick wins over the channel");
+  assert.equal(S.versionMode(), "concept", "on dev a pick wins over the channel");
   assert.equal(onDisk().version, "concept");
   const next = await import("../src/settings.ts?next-start");
   assert.equal(next.getSettings().version, "concept", "an engine started now reads it from the file");
@@ -141,7 +146,7 @@ test("the channel decides until someone picks; a pick is in the file; null is ba
   S.patchSettings({ version: null });
   assert.equal("version" in S.getSettings(), false);
   assert.equal("version" in onDisk(), false);
-  assert.equal(S.versionMode(), "product", "back to the channel, which is beta here");
+  assert.equal(S.versionMode(), "concept", "back to the channel, which is dev here");
   S.noteChannel(null);
   assert.equal(S.versionMode(), null);
   S.noteChannel("stable" as any);
@@ -149,7 +154,7 @@ test("the channel decides until someone picks; a pick is in the file; null is ba
 });
 
 test("SOL_VERSION wins over the pick and the channel, and an env that says nothing leaves them", () => {
-  S.noteChannel("beta");
+  S.noteChannel("dev");
   S.patchSettings({ version: "complete" });
   process.env.SOL_VERSION = "concept";
   assert.equal(S.versionMode(), "concept");
@@ -174,7 +179,7 @@ const started = async (file: object): Promise<typeof S> => { writeFileSync(FILE,
 test("nobody set a switch (a settings file that names none): each of the four reads off in every version, but stage.whole on and home.whole on in concept", async () => {
   const versions: [string, "dev" | "beta" | null, string | undefined, string | null][] = [   // name, channel, pick, the mode it is
     ["no channel yet", null, undefined, null], ["concept by channel", "dev", undefined, "concept"], ["product by channel", "beta", undefined, "product"],
-    ["concept by pick", "beta", "concept", "concept"], ["complete by pick", "dev", "complete", "complete"], ["product by pick", "dev", "product", "product"],
+    ["concept by pick", "dev", "concept", "concept"], ["a pick on beta moves nothing (#1637)", "beta", "concept", "product"], ["complete by pick", "dev", "complete", "complete"], ["product by pick", "dev", "product", "product"],
   ];
   for (const [vname, channel, pick, mode] of versions) {
     const F = await started(pick ? { version: pick } : {});
@@ -239,10 +244,13 @@ test("each switch asks by its own name: its station moved in the table, it alone
       table[name] = "complete";
       assert.deepEqual(reads(), none, `${name} at complete, in product`);
       F.patchSettings({ version: "complete" });
+      assert.deepEqual(reads(), none, `${name} at complete, complete picked on beta: a tester's Sol stays product (#1637)`);
+      F.noteChannel("dev");
       assert.deepEqual(reads(), only(name), `${name} at complete, complete picked`);
       F.patchSettings({ version: "concept" });
       assert.deepEqual(reads(), only(name), `${name} at complete, concept picked: past concept is on there too`);
       F.patchSettings({ version: null });
+      F.noteChannel("beta");
       assert.deepEqual(reads(), none, `${name} at complete, back to product by the channel`);
       table[name] = "product";
       F.noteChannel("beta");
@@ -291,10 +299,10 @@ test("a face is sent the engine's reading: nothing added for the engine's switch
   const F = await started({});
   for (const ch of [null, "dev", "beta"] as const) {
     F.noteChannel(ch);
-    assert.deepEqual(F.readings(), { stage: { whole: true }, ...(ch === "dev" ? { home: { whole: true } } : {}), window: W(ch === "dev") }, `stage.whole settled, home.whole and the window's eight at concept, channel ${ch}`);
+    assert.deepEqual(F.readings(), { stage: { whole: true }, ...(ch === "dev" ? { home: { whole: true } } : {}), window: W(ch === "dev") }, `stage.whole settled, home.whole and the window's eleven at concept, channel ${ch}`);
   }
   allHand();
-  for (const ch of [null, "dev", "beta"] as const) { F.noteChannel(ch); assert.deepEqual(F.readings(), { window: W(false) }, `all at hand, channel ${ch}: today's settings and the window's eight off`); }
+  for (const ch of [null, "dev", "beta"] as const) { F.noteChannel(ch); assert.deepEqual(F.readings(), { window: W(false) }, `all at hand, channel ${ch}: today's settings and the window's eleven off`); }
   F.patchSettings({ frame: true, stage: { whole: false } });
   assert.deepEqual(F.readings(), { window: W(false) }, "set by hand: the setting is the reading, nothing added");
   F.patchSettings({ frame: false });
@@ -365,7 +373,7 @@ test("the team's four (#1406): on in concept unset, off in complete and with no 
 
 // #1551: the done of the engine's modes. A Sol run as product shows none of the seven at concept and keeps the whole
 // stage; one run as concept reads every switch as it did before product came
-test("SOL_VERSION=product: the seven engine switches at concept all off, stage.whole on, the window's eight off", async () => {
+test("SOL_VERSION=product: the seven engine switches at concept all off, stage.whole on, the window's eleven off", async () => {
   const F = await started({});
   const reads = (G: typeof S) => ({ "home.whole": G.homeWhole(), "reach.tools": G.reachTools(), "reach.room": G.reachRoom(), "onboarding.reads": G.onboardReads(),
     "log.kinds": G.logKinds(), "work.liveContext": G.liveContext(), "open.for": G.openFor() });
@@ -381,7 +389,7 @@ test("SOL_VERSION=product: the seven engine switches at concept all off, stage.w
     process.env.SOL_VERSION = "concept";
     F.noteChannel("beta");
     assert.deepEqual(reads(F), Object.fromEntries(ENGINE_CONCEPT.map((n) => [n, true])), "concept: all seven on, as the team runs them today");
-    assert.deepEqual(F.readings(), { stage: { whole: true }, home: { whole: true }, window: W(true) }, "concept's readings are today's, and the window's eight on");
+    assert.deepEqual(F.readings(), { stage: { whole: true }, home: { whole: true }, window: W(true) }, "concept's readings are today's, and the window's eleven on");
   } finally { delete process.env.SOL_VERSION; F.noteChannel(null); }
 });
 
@@ -407,4 +415,18 @@ test("the window's block: its eight switches, each by its station in this mode; 
     F.patchSettings({ version: "concept", window: { cross: false } });
     assert.equal("window" in F.getSettings(), false, "the block is never written to the settings file");
   } finally { putBack(); F.patchSettings({ version: null }); F.noteChannel(null); }
+});
+
+test("the channel learned or changed tells its hearers once, so every face hears the readings again (#1637)", () => {
+  let n = 0;
+  S.onChannel(() => { n++; });
+  S.noteChannel(null);
+  const before = n;
+  S.noteChannel("dev");
+  assert.equal(n, before + 1, "learned");
+  S.noteChannel("dev");
+  assert.equal(n, before + 1, "the same channel again tells nobody");
+  S.noteChannel("beta");
+  assert.equal(n, before + 2, "changed");
+  S.noteChannel(null);
 });

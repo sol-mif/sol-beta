@@ -58,11 +58,17 @@ export type Settings = {
   // how Sol is used, as counts (engine/src/track.ts, #356): usage, on unless turned off by hand in the engine's file;
   // told, the one card on the first window was pressed (CountsCard.tsx); absent on an older engine
   track?: { usage: boolean; told: boolean; toldErrors?: boolean };
+  // each switch the window reads (a card's side window) as the engine stands it in this Sol's mode (engine settings.ts
+  // readings, #1551); spine/views.ts reads the three views' from it (#1637). Absent on an older engine
+  window?: Record<string, boolean>;
   // whether this Sol counts its errors for the team (a Sol tester's or developer's, #485); absent on an older engine
   errorCounts?: boolean;
   // the frame's switch as the engine was told it (#633): its blocks' engine halves load only with it on; absent until turned
   frame?: boolean;
   notify?: { moments?: Partial<Record<import("./notify/moments").Kind, boolean>> };   // the one notification (#845, engine settings.ts): each kind on or off; absent is on
+
+  // the new face's switch (#1604, engine settings.ts uiNext): sent already resolved against SOL_UI_NEXT; absent is off
+  ui?: { next?: boolean };
 };
 // the person's arrangement (engine/src/arrange.ts, PROTOCOL.md round 31): their rails, presets and layout
 export type Arrangement = {

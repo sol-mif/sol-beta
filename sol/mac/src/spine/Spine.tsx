@@ -6,7 +6,7 @@
 // materialise beside it after a moment's hover. Keys: ⌘1 to ⌘4 hop, ⌘[ and ⌘] walk the history.
 // Second cut (Marco 2026-11-07, his screenshot): the grey blob and the letters were not Sol and not the design; now the
 // creature, the kit's pearl and glass, and marks drawn in the kit's stroke. Nothing here knows a view's insides.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, useMemo } from "react";
 import { CFG, useSpring, reducedMotion } from "../motion";
 import { Glass } from "../kit";
 import { CURVE } from "../kit/tokens";
@@ -53,12 +53,15 @@ const MARKS_HELD: typeof MARKS = {
   settings: <Solid><path d="M4 8h16M4 16h16" {...LINE} /><circle cx="9" cy="8" r="2.6" strokeWidth={0} /><circle cx="15" cy="16" r="2.6" strokeWidth={0} /></Solid>,
 };
 
-export function Spine({ view, onPick, waits, onFind, onSettings, onJelly, extra }: {
+export function Spine({ view, onPick, waits, onFind, onSettings, onJelly, extra, shown }: {
   view: View; onPick: (v: View) => void; waits: Set<View>; onFind: () => void; onSettings: () => void; onJelly: () => void;
+  /** the views this Sol shows (#1637, spine/views.ts): a tester's Sol is Build alone; absent, all four */
+  shown?: Set<View>;
   /** a door under the four views, drawn only when a build switch asks (the runs view, #889, behind build.runs) */
   extra?: ReactNode;
 }) {
   const col = useRef<HTMLElement>(null);
+  const views = useMemo(() => (shown ? VIEWS.filter((v) => shown.has(v.id)) : VIEWS), [shown]);
   const tray = useRef<HTMLDivElement>(null);
   const hold = holdLook(), { row: LETTER, drawn: DRAWN, r: PR, sol } = SIZES[hold ? "hold" : "plain"];
   const pearl = useRef<HTMLDivElement>(null);
@@ -70,7 +73,7 @@ export function Spine({ view, onPick, waits, onFind, onSettings, onJelly, extra 
     el.style.transform = `translateY(${v}px) scale(${1 - st * 0.5}, ${1 + st})`;
   });
   useLayoutEffect(() => { y.set(yOf(view)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => { y.to(yOf(view)); }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { y.to(yOf(view)); }, [view, views]); // eslint-disable-line react-hooks/exhaustive-deps -- the views drawn change where a mark sits (#1637)
   // the history: where you were, walked by ⌘[ and ⌘]
   const hist = useRef<{ back: View[]; fwd: View[] }>({ back: [], fwd: [] });
   const last = useRef(view);
@@ -79,15 +82,15 @@ export function Spine({ view, onPick, waits, onFind, onSettings, onJelly, extra 
     const down = (ev: KeyboardEvent) => {
       if (!(ev.metaKey || ev.ctrlKey) || ev.altKey || ev.defaultPrevented) return;   // a view that walked its own history took the key (Cowork's places, #1416)
       const i = "1234".indexOf(ev.key);
-      if (i >= 0) { ev.preventDefault(); onPick(VIEWS[i].id); return; }
+      if (i >= 0 && i < views.length) { ev.preventDefault(); onPick(views[i].id); return; }
       if (ev.key === "[" && hist.current.back.length) { ev.preventDefault(); const v = hist.current.back.pop()!; hist.current.fwd.push(view); last.current = v; onPick(v); return; }
       if (ev.key === "]" && hist.current.fwd.length) { ev.preventDefault(); const v = hist.current.fwd.pop()!; hist.current.back.push(view); last.current = v; onPick(v); }
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [view, onPick]);
+  }, [view, onPick, views]);
   // the thread of heat: from Sol to the first view that waits, if it is not the one you are in
-  const waiting = VIEWS.find((v) => waits.has(v.id) && v.id !== view)?.id;
+  const waiting = views.find((v) => waits.has(v.id) && v.id !== view)?.id;
   const [threadH, setThreadH] = useState(0);
   useLayoutEffect(() => { setThreadH(waiting ? (tray.current?.offsetTop ?? 0) + yOf(waiting) - 48 : 0); }, [waiting]); // eslint-disable-line react-hooks/exhaustive-deps
   const needs = waits.size > 0;
@@ -102,7 +105,7 @@ export function Spine({ view, onPick, waits, onFind, onSettings, onJelly, extra 
       <div ref={tray} className="sp-tray">
       {hold && <Glass r={CURVE.radius.field} step="card" />}
       <div ref={pearl} className="sp-pearl" aria-hidden><Glass w={DRAWN} h={DRAWN} r={PR} fill={pearlFill()} edge={0} /></div>
-      {VIEWS.map((v, i) => (
+      {views.map((v, i) => (
         <button key={v.id} type="button" data-view={v.id} className={`sp-m ${v.id === view ? "on" : ""} ${waits.has(v.id) && v.id !== view ? "wait" : ""}`}
           aria-pressed={v.id === view} aria-label={`${v.name} · ⌘${i + 1}`} onClick={() => onPick(v.id)}>
           <i>{marks[v.id]}</i>

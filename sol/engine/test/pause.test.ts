@@ -108,3 +108,13 @@ test("POST /pause: JSON only; off answers on: false; on, a known why pauses", as
   assert.equal(told[0].type, "pause");
   assert.deepEqual((await ask(JSON.stringify({ why: "call", pad: "x".repeat(2000) }))).body, { on: true, paused: false }, "past the cap: answered, nothing sensed");
 });
+
+test("POST /pause with no why only asks: answers on, senses nothing, and the next real sense still pauses (#1640)", async () => {
+  const ask = routeOf();
+  assert.deepEqual((await ask("{}")).body, { on: false, paused: false });
+  process.env.SOL_PAUSE = "on";
+  assert.deepEqual((await ask("{}")).body, { on: true, paused: false });
+  assert.deepEqual(told, [], "an ask tells no face");
+  assert.equal(P.pauseNow().lastAt, null, "an ask is not a pause, so it holds back none within GAP_MS");
+  assert.deepEqual((await ask(JSON.stringify({ why: "typing" }))).body, { on: true, paused: true });
+});

@@ -1,0 +1,119 @@
+/* owned by slice 1 (Plane), docs/port/slices.md
+   The plane (#1615): the mockup's shell.css plane rules and views/face.css, by role only. Every space, size, height and
+   corner is the scale's (--s*, --t-*, --h-*, --r-*), every colour, shadow and curve the next set's (--paper, --card,
+   --ink*, --line, --a1..3, --r, --shadow*); a place on the plane comes from the camera, inline. The look is redone in the
+   visual pass, which changes the set and never these rules. Signed: marcocyl04-ux's agent, the port's slice 1 (#1615). */
+
+/* the plane: edge to edge under the bar, its grain a dot moving with the camera; nothing on it ever scrolls the view */
+.pl-wrap { position: absolute; inset: 0; overflow: hidden; }
+.pl { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none;
+  background-image: radial-gradient(circle, var(--ink4) 1px, transparent 1px); }
+.pl > * { position: absolute; }
+.pl-back { position: static; display: contents; }
+.pl-back > * { position: absolute; }
+.pl-life:has(> .pl-board:not(:empty)) + .pl-back { display: none; }
+body.pl-dragging .pl { cursor: grabbing; }
+.pl-joins { left: 0; top: 0; pointer-events: none; stroke: var(--ink4); stroke-width: 1px; }
+
+/* the folders' tints, by their place in the list */
+.pl-t0 { --tint: var(--a1); }
+.pl-t1 { --tint: var(--a2); }
+.pl-t2 { --tint: var(--a3); }
+.pl-t3 { --tint: var(--ink4); }
+.pl-dot { display: inline-block; width: 8px; height: var(--s2); border-radius: var(--r-pill); background: var(--tint); flex: none; }
+
+/* the zones' labels, over the top of each zone */
+.pl-zone { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.pl-zhint { color: var(--ink4); }
+
+/* Far: a folder as its card */
+.pl-card { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); overflow: hidden; cursor: pointer; box-sizing: border-box; }
+.pl-card.pl-sel { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink4); }
+.pl-ph { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.pl-pn { margin: 0; font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-why { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.pl-out { margin: 0; color: var(--ink2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.pl-rasks { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.pl-g { width: 6px; height: var(--s1); border-radius: var(--r-pill); background: var(--ink); flex: none; }
+.pl-at { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-tiles { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.pl-tile { display: inline-grid; place-items: center; width: 14px; height: var(--s3); border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.pl-tile.pl-asks { background: var(--ink); }
+.pl-tile.pl-isnew { box-shadow: inset 0 0 0 1px var(--ink3); }
+.pl-tile .nx-aura { width: 6px; height: var(--s1); }
+
+/* Middle: a folder as an area, its name at the top */
+.pl-area { border-radius: var(--r-lg); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); }
+.pl-area.pl-here { background: var(--card); }
+.pl-lab { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4); font-weight: 600; white-space: nowrap; }
+.pl-n { min-width: 18px; padding: 0 var(--s1); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); text-align: center; }
+.pl-sub { pointer-events: none; }
+.pl-nb { opacity: 0.45; }
+.pl-nb button, .pl-nb .nx-kbd { visibility: hidden; }
+
+/* a piece: a full face at plane size, scaled by the camera */
+.pl-piece { transform-origin: 0 0; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); overflow: hidden; box-sizing: border-box; cursor: pointer; }
+.pl-piece.pl-sel, .pl-fold.pl-sel { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); }
+.pl-new { align-self: flex-start; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pl-h { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.pl-s { color: var(--ink3); font-size: var(--t-head); line-height: var(--t-head-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pl-say { margin: 0; font-size: var(--t-read); line-height: var(--t-read-line); }
+.pl-t { margin: 0; color: var(--ink2); font-size: var(--t-read); line-height: var(--t-read-line); white-space: pre-wrap; }
+.pl-st { color: var(--ink2); }
+.pl-box { padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); font-family: ui-monospace, Menlo, monospace; font-size: var(--t-code); line-height: var(--t-code-line); white-space: pre-line; color: var(--ink2); }
+.pl-meta { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); }
+.pl-parts { display: flex; flex-direction: column; }
+.pl-part { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); min-width: 0; }
+.pl-partn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); }
+.pl-partn b { color: var(--ink); }
+.pl-tag { flex: none; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.pl-tag.st-asks, .pl-tag.st-uncommitted { background: var(--ink); color: var(--card); }
+.pl-rows { display: flex; flex-direction: column; overflow: auto; min-height: 0; }
+.pl-row { display: flex; align-items: center; justify-content: space-between; height: var(--h-chip); }
+.pl-acts { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.pl .pl-btn { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-head); }
+.pl .pl-btn.pl-pri { background: var(--ink); color: var(--card); }
+.pl-ask { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); }
+.pl-ask-t { flex: 1; min-width: 0; }
+.pl-ask-t small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* a piece's one line */
+.pl-fold { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; overflow: hidden; box-sizing: border-box; cursor: pointer; font-size: var(--t-head); }
+.pl-fold.pl-away { opacity: 0.6; }
+.pl-fs { color: var(--ink3); overflow: hidden; text-overflow: ellipsis; }
+.pl-fst { margin-left: auto; color: var(--ink3); }
+.pl-fst.pl-asks { color: var(--ink); font-weight: 600; }
+
+/* a life folder's board, at plane size */
+.pl-life { transform-origin: 0 0; overflow: hidden; }
+
+/* today's page, at its place */
+.pl-diary { position: absolute; overflow: auto; border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); box-sizing: border-box; }
+.pl-diary[hidden] { display: none; }
+
+/* the chips at the edges: today's page, a zone not whole */
+.pl .pl-chip { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); white-space: nowrap; z-index: 2; }
+.pl-chip svg { width: 14px; height: var(--s4); fill: none; stroke: currentColor; stroke-width: 1.6px; }
+
+/* Middle's head over the plane */
+.pl-over { position: absolute; left: var(--s8); top: var(--s4); right: var(--s8); pointer-events: none; z-index: 3; }
+.pl-mhead { display: inline-flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); pointer-events: auto; max-width: 100%; }
+.pl-mt { display: flex; align-items: center; gap: var(--s2); }
+.pl-h1 { margin: 0; font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; }
+.pl-msay { margin: 0; color: var(--ink2); }
+.pl-msay a { cursor: pointer; text-decoration: underline; }
+.pl-khint { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+
+/* the coming-back summary: today's page until the diary draws it (it steps aside once the diary slot draws) */
+.pl-dy-slot:not(:empty) + .pl-sum { display: none; }
+.pl-sum { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s6); }
+.pl-shead { display: flex; flex-direction: column; gap: var(--s2); }
+.pl-swho { display: flex; align-items: center; gap: var(--s2); color: var(--ink3); font-size: var(--t-head); line-height: var(--t-head-line); }
+.pl-headline { margin: 0; font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 600; }
+.pl-askline { display: flex; align-items: center; gap: var(--s2); cursor: pointer; }
+.pl-askline.pl-none { cursor: default; }
+.pl-first { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.pl-first .pl-ph .nx-kbd { margin-left: auto; }
+.pl-quiet { margin: 0; color: var(--ink3); }
+.pl-diary .pl-btn { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-head); }
+.pl-diary .pl-btn.pl-pri { background: var(--ink); color: var(--card); }

@@ -90,7 +90,7 @@ import { setSuggestSend } from "./suggest.js";   // Home offers a group once (#3
 import { HOME_INVENTORY, solScript, type Inventory } from "./inventory.js";
 import { transcribe, DICTATION_MODEL } from "./voice.js";
 import { makeCall, haveVoiceKey, voiceKeyName, voiceVendor, type VoiceCall } from "./call.js";
-import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, onLens, onSeatSet, readings, versionMode } from "./settings.js";
+import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, onLens, onSeatSet, onChannel, readings, versionMode } from "./settings.js";
 import { setArrangeHome, arrangeMsg, setArrangement, undoArrangement, addUsage, oneAsk } from "./arrange.js";
 import { setTitle, nameConversation, namingModel } from "./titles.js";
 import { Sample } from "./sample.js";
@@ -136,6 +136,7 @@ import { claudeModels, claudeDefault, codexModels, codexDefault, codexWindow, la
 import { startAgents } from "./agent/index.js";   // the folder's agent (step 1, record-only): agent/; its page and its messages are parts/agent-page.ts
 import { makeJev } from "./agent/jev.js";
 import { connectorsGuard, servicesOff, standIns, toolKey } from "./connectors.js";   // a read turn through the person's Claude account; its socket message is parts/connectors.ts
+import { setReadsHome } from "./reads.js";   // set_reading: what Sol reads, on the person's word (#1656)
 import { letGoIfBehind } from "./backlog.js";   // a window that stops reading is let go, never held in the heap (#1107)
 import { isQuiet } from "./quiet.js";
 
@@ -165,6 +166,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const HOME = realpathSync(process.env.SOL_HOME ?? resolve(HERE, "..", "..", "home")); // SOL_HOME: the live engine runs from its own checkout but points at the synced home/
 setBrowserProfile(process.env.SOL_PROFILE ?? browserProfileDir(HOME)); // SOL_PROFILE: tests use their own
 setDeskHome(HOME);
+setReadsHome(HOME);   // set_reading asks the account for its services from here (#1656)
 setWorkHome(HOME, reviewThreads);   // Work's side lists GPT talks in folders, not Sol's own chats nor the review seat's (#182)
 setArrangeHome(HOME, (m) => everyone(m));   // the arrangement (#133): its own file in the back room, told to every face
 // tracking (#356): how Sol is used as counts, home/track/<day>.jsonl, every socket message passing src/track.ts once;
@@ -445,12 +447,13 @@ const settingsMsg = () => ({
   // tester's or developer's, errcount.ts), so the counting card says it (both read-only)
   settings: { ...getSettings(), voiceNow: voiceVendor(), errorCounts: !TRACK_OFF && !STAGE && countsErrors(AUDIENCE),
     // the four switches as the engine reads them (settings.ts readings: an env, or a stage in this version); coworkEnv: v3's env said
-    ...readings(), ...(coworkV3Env() ? { coworkEnv: coworkV3Env() } : {}) },
+    // window null while the mode is not known yet (#1637): the window keeps what it had, never "all off" for a moment
+    ...readings(), ...(versionMode() === null ? { window: null } : {}), ...(coworkV3Env() ? { coworkEnv: coworkV3Env() } : {}) },
   haveVoiceKey: haveVoiceKey(),
   dictationModel: DICTATION_MODEL,
   up: { since: STARTED, port: PORT, health: health() }, login: getTeam().me.login,   // login: whose Sol this is (#1224)
 });
-for (const heard of [onLens, onSeatSet]) heard(() => everyone(settingsMsg()));   // the lens changed from a stage (#824), a setting a seat changed for the person (#1521): every face hears the settings again, as after a settings.set
+for (const heard of [onLens, onSeatSet, onChannel]) heard(() => everyone(settingsMsg()));   // and the channel learned or changed (#1637)   // the lens changed from a stage (#824), a setting a seat changed for the person (#1521): every face hears the settings again, as after a settings.set
 
 // Codex reaches the browser through a small stdio MCP server that calls back into this engine. Each turn
 // gets its own token, so the engine knows which conversation a browser call belongs to.
@@ -710,7 +713,7 @@ async function sayClaude(conn: Conn, say: Say, abort: AbortController, saved: Aw
     abortController: abort,
     mcpServers: say.read ? { ...standIns(), sol } : { sol },
   };
-  if (say.read) options.canUseTool = connectorsGuard(options.canUseTool!, readHints, servicesOff(HOME));   // a read turn: the connectors' own check on top of the ceiling
+  if (say.read) options.canUseTool = connectorsGuard(options.canUseTool!, readHints, servicesOff());   // a read turn: the connectors' own check on top of the ceiling
 
   const text = [say.text, deskLines, attachedLines(saved)].filter(Boolean).join("\n\n");
   // Images go in as base64 image blocks, so the prompt becomes a one-message stream.

@@ -1,0 +1,27 @@
+/* Your AIs (views/ais.css): one card per AI, its aura held still, its state in words. Roles only: the next set's
+   colours and corners, the scale's spaces, sizes and heights (the layout skill). Scoped under the new face's root.
+   Signed: marcocyl04-ux's agent, slice 5 of the port (#1615). */
+[data-face="next"] .ais { --ais-col: 300px; max-width: 1040px; margin: 0 auto; padding: var(--s8) var(--s8) var(--s12); }
+[data-face="next"] .ais h1 { font-family: var(--serif); font-weight: 600; font-size: var(--t-display); line-height: var(--t-display-line); margin: 0; }
+[data-face="next"] .ais-say { margin: var(--s3) 0 0; color: var(--ink2); }
+[data-face="next"] .ais-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--ais-col), 1fr)); gap: var(--s3); margin-top: var(--s8); align-items: start; }
+[data-face="next"] .ais-card { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); min-width: 0; }
+[data-face="next"] .ais-h { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-read); line-height: var(--t-read-line); }
+[data-face="next"] .ais-aura { width: var(--s8); height: var(--s8); }
+[data-face="next"] .ais-on { color: var(--ink2); }
+[data-face="next"] .ais-state { display: inline-flex; align-items: center; gap: var(--s2); }
+[data-face="next"] .ais-state i { width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink4); }
+[data-face="next"] .ais-state.st-need i { background: var(--a2); }
+[data-face="next"] .ais-state.st-work i { background: var(--a3); }
+[data-face="next"] .ais-state b { font-weight: 600; color: var(--ink); }
+[data-face="next"] .ais-asks { display: flex; flex-direction: column; gap: var(--s2); }
+[data-face="next"] .ais-ask { padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+[data-face="next"] .ais-src { display: block; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .ais-acts, [data-face="next"] .ais-foot { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s2); }
+[data-face="next"] .ais-btn { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--side); color: var(--ink); }
+[data-face="next"] .ais-btn:hover { background: var(--press); }
+[data-face="next"] .ais-btn.pri, [data-face="next"] .ais-btn.on { background: var(--ink); color: var(--card); }
+[data-face="next"] .ais-rt { display: flex; flex-direction: column; gap: var(--s1); padding-top: var(--s2); box-shadow: inset 0 1px 0 var(--line); }
+[data-face="next"] .ais-lbl, [data-face="next"] .ais-none { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .ais-r { display: flex; align-items: baseline; gap: var(--s3); color: var(--ink2); min-width: 0; }
+[data-face="next"] .ais-w { margin-left: auto; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); white-space: nowrap; }

@@ -1,0 +1,104 @@
+/* The diary's page (#1604; the mockup's views/diary.css, round 3 · C3). Every rule under .dy; spaces, sizes and corners
+   are the scale's (palette.css), colours, shadows and curves the next set's (kit/next.css); the look is redone in the
+   visual pass. Signed: marcocyl04-ux's agent, slice 4 (#1615). */
+
+.dy { max-width: 680px; padding: var(--s6); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.dy button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+.dy-aura { display: inline-block; flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); }
+.dy-aura.still { opacity: 0.5; }
+.dy-av { display: inline-grid; place-items: center; flex: none; width: var(--s4); height: var(--s4); border-radius: var(--r-chip); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); }
+.dy-dot { display: inline-block; flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-chip); background: var(--ink4); }
+
+/* the top: the date, the day's name, the turn of a page */
+.dy-top { display: flex; align-items: baseline; gap: var(--s3); }
+.dy-date { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); }
+.dy-dn { font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 600; color: var(--ink2); }
+.dy-nav { margin-left: auto; display: flex; gap: var(--s1); align-items: center; }
+.dy-nav button { min-width: var(--h-chip); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); color: var(--ink2); transition: background var(--d-turn) var(--ease); }
+.dy-nav button:hover { background: var(--hover); }
+.dy-nav .dy-today { background: var(--side); }
+
+/* the night's story */
+.dy-story { display: block; margin-top: var(--s2); }
+.dy-sw { display: flex; align-items: center; gap: var(--s2); color: var(--ink3); }
+.dy .dy-h { font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 500; margin: var(--s2) 0 0; }
+.dy-proof { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); color: var(--ink2); }
+.dy-pk { font-weight: 600; }
+.dy-need { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); cursor: pointer; }
+.dy-need.none { cursor: default; color: var(--ink2); }
+.dy-cnt { display: inline-grid; place-items: center; min-width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.dy-ask { margin-top: var(--s1); padding: var(--s1) var(--s3); color: var(--ink2); }
+.dy .dy-fold { margin-top: var(--s3); color: var(--ink3); padding: var(--s1) var(--s3); border-radius: var(--r-row); }
+.dy .dy-fold:hover { background: var(--hover); }
+.dy .dy-folded { display: flex; align-items: baseline; gap: var(--s2); width: 100%; text-align: left; padding: var(--s3); margin-top: var(--s3); border-radius: var(--r-row); font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); }
+.dy-folded:hover { background: var(--hover); }
+.dy-folded i { font-family: var(--sans); font-size: var(--t-body); font-style: normal; color: var(--ink3); white-space: nowrap; }
+.dy-sl { font-family: var(--sans); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); flex: none; min-width: calc(var(--s12) + var(--s6)); }
+.dy-go { margin-left: auto; padding-left: var(--s3); color: var(--ink3); font-family: var(--sans); font-size: var(--t-body); white-space: nowrap; }
+
+/* a folder's part of the page */
+.dy-f { margin-top: var(--s8); }
+.dy .dy-fh { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s2); font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 600; }
+.dy .dy-fh small { font-size: var(--t-body); font-weight: 400; color: var(--ink3); }
+.dy .dy-fh[role=link] { cursor: pointer; width: max-content; padding: var(--s1) var(--s3) var(--s1) var(--s2); margin-left: calc(var(--s2) * -1); border-radius: var(--r-row); }
+.dy .dy-fh[role=link]:hover { background: var(--hover); }
+
+/* a line: its time in the margin, who wrote it, the fact, why it is here */
+.dy-l { position: relative; display: grid; grid-template-columns: var(--s12) var(--s4) 1fr auto; gap: 0 var(--s3); align-items: baseline; padding: var(--s2) var(--s3); margin: 0 calc(var(--s3) * -1); border-radius: var(--r-row); }
+.dy-l:hover { background: var(--hover); }
+.dy-tm { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.dy-b { min-width: 0; }
+.dy-ai { font-weight: 600; }
+.dy-why, .dy-via { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); white-space: nowrap; }
+.dy-why::before { content: "· "; }
+.dy-l.mine .dy-t { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 500; }
+.dy-yours { margin-left: var(--s1); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--side); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.dy-l.dy-undone .dy-t { color: var(--ink3); text-decoration: line-through; text-decoration-color: var(--ink4); }
+.dy-l.dy-small .dy-t { color: var(--ink2); }
+.dy-acts { display: flex; gap: var(--s1); opacity: 0; transition: opacity var(--d-turn) var(--ease); }
+.dy-l:hover .dy-acts, .dy-l:focus-within .dy-acts { opacity: 1; }
+.dy .dy-acts button { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); color: var(--ink3); white-space: nowrap; }
+.dy .dy-acts button:hover { background: var(--side); color: var(--ink); }
+.dy-quiet summary { cursor: pointer; color: var(--ink3); padding: var(--s1) 0 var(--s1) calc(var(--s12) + var(--s6)); }
+
+/* a line can carry its thing, live */
+.dy-emb { display: flex; align-items: center; gap: var(--s2); margin: var(--s2) 0 var(--s1); }
+.dy .dy-open { display: flex; align-items: center; gap: var(--s3); min-width: 0; max-width: 100%; padding: var(--s2) var(--s3); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); text-align: left; transition: box-shadow var(--d-turn) var(--ease); }
+.dy .dy-open:hover { box-shadow: var(--shadow-up); }
+.dy-et { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dy-es { color: var(--ink3); white-space: nowrap; }
+.dy-doc, .dy-stk { flex: none; width: var(--s4); height: var(--s6); border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.dy-stk { background: var(--side); }
+.dy-parts { display: flex; gap: var(--s1); }
+.dy-pt { padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); }
+.dy-pt-ask { background: var(--ink); color: var(--paper); }
+.dy-pt-done { color: var(--ink3); }
+.dy .dy-chip { padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); }
+.dy-emb.gone { color: var(--ink3); }
+
+/* asked, paused, written, closed */
+.dy-asked { margin-top: var(--s4); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
+.dy-qh { display: flex; align-items: center; gap: var(--s2); font-weight: 600; }
+.dy-qh small { font-weight: 400; color: var(--ink3); }
+.dy .dy-x { margin-left: auto; color: var(--ink3); }
+.dy-qa { margin: var(--s2) 0 0; }
+.dy-paused { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); }
+.dy .dy-btn { height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line); }
+.dy .dy-btn:hover { background: var(--hover); }
+.dy-write { margin-top: var(--s6); }
+.dy-write input { width: 100%; height: var(--h-head); padding: 0 var(--s3); border: 0; border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font: inherit; color: var(--ink); }
+.dy-close { margin-top: var(--s6); font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); }
+.dy-close small { font-family: var(--sans); font-size: var(--t-label); color: var(--ink3); }
+.dy-empty { margin-top: var(--s6); color: var(--ink3); }
+
+/* the foot: the offer, how it writes, what it writes down */
+.dy-offer { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s6); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
+.dy .dy-later { color: var(--ink3); }
+.dy-foot { margin-top: var(--s6); color: var(--ink3); }
+.dy-foot p { margin: var(--s2) 0 0; }
+.dy-fk { display: inline-block; min-width: calc(var(--s12) * 3); color: var(--ink2); font-weight: 600; }
+.dy-tag { margin-right: var(--s1); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--side); color: var(--ink2); }
+.dy .dy-pause { margin-left: var(--s2); color: var(--ink2); text-decoration: underline; text-decoration-color: var(--ink4); }
+
+/* the short form: a page too narrow to read */
+.dy-far .dy-f { margin-top: var(--s4); }

@@ -1,0 +1,113 @@
+/* The people's shared marks (slices 8+9, #1615; the mockup's merge/views/cowork.css first part and its ui.html base):
+   a face and its state, the buttons, a card, a page and its words, a sheet as a page, the sidebar's nested rows and
+   its fold (P1), the people's rows under Needs you (P3). Everything sits under .ppl, .ppl-side or .sidepeople, so
+   nothing reaches the rest of the window. Every space, size and corner is the scale's (palette.css), every colour the
+   next set's roles (kit/next.css) or their mixes; the look and layout lints hold this, and count 26 reads it.
+   Signed: marcocyl04-ux's agent, port slice 8+9 (#1615). */
+
+/* the view ends above the talk pill on a people page and under Needs you, so nothing rests under the pill */
+.nx-view:has(.ppl-host) { margin-bottom: calc(var(--s12) + var(--s12)); }
+
+/* ---- a page and its words (ui.html's .page, h1, .say, .card, .btn, .acts, .from) ---- */
+.ppl { color: var(--ink); }
+.ppl .page { max-width: 780px; margin: 0 auto; padding: var(--s12) var(--s8) var(--s12); }
+.ppl h1 { margin: 0; font: 600 var(--t-display)/var(--t-display-line) var(--serif); }
+.ppl h2 { display: flex; align-items: baseline; gap: var(--s2); margin: var(--s8) 0 var(--s3); font: 600 var(--t-title)/var(--t-title-line) var(--serif); }
+.ppl h2 small { font: 400 var(--t-body)/var(--t-body-line) var(--sans); color: var(--ink3); }
+.ppl h3 { margin: 0; }
+.ppl p { margin: 0; }
+.ppl .say { font-size: var(--t-big); line-height: var(--t-big-line); color: var(--ink2); margin-top: var(--s3); max-width: 560px; }
+.ppl .say b { color: var(--ink); font-weight: 600; }
+.ppl .card { position: relative; background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.ppl .btn { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s4); border-radius: var(--r-pill); font-weight: 550; font-size: var(--t-body); white-space: nowrap; transition: transform var(--d-turn) var(--spring); }
+.ppl .btn.pri { background: var(--ink); color: var(--card); }
+.ppl .btn.ghost { color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line); background: var(--card); }
+.ppl .btn.end, .ppl .end { margin-left: auto; }
+.ppl .acts { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s4); flex-wrap: wrap; }
+.ppl .acts.end { justify-content: flex-end; }
+.ppl .from { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink3); min-width: 0; }
+.ppl .sub2 { margin-top: var(--s2); color: var(--ink2); font-size: var(--t-read); line-height: var(--t-read-line); }
+.ppl .ic { width: 16px; aspect-ratio: 1; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ppl .aura.s { display: inline-block; width: 14px; aspect-ratio: 1; border-radius: 50%; background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); flex: none; }
+.ppl .dotf, .sidepeople .dotf { width: 16px; aspect-ratio: 16 / 13; border-radius: var(--r-chip); flex: none; }
+.ppl .dotf.sm { width: 12px; }
+
+/* ---- a face: the jelly in the person's three colours (the aura's roles, each person their own turn) ---- */
+.ppl .face, .sidepeople .face { width: 28px; aspect-ratio: 1; border-radius: 50%; flex: none; position: relative; background: conic-gradient(var(--h1), var(--h2), var(--h3), var(--h1)); box-shadow: 0 0 0 1px var(--card); }
+.ppl .face::after { content: ""; position: absolute; inset: 20%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--card), transparent 70%); opacity: 0.9; }
+.ppl .face.l { width: 44px; }
+.ppl .face.xl { width: 96px; }
+.ppl .face.xs { width: 20px; }
+.ppl .face .st { position: absolute; right: 0; bottom: 0; width: 11px; aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 0 1px var(--card); z-index: 1; }
+.ppl .face.l .st { width: 13px; }
+.ppl .st.s-work, .ppl .st.s-here { background: var(--a3); }
+.ppl .st.s-wait { background: var(--a2); }
+.ppl .st.s-done { background: var(--a1); }
+.ppl .st.s-rest, .ppl .st.s-gone { background: var(--ink4); }
+.ppl .st.s-unk { background: var(--side); box-shadow: inset 0 0 0 1px var(--ink4); }
+.ppl .st.s-away { background: color-mix(in srgb, var(--a2) 65%, var(--ink4)); }
+.ppl .st.s-link { background: var(--card); box-shadow: inset 0 0 0 1px var(--ink3); }
+.ppl .st.s-none { background: transparent; box-shadow: inset 0 0 0 1px var(--ink4); }
+.p-me, .p-sam { --h1: var(--a1); --h2: var(--a2); --h3: var(--a3); }
+.p-ana { --h1: var(--a2); --h2: color-mix(in srgb, var(--a2) 50%, var(--card)); --h3: color-mix(in srgb, var(--a2) 55%, var(--a1)); }
+.p-joon { --h1: color-mix(in srgb, var(--a1) 45%, var(--a3)); --h2: var(--a3); --h3: var(--a1); }
+.p-maya { --h1: var(--a3); --h2: color-mix(in srgb, var(--a3) 60%, var(--a2)); --h3: color-mix(in srgb, var(--a3) 60%, var(--card)); }
+.p-leo { --h1: color-mix(in srgb, var(--a2) 65%, var(--ink4)); --h2: var(--a2); --h3: color-mix(in srgb, var(--a2) 40%, var(--card)); }
+.p-ivy { --h1: var(--a1); --h2: color-mix(in srgb, var(--a1) 45%, var(--a3)); --h3: color-mix(in srgb, var(--a2) 55%, var(--a1)); }
+.p-kai { --h1: var(--ink4); --h2: var(--side); --h3: var(--ink3); }
+.p-g0 { --h1: var(--a2); --h2: color-mix(in srgb, var(--a2) 40%, var(--card)); --h3: color-mix(in srgb, var(--a2) 55%, var(--a1)); }
+.p-g1 { --h1: color-mix(in srgb, var(--a1) 45%, var(--a3)); --h2: color-mix(in srgb, var(--a3) 50%, var(--card)); --h3: var(--a1); }
+.p-g2 { --h1: color-mix(in srgb, var(--a3) 50%, var(--card)); --h2: color-mix(in srgb, var(--a3) 60%, var(--a2)); --h3: var(--a3); }
+.p-g3 { --h1: color-mix(in srgb, var(--a2) 40%, var(--card)); --h2: color-mix(in srgb, var(--a2) 65%, var(--ink4)); --h3: var(--a2); }
+.p-g4 { --h1: var(--a1); --h2: color-mix(in srgb, var(--a1) 40%, var(--card)); --h3: color-mix(in srgb, var(--a2) 50%, var(--card)); }
+.p-g5 { --h1: var(--side); --h2: var(--ink4); --h3: var(--ink3); }
+.ppl .faces { display: flex; align-items: center; }
+.ppl .faces .face + .face { margin-left: calc(var(--s2) * -1); }
+.ppl .faces .more { margin-left: var(--s1); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); font-weight: 550; }
+
+/* ---- the small buttons, the one ⌘J brought ---- */
+.ppl .mini { height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); font-size: var(--t-body); font-weight: 550; box-shadow: inset 0 0 0 1px var(--line); background: var(--card); color: var(--ink2); white-space: nowrap; }
+.ppl .mini.pri { background: var(--ink); color: var(--card); box-shadow: none; }
+.ppl .mini:hover { color: var(--ink); }
+.ppl .mini.pri:hover { color: var(--card); }
+.ppl .pfocus { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ppl .r1.pfocus { outline: 0; background: var(--hover); }
+
+/* ---- a sheet (the first time, a link, as a friend): a page under the top bar, never a scrim ---- */
+.ppl .psheet { width: 520px; max-width: 100%; margin: var(--s3) auto 0; background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); padding: var(--s8) var(--s8) var(--s6); }
+.ppl .psheet h2 { display: block; margin: 0 0 var(--s1); font: 600 var(--t-display)/var(--t-display-line) var(--serif); }
+.ppl .psheet .say { font-size: var(--t-read); line-height: var(--t-read-line); margin-top: var(--s2); }
+.ppl .lab { font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 550; color: var(--ink3); margin-top: var(--s4); }
+.ppl .pick { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--line); margin-top: var(--s2); cursor: pointer; }
+.ppl .pick.on { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ppl .pick b { font-weight: 600; }
+.ppl .pick small { display: block; font-size: var(--t-body); color: var(--ink3); }
+.ppl .pick .rd { width: 18px; aspect-ratio: 1; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--ink4); margin-left: auto; flex: none; }
+.ppl .pick.on .rd { background: var(--ink); }
+.ppl .pseg { display: flex; gap: var(--s1); padding: var(--s1); border-radius: var(--r-card); background: var(--side); margin-top: var(--s2); }
+.ppl .pseg button { flex: 1; min-height: var(--h-row); padding: var(--s1); border-radius: var(--r-row); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.ppl .pseg button small { display: block; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ppl .pseg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+
+/* ---- the sidebar's people section: a group, a close friend, nested under its row (P1) ---- */
+.ppl-side { display: flex; flex-direction: column; gap: var(--s1); flex: none; }
+.sidepeople { display: flex; flex-direction: column; gap: var(--s1); }
+.sidepeople .nx-row { padding-left: var(--s8); }
+.sidepeople .face { width: 14px; box-shadow: none; }
+.sidepeople .pk { margin-left: auto; width: 7px; aspect-ratio: 1; border-radius: 50%; flex: none; }
+.sidepeople .pk.wait { background: var(--a2); }
+.sidepeople .pk.here { background: var(--a3); }
+.sidepeople .pk.away { background: color-mix(in srgb, var(--a2) 65%, var(--ink4)); }
+.sidepeople .pk.gone { background: var(--ink4); }
+.sidepeople .allrow { color: var(--ink3); }
+/* the sidebar never scrolls on a people page: the AIs fold into their heading, then the folders into the Diary's row */
+.nx-side.fold-ais #sideais { display: none; }
+.nx-side.fold-regions #sideregions .nx-reg:not([data-zone-go]) { display: none; }
+
+/* ---- Needs you: the people's waits and cards, under the canvas's asks (P3) ---- */
+.pplneeds { max-width: 780px; margin: var(--s8) auto 0; padding: 0 var(--s8) var(--s12); }
+.pplneeds h2 { margin: 0 0 var(--s3); }
+.pplneeds .pnrow { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); margin-top: var(--s2); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); flex-wrap: wrap; }
+.pplneeds .pnrow .t { flex: 1; min-width: 220px; font-size: var(--t-read); line-height: var(--t-read-line); }
+.pplneeds .pnrow .t small { display: block; font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); }
+.pplneeds .pnrow .where { font-size: var(--t-code); padding: 0 var(--s2); border-radius: var(--r-row); background: var(--side); color: var(--ink2); white-space: nowrap; cursor: pointer; }

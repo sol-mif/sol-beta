@@ -213,7 +213,7 @@
       <div class="goo">
         <svg class="glyph" viewBox="0 0 30 30" fill="none" stroke="#ebebe8" stroke-width="2" stroke-linecap="round"><rect x="4" y="6" width="22" height="14" rx="2.5"/><path d="M11 25h8M15 20v5"/></svg>
         <b>A Mac</b>
-        <p>Apple silicon or Intel, on macOS 14 or newer (we test on macOS 26). Windows and Linux come later.</p>
+        <p>Apple silicon or Intel, on macOS 14 or newer (we test on macOS 26). Windows comes later. Linux works from the one line, with the window in your browser.</p>
       </div>
       <div class="goo">
         <svg class="glyph" viewBox="0 0 30 30" fill="none" stroke="#ebebe8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="15" r="5.5"/><path d="M15.5 15H27M23 15v4M27 15v3"/></svg>
@@ -315,14 +315,14 @@
 
 </main>
 <script>
-  // the build a tester gets (#362): the beta repo's README names it ("beta testers run: stable-YYYYMMDD-HHMM"), written
+  // the build a tester gets (#362): the beta repo's README names it ("beta testers run: dev-YYYYMMDD" since the beta pass, #1300; "stable-YYYYMMDD-HHMM" before), written
   // by each export, so the page never goes stale by hand; when the fetch fails the line stays hidden
   fetch("https://raw.githubusercontent.com/sol-mif/sol-beta/main/README.md").then((r) => r.ok ? r.text() : "").then((t) => {
-    const m = t.match(/beta testers run: (stable-(\d{4})(\d{2})(\d{2})-\d{4})/);
+    const m = t.match(/beta testers run: ((?:stable|dev)-(\d{4})(\d{2})(\d{2})(?:-\d{4})?)/);
     if (!m) return;
     document.getElementById("build-tag").textContent = m[1];
     const d = new Date(`${m[2]}-${m[3]}-${m[4]}T00:00:00`);
-    document.getElementById("build-when").textContent = ", " + d.toLocaleDateString(undefined, { day: "numeric", month: "long" });
+    document.getElementById("build-when").textContent = ", " + d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
     document.getElementById("build").hidden = false;
   }).catch(() => {});
 
