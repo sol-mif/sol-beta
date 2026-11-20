@@ -1,17 +1,18 @@
 // Reach (#1166, team/reach.ts): my agent asks a teammate's agent, theirs answers on its own; hand-overs between agents;
 // the Agents' room. Wired here: the relay's `agents` kind heard, an ask for me answered in a bare session held as
 // #1151's woken ones (marked `woken: "others"` before it starts: work/runs.ts holds every run of it bare), and the
-// thread read. GET /agents → { me, answering, tools, room, thread, holds }: tools and room are the two switches (#1276). Read-only
+// thread read. GET /agents → { me, answering, off (why not, #1703), tools, room, thread, holds }: tools and room are the two switches (#1276). Read-only
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { hostname } from "node:os";
 import type { Parts } from "../parts.js";
-import { startReach, heard, threadNow, answering, tallyNow, heldCard, lateCard, type Given, type Held, type Answer, type Refused, type Reply, type Entry } from "../team/reach.js";
+import { startReach, heard, threadNow, answering, answeringWhy, asksWhy, tallyNow, heldCard, lateCard, askCard, type Ask, type Given, type Held, type Answer, type Refused, type Reply, type Entry } from "../team/reach.js";
 import * as stage from "../work/blocks.js";
 import { placeFor, type Seat } from "../work/asks.js";
 import { reachTools, reachRoom } from "../settings.js";
-import { getTeam, wakeLineOn } from "../team/settings.js";
+import { getTeam } from "../team/settings.js";
 import { holdsOf } from "../team/reach.js";
 import { onRelay, sendRelay, hubLogin } from "../team/relay.js";
 import { runsNow } from "../team/runs.js";
@@ -98,6 +99,23 @@ async function arrived(h: Held, sessionId?: string): Promise<boolean> {
   stage.compose(by, { id: c.id, kind: "card", title: c.title, body: c.body, person: true, asks: c.asks });
   return true;
 }
+/** why a session ended with nothing said: its last error line (a Claude not signed in ends at once, with one) */
+async function failedWhy(id: string): Promise<string> {
+  const r = getRun(id);
+  const list = r ? r.items.list : (await sessionItems(id)).list;
+  const errs = list.filter((i: any) => i.kind === "error" && String(i.text ?? "").trim());
+  return String(errs[errs.length - 1]?.text ?? "").split("\n")[0].slice(0, 160);
+}
+/** an ask my answering session could not take (#1703, a Sol on Codex): a card where the person is. It asks nothing and
+ *  starts nothing; the person's own agent answers it there with answer_ask, when they want it to */
+async function askHere(a: Ask, why: string): Promise<boolean> {
+  const to = placeFor(undefined, await seats().catch(() => []));
+  if (!to) return false;
+  const c = askCard(a, why), w = await stage.whoFor(to);
+  if (stage.getBlock(w.project, c.id)) return true;
+  stage.compose({ ...w, by: `${a.from}'s agent` }, { id: c.id, kind: "card", title: c.title, body: c.body, person: true });
+  return true;
+}
 /** E3: a late answer or reply, a card in the session that asked and a turn there; a session gone, the Room's top */
 async function late(sessionId: string, e: Answer | Refused | Reply, of: Entry | undefined) {
   const c = lateCard(e, of);
@@ -116,6 +134,7 @@ export default function (p: Parts) {
     const home = join(STATE_DIR, "reach", "work");
     startReach({
       me: () => hubLogin(),
+      where: () => hostname().split(".")[0].slice(0, 40),
       // a teammate is a member of my group in use (#1692): its GitHub org's or cloud group's list; no group, or a list
       // Sol cannot read or that is empty, lets nobody ask (there is nobody to hold the askers to)
       team: async () => { const r = await membersNow(true); return r.source && r.list?.length ? r.list : null; },
@@ -135,14 +154,20 @@ export default function (p: Parts) {
       home,
       late: (sid, e, of) => { void late(sid, e, of); },
       arrived,
-      // my yes to the one question (#1313), or its row in Settings: their agents may ask mine, in the group I answered
-      // for. Who counts as a member is read at each ask (team, above), never the team's own people list (#1692)
-      asked: () => { const t = getTeam(); return wakeLineOn(t.wakeAsk, t.room, "asks"); },
+      askHere,
+      failedWhy,
+      // my yes to the one question (#1313): their agents may ask mine, in the group I answered for, of any kind (#1703).
+      // Who counts as a member is read at each ask (team, above), never the team's own people list (#1692). Not so is
+      // said as the reason (#1703), the same words the asker and Settings read
+      asked: () => {
+        const t = getTeam();
+        return asksWhy(t.wakeAsk, t.rooms.find((r) => r.id === t.room)) ?? true;
+      },
     });
     onRelay("agents", (m) => heard(m));
   });
   p.route("GET", "/agents", ({ res }) => {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ me: hubLogin(), answering: answering(), tools: reachTools(), room: reachRoom(), thread: threadNow(), holds: holdsOf(threadNow()), tally: tallyNow() }));
+    res.end(JSON.stringify({ me: hubLogin(), answering: answering(), off: answeringWhy() ?? "", tools: reachTools(), room: reachRoom(), thread: threadNow(), holds: holdsOf(threadNow()), tally: tallyNow() }));
   });
 }

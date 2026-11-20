@@ -82,3 +82,59 @@ require("node:http").createServer((q, r) => { r.end('{"ok":true}'); if (!ending)
   assert.ok(Number(readFileSync(join(dir, "started"), "utf8")) - wrote >= 2500, "started only once dist/ was quiet");
   rmSync(dir, { recursive: true, force: true });
 });
+
+// #1576: a release that moved in (ship.ts leaves .swap) and does not start takes the whole Sol back with it, not only
+// dist/: the checkout to `from`, the node_modules it replaced, and .skip so it does not install itself again; one that
+// stays up its minute lets the way back go
+function swapped(dieMs: number) {
+  const dir = setup(dieMs);
+  const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, encoding: "utf8" }).trim();
+  g("init", "-q"); g("config", "user.email", "t@t"); g("config", "user.name", "t");
+  writeFileSync(join(dir, ".gitignore"), "dist/\ndist.good/\ndist.bad/\n.keep\n.swap\n.skip\n.went-back\nnode_modules/\nsol-was/\nkeep\n");
+  writeFileSync(join(dir, "release.txt"), "old\n"); g("add", "-A"); g("commit", "-qm", "old");
+  const from = g("rev-parse", "HEAD");
+  writeFileSync(join(dir, "release.txt"), "new\n"); g("commit", "-qam", "new");
+  const to = g("rev-parse", "HEAD");
+  mkdirSync(join(dir, "node_modules")); writeFileSync(join(dir, "node_modules", "marker"), "new\n");
+  const was = join(dir, "sol-was", "engine-1");
+  mkdirSync(was, { recursive: true }); writeFileSync(join(was, "marker"), "old\n");
+  writeFileSync(join(dir, ".swap"), [["from", from], ["to", to], ["at", "2026-11-19T00:00:00Z"], ["nm", join(dir, "node_modules"), was]].map((l) => l.join("\t")).join("\n") + "\n");
+  return { dir, from, to, was, head: () => g("rev-parse", "HEAD") };
+}
+
+test("keep #1576: a release that does not start three times takes the checkout and its packages back, and is skipped", () => {
+  const s = swapped(1500);
+  for (let i = 1; i <= 2; i++) { const r = run(s.dir); assert.equal(r.code, 1, r.out); assert.equal(s.head(), s.to, "not before the third"); }
+  const r = run(s.dir);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /did not start; Sol went back to/);
+  assert.match(r.out, /went back to the last good build/);
+  assert.equal(s.head(), s.from, "the checkout is on the release before");
+  assert.equal(readFileSync(join(s.dir, "release.txt"), "utf8"), "old\n");
+  assert.equal(readFileSync(join(s.dir, "node_modules", "marker"), "utf8"), "old\n", "its packages put back");
+  assert.equal(readFileSync(join(s.dir, ".skip"), "utf8").trim(), s.to, "the release waits for a newer one");
+  assert.equal(readFileSync(join(s.dir, ".went-back"), "utf8").trim(), `${s.from}\t${s.to}`, "said to the next engine");
+  assert.equal(existsSync(join(s.dir, ".swap")), false);
+  assert.match(readFileSync(join(s.dir, "dist", "index.js"), "utf8"), /the good one/);
+  rmSync(s.dir, { recursive: true, force: true });
+});
+
+test("keep #1576: a release that stays up its minute lets the way back go; one the checkout moved past is not undone", () => {
+  const s = swapped(0);
+  writeFileSync(join(s.dir, "dist", "index.js"), FAKE(0) + "setTimeout(() => process.exit(0), 2500);");
+  const r = run(s.dir);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(existsSync(join(s.dir, ".swap")), false, "no way back needed");
+  assert.equal(existsSync(s.was), false, "the old packages are gone");
+  assert.equal(s.head(), s.to);
+  rmSync(s.dir, { recursive: true, force: true });
+
+  const t = swapped(1500);
+  writeFileSync(join(t.dir, "release.txt"), "newer\n");
+  execFileSync("git", ["commit", "-qam", "newer"], { cwd: t.dir });   // moved since the swap (a pull by hand)
+  for (let i = 1; i <= 3; i++) run(t.dir);
+  assert.notEqual(t.head(), t.from, "a checkout that moved past `to` is never moved back");
+  assert.equal(existsSync(join(t.dir, ".skip")), false);
+  assert.equal(existsSync(join(t.dir, ".swap")), false, "the stale way back is dropped");
+  rmSync(t.dir, { recursive: true, force: true });
+});

@@ -10,7 +10,8 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
-import { reachOfAsk, type Trust } from "./meta/when.js";
+import type { Trust } from "./meta/when.js";
+import { gateOf } from "./meta/reachRead.js";
 
 export type Sticky = { done: boolean; t: string; s: string; notes: string[] };
 export type Removed = { id: string; at: number; i: number; item: Sticky };
@@ -85,12 +86,15 @@ export function done(l: Sticky[], key: string, d: boolean): Change {
   const i = at(l, key);
   return i < 0 ? { why: "that sticky is not there any more" } : { items: l.map((m, k) => (k === i ? { ...m, done: d } : m)) };
 }
-// The trust gate (#1497): how far a press goes is read from the sticky's words (reachOfAsk, Agents' own rule) and written
-// into its asked line, so every folder's run reads it whatever its policy.md says. What comes back from a draft or an
+// The trust gate (#1497): how far a press goes is read from the sticky's words (reachOfAsk, Agents' own rule, with the
+// person's cheapest Claude reading them in any language: meta/reachRead.ts) and written into its asked line, so every folder's run reads it whatever its policy.md says. What comes back from a draft or an
 // ask is a "did: draft: …" or "did: ask: …" line: Home shows it whole and waits for the person's act (Send, Pay), and
 // that act is a press with `yes`: the one step, after which the engine ticks the sticky done.
 export type Reach = Exclude<Trust, "looks">;
-export const reachOfSticky = (m: Pick<Sticky, "t" | "s">) => reachOfAsk(`${keyOf(m.t)} ${m.s}`);
+/** the words the gate reads: its title and what it asks */
+export const wordsOf = (m: Pick<Sticky, "t" | "s">) => `${keyOf(m.t)} ${m.s}`.trim();
+/** its reach: `read` a model's reading of wordsOf (null: none, and then words the rules cannot read ask) */
+export const reachOfSticky = (m: Pick<Sticky, "t" | "s">, read: Reach | null = null) => gateOf(wordsOf(m), read);
 /** a made thing that waits on the person: a did: draft: or did: ask: line */
 export const WAITS = /^did:\s*(draft|ask):/i;
 /** what the asked line adds for a press: nothing for the person's own, the gate's words for the rest; a yes names its step */

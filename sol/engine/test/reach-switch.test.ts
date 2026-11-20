@@ -14,7 +14,7 @@ const { patchSettings, reachTools, reachRoom, getSettings } = await import("../s
 const { seatTools, solToolsNow, SOL_TOOLS, runSolTool } = await import("../src/tools.ts");
 const { startReach, heard, reachOpening } = await import("../src/team/reach.ts");
 
-const ASKING = ["ask_agent", "hand_over", "ask_turn_on", "offer_take", "hand_reply"];   // the tools reach.tools turns on (ask_turn_on: #1504)
+const ASKING = ["ask_agent", "hand_over", "ask_turn_on", "offer_take", "hand_reply", "answer_ask"];   // the tools reach.tools turns on (ask_turn_on: #1504)
 const names = () => seatTools().map((t) => t.name);
 const text = (r: { content: { text?: string }[] }) => r.content.map((c) => c.text ?? "").join("");
 
@@ -29,6 +29,16 @@ test("off by default: no reach tool offered, each refused by name with how to tu
   assert.ok((r as any).isError); assert.match(text(r as any), /off on this Sol.*reach\.tools/);
   const room = await runSolTool("agents_room", { show: true });
   assert.ok((room as any).isError); assert.match(text(room as any), /Agents' room is off.*reach\.room/);
+});
+
+test("#1726 answer_ask comes with answering, the same yes, while reach.tools stays off; nothing else of reach does", () => {
+  const was = process.env.SOL_REACH;
+  process.env.SOL_REACH = "on";   // answering on, as the yes to "<group>'s agents may ask mine" turns it on
+  try {
+    assert.equal(reachTools(), false);
+    assert.deepEqual(names().filter((n) => ASKING.includes(n) || n === "agents_room"), ["answer_ask"]);
+  } finally { if (was === undefined) delete process.env.SOL_REACH; else process.env.SOL_REACH = was; }
+  assert.ok(!names().includes("answer_ask"), "off again with answering");
 });
 
 test("each switch alone: reach.tools brings the asking tools, reach.room the room; env first, read each turn", () => {

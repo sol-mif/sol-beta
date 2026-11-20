@@ -9,6 +9,8 @@ import { heard, turnOf, type Offers } from "./homeSuggest";
 import { withFailure } from "./failed";
 import { markMine } from "./flag";
 import { tellAgents, agentsSwitchMsg } from "./agents/tell";   // #1702: the window's agents.mode reaches the engine
+import { tellSnap, snapSwitchMsg } from "./snap/tell";   // #1701: the window's build.snap reaches the engine
+import { buildSnap, subBuildSnap } from "./snap/fit";
 import { agentsOn, subAgents } from "./agents/flag";   // #1224: Marco's own window, marked once by the engine's login
 import { tooLarge } from "./socket";
 
@@ -68,6 +70,7 @@ export type Settings = {
   // the frame's switch as the engine was told it (#633): its blocks' engine halves load only with it on; absent until turned
   frame?: boolean;
   notify?: { moments?: Partial<Record<import("./notify/moments").Kind, boolean>> };   // the one notification (#845, engine settings.ts): each kind on or off; absent is on
+  updates?: { paused?: boolean };   // pause updates (#1566, #1576; engine settings.ts updatesPaused): a new release waits, built, until turned back on
 
   // the new face's switch (#1604, engine settings.ts uiNext): sent already resolved against SOL_UI_NEXT; absent is off
   ui?: { next?: boolean };
@@ -304,6 +307,8 @@ export function useEngine() {
 
   // #1702: each turn of agents.mode (its row in Settings, another window, the version learned) is said to the engine at once
   useEffect(() => tellAgents(send, agentsOn, subAgents), [send]);
+  // #1701: each turn of build.snap is said to the engine at once, so off stops the morning clock
+  useEffect(() => tellSnap(send, buildSnap, subBuildSnap), [send]);
 
   useEffect(() => {
     const L = link(ENGINE);
@@ -329,6 +334,7 @@ export function useEngine() {
       send({ type: "settings.get" });
       send({ type: "arrange.get" });
       send(agentsSwitchMsg(agentsOn()));   // agents.mode as this window reads it, at every up (#1702); its turns: below
+      send(snapSwitchMsg(buildSnap()));   // build.snap too (#1701)
       interrupting.current = 0;
       const was = owed.current;
       owed.current = false;

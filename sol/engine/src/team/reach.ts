@@ -151,8 +151,11 @@ export type Counts = { day: string; by: Record<string, number>; total: number };
 const today = (now: number) => localDay(now);   // the person's day, not UTC's (#1298)
 /** may an ask from `from` be answered now (pure): null yes, else why not. `team`: my group's members (none listed: anyone
  *  in my room; null: who they are cannot be read now, so nobody) */
-export function mayAnswer(o: { from: string; me: string; team: string[] | null; on: boolean; counts: Counts; busy: number; now: number }): string | null {
-  if (!o.on) return `${o.me}'s agent ${OFF_WHY}`;
+export function mayAnswer(o: { from: string; me: string; team: string[] | null; on: boolean; why?: string; where?: string; counts: Counts; busy: number; now: number }): string | null {
+  // which reason turned it off goes first, and on which machine: one person's two engines on the relay each refuse, and
+  // the asker reads which is which (#1703). The old words stay last, so an older engine still knows the refusal
+  const sol = `${o.me}'s Sol${o.where ? ` on ${o.where}` : ""}`;
+  if (!o.on) return `${o.why || o.where ? `${sol}: ${o.why || "answering is off"}; so ` : ""}${o.me}'s agent ${OFF_WHY}`;
   if (same(o.from, o.me)) return "an ask to my own agent is not answered here";
   if (!o.team) return `who is in ${o.me}'s group cannot be read right now (GitHub or the cloud did not answer); ask again in a minute`;
   if (o.team.length && !o.team.some((t) => same(t, o.from))) return `${o.from} is not a member of ${o.me}'s group`;
@@ -227,6 +230,9 @@ export type Kept = { thread: Entry[]; counts: Counts; answer?: boolean;
   asked?: Record<string, string>;
   /** hands and offers for me that found no session yet (#1298): placed when the next session starts */
   pending?: string[];
+  /** asks to me my answering session could not take, put in front of me as a card (#1726): the only ones answer_ask
+   *  answers, so it never answers an ask refused for being off, over a limit or from outside my group */
+  shown?: string[];
   /** E6 (#1298): my asks a day and the time to their answers, counted where an answer is written; the last TALLY_DAYS */
   tally?: Record<string, Tally> };
 export const ASKED_MAX = 200, TALLY_DAYS = 30;
@@ -250,6 +256,7 @@ export function readKept(file: string): Kept {
     if (r?.asked && typeof r.asked === "object" && !Array.isArray(r.asked)) k.asked = Object.fromEntries(Object.entries(r.asked).filter(([a, s]) => ID.test(a) && typeof s === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(s)).slice(-ASKED_MAX)) as Record<string, string>;
     if (r?.tally && typeof r.tally === "object" && !Array.isArray(r.tally)) k.tally = Object.fromEntries(Object.entries(r.tally).filter(([d, v]: [string, any]) => /^\d{4}-\d{2}-\d{2}$/.test(d) && [v?.asks, v?.answered, v?.ms].every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0)).slice(-TALLY_DAYS)) as Record<string, Tally>;
     if (Array.isArray(r?.pending)) k.pending = r.pending.filter((x: unknown): x is string => typeof x === "string" && ID.test(x)).slice(-50);
+    if (Array.isArray(r?.shown)) k.shown = r.shown.filter((x: unknown): x is string => typeof x === "string" && ID.test(x)).slice(-50);
     return k;
   } catch { return EMPTY(); }
 }
@@ -291,8 +298,16 @@ export type ReachDeps = {
   late?: (sessionId: string, e: Answer | Refused | Reply, of: Entry | undefined) => void;
   /** a hand-over or an offer for me, heard new (#1298 E4): placed where the person is; false when no session took it */
   arrived?: (h: Held, sessionId?: string) => Promise<boolean>;
-  /** my yes to the one question (#1313, team/settings.ts wakeAsk), its asking line on for the group in use */
-  asked?: () => boolean;
+  /** an ask the answering session could not take (Claude did not start here): a card in the session where the person
+   *  is, whose own agent may answer it there with answer_ask; false when no session took it (#1703, a Sol on Codex) */
+  askHere?: (a: Ask, why: string) => Promise<boolean>;
+  /** why a session ended with nothing said: its last error line, or "" */
+  failedWhy?: (sessionId: string) => Promise<string>;
+  /** this machine, by its short name, in a refusal: one person may have two engines on the relay (#1703) */
+  where?: () => string;
+  /** my yes to the one question (#1313, team/settings.ts wakeAsk), its asking line on for the group in use: true, or
+   *  why not in words (asksWhy) */
+  asked?: () => boolean | string;
   file_: string;   // reach.json
   room: string;    // room.md
   home: string;    // the empty folder
@@ -308,8 +323,33 @@ const now = () => (D?.now ?? Date.now)();
 /** off unless turned on (#1224): SOL_REACH=on, or my yes to the one question Sol asks (#1313, `asked`); SOL_REACH=off,
  *  and reach.json's `"answer": false`, win over the yes.
  *  Off, asks are refused and nothing starts: another person's agent never reads this machine without its person's yes */
-export const answering = () => !isQuiet() && !/^off$/i.test(process.env.SOL_REACH ?? "") &&
-  (/^on$/i.test(process.env.SOL_REACH ?? "") || kept.answer === true || (kept.answer !== false && D?.asked?.() === true));
+export const answeringWhy = (): string | null =>
+  offWhy({ quiet: isQuiet(), env: process.env.SOL_REACH ?? "", answer: kept.answer, asked: D?.asked?.() ?? false });
+export const answering = () => answeringWhy() === null;
+
+/** why answering is off (pure): null when it is on, else the one reason, in words both the asker and this Sol's person
+ *  read (#1703: every reason used to give the same sentence). In the order they win */
+export function offWhy(o: { quiet: boolean; env: string; answer?: boolean; asked: boolean | string }): string | null {
+  if (o.quiet) return "quiet mode is on";
+  if (/^off$/i.test(o.env)) return "SOL_REACH=off in its .env";
+  if (/^on$/i.test(o.env) || o.answer === true) return null;
+  if (o.answer === false) return `answering was turned off by hand ("answer": false in reach.json)`;
+  if (o.asked === true) return null;
+  return typeof o.asked === "string" && o.asked ? o.asked : `"<group>'s agents may ask mine" is not on (Settings › my agent)`;
+}
+const MAY_ASK = `"<group>'s agents may ask mine" (Settings › my agent, who may wake my agent)`;
+/** why my yes does not turn answering on for the group in use (pure): null when it does (#1313's one question). Any
+ *  group: a cloud one, or a GitHub one with no org, too (#1703: it asked for a GitHub org, so the Settings line turned
+ *  nothing on in most groups); who may ask is then the group's members, read at each ask (mayAnswer's team, #1692) */
+export function asksWhy(a: { answer: string; at: string; room: string; off?: string[] }, room: { id: string } | undefined): string | null {
+  if (!room) return "no group is in use";
+  if (a.answer && a.room && a.room !== room.id) return `${MAY_ASK} was answered for another group, not the one in use`;
+  if (!a.answer || !a.at || a.room !== room.id) return `${MAY_ASK} was never answered`;
+  if (a.answer === "no") return `${MAY_ASK} was answered no`;
+  if (a.answer === "later") return `${MAY_ASK} was answered later`;
+  if ((a.off ?? []).includes("asks")) return `${MAY_ASK} was turned off on its own`;
+  return null;
+}
 export const threadNow = (): Entry[] => kept.thread;
 export const roomFile = () => D?.room ?? "";
 
@@ -388,8 +428,8 @@ function keepAsked(id: string, sessionId?: string) {
 /** an ask for my agent: refused with the reason, or answered in a bare session (the module's top) */
 async function answer(a: Ask) {
   const d = D!;
-  const team = await Promise.resolve(d.team()).catch(() => null);
-  const no = mayAnswer({ from: a.from, me: d.me(), team, on: answering(), counts: kept.counts, busy, now: now() });
+  const off = answeringWhy(), team = await Promise.resolve(d.team()).catch(() => null);
+  const no = mayAnswer({ from: a.from, me: d.me(), team, on: off === null, why: off ?? undefined, where: d.where?.(), counts: kept.counts, busy, now: now() });
   if (no) { say({ type: "refused", id: randomUUID(), re: a.id, to: a.from, why: no }); return; }
   kept = { ...kept, counts: counted(kept.counts, a.from, now()) };
   save();   // counted before the session starts: a crash in it still used the answer
@@ -402,6 +442,14 @@ async function answer(a: Ask) {
     say(refused ? { type: "refused", id: randomUUID(), re: a.id, to: a.from, why: text } : { type: "answer", id: randomUUID(), re: a.id, to: a.from, text });
     return "answered";
   };
+  // the answering session runs on Claude alone (work/runs.ts): where Claude does not start (a Sol on Codex), the ask goes
+  // to the person instead, a card in their session, and the asker hears why at once (#1703)
+  const cannot = async (detail: string) => {
+    if (done) return;
+    const shown = await (d.askHere?.(a, detail) ?? Promise.resolve(false)).catch(() => false);
+    if (shown) { kept = { ...kept, shown: [...(kept.shown ?? []), a.id].slice(-50) }; save(); }
+    finish(couldNotStart(d.me(), d.where?.(), detail, shown), true);
+  };
   d.give(sid, answerTools(d, (text) => finish(text)));
   try {
     mkdirSync(d.home, { recursive: true });
@@ -412,11 +460,14 @@ async function answer(a: Ask) {
     await new Promise((r) => setTimeout(r, 4000));
     while (!done && now() < until && d.working(sid)) await new Promise((r) => setTimeout(r, 2000));
     if (!done) {
-      const last = d.working(sid) ? "" : (await d.lastWords(sid).catch(() => "")).trim();
-      finish(last || `no answer within ${Math.round(ANSWER_MS / 1000)} seconds`, !last);
+      const still = d.working(sid), last = still ? "" : (await d.lastWords(sid).catch(() => "")).trim();
+      if (last) finish(last);
+      else if (still) finish(`no answer within ${Math.round(ANSWER_MS / 1000)} seconds`, true);
+      // it ended with nothing said: its error is why (a Claude that is not signed in ends at once, with one)
+      else await cannot((await d.failedWhy?.(sid).catch(() => "")) || "it ended without a word");
     }
   } catch (e) {
-    finish(`the answering session did not start (${String((e as Error)?.message ?? e).slice(0, 120)})`, true);
+    await cannot(String((e as Error)?.message ?? e).slice(0, 120));
   } finally { busy -= 1; }
 }
 
@@ -528,6 +579,27 @@ export function reply(id: string, accept: boolean, why?: string): string {
   return accept ? `taken: ${h.kind === "hand" ? `you hold ${h.issue ? `#${h.issue}` : "it"} now` : `${h.from} holds #${h.issue} now`}; the team's Agents' room says so.` : "declined; the team's Agents' room says why.";
 }
 
+/** the refusal when the answering session could not run (pure, #1703): it runs on Claude alone, so say so, and where
+ *  the ask went instead */
+export function couldNotStart(me: string, where: string | undefined, detail: string, shown: boolean): string {
+  const sol = `${me}'s Sol${where ? ` on ${where}` : ""}`;
+  return `${sol} could not start its answering session: it runs on Claude, and Claude did not start there (${words(detail, 160) || "no reason given"})` +
+    (shown ? `. The ask is shown to ${me} instead; their own agent may answer it there, and the answer lands where you asked` : "");
+}
+/** answer_ask (#1703): my own agent answers an ask to me, in my session with me there, when my Sol's answering session
+ *  could not (a Sol on Codex). Once an ask; a refusal before it does not stop it, the asker's side takes a late answer */
+export function answerAsk(id: string, text: string): string {
+  if (!D) return "reach is not started in this Sol";
+  const a = kept.thread.find((x): x is Ask => x.type === "ask" && x.id === String(id ?? "").trim() && same(x.to, D!.me()));
+  if (!a) return "refused: no ask with that id was to you (agents_room lists them)";
+  if (!(kept.shown ?? []).includes(a.id)) return "refused: that ask was not put in front of you; answer_ask answers only an ask whose card says Claude did not start";
+  if (kept.thread.some((x) => x.type === "answer" && x.re === a.id)) return "refused: that ask is answered already";
+  const t = words(text, TEXT_MAX);
+  if (!t) return "refused: an empty answer";
+  say({ type: "answer", id: randomUUID(), re: a.id, to: a.from, text: t } as Answer);
+  return `answered; ${a.from}'s agent hears it where it asked`;
+}
+
 /** "not mine" on an ask to me the morning brought (#1128): a refusal back to the asking agent, once, while it is open */
 export function decline(id: string, why: string): string {
   if (!D) return "reach is not started in this Sol";
@@ -562,6 +634,14 @@ export function heldCard(h: Held): { id: string; title: string; body: string; as
   const body = [(h.kind === "hand" ? h.what : `${h.from} would take #${h.issue} from you.`).replace(/\n+/g, " "), ...(h.why ? [`why: ${h.why.replace(/\n+/g, " ")}`] : [])].join("\n");
   return { id: `${h.kind}-${h.id.toLowerCase()}`.slice(0, 64), title: title.slice(0, 80), body,
     asks: { q: h.kind === "hand" ? "Take it?" : `Let ${h.from} take it?`, choices: ["yes", "no", "later"], ref: { kind: h.kind, id: h.id }, from: { login: h.from, agent: true }, ...(h.issue ? { about: h.issue } : {}) } };
+}
+/** the card an ask my answering session could not take makes where I am (pure, #1703): the question quoted, why it is
+ *  here, and how my own agent answers it */
+export function askCard(a: Ask, why: string): { id: string; title: string; body: string } {
+  return { id: `ask-${a.id.toLowerCase()}`.slice(0, 64), title: `${a.from}'s agent asks you`.slice(0, 80),
+    body: [a.question.replace(/\n+/g, " ").slice(0, 600),
+      `Sol's answering session runs on Claude, and Claude did not start here (${words(why, 160) || "no reason given"}), so ${a.from}'s agent was told it went to you.`,
+      `Your own agent can answer it in this session if you want: ask it to, and it uses answer_ask with id ${a.id}. Nothing is sent until then.`].join("\n") };
 }
 /** the block and the turn a late word makes in the session that asked (pure) */
 export function lateCard(e: Answer | Refused | Reply, of: Entry | undefined): { title: string; body: string; text: string; about?: number } {

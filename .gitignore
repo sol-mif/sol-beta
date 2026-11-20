@@ -23,6 +23,10 @@ sol/engine/dist.good/
 sol/engine/dist.good.new/
 sol/engine/dist.bad/
 sol/engine/.keep
+# a release moved in, kept for going back, and the one that did not start (engine/keep, #1576)
+sol/engine/.swap
+sol/engine/.skip
+sol/engine/.went-back
 
 # Sol developers' runs: the first-timer's and the morning run's reports (#485), beside the gate's (#481)
 .sol-gate/

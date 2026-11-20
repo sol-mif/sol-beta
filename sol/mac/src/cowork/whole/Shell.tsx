@@ -43,8 +43,9 @@ function useProjects(): Projects {
       seen = { list, now };
       setP(seen);
     });
-    L?.send({ type: "team.hello" });
-    return () => { off?.(); };
+    // asked on every up, not once: opened before the engine answers, it asks again when it does (gate one q7)
+    const offLink = L?.onLink((up) => { if (up) L.send({ type: "team.hello" }); });
+    return () => { off?.(); offLink?.(); };
   }, []);
   return p;
 }

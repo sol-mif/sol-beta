@@ -20,12 +20,9 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clockIn, type Rhythm } from "./tonight.js";
-import { checksOn, devTag, DEV_TAG, dueDay as dueDayOf, fetchAll, publish, rev, runnerOf, type CheckRun, type ReleaseDeps } from "./release.js";
+import { devTag, DEV_TAG, dueDay as dueDayOf, fetchAll, publish, requiredGreen, rev, runnerOf, type NamedRun, type ReleaseDeps } from "./release.js";
 
-/** the checks a main commit must carry, by the job names: the four of ci.yml that run on a push to main. The ruleset
- *  "main" requires a fifth, `apart` (apart.yml), which runs on the pull request only and so is satisfied before the merge
- *  and never a check run on main's own commit; asking for it here would leave every commit "not green yet" */
-export const REQUIRED = ["engine tests and build", "face build", "the gate", "leak check"];
+export { REQUIRED, ACTIONS_APP, requiredGreen, type NamedRun } from "./release.js";
 
 export type Mode = "report" | "on";
 /** the mode from the environment (pure): only the word `on` pushes */
@@ -33,20 +30,6 @@ export const modeOf = (env: Record<string, string | undefined>) => (env.DEV_ON_G
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const short = (s: string) => s.slice(0, 7);
-
-/** GitHub Actions' app id: the five are its jobs, so a check run of that name from any other app does not count */
-export const ACTIONS_APP = 15368;
-export type NamedRun = CheckRun & { app?: { id?: number; slug?: string } | null };
-
-/** the required checks on one commit, from GitHub's check runs (pure): green only when each required name is there,
- *  made by GitHub Actions (never another app wearing the name), and, by checksOn's rule, its newest run has ended in
- *  success, skipped or neutral */
-export function requiredGreen(runs: NamedRun[], required = REQUIRED): { green: true } | { green: false; why: string } {
-  const mine = runs.filter((r) => required.includes(String(r.name ?? "")) && (r.app?.id === ACTIONS_APP || r.app?.slug === "github-actions"));
-  const missing = required.filter((n) => !mine.some((r) => r.name === n));
-  if (missing.length) return { green: false, why: `no check named ${missing.join(", ")} on it yet` };
-  return checksOn(mine);
-}
 
 export type Plan = { act: "move"; tag: string } | { act: "skip"; why: string };
 /** what to do with a green commit (pure): the tag it gets, or why not */

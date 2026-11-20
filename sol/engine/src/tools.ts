@@ -14,8 +14,9 @@ import { BLOCK_TOOLS, runTrackerTool } from "./team/tracker.js";
 import { WAY_NAMES, runWayTool, wayTools } from "./team/way-tools.js";   // a way's moves, looked at and pressed by my agent, each press on a card (#1281)
 import { OPEN_NAMES, openToolsNow, runOpenTool } from "./openfor.js";   // open a Settings drawer or a pane for the person, change a setting they asked for (#1521)
 import { PLACE_NAMES, PLACE_TOOLS, runPlaceTool } from "./homeplaces.js";   // make a place inside another, or move one under another, on the person's word (#1662)
-import { READS_NAMES, readsToolsNow, runReadsTool } from "./reads.js";
-import { HOME_RULE_NAMES, homeRuleToolsNow, runHomeRuleTool } from "./home/tool.js";   // Home's filing rules and folders, on the person's word, while Home runs (#1686)   // stop or resume reading a source on the person's word (#1656)
+import { READS_NAMES, readsToolsNow, runReadsTool } from "./reads.js";   // stop or resume reading a source on the person's word (#1656)
+import { HOME_RULE_NAMES, homeRuleToolsNow, runHomeRuleTool } from "./home/tool.js";   // Home's filing rules and folders, on the person's word, while Home runs (#1686)
+import { TABLE_NAMES, tableToolsNow, runTableTool } from "./team/table-tools.js";   // open a Cowork table on the person's word (#1676)
 import { REACH_TOOLS, REACH_NAMES, reachToolsNow, runReachTool } from "./team/reach-tools.js";   // ask a teammate's agent, hand over (#1166)   // Sol's tools for blocks only (step 7): file it asks Settings here
 import { byCards, offeredIn, toolsCards } from "./tools/fromcards.js";   // a tool a card offers only in a mode its card's station has reached (#1589)
 import { versionMode } from "./settings.js";
@@ -31,7 +32,7 @@ export const seatTools = () => [...solToolsNow(), ...wayTools(), ...(kernelNow()
 /** Sol's tools less reach's whose switch is off (#1276, reach-tools.ts reachToolsNow), with the three that open a thing
  *  for the person while open.for is on (#1521), set_reading while reads.voice is on (#1656), less any a card offers whose station this mode has not reached (#1589,
  *  tools/fromcards.ts; with tools.cards off, untouched): what a seat or the stdio server offers */
-export const solToolsNow = () => { const on = new Set(reachToolsNow().map((t) => t.name)); return byCards([...SOL_TOOLS.filter((t) => !REACH_NAMES.has(t.name) || on.has(t.name)), ...openToolsNow(), ...readsToolsNow(), ...homeRuleToolsNow()]); };
+export const solToolsNow = () => { const on = new Set(reachToolsNow().map((t) => t.name)); return byCards([...SOL_TOOLS.filter((t) => !REACH_NAMES.has(t.name) || on.has(t.name)), ...openToolsNow(), ...readsToolsNow(), ...homeRuleToolsNow(), ...tableToolsNow()]); };
 
 export function runSolTool(name: string, args: unknown, turn: TurnCtx = {}): Promise<ToolResult> {
   return guardSolTool(name, args, turn, () => solTool(name, args, turn));   // Home's ceiling (home/ceiling.ts): only inside a Home Run, with home.whole on
@@ -50,6 +51,7 @@ function solTool(name: string, args: unknown, turn: TurnCtx): Promise<ToolResult
   if (PLACE_NAMES.has(name)) return runPlaceTool(name, args, turn);   // #1662: only on the person's words this turn
   if (READS_NAMES.has(name)) return runReadsTool(name, args, turn);   // #1656: refused while reads.voice is off
   if (HOME_RULE_NAMES.has(name)) return runHomeRuleTool(name, args, turn);   // #1686: only while Home runs, on the person's words
+  if (TABLE_NAMES.has(name)) return runTableTool(name, args, turn);   // #1676: refused while Cowork is off
   if (name === "arrange") return runArrangeTool(name, args, turn);
   if (name === "suggest_group") return runSuggestTool(name, args, turn);
   // the kernel's two names answer only while the kernel is there; with the frame off a name is routed as main routes it

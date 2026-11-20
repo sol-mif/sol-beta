@@ -48,10 +48,18 @@ export function namesMyAgent(text: string, me: string): boolean {
   return new RegExp(`(?:^|[^\\w@-])@${me.replace(/-/g, "\\-")}'s agent\\b`, "i").test(t);
 }
 
-/** what my own AI is handed when a line names it: the line as I wrote it, and where to answer (the room's chat, with
- *  its talk tool, short) */
+/** a group's name as a label only (#1721): any member can rename the group on GitHub, so it is one line, quoted, at
+ *  most 60 characters, never read as part of the ask */
+export function groupLabel(group: string): string {
+  const one = group.replace(/[\s\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ").replace(/["“”]/g, "'").trim();
+  return one ? `"${one.length > 60 ? `${one.slice(0, 59)}…` : one}"` : "";
+}
+
+/** what my own AI is handed when a line names it: the line as I wrote it (my words, as they are), and where to answer
+ *  (the room's chat, with its talk tool, short). The group's name is only a quoted label (#1721) */
 export function askMine(text: string, group?: string): string {
-  return `I wrote this in ${group ? `${group}'s` : "my group's"} room in Cowork and named you:\n\n${text.trim()}\n\n` +
+  const label = group ? groupLabel(group) : "";
+  return `I wrote this in my group's room in Cowork${label ? ` (the group named ${label})` : ""} and named you:\n\n${text.trim()}\n\n` +
     "Answer me there, in the room, with your talk tool (thread general), short; a PR link instead of a paragraph.";
 }
 

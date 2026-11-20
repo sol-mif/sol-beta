@@ -44,7 +44,7 @@ async function up() {
   };
   delete env.CLAUDE_CONFIG_DIR;
   engine = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], { cwd: ENGINE, stdio: "ignore", env });
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 450; i++) {   // 90 s: a CI machine running every suite at once starts an engine slowly (#1703)
     try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return; } catch {}
     await wait(200);
   }
@@ -67,7 +67,7 @@ async function face() {
 }
 const rowIn = (m: Msg) => (m.sessions as any[]).find((s) => s.id === SID);
 
-test("a lean face is not sent the list again when only `seen` moved, a plain face is; a change goes to both, whole", { timeout: 90_000 }, async () => {
+test("a lean face is not sent the list again when only `seen` moved, a plain face is; a change goes to both, whole", { timeout: 150_000 }, async () => {
   await up();
   const plain = await face();
   // /var/folders is scratch to the side; a folder added by hand is listed all the same

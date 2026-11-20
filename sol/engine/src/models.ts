@@ -77,12 +77,12 @@ export function latest(id: string, models = claude.models, keep = KEEP): string 
 export const claudeModels = () => claude.models;
 export const claudeDefault = () => claude.default;
 // The cheapest Claude the person's list offers: the newest of the least able family it names (haiku before sonnet before
-// opus); null when the list names none of the known families (#1485: the blank sticky's "which place?" without Jev).
+// opus); a Claude family not named here may cost anything, so it is taken only when the list names none of the known
+// ones; null when the list names no Claude at all (#1485: the blank sticky's "which place?" without Jev; #1497).
 export function cheapest(models = claude.models): string | null {
   const known = models.filter((m) => ORDER.includes(family(m)?.name ?? ""));
-  if (!known.length) return null;
-  const rank = (m: string) => ORDER.indexOf(family(m)!.name);
-  return known.reduce((a, b) => (rank(b) > rank(a) ? b : a));
+  const ids = known.length ? known : models.filter((m) => family(m));
+  return ids.reduce<string | null>((best, m) => (best === null || ORDER.indexOf(family(m)!.name) > ORDER.indexOf(family(best)!.name) ? m : best), null);
 }
 
 // One CLI started only to ask; no prompt is ever sent. It reads the person's own settings (~/.claude/settings.json), so

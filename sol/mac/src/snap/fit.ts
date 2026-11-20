@@ -11,6 +11,7 @@ const sw = makeSnapSwitch();
 export const buildSnap = () => sw.get();
 export const setBuildSnap = (v: boolean) => sw.set(v);
 export const useBuildSnap = () => useSyncExternalStore(sw.sub, sw.get);
+export const subBuildSnap = (f: () => void) => sw.sub(f);
 /** the click's mute: its own row under the switch */
 export const SNAP_MUTE = "build.snap.mute";
 const mw = buildSwitch(SNAP_MUTE);

@@ -27,7 +27,7 @@ export const rungOfLevel = (l: Level): "read" | "propose" | "draft" => (l === "r
 /** the tools that only look: allowed at every level */
 const LOOKS = new Set(["browser_open", "browser_read", "browser_find", "browser_screenshot", "browser_back", "desk_read", "agents_room"]);
 /** the tools that send past the person or press in a page: refused below "do" */
-const SENDS = new Set(["talk", "ask_agent", "ask_turn_on", "hand_over", "offer_take", "hand_reply", "browser_click", "browser_type"]);
+const SENDS = new Set(["talk", "ask_agent", "ask_turn_on", "hand_over", "offer_take", "hand_reply", "answer_ask", "browser_click", "browser_type"]);
 
 const say: Record<Level, string> = {
   record: "record only: look and write down what you would do; act on nothing",

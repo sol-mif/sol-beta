@@ -34,7 +34,7 @@ after(async () => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 
-test("the switch: env first (on/1/true, off/0/false), else the setting home.whole, else its stage (#691, concept on); clean() keeps it", () => {
+test("the switch: env first (on/1/true, off/0/false), else the setting home.whole, else its stage (#691, concept, complete and product on); clean() keeps it", () => {
   const was = process.env.SOL_HOME_WHOLE;
   try {
     process.env.SOL_HOME_WHOLE = "off";
@@ -50,7 +50,8 @@ test("the switch: env first (on/1/true, off/0/false), else the setting home.whol
     try {
       if (getSettings().home?.whole === undefined) {
         process.env.SOL_VERSION = "concept"; assert.equal(homeWhole(), true, "nothing set, concept: on (versions.ts)");
-        process.env.SOL_VERSION = "complete"; assert.equal(homeWhole(), false, "nothing set, complete: off");
+        process.env.SOL_VERSION = "complete"; assert.equal(homeWhole(), true, "nothing set, complete: on");
+        process.env.SOL_VERSION = "product"; assert.equal(homeWhole(), true, "nothing set, product: on (its card stands at product, #1717)");
       }
     } finally { if (ver === undefined) delete process.env.SOL_VERSION; else process.env.SOL_VERSION = ver; }
     process.env.SOL_HOME_WHOLE = "off";

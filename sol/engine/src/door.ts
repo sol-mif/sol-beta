@@ -11,17 +11,30 @@
 // 127.0.0.1, so the request must come from Sol's own pages: the app's bundled pages, its hot pages on Vite, or the
 // away page this engine serves. No Origin is a local program (it already runs as Marco). WebKit calls the hot face's
 // socket (localhost:1420 to 127.0.0.1) "cross-site", so Sec-Fetch-Site only speaks when there is no Origin.
+// The Host must name this Mac (#1715): a page whose own hostname is pointed at 127.0.0.1 is same-origin with the engine,
+// sends no Origin on a GET, and would read GET /log and every other route; every way Sol dials it says 127.0.0.1 or
+// localhost. No Host at all is a program, never a browser.
 import type { IncomingHttpHeaders } from "node:http";
 
 export type DoorOpts = { port: number; owner: string };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+// a Host that names this Mac, port or not, a final dot or not: 127.0.0.1, localhost or [::1]
+const hostName = (h: string) => h.trim().toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "");
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+const loopbackHost = (h: string | undefined) => h === undefined || LOOPBACK.has(hostName(h));
+// a machine's tailnet name (MagicDNS, <machine>.<tailnet>.ts.net), port or not
+const tailnetHost = (h: string | undefined) => h !== undefined && /^[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net$/.test(hostName(h));
+
 export function tailnetOk(headers: IncomingHttpHeaders, opts: DoorOpts): boolean {
   const who = one(headers["tailscale-user-login"]);
-  if (who === undefined) return true;
+  // the Host here, not in doorOpen, so the page pane's keyed assets (index.ts), which ask only this, get it too
+  if (who === undefined) return loopbackHost(one(headers.host));
   const owner = opts.owner.trim().toLowerCase();
-  return owner !== "" && who.trim().toLowerCase() === owner;
+  // a page pointed at this Mac may send the login header itself (same-origin, no preflight): the Host must still name
+  // this Mac or its tailnet name, which `tailscale serve` passes on (#1715)
+  return owner !== "" && who.trim().toLowerCase() === owner && (loopbackHost(one(headers.host)) || tailnetHost(one(headers.host)));
 }
 
 // The app's own pages, wherever the engine is: the bundled pages and the hot face on Vite. SOL_FACE names one more

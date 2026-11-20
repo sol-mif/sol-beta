@@ -61,7 +61,7 @@ test("the named switches ask isQuiet(): renew, the update check, the relay, the 
     ["index.ts", /const TRACK_OFF =/],                     // no usage sent
     ["index.ts", /SOL_AGENT_CLOCK \?\? ""\)\);/],          // no folder agent wakes itself
     ["team/wake.ts", /SOL_WAKE \?\?/],                     // no session a GitHub comment wakes
-    ["team/reach.ts", /export const answering =/],         // no answer to a teammate's agent
+    ["team/reach.ts", /export const answeringWhy =/],      // no answer to a teammate's agent (answering reads it, #1703)
     ["team/wire.ts", /present: \(\) => process\.env\.SOL_TONIGHT/],   // no review session
     ["team/relay.ts", /export const hubTicket =/],          // no hub ticket: no proof, no cloud asked as the person
     ["agent/jev.ts", /^export function jevKey/],            // (the line after) no paid Jev call

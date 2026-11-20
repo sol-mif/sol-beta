@@ -63,6 +63,30 @@ function NextRow({ s, off, onSet }: { s: unknown; off: boolean; onSet: (patch: o
   );
 }
 
+// The two reach switches (#1718): what sends the person's words to their teammates. Their AI turns them off when asked,
+// never on (#36): asked to, it opens Settings here, and the person's own press turns one on. reachNow is the engine's reading
+function ReachRow({ s, off, onSet }: { s: unknown; off: boolean; onSet: (patch: object) => void }) {
+  const sh = useShell();
+  if (!sh || sh.sel !== "me") return null;
+  const now = (s as { reachNow?: { tools?: unknown; room?: unknown; roomHere?: unknown } } | null)?.reachNow;
+  // the room only where this Sol has it (its card stands in this version), or while it is on so it can be turned off
+  const room = now?.roomHere === true || now?.room === true;
+  return (
+    <div className="v3-switch" data-reach>
+      <div className="field-r">
+        <div className="lab"><span>ask teammates' AIs</span>
+          <small>Your AI can ask a teammate's AI a question or hand it work. What it asks is sent to that teammate.</small></div>
+        <Switch on={now?.tools === true} set={(v) => onSet({ reach: { tools: v } })} disabled={off || !now} label="ask teammates' AIs" />
+      </div>
+      {room && <div className="field-r">
+        <div className="lab"><span>the agents' room</span>
+          <small>Your AI can read and write in the room your team's AIs share. What it writes there your teammates see.</small></div>
+        <Switch on={now?.room === true} set={(v) => onSet({ reach: { room: v } })} disabled={off || !now} label="the agents' room" />
+      </div>}
+    </div>
+  );
+}
+
 // Mutable mode (lib.rs, hot.rs): the app's windows load Vite's dev pages, so edits to sol/mac/src appear in place.
 // Only inside Sol.app; in a plain browser there is no shell to ask.
 type Face = { hot: boolean; state: string };
@@ -369,6 +393,10 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
           <dt /><dd className={`face-state ${face.state === "hot" ? "hot" : face.state === "dev server down" ? "down" : ""}`}>{face.state}</dd></>}
         <dt>address</dt><dd className="mono">{ENGINE}</dd>
         {up && <><dt>release</dt><dd><ReleasesMini ask={askEngine} /></dd></>}
+        {/* #1576: pause updates. On, a new release goes in by itself between turns; paused, it is fetched and built but waits */}
+        {up && real && <><dt>updates</dt><dd><Pick value={real.updates?.paused ? "paused" : "on"}
+          options={[["on", "on: new releases go in between turns"], ["paused", "paused: new releases wait"]]}
+          onChange={(v) => onSet({ updates: { paused: v === "paused" } })} /></dd></>}
         <PinRows up={up} />
         {health && <><dt>kept</dt><dd>{health.kept ? "by its keeper" : "not by its keeper"}{health.build ? `; build watcher ${health.build.alive ? "alive" : "dead"}${health.build.errors ? `, ${health.build.errors} error${health.build.errors > 1 ? "s" : ""}` : ""}` : ""}</dd></>}
         {up && send && <><dt>go back</dt><dd className="goback">
@@ -439,6 +467,7 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
         <ControlDrawers open={open} toggle={toggle} onSet={onSet} />
         <SwitchRow s={real} off={off} onSet={onSet} />
         <NextRow s={real} off={off} onSet={onSet} />
+        <ReachRow s={real} off={off} onSet={onSet} />
         <OldRow />
         <CleanRow />
         <CrossRow />

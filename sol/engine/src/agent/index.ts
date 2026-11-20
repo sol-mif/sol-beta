@@ -44,6 +44,7 @@ import { askOpens } from "./opensJev.js";   // Home's world (#1093): Jev's pick 
 import { askTied } from "./tiedJev.js";   // Home's world (#1093): Jev's pick 4
 import { readAreas, SYSTEMS_BOARD } from "./areas.js";
 import * as St from "./stickies.js";   // a folder's stickies, kept by the engine (#1228)
+import { readOf } from "./meta/reachRead.js";   // the trust gate in any language: the reading's answer taken
 import { agentsOn, bindAgentsSwitch } from "./switch.js";   // agents.mode reaches the engine (#18): off, the keeper and the meta rest
 import { heldNow, keep as keepAgents, signedIn as agentsSignedIn, hasAgentsFile, type Say } from "./agents.js";   // Agents (#1327): the keeper
 import { keepMeta } from "./meta/keeper.js";   // Agents (#1327, pass 2): first runs, joining, date triggers
@@ -74,12 +75,21 @@ export type AgentDeps = {
   say?: Say;
   /** the person's own home, where ~/.sol/record/me.json is (default: the OS's; a test hands in its own) */
   me?: string;
+  /** the trust gate's reading of a sticky's words in any language (meta/reachTurn.ts): the model's answer, or null when
+   *  none came. Absent or null: no model, and words the English rules cannot read ask (a test hands in its own) */
+  reach?: ((words: string) => Promise<string | null>) | null;
 };
 /** one step of a run the folder draws: it started (what started it), a tool in use (the browser on a page, the desk),
  *  a file it made, it ended (how). `id` is the same for a tool's start and end */
 export type RunStep = { kind: "start" | "tool" | "made" | "end"; at: number; text: string; id?: string; rule?: string; sticky?: string; done?: boolean; ok?: boolean; report?: string };
 export type Running = { rule: string; sticky?: string; at: number; steps: RunStep[] };
 
+/** how many of the gate's readings are kept (a reading is kept by the sticky's words, so an edit is read again) */
+const READS = 500, MISSED_MS = 10 * 60_000;
+/** the gate's readings never pile up: at most AT_ONCE model turns at a time (a press goes to the front of the line), and a
+ *  look (Home opened, an engine just started) starts at most LOOKS_AN_HOUR new ones an hour; past that the floor shows
+ *  until a press or the next hour. A press is never held back by the hour */
+const AT_ONCE = 2, LOOKS_AN_HOUR = 30, HOUR_MS = 60 * 60_000;
 const SKIP = new Set(["node_modules", "things", "memory", "desk", "voice", "track", "attachments", "browser-profile", "log", "data", "blocks", "sessions"]);
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 
@@ -90,6 +100,15 @@ export class Agents {
   /** the run going now in each folder (by path), with its steps so far: a face opened late draws it whole */
   readonly running = new Map<string, Running>();
   private pressing = new Set<string>();
+  /** the gate's readings by a sticky's words (the last READS), and those on their way */
+  private reads = new Map<string, St.Reach | null>();
+  private reading = new Map<string, Promise<St.Reach | null>>();
+  /** when a reading got no answer, by words: a look does not ask again within MISSED_MS (a press always does) */
+  private missed = new Map<string, number>();
+  /** model turns reading now, those waiting their turn, and when each look's reading started (the last hour's) */
+  private readingNow = 0;
+  private line: (() => void)[] = [];
+  private lookStarts: number[] = [];
   constructor(readonly d: AgentDeps) {
     bindAgentsSwitch(d.home);
     d.ask ??= makeAsk({ home: d.home });   // no Jev key: the person's own cheapest model, counted a day in the home (#1476)
@@ -98,6 +117,39 @@ export class Agents {
     setAgentGuard(guardTool);   // read only where people talk (guard.ts), in every mode
   }
   private now = () => (this.d.now ?? Date.now)();
+  /** a model's reading of a sticky's words (null: no model, or none came): kept by its words, asked once at a time */
+  private readReach(words: string, press = false): Promise<St.Reach | null> {
+    if (this.reads.has(words)) return Promise.resolve(this.reads.get(words)!);
+    const ask = this.d.reach;
+    if (!ask) return Promise.resolve(null);
+    const on = this.reading.get(words);
+    if (on) return on;
+    if (!press) {
+      const t = this.now();
+      this.lookStarts = this.lookStarts.filter((x) => t - x < HOUR_MS);
+      if (this.lookStarts.length >= LOOKS_AN_HOUR) return Promise.resolve(null);
+      this.lookStarts.push(t);
+    }
+    const p = this.inLine(() => ask(words), press).catch(() => null).then((a) => {
+      const r = readOf(a);
+      this.reading.delete(words);
+      // no answer is not kept: the next look asks again
+      if (r !== null) { this.reads.set(words, r); if (this.reads.size > READS) this.reads.delete(this.reads.keys().next().value!); }
+      else { this.missed.set(words, this.now()); if (this.missed.size > READS) this.missed.delete(this.missed.keys().next().value!); }
+      return r;
+    });
+    this.reading.set(words, p);
+    return p;
+  }
+  /** one model turn in the line: AT_ONCE at a time, a press first */
+  private inLine<T>(f: () => Promise<T>, first: boolean): Promise<T> {
+    return new Promise<T>((ok, no) => {
+      const go = () => { this.readingNow++; f().then(ok, no).finally(() => { this.readingNow--; this.line.shift()?.(); }); };
+      if (this.readingNow < AT_ONCE) go();
+      else if (first) this.line.unshift(go);
+      else this.line.push(go);
+    });
+  }
 
   /** every folder under the home with a policy.md (three deep), by name */
   folders(): { name: string; path: string }[] {
@@ -268,16 +320,22 @@ export class Agents {
     if (!rule) return { ok: false, why: "policy.md has no stickies rule" };
     if (rule.mode === "off") return { ok: false, why: "The stickies rule is off in this folder's policy.md." };
     const k = St.keyOf(key);
-    const m = St.change(folder, (l) => {
+    // the folder is taken before the gate's reading is waited for, so a second press meanwhile waits as it would on a run
+    this.pressing.add(folder);
+    let marked = false;
+    try {
+      // the gate's reading first (a yes names its own step and needs none); words changed while it read go on the floor
+      const was = yes === undefined ? St.read(folder).items.find((s) => St.keyOf(s.t) === k) : undefined;
+      const read = was ? await this.readReach(St.wordsOf(was), true) : null;
+      const m = St.change(folder, (l) => {
       const x = l.find((s) => St.keyOf(s.t) === k);
       if (!x) return { why: "that sticky is not there any more" };
       if (yes !== undefined && !St.yesFits(l, k, yes)) return { why: "That is not a draft or an ask of this sticky any more." };
-      return St.mark(l, k, St.stamp(), St.gateWords(St.reachOfSticky(x), yes));
-    });
-    if ("why" in m) return { ok: false, why: m.why };
-    this.pressing.add(folder);
-    this.d.changed?.(basename(folder));
-    try {
+        return St.mark(l, k, St.stamp(), St.gateWords(St.reachOfSticky(x, was && St.wordsOf(was) === St.wordsOf(x) ? read : null), yes));
+      });
+      if ("why" in m) return { ok: false, why: m.why };
+      marked = true;
+      this.d.changed?.(basename(folder));
       const r = await this.runRule(relative(realpathSync(this.d.home), folder), rule.id, true, { sticky: k });
       const last = r.ticket?.ledger?.[r.ticket.ledger.length - 1]?.made;
       St.change(folder, (l) => ({ items: St.settle(l, k, last && !/^nothing/.test(last) ? last : undefined) }));
@@ -285,9 +343,9 @@ export class Agents {
       if (yes !== undefined && r.ok) St.change(folder, (l) => St.done(l, k, true));
       return r;
     } catch (e) {
-      St.change(folder, (l) => ({ items: St.settle(l, k) }));
+      if (marked) St.change(folder, (l) => ({ items: St.settle(l, k) }));
       return { ok: false, why: firstLine(String((e as Error)?.message ?? e)) };
-    } finally { this.pressing.delete(folder); this.d.changed?.(basename(folder)); }
+    } finally { this.pressing.delete(folder); if (marked) this.d.changed?.(basename(folder)); }
   }
 
   /** folders Home needs (#1511, #1510): the record's under ~/.sol, a place's under Sol's home, with their parents, never
@@ -316,7 +374,13 @@ export class Agents {
   stickies(name: string) {
     const folder = this.placeDir(name);
     if (!folder) return null;
-    return { items: St.read(folder).items.map((x) => ({ ...x, reach: St.reachOfSticky(x) })), removed: St.removedOf(folder, this.now()).map((r) => ({ id: r.id, t: r.item.t, at: r.at })), agent: St.hasAgent(folder), running: this.running.get(folder) ?? null };
+    // what is not read yet shows its floor now and is read meanwhile; the face hears agent.changed when a reading lands
+    const reachOf = (x: St.Sticky) => {
+      const w = St.wordsOf(x);
+      if (!this.reads.has(w) && !x.done && this.d.reach && !(this.now() - (this.missed.get(w) ?? -Infinity) < MISSED_MS)) void this.readReach(w).then((r) => { if (r !== null) this.d.changed?.(basename(folder)); });
+      return St.reachOfSticky(x, this.reads.get(w) ?? null);
+    };
+    return { items: St.read(folder).items.map((x) => ({ ...x, reach: reachOf(x) })), removed: St.removedOf(folder, this.now()).map((r) => ({ id: r.id, t: r.item.t, at: r.at })), agent: St.hasAgent(folder), running: this.running.get(folder) ?? null };
   }
   /** one change to a folder's stickies, on the file as it is now */
   sticky(name: string, m: Record<string, any>): { ok: boolean; why?: string; items?: St.Sticky[]; undo?: string; key?: string } {

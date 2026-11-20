@@ -12,6 +12,8 @@ import { join } from "node:path";
 import { z } from "zod";
 import { STATE_DIR } from "./state.js";
 import { giveTool } from "./tools.js";
+import { versionMode } from "../settings.js";
+import { standsOn, stageOf } from "../versions.js";
 
 export type Kind = "when" | "source" | "job" | "check" | "hand";
 export type Brick = { id: string; kind: Kind; label: string; ref: string; hint?: string; hand?: "proposed" | "mine"; why?: string };
@@ -22,11 +24,11 @@ export type Run = { id: string; section: string; at: number; states: Record<stri
   on?: string; work?: string; cwd?: string; red?: string };
 
 const FILE = () => join(STATE_DIR, "snap.json");
-type SnapFile = { sections: Section[]; runs: Run[]; told?: string[] };
+type SnapFile = { sections: Section[]; runs: Run[]; told?: string[]; on?: boolean };
 let file: SnapFile | null = null;
 function load(): SnapFile {
   if (file) return file;
-  try { const v = JSON.parse(readFileSync(FILE(), "utf8")); file = { sections: Array.isArray(v.sections) ? v.sections : [], runs: Array.isArray(v.runs) ? v.runs : [] }; }
+  try { const v = JSON.parse(readFileSync(FILE(), "utf8")); file = { sections: Array.isArray(v.sections) ? v.sections : [], runs: Array.isArray(v.runs) ? v.runs : [], ...(typeof v.on === "boolean" ? { on: v.on } : {}) }; }
   catch { file = { sections: [], runs: [] }; }
   // a run cut by a restart of the engine is over: it says so, and the row is not left half lit
   for (const r of file!.runs) if (!r.ended) { r.ended = Date.now(); r.result = "stopped"; r.lines.push("the engine restarted; the run stopped"); for (const k of Object.keys(r.states)) if (r.states[k] === "live" || r.states[k] === "ask") r.states[k] = "skip"; }
@@ -37,7 +39,21 @@ function save() {
   mkdirSync(STATE_DIR, { recursive: true });
   const tmp = FILE() + ".tmp"; writeFileSync(tmp, JSON.stringify(f, null, 1)); renameSync(tmp, FILE());
 }
-export const _reload = () => { file = null; };
+export const _reload = () => { file = null; stopClock(); };
+
+// ---- the switch (#1679, gate one question 6): build.snap is the window's, so the engine reads the window's last word on
+// it (work.snap.switch, kept in snap.json across restarts) and, until a window has said one, where its station stands in
+// this Sol's version. Off, the morning clock stops at once and a tick never runs a row; on starts it again. The table stays
+export function snapOn(): boolean {
+  const told = load().on;
+  return typeof told === "boolean" ? told : standsOn(stageOf("build.snap"), versionMode());
+}
+/** the window said its build.snap: kept, and the clock follows it */
+export function setSnapOn(on: boolean): void {
+  const f = load();
+  if (f.on !== on) { f.on = on; save(); }
+  if (on) startClock(); else stopClock();
+}
 
 // ---- what the engine gives this file (wire.ts), so nothing here imports wire.ts
 export type SnapDeps = {
@@ -231,11 +247,18 @@ export function dueToday(s: Section, now = new Date()): boolean {
   return !ran || ran.toDateString() !== now.toDateString();
 }
 let clock: NodeJS.Timeout | undefined;
-export function startClock(every = 5 * 60_000) {
-  clearInterval(clock);
-  clock = setInterval(() => { for (const s of load().sections) if (dueToday(s)) void runSection(s.id).catch(() => {}); }, every);
+/** the morning clock, only while the switch is on; each tick reads the switch again, so off never runs a row. `asked`:
+ *  the bench was opened (work.snap.get, sent only with the window's switch on), which counts as on while no window has
+ *  said its switch yet (a window before #1679's tell) */
+export function startClock(every = 5 * 60_000, asked = false) {
+  stopClock();
+  const on = () => snapOn() || (asked && load().on === undefined);
+  if (!on()) return;
+  clock = setInterval(() => { if (!on()) return stopClock(); for (const s of load().sections) if (dueToday(s)) void runSection(s.id).catch(() => {}); }, every);
   clock.unref?.();
 }
+export function stopClock() { clearInterval(clock); clock = undefined; }
+export const clockRunning = () => clock !== undefined;
 
 // ---- the one session's say over your hands (#1024): it reads the rows and puts its hand where your word is worth most
 // (a taste call, a merge, money, a thing only you know), six words why. It never puts one where you pulled one out.

@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import type { ToolResult, TurnCtx } from "../browser.js";
 import { getTeam, mayAgentSpeak } from "./settings.js";
 import { reachTools, reachRoom } from "../settings.js";
-import { ask, handOver, offerTake, reply, requestTurnOn, roomNow, roomFile } from "./reach.js";
+import { ask, answerAsk, answering, handOver, offerTake, reply, requestTurnOn, roomNow, roomFile } from "./reach.js";
 import { REPO_ROOT } from "./worktype.js";
 
 const run = promisify(execFile);
@@ -59,6 +59,13 @@ export const REACH_TOOLS: { name: string; description: string; shape: z.ZodRawSh
     shape: { id: z.string(), accept: z.boolean(), why: z.string().optional().describe("the reason, above all when declining") },
   },
   {
+    name: "answer_ask",
+    description: "Answer an ask from a teammate's agent to your person yourself, in this session with them there: for an ask your Sol's own " +
+      "answering session could not take (it runs on Claude, and Claude did not start; a card says so, with the id). Only when your person wants it " +
+      "answered; say what you send. Read-only in spirit: what your Sol can say, nothing private. Once an ask.",
+    shape: { id: z.string().describe("the ask's id, from its card or agents_room"), text: z.string().describe("the answer, plain") },
+  },
+  {
     name: "agents_room",
     description: "The team's Agents' room: who holds what, and the last asks, answers and hand-overs between the team's agents. " +
       "show: true puts it on this session's stage as a page of the project, kept up to date.",
@@ -68,10 +75,13 @@ export const REACH_TOOLS: { name: string; description: string; shape: z.ZodRawSh
 export const REACH_NAMES = new Set(REACH_TOOLS.map((t) => t.name));
 /** which of them a switch keeps on now (#1276): agents_room with reach.room, the others with reach.tools; both off
  *  by default, so a Sol offers none until its person turns one on */
-const switchOn = (name: string) => (name === "agents_room" ? reachRoom() : reachTools());
+// answer_ask comes with answering too (#1726): the same one yes that lets a member's agent ask mine (#1724, one agree
+// turns all on) lets my own agent answer an ask its card put in front of me; off until that yes, as the others
+const switchOn = (name: string) => (name === "agents_room" ? reachRoom() : name === "answer_ask" ? reachTools() || answering() : reachTools());
 export const reachToolsNow = () => REACH_TOOLS.filter((t) => switchOn(t.name));
 const SWITCHED_OFF = (name: string) => name === "agents_room"
   ? "The Agents' room is off on this Sol (the setting reach.room, or SOL_REACH_ROOM=on, turns it on)."
+  : name === "answer_ask" ? "Answering asks from teammates' agents is off on this Sol (Settings › my agent, \"<group>'s agents may ask mine\", turns it on)."
   : "Asking or handing over to teammates' agents is off on this Sol (the setting reach.tools, or SOL_REACH_TOOLS=on, turns it on).";
 
 /** days since an issue of this repository was last touched, or null when it cannot be read */
@@ -108,6 +118,7 @@ export async function runReachTool(name: string, args: unknown, turn: TurnCtx = 
     : name === "ask_turn_on" ? requestTurnOn(a.to, a.why, turn.sessionId)
     : name === "offer_take" ? offerTake(a.to, a.issue, a.why, Number.isInteger(a.issue) ? await idleDays(a.issue) : null, turn.sessionId)
     : name === "hand_reply" ? reply(a.id, a.accept, a.why)
+    : name === "answer_ask" ? answerAsk(a.id, a.text)
     : `Unknown tool: ${name}`;
   return tx(r, /^(refused|not sent|reach is not|Unknown)/.test(r));
 }

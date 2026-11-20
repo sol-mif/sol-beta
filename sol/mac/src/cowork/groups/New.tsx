@@ -1,5 +1,5 @@
 // Finding each other (#1537; a7 and a9 of docs/cowork-ui-2026-11-18), ported as drawn. A new table: name it, it gets
-// its own code, copy the code or throw the table away (team.room.make with a code, team.settings without it). I have a
+// its own code on Sol's cloud, copy the code or throw the table away (team.room.make where cloud, team.settings without it). I have a
 // code: type it, sit down (team.room.peek, then team.room.join); before my AI does anything there, the consent card.
 import { useEffect, useRef, useState } from "react";
 import { codeTyped } from "../rooms";
@@ -19,7 +19,7 @@ export function NewTable({ me, team, onMade, onGone, onCopied }: { me: string; t
     const n = name.trim();
     if (!n || busy || made) return;
     setBusy("making the table…"); setErr("");
-    const r = await team.ask<{ room?: { id: string; name: string; code?: string }; warn?: string; error?: string }>("team.room.make", { name: n, code: true }, 60_000);
+    const r = await team.ask<{ room?: { id: string; name: string; code?: string }; warn?: string; error?: string }>("team.room.make", { name: n, where: "cloud" }, 60_000);   // Sol's cloud, never the person's GitHub unasked (gate one q2)
     setBusy("");
     if (r?.error || !r?.room) { setErr(r?.error || "the table was not made"); return; }
     setMade({ id: r.room.id, code: r.room.code ?? "", ...(r.warn ? { warn: r.warn } : {}) });

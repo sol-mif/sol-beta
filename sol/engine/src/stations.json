@@ -30,7 +30,7 @@
     "id": "product/build/cross"
   },
   "home.whole": {
-    "station": "concept",
+    "station": "product",
     "side": "engine",
     "id": "product/home/engine-half"
   },
@@ -78,10 +78,11 @@
     ]
   },
   "reach.tools": {
-    "station": "concept",
+    "station": "product",
     "side": "engine",
     "id": "engine/team/reach",
     "offers": [
+      "answer_ask",
       "ask_agent",
       "ask_turn_on",
       "hand_over",
@@ -110,12 +111,12 @@
     "id": "product/ui-next"
   },
   "view.cowork": {
-    "station": "concept",
+    "station": "product",
     "side": "window",
     "id": "product/cowork"
   },
   "view.home": {
-    "station": "complete",
+    "station": "product",
     "side": "window",
     "id": "product/home"
   },

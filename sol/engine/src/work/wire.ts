@@ -646,10 +646,12 @@ export async function handleWork(w: Wire, m: any) {
       } catch (err) { return reply({ error: err instanceof Error ? err.message : String(err) }); }
     }
     // pieces that snap (#1024, build.snap): the face asks only with the switch on; nothing runs before a row is pressed
-    case "work.snap.get": case "work.snap.put": case "work.snap.run": case "work.snap.hand": case "work.snap.stop": {
+    case "work.snap.get": case "work.snap.put": case "work.snap.run": case "work.snap.hand": case "work.snap.stop": case "work.snap.switch": {
       const reply = (o: object) => w.send({ type: m.type, rid: m.rid, ...o });
       try {
-        if (m.type === "work.snap.get") { snap.startClock(); const rs = snap.sections().map((s) => snap.runOf(s.id)).filter(Boolean); return reply({ sections: snap.sections(), runs: rs }); }
+        // the window's build.snap (#1679): off stops the morning clock at once, kept across restarts; on starts it again
+        if (m.type === "work.snap.switch") { if (typeof m.on === "boolean") snap.setSnapOn(m.on); return reply({ on: snap.snapOn() }); }
+        if (m.type === "work.snap.get") { snap.startClock(undefined, true); const rs = snap.sections().map((s) => snap.runOf(s.id)).filter(Boolean); return reply({ sections: snap.sections(), runs: rs }); }
         if (m.type === "work.snap.put") return reply({ sections: snap.putTable(m.sections) });
         if (m.type === "work.snap.run") return reply({ run: await snap.runSection(String(m.id)) });
         if (m.type === "work.snap.hand") return reply({ run: await snap.hand(String(m.run), String(m.brick), m.go !== false) });

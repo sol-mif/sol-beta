@@ -90,7 +90,8 @@ import { setSuggestSend } from "./suggest.js";   // Home offers a group once (#3
 import { HOME_INVENTORY, solScript, type Inventory } from "./inventory.js";
 import { transcribe, DICTATION_MODEL } from "./voice.js";
 import { makeCall, haveVoiceKey, voiceKeyName, voiceVendor, type VoiceCall } from "./call.js";
-import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, onLens, onSeatSet, onChannel, readings, versionMode } from "./settings.js";
+import { stageOf, standsOn } from "./versions.js";   // the room's card in this version, for Settings › me (#1718)
+import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, reachRoom, reachTools, onLens, onSeatSet, onChannel, readings, versionMode } from "./settings.js";
 import { setArrangeHome, arrangeMsg, setArrangement, undoArrangement, addUsage, oneAsk } from "./arrange.js";
 import { setTitle, nameConversation, namingModel } from "./titles.js";
 import { Sample } from "./sample.js";
@@ -133,6 +134,7 @@ import { setAnticipate, handleAnticipate } from "./anticipate.js";
 import { handleTalks, setTalks } from "./talks.js";   // Conversations (#253): the talks of home/voice/talks
 import { homeWindow, ceilingGuard, ceilingHooks, solChecked } from "./home/wire.js";   // Home's engine half (#790), behind home.whole; Home 5's upper limit at position two, only inside a Home Run (its messages: parts/home.ts)
 import { claudeModels, claudeDefault, codexModels, codexDefault, codexWindow, latest, refreshClaude } from "./models.js";   // #863
+import { reachTurn } from "./agent/meta/reachTurn.js";   // the trust gate's reading in any language (#1498 follow-up)
 import { startAgents } from "./agent/index.js";   // the folder's agent (step 1, record-only): agent/; its page and its messages are parts/agent-page.ts
 import { makeJev } from "./agent/jev.js";
 import { connectorsGuard, servicesOff, standIns, toolKey } from "./connectors.js";   // a read turn through the person's Claude account; its socket message is parts/connectors.ts
@@ -228,7 +230,11 @@ setWorkChanging(changing);
 // The keeper (engine/keep) put the last good build back after three failed starts: it leaves dist/.reverted, read once
 // here, so every window that connects hears it and the log says when.
 const REVERTED = (() => { try { const at = readFileSync(resolve(HERE, ".reverted"), "utf8").trim(); unlinkSync(resolve(HERE, ".reverted")); return at; } catch { return ""; } })();
-if (REVERTED) { console.log(`keep: this engine is the last good build, put back at ${REVERTED}; the broken one is in dist.bad/`); noteRevert("engine", REVERTED); }
+// #1576: a release that did not start took the whole Sol back with it (engine/.went-back: from, to), said once
+const WENT_BACK = (() => { try { const f = resolve(HERE, "..", ".went-back"); const [from = "", to = ""] = readFileSync(f, "utf8").trim().split("\t"); unlinkSync(f); return to ? { from, to } : null; } catch { return null; } })();
+const backLine = WENT_BACK ? `the release ${WENT_BACK.to.slice(0, 7)} did not start, so Sol went back to ${WENT_BACK.from.slice(0, 7)}; updates wait for a newer release` : undefined;
+if (REVERTED) { console.log(`keep: this engine is the last good build, put back at ${REVERTED}; the broken one is in dist.bad/${backLine ? `; ${backLine}` : ""}`); noteRevert("engine", REVERTED, backLine); }
+else if (backLine) { console.log(`keep: ${backLine}`); noteRevert("engine", undefined, backLine); }
 // kept, build, face, reverted: every five seconds, to every window when it changes (src/health.ts)
 const health = watchHealth(resolve(HERE, ".."), (h: Health) => everyone({ type: "health", health: h }));
 // what this Sol runs (#417): read from git after the start, never before it; /health, the relay and Cowork say it
@@ -448,7 +454,10 @@ const settingsMsg = () => ({
   settings: { ...getSettings(), voiceNow: voiceVendor(), errorCounts: !TRACK_OFF && !STAGE && countsErrors(AUDIENCE),
     // the four switches as the engine reads them (settings.ts readings: an env, or a stage in this version); coworkEnv: v3's env said
     // window null while the mode is not known yet (#1637): the window keeps what it had, never "all off" for a moment
-    ...readings(), ...(versionMode() === null ? { window: null } : {}), ...(coworkV3Env() ? { coworkEnv: coworkV3Env() } : {}) },
+    ...readings(), ...(versionMode() === null ? { window: null } : {}), ...(coworkV3Env() ? { coworkEnv: coworkV3Env() } : {}),
+    // the two reach switches as the engine reads them (a setting, an env, or the card's station), for Settings › me's row (#1718);
+    // roomHere: whether the room's card stands in this Sol's version, so a tester's row offers no room it does not have
+    reachNow: { tools: reachTools(), room: reachRoom(), roomHere: standsOn(stageOf("reach.room"), versionMode()) } },
   haveVoiceKey: haveVoiceKey(),
   dictationModel: DICTATION_MODEL,
   up: { since: STARTED, port: PORT, health: health() }, login: getTeam().me.login,   // login: whose Sol this is (#1224)
@@ -1329,6 +1338,7 @@ http.listen(PORT, HOST, () => {
     home: HOME, jev: makeJev(), changed: (folder) => { everyone({ type: "agent.changed", folder }); everyone({ type: "agents.changed", folder }); },   // agents.changed: Agents (#1327)
     step: (folder, step) => everyone({ type: "agent.step", folder, step }),   // a run as it goes, pressed or by the clock (#1228)
     run: { codexFor, turns, sandboxMode: INV.codex.sandboxMode, networkAccessEnabled: INV.codex.networkAccessEnabled },
+    reach: isQuiet() ? null : reachTurn,   // the trust gate reads a sticky in any language on the cheapest Claude (#1498 follow-up)
   }, !isQuiet() && !/^off$/i.test(process.env.SOL_AGENT_CLOCK ?? ""));
   if (folders.folders().length) console.log(`folder agents: ${folders.folders().map((f) => f.name).join(", ")}`);
 });

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { entryOf, holdsOf, waitingOn, mayAnswer, counted, openingText, roomText, repoPath, added, readKept, startReach, heard, ask, handOver, reply, requestTurnOn, mayRequestTurnOn, threadNow, TURN_ON_MS, ASKS_A_PERSON, BUSY_MAX,
+import { entryOf, holdsOf, waitingOn, mayAnswer, counted, openingText, roomText, repoPath, added, readKept, startReach, heard, ask, handOver, reply, requestTurnOn, mayRequestTurnOn, threadNow, offWhy, asksWhy, offRefusal, TURN_ON_MS, ASKS_A_PERSON, BUSY_MAX,
   type Entry, type Given, type ReachDeps } from "../src/team/reach.ts";
 
 const T = Date.UTC(2026, 10, 14, 18);
@@ -55,6 +55,37 @@ test("mayAnswer: off, my own, not the team, over a person's or the day's limit, 
   assert.match(mayAnswer({ ...base, counts: c })!, /asked 12 times today/);
   assert.equal(mayAnswer({ ...base, counts: c, now: T + 86_400_000 }), null, "a new day starts again");
   assert.match(mayAnswer({ ...base, busy: BUSY_MAX })!, /right now/);
+});
+
+test("#1703: a refusal because answering is off says which reason, and still ends with the words an older engine knows", () => {
+  const base = { from: "frank", me: "marco", team: [], on: false, counts: { day: "", by: {}, total: 0 }, busy: 0, now: T };
+  const why = mayAnswer({ ...base, why: "quiet mode is on" })!;
+  assert.equal(why, "marco's Sol: quiet mode is on; so marco's agent does not answer asks (turned off in their Sol)");
+  assert.equal(mayAnswer({ ...base, why: "quiet mode is on", where: "studio" }), "marco's Sol on studio: quiet mode is on; so marco's agent does not answer asks (turned off in their Sol)", "which of two engines refused");
+  assert.ok(offRefusal({ type: "refused", id: "r1", re: "a1", to: "frank", why, from: "marco", at: T } as Entry), "ask_turn_on still follows it");
+  // the reasons, in the order they win
+  const asked = "never answered";
+  assert.equal(offWhy({ quiet: true, env: "on", answer: true, asked: true }), "quiet mode is on");
+  assert.match(offWhy({ quiet: false, env: "off", answer: true, asked: true })!, /SOL_REACH=off/);
+  assert.equal(offWhy({ quiet: false, env: "on", answer: false, asked }), null, "SOL_REACH=on turns it on");
+  assert.equal(offWhy({ quiet: false, env: "", answer: true, asked }), null, "\"answer\": true turns it on");
+  assert.match(offWhy({ quiet: false, env: "", answer: false, asked: true })!, /by hand/);
+  assert.equal(offWhy({ quiet: false, env: "", asked: true }), null, "my yes");
+  assert.equal(offWhy({ quiet: false, env: "", asked }), asked);
+  assert.match(offWhy({ quiet: false, env: "", asked: false })!, /may ask mine/);
+  // why my yes does not reach the group in use
+  const g = { id: "g1", provider: "github", org: "sol-mif" };
+  const yes = { answer: "yes", at: "2026-11-20", room: "g1" };
+  assert.equal(asksWhy(yes, g), null);
+  assert.match(asksWhy(yes, undefined)!, /no group/);
+  assert.match(asksWhy({ answer: "", at: "", room: "" }, g)!, /never answered/);
+  assert.match(asksWhy({ ...yes, room: "g2" }, g)!, /another group/);
+  assert.match(asksWhy({ ...yes, answer: "no" }, g)!, /answered no/);
+  assert.match(asksWhy({ ...yes, answer: "later" }, g)!, /answered later/);
+  assert.match(asksWhy({ ...yes, off: ["asks"] }, g)!, /turned off on its own/);
+  assert.equal(asksWhy({ ...yes, off: ["wake"] }, g), null, "only the waking line off: asks still on");
+  assert.equal(asksWhy(yes, { id: "g1", provider: "cloud" } as never), null, "a cloud group answers too");
+  assert.equal(asksWhy(yes, { id: "g1", provider: "github", org: "" } as never), null, "a GitHub group with no org too");
 });
 
 test("repoPath: inside the repository, never up, never absolute, never an .env", () => {

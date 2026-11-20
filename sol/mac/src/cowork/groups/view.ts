@@ -10,11 +10,13 @@ export type Seat = { login: string; me: boolean; coin: Coin };
 /** what a table is kept in: a GitHub repository, a Drive folder, the cloud */
 export type Kind = "github" | "drive" | "cloud";
 export type Ask = { id: string; from: string; title: string; at?: string };
-export type TableView = { id: string; name: string; kind: Kind; seats: Seat[]; more: number; count: { n: number; word: string }; line: { text: string; coin?: Coin }; ask: Ask | null; inUse: boolean };
+/** one real thing on a table's stage: a hand-over at it, newest first (gate one q3: never a made-up shape) */
+export type StageRow = { key: string; number: number; text: string; brief: string; at: string };
+export type TableView = { id: string; name: string; kind: Kind; seats: Seat[]; more: number; count: { n: number; word: string }; line: { text: string; coin?: Coin }; ask: Ask | null; inUse: boolean; stage: StageRow[] };
 
 export type RoomIn = { id: string; name: string; provider: string; repos: string[]; hub?: string; code?: string; mine?: boolean; joined?: boolean };
 export type AgentIn = { of: string; working: boolean };
-export type HandIn = { repo: string; number: number; at: string; how: string; from: string; to: string };
+export type HandIn = { repo: string; number: number; at: string; how: string; from: string; to: string; line?: string; brief?: string };
 export type PendingIn = { id: string; from: string; repo: string; issue: number; title: string; at?: string };
 export type HomeIn = { rooms: RoomIn[]; inUse: string; me: string; people: Record<string, string[]>; agents: AgentIn[]; hands: HandIn[]; pending: PendingIn[]; now: number };
 
@@ -58,9 +60,33 @@ export function tablesOf(i: HomeIn): TableView[] {
     const today = rows.filter((h) => h.how === "hand" && day(Date.parse(h.at)) === day(i.now)).length;
     const count = today ? { n: today, word: "handed today" } : { n: order.length, word: "at the table" };
     const kind: Kind = r.provider === "drive" ? "drive" : r.provider === "cloud" ? "cloud" : "github";
-    return { id: r.id, name: r.name || r.id, kind, seats, more: Math.max(0, order.length - SEATS), count, line: lineOf(seats, rows, i), ask, inUse };
+    return { id: r.id, name: r.name || r.id, kind, seats, more: Math.max(0, order.length - SEATS), count, line: lineOf(seats, rows, i), ask, inUse, stage: stageOf(rows, i.me) };
   });
 }
+
+/** what sits on a table's stage (pure): its last hand-overs, said as a person says them; empty when nothing was */
+export const STAGE = 5;
+export function stageOf(rows: HandIn[], me: string): StageRow[] {
+  return rows.slice(0, STAGE).map((h) => {
+    const who = nameOn(h.from, me), to = nameOn(h.to, me);
+    const text = h.how === "taken" ? `${who} took #${h.number}` : h.how === "passed" ? `${who} passed #${h.number} back` : h.how === "back" ? `${who} took #${h.number} back` : h.how === "review" ? `${who} asked ${to} to review #${h.number}` : `${who} handed #${h.number} to ${to}`;
+    return { key: `${h.repo}#${h.number}@${h.at}`, number: h.number, text, brief: h.brief || h.line || "", at: h.at };
+  });
+}
+
+/** a line of the table's talk as the engine's team.chat says it (only what the stage reads) */
+export type TalkIn = { id: string; at: number; from: string; agent?: boolean; text: string; kind?: string; artifact?: { title?: string } };
+const short = (t: string, n = 140) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t);
+/** what was said at a table (pure): each line of its talk as one stage row, newest first; a thing handed in shows its name */
+export function talkRows(lines: readonly TalkIn[], me: string): StageRow[] {
+  return [...lines].filter((l) => l.text?.trim() || l.artifact?.title).sort((a, b) => b.at - a.at).slice(0, STAGE).map((l) => {
+    const who = l.agent ? `${nameOn(l.from.replace(/'s agent$/i, ""), me) === "you" ? "your" : `${l.from.replace(/'s agent$/i, "")}'s`} ai` : nameOn(l.from, me);
+    return { key: `talk:${l.id}`, number: 0, text: who, brief: short(l.text?.trim() || l.artifact?.title || ""), at: new Date(l.at).toISOString() };
+  });
+}
+/** a table's stage (pure): its hand-overs and what was said there, newest first, at most STAGE */
+export const stageWith = (hands: readonly StageRow[], talk: readonly StageRow[]): StageRow[] =>
+  [...hands, ...talk].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, STAGE);
 
 /** a table's one line: an AI at work, else the last hand there, else how long it has been quiet (pure) */
 function lineOf(seats: Seat[], rows: HandIn[], i: HomeIn): TableView["line"] {
@@ -94,8 +120,11 @@ export function agoOf(at: string | undefined, now: number): string {
 
 /** the way in (#1461 step 1): a Sol on the team (a room kept in a GitHub org, or the team's own checkout running as
  *  concept) opens the team's shell; everyone else opens their own groups home (pure) */
-export function opensShell(rooms: { org?: string }[] | undefined, version: string | null): boolean {
-  return version === "concept" || !!rooms?.some((r) => !!r.org);
+export function opensShell(_rooms: { org?: string }[] | undefined, version: string | null): boolean {
+  // the team's own Sol only (gate one q1, product/cowork): a table kept in a GitHub org is any person's, not the team's,
+  // so it no longer opens the team's pages, which name our people, our machine and our night (versionOf: concept is
+  // the team's own checkout running as concept, never a tester's Sol)
+  return version === "concept";
 }
 
 /** a table's code as the design shows it (pure): "K7Q2MX" → "k7q 2mx"; "" when it has none yet */

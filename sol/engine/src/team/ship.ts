@@ -96,6 +96,19 @@ const tryGit = (d: Pick<Ship, "root">, args: string[], timeout?: number) => git(
 const ENGINE_SRC = ["engine/src", "engine/package.json", "engine/package-lock.json", "engine/tsconfig.json"];
 /** the lock files an update installs again when a release changes them (#1150), by their folder under sol/ */
 export const LOCKS = ["engine/package-lock.json", "mac/package-lock.json"];
+// A move kept for going back (#1576): every update that moves the checkout leaves engine/.swap, plain lines the keeper
+// (engine/keep, bash) reads, tab between words (a path may hold a space): `from <sha>` `to <sha>` `at <iso>`, `nm <live node_modules> <the one it replaced>` for a
+// folder whose packages were moved in, `ci <folder>` for one installed in place. The keeper deletes it, and the kept
+// node_modules, once the engine has stayed up its minute; at the third start that dies it moves the checkout back to
+// `from`, puts each folder's packages back, and writes engine/.skip, the release that did not start here. A release
+// in .skip is not installed by itself again (installDev); Update still can, and a newer release clears it.
+export const SWAP = ".swap", SKIP = ".skip";
+/** the swap record's text (pure) */
+export function swapText(o: { from: string; to: string; at: string; nm: [string, string][]; ci: string[] }): string {
+  return [["from", o.from], ["to", o.to], ["at", o.at], ...o.nm.map(([live, was]) => ["nm", live, was]), ...o.ci.map((f) => ["ci", f])].map((l) => l.join("\t")).join("\n") + "\n";
+}
+/** the release this Sol went back from (engine/.skip), "" for none */
+export const skippedIn = (root: string): string => { try { return readFileSync(join(root, "engine", SKIP), "utf8").trim(); } catch { return ""; } };
 /** the folders that need `npm ci` after a move (pure): those whose lock file is among the changed paths
  *  (`git diff --relative --name-only <was> HEAD -- ...LOCKS`, run in sol/: paths from there), in LOCKS' order, each once */
 export function lockedFolders(changed: string[]): string[] {
@@ -475,6 +488,7 @@ export async function update(d: Ship, channel?: Channel, auto = false, ready?: P
     // node_modules while the old dist kept running. A folder that does not install moves the Sol back where it was
     // (a */mine Sol: its own tip, its commits kept), installs that again, and says "build"
     const now = await git(d.root, ["rev-parse", "HEAD"]);
+    const nm: [string, string][] = [], inPlace: string[] = [];
     if (now !== was) {
       const ci = d.ci ?? npmCi;
       const changed = lockedFolders((await tryGit(d, ["diff", "--relative", "--name-only", was, "HEAD", "--", ...LOCKS]) ?? "").split("\n"));
@@ -483,8 +497,11 @@ export async function update(d: Ship, channel?: Channel, auto = false, ready?: P
       const done: string[] = [];
       for (const f of dirs) {
         done.push(f);
-        // installed aside for this lock (#1566): moved in, seconds; anything else installs here, as before
-        if (ready && await tookAside(d, ready, f)) continue;
+        // installed aside for this lock (#1566): moved in, seconds, the one it replaced kept for going back (#1576);
+        // anything else installs here, as before
+        const kept = ready ? await tookAside(d, ready, f) : null;
+        if (kept) { nm.push([join(d.root, f, "node_modules"), kept]); continue; }
+        inPlace.push(join(d.root, f));
         try { await ci(join(d.root, f)); }
         catch (e) {
           const why = firstLine(e);
@@ -502,6 +519,13 @@ export async function update(d: Ship, channel?: Channel, auto = false, ready?: P
       catch (e) { console.log(`ship: the engine built aside did not go in (${firstLine(e)}); the build watcher builds it`); }
     }
     if (branch !== B) await tryGit(d, ["branch", "-f", B, target]);   // my dev (or stable) is the team's now
+    // the way back, should the new engine not start (#1576): the keeper reads it, and deletes it once this one stays up
+    if (now !== was) {
+      try {
+        writeFileSync(join(d.root, "engine", SWAP), swapText({ from: was, to: now, at: new Date().toISOString(), nm, ci: inPlace }));
+        if (skippedIn(d.root) && skippedIn(d.root) !== now) rmSync(join(d.root, "engine", SKIP), { force: true });   // a newer release
+      } catch (e) { console.log(`ship: the way back was not written (${firstLine(e)}); a release that does not start keeps only the engine's last good build`); }
+    }
     const renews = (await tryGit(d, ["diff", "--quiet", was, "HEAD", "--", ...ENGINE_SRC])) === null;
     return { ok: true, sha: target, renews };
   } catch (e) {
@@ -542,7 +566,8 @@ export async function prepare(d: Ship, sha: string): Promise<Prepared | { error:
   if ((await tryGit(d, ["rev-parse", `refs/remotes/origin/${BRANCH.dev}`])) !== sha) return { error: `the release ${short(sha)} is not GitHub's ${BRANCH.dev} now`, silent: true };
   const place = await placeOf(d);
   const dir = join(place.common, "sol-next");
-  void rm(join(place.common, "sol-was"), { recursive: true, force: true }).catch(() => {});   // what an earlier swap left
+  // what an earlier swap left, unless the engine it brought has not yet stayed up its minute (#1576: the way back)
+  if (!existsSync(join(d.root, "engine", SWAP))) void rm(join(place.common, "sol-was"), { recursive: true, force: true }).catch(() => {});
   try {
     rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
@@ -576,22 +601,22 @@ export async function prepare(d: Ship, sha: string): Promise<Prepared | { error:
 }
 
 /** the swap of a folder's node_modules for the one installed aside, when HEAD's lock is the one it was installed for;
- *  false when it was not installed aside, or the move did not work (the caller installs it in place, as before) */
-async function tookAside(d: Ship, ready: Prepared, f: string): Promise<boolean> {
+ *  where the one it replaced is kept (#1576: the keeper puts it back if the new engine does not start, and deletes it
+ *  once it does), or null when it was not installed aside, or the move did not work (the caller installs it in place) */
+async function tookAside(d: Ship, ready: Prepared, f: string): Promise<string | null> {
   const lock = `${f}/package-lock.json`;
-  if (!ready.mods.includes(f) || await idAt(d, "HEAD", lock) !== await idAt(d, ready.sha, lock)) return false;
+  if (!ready.mods.includes(f) || await idAt(d, "HEAD", lock) !== await idAt(d, ready.sha, lock)) return null;
   // the one it replaces goes out of the checkout (beside sol-next), never left there for a git add -A when a renew ends
   // its removal halfway; prepare clears what is left
   const live = join(d.root, f, "node_modules"), was = join(ready.dir, "..", "sol-was", `${f}-${Date.now()}`), next = join(ready.dir, f, "node_modules");
-  if (!existsSync(next)) return false;
+  if (!existsSync(next)) return null;
   try {
     mkdirSync(join(was, ".."), { recursive: true });
     if (existsSync(live)) renameSync(live, was);
     try { renameSync(next, live); }
     catch (e) { if (existsSync(was) && !existsSync(live)) renameSync(was, live); throw e; }
-  } catch (e) { console.log(`ship: sol/${f}'s node_modules built aside did not move in (${firstLine(e)}); installing it in place`); return false; }
-  void rm(was, { recursive: true, force: true }).catch(() => {});
-  return true;
+  } catch (e) { console.log(`ship: sol/${f}'s node_modules built aside did not move in (${firstLine(e)}); installing it in place`); return null; }
+  return existsSync(was) ? was : null;
 }
 
 // ---- the engine's one instance ----
@@ -669,6 +694,8 @@ export async function installDev(sha: string): Promise<boolean> {
   // a carry under way has this Sol's own changes in hand: it moves when that is done, never twice at once
   if (mine && carryNow()) { d.runs?.("clash"); return false; }
   if (failed && failed === sha) { d.runs?.("build"); return false; }   // the same release again: it did not build
+  // the release this Sol went back from (#1576, the keeper's .skip): it did not start here, so it waits for a newer one
+  if (skippedIn(d.root) === sha) { d.runs?.("build"); return false; }
   if (installing) return false;   // another began during the read above
   installing = sha;
   const heardAt = Date.now();

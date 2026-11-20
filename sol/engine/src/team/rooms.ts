@@ -306,7 +306,10 @@ export async function roomPeople(d: Pick<RoomsDeps, "team" | "fetch" | "token" |
  *  account, the room is added as the room in use and registered at once, so its code is on it. hub: the one given,
  *  else the shared hub ("" is this Mac's own); a key given makes it a room met by that key, else one met as GitHub.
  *  A register that fails keeps the room with no code and says why in `warn` */
-export async function makeRoom(d: RoomsDeps, typed: { name?: unknown; hub?: unknown; key?: unknown; code?: unknown; drive?: unknown }): Promise<{ room: Room; warn?: string } | { error: string }> {
+/** what "open a table" says when Sol's cloud is not there to keep it (gate one q2): nothing is made on GitHub unasked */
+export const CLOUD_FIRST = "a table lives on Sol's cloud, and this Sol is not signed in to it yet: sign in to Sol (Settings › me), then open it again. To keep it in a repository on your own GitHub instead, say so and it is made there";
+
+export async function makeRoom(d: RoomsDeps, typed: { name?: unknown; hub?: unknown; key?: unknown; code?: unknown; drive?: unknown; where?: unknown }): Promise<{ room: Room; warn?: string } | { error: string }> {
   const name = typeof typed.name === "string" ? typed.name.trim().replace(/\s+/g, " ") : "";
   if (!name || name.length > 60) return { error: "a room needs a name" };
   // a Drive room (#152): its record is the folder pasted, seen first with my own Google Drive, so a room is never made
@@ -344,6 +347,9 @@ export async function makeRoom(d: RoomsDeps, typed: { name?: unknown; hub?: unkn
   // (b') on a cloud I am signed in to (#216), an ordinary room keeps its record there: no repository is made. Only a room
   // for code (typed.code) is made the GitHub way, below
   if (hub && !key && typed.code !== true && d.cloudAt?.(hubHttp(hub))) return makeCloudRoom(d, name, hub);
+  // a table opened from Cowork's empty page or by the person's AI (where: "cloud", gate one q2): Sol's cloud or nothing,
+  // never a repository made on the person's GitHub without asking
+  if (typed.where === "cloud") return hub && !key && d.cloudAt?.(hubHttp(hub)) ? makeCloudRoom(d, name, hub) : { error: CLOUD_FIRST };
   // (b) its repository, under my account
   let repo = "";
   try { repo = (await d.record().room.make(name)).trim(); }

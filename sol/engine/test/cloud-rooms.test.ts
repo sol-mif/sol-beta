@@ -18,7 +18,7 @@ process.env.SOL_HUB = "wss://cloud.example.net/relay";
 const S = await import("../src/team/settings.ts");
 const { routed } = await import("../src/team/record.ts");
 const { makeCloudRecord } = await import("../src/team/record/cloud.ts");
-const { makeRoom } = await import("../src/team/rooms.ts");
+const { makeRoom, CLOUD_FIRST } = await import("../src/team/rooms.ts");
 const G = await import("../src/team/goal.ts");
 const T = await import("../src/team/things.ts");
 const { moveRoom, pathsOf } = await import("../src/team/move.ts");
@@ -179,6 +179,12 @@ test("make: on a cloud I am signed in to, no repository; registered as a cloud r
   assert.deepEqual(made, ["Site"], "a room for code keeps its repository");
   const elsewhere = await makeRoom({ ...deps, cloudAt: () => false }, { name: "Other" });
   assert.ok("room" in elsewhere && elsewhere.room.provider === "github", "a hub I have no cloud account on: as before");
+  // a table opened from Cowork's empty page or by the person's AI (where: "cloud", gate one q2): Sol's cloud or nothing
+  const table = await makeRoom(deps, { name: "Trip", where: "cloud" });
+  assert.ok("room" in table && table.room.provider === "cloud" && table.room.code === "BKQ2CL", "on the cloud, with its code");
+  const notSigned = await makeRoom({ ...deps, cloudAt: () => false }, { name: "Trip two", where: "cloud" });
+  assert.deepEqual(notSigned, { error: CLOUD_FIRST }, "not signed in to the cloud: it says so");
+  assert.deepEqual(made, ["Site", "Other"], "and nothing is made on GitHub unasked");
 });
 
 test("move: what a repo's tree holds; a GitHub room backed up first, copied, read back; a code room's repo is a thing", async () => {

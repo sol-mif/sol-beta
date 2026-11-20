@@ -1,7 +1,7 @@
 // One table, sat at (#1537; a3, a5, a6 of docs/cowork-ui-2026-11-18), ported as drawn. The same table as on the home,
-// larger: its name, the seats with each person's line under them, its code on a sticker, the stage (left empty on
-// purpose: its place and three shapes it could take; Frank designs it next), the "my ai here" row, and the bar: say a
-// line, or hand the table a thing (a6). When someone waits on me the ask rises between the table and the bar (a5).
+// larger: its name, the seats with each person's line under them, its code on a sticker, the stage (what is really on
+// the table: its last hand-overs and what was said there (its talk: a cloud table's lines and things); with none, one plain line and the two ways to put something there, never a made-up
+// shape: gate one q3), the "my ai here" row, and the bar: say a line, or hand the table a thing (a6). When someone waits on me the ask rises between the table and the bar (a5).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Gl, Sticker } from "./Coin";
 import { Jelly } from "./Jelly";
@@ -20,7 +20,6 @@ const GH = { gh: "M5 3v10M5 9c4 0 6-1 6-4M11 3v2", talk: "M3 4h10v7H7l-3 2.500V1
 const Mark = ({ d, on, title }: { d: keyof typeof GH; on: boolean; title: string }) => (
   <span className="gh-mark" data-on={on ? "1" : "0"} title={title}><svg viewBox="0 0 16 16"><path d={GH[d]} /></svg>{on && <i />}</span>
 );
-const GHOST = { repo: "M6 6v20M6 14c10 0 14-2 14-8M20 6h18M6 22h30", report: "M8 3h20l8 7v15H8zM14 12h14M14 17h14M14 22h8", event: "M5 7h34v19H5zM5 13h34M13 3v6M31 3v6M14 19h.1M22 19h.1M30 19h.1" } as const;
 
 export function Page({ t, me, my, lineOf, away, code, onCode, ask, send, onChange, children, back }: {
   t: TableView; me: string; my: MyAi; lineOf: (login: string) => string[]; away: (login: string) => boolean;
@@ -33,6 +32,7 @@ export function Page({ t, me, my, lineOf, away, code, onCode, ask, send, onChang
   const [said, setSaid] = useState<{ text: string; failed?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+  const say = useRef<HTMLInputElement>(null);
   const others = t.seats.filter((s) => !s.me);
   useEffect(() => { if (!others.some((s) => s.login === to)) setTo(""); }, [others, to]);
   const pickFile = (f: File | undefined) => {
@@ -67,11 +67,22 @@ export function Page({ t, me, my, lineOf, away, code, onCode, ask, send, onChang
           <div className="gh-who" style={{ gap: 28 }}>
             {t.seats.map((s) => { const [a, b] = lineOf(s.login); return <span key={s.login}><b>{nameOn(s.login, me)}</b>{a && <><br />{a}</>}{b && <><br />{b}</>}</span>; })}
           </div>
-          <div className="gh-well gh-stage gh-grow" data-stage="empty">
-            <div className="gh-ghosts">
-              {(["repo", "report", "event"] as const).map((k) => <div key={k} className="gh-ghost"><svg viewBox="0 0 44 28"><path d={GHOST[k]} /></svg>{k === "repo" ? "a repo: what merged" : k === "report" ? "a report: which chapter" : "an event: what's booked"}</div>)}
+          {t.stage.length ? (
+            <div className="gh-well gh-stage gh-grow" data-stage="things">
+              <ul className="gh-things">
+                {t.stage.map((r) => <li key={r.key} data-thing-row={r.number || undefined} data-talk-row={r.number ? undefined : r.key}><b>{r.text}</b>{r.brief && <span className="gh-dim gh-cut">{r.brief}</span>}<span className="gh-grow" /><span className="gh-dim">{agoOf(r.at, Date.now())}</span></li>)}
+              </ul>
             </div>
-          </div>
+          ) : (
+            <div className="gh-well gh-stage gh-grow" data-stage="empty">
+              <p className="gh-read" style={{ margin: 0 }}>nothing on this table yet.</p>
+              <p className="gh-dim" style={{ margin: 0 }}>say what it's for, or hand it a first thing. whoever sits here, and their ai, picks it up.</p>
+              {!back && <div className="gh-row g8">
+                <button type="button" className="gh-pill ctl" data-act="start-say" onClick={() => { setMode("say"); setTimeout(() => say.current?.focus(), 0); }}>say what it's for</button>
+                <button type="button" className="gh-pill" data-act="start-hand" onClick={() => { setMode("hand"); file.current?.click(); }}>hand it a thing</button>
+              </div>}
+            </div>
+          )}
           <div className="gh-r">
             <Jelly login={me} me={me} s={32} ring="#1b1b1e" /><span className="gh-dim">my ai here</span>
             <span className="gh-pill tint gh-sm">{my.machine}</span><span className="gh-pill tint gh-sm">{my.ai}</span><span className="gh-pill on gh-sm">{my.level}</span>
@@ -101,7 +112,7 @@ export function Page({ t, me, my, lineOf, away, code, onCode, ask, send, onChang
         <form className="gh-bar gh-card" style={{ marginTop: 12 }} onSubmit={(e) => { e.preventDefault(); void go(); }}>
           <button type="button" className="gh-pill on" data-act="say" onClick={() => setMode("say")}>say</button>
           <button type="button" className="gh-pill" data-act="hand" onClick={() => setMode("hand")}>hand over</button>
-          <label className="gh-in"><input value={text} onChange={(e) => { setText(e.target.value); setSaid(null); }} placeholder={ask ? `or answer ${ask.from}${ask.kind === "block" ? "'s ai" : ""} in your own words` : barWords(t.seats)} aria-label="say it" />{said && <span className="gh-said" style={said.failed ? { color: "var(--ink)" } : undefined}>{said.text}</span>}</label>
+          <label className="gh-in"><input ref={say} value={text} onChange={(e) => { setText(e.target.value); setSaid(null); }} placeholder={ask ? `or answer ${ask.from}${ask.kind === "block" ? "'s ai" : ""} in your own words` : barWords(t.seats)} aria-label="say it" />{said && <span className="gh-said" style={said.failed ? { color: "var(--ink)" } : undefined}>{said.text}</span>}</label>
           <button type="submit" className={`gh-send${canSend ? " go" : ""}`} data-act="send" aria-label="send" disabled={!canSend || busy}><Gl d="up" /></button>
         </form>
       ) : (
@@ -114,7 +125,6 @@ export function Page({ t, me, my, lineOf, away, code, onCode, ask, send, onChang
             </div>
             <span className="gh-dim gh-cut">{getsIt(t.seats, to)}</span><span className="gh-grow" />
             {!thing && <button type="button" className="gh-pill" data-act="add-thing" onClick={() => file.current?.click()}>add a thing</button>}
-            <input ref={file} type="file" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
           </div>
           <div className="gh-bar" style={{ padding: 0 }}>
             <button type="button" className="gh-pill" data-act="say" onClick={() => setMode("say")}>say</button>
@@ -128,6 +138,7 @@ export function Page({ t, me, my, lineOf, away, code, onCode, ask, send, onChang
           </div>
         </form>
       ))}
+      <input ref={file} type="file" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
       {children}
     </>
   );

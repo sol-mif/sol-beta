@@ -105,7 +105,7 @@ async function up() {
       SOL_BLACKBOARD: BB, SOL_AGENT_CLOCK: "off", JEV_API_KEY: "",
     },
   });
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 450; i++) {   // 90 s: a CI machine running every suite at once starts an engine slowly (#1703)
     try { if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return; } catch {}
     await new Promise((r) => setTimeout(r, 200));
   }

@@ -184,3 +184,25 @@ test("a row newly built with a job is told to the one session once", async () =>
   assert.equal(said.filter((x) => x.to === "the-one" && /a row was built/.test(x.text)).length, 1, "not twice");
   assert.match(snap.rowsText(), /told-row \(ran 0×, asked 0×\):\n  0\. when: now/);
 });
+
+test("the morning clock follows build.snap: off stops it at once and is kept across a restart; on starts it again (#1679)", () => {
+  process.env.SOL_VERSION = "product";   // a tester's Sol: build.snap's station (concept) stands off there
+  try {
+    snap._reload();
+    snap.startClock(60_000);
+    assert.equal(snap.clockRunning(), false, "off by its station, nothing said: no clock");
+    snap.startClock(60_000, true);
+    assert.equal(snap.clockRunning(), true, "the bench was opened (the window's switch on) by a window that says nothing more: as before");
+    snap.setSnapOn(false);
+    assert.equal(snap.clockRunning(), false, "off stops it at once");
+    snap.startClock(60_000, true);
+    assert.equal(snap.clockRunning(), false, "once the window said off, opening never starts it");
+    snap._reload();
+    assert.equal(snap.snapOn(), false, "the word is kept across a restart");
+    snap.setSnapOn(true);
+    assert.equal(snap.clockRunning(), true, "on starts it again");
+    snap._reload();
+    snap.startClock(60_000);
+    assert.equal(snap.clockRunning(), true, "kept on across a restart");
+  } finally { snap.stopClock(); delete process.env.SOL_VERSION; }
+});

@@ -16,7 +16,9 @@ export const freePort = () => new Promise<number>((ok, no) => {
 
 // waits for the engine this test started to answer /health on its port, and gives back that answer; a /health from
 // another pid (another run's engine on the port) or the engine ending before it answers is an error, never a pass
-export async function ownHealth(engine: ChildProcess, port: number, tries = 150): Promise<any> {
+// 300 tries, 60 s: a CI machine running every suite at once starts an engine slowly, past the 30 s it had (#1703); the
+// tests that call it allow 60 s or more
+export async function ownHealth(engine: ChildProcess, port: number, tries = 300): Promise<any> {
   for (let i = 0; i < tries; i++) {
     if (engine.exitCode !== null || engine.signalCode !== null) throw new Error(`the test engine ended (${engine.exitCode ?? engine.signalCode}) before it answered on port ${port}`);
     try {

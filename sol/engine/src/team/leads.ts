@@ -2,8 +2,10 @@
 // its section (its path lines, or a `# leads:` line for a label with no code yet), at most two, humans. Two rules
 // follow from them.
 //   routing  an open issue wearing one of the six labels gets the label's leads assigned and pinged (kind claim), once:
-//            a lead who took themselves off is never put back, and a label with no lead does nothing. The night job
-//            routes every open issue; my board's read routes the issues I opened, at once (team/wire.ts)
+//            a lead who took themselves off is never put back, and a label with no lead does nothing. An issue someone
+//            took (sol/take: assigned + `now`) is never routed: a lead added after the take makes the taker's own
+//            sol/take refuse it as held by another (#1711, #1712, #1717). The night job routes every open issue; my
+//            board's read routes the issues I opened, once they have sat untaken a while (team/wire.ts)
 //   the flag GitHub cannot refuse a merge here (a private repo on the free plan), so the night job reads the PRs merged
 //            since its last run, and one whose labels' leads gave no word (an approving review, or a lead's own press
 //            on someone else's PR) gets one signed line and a ping (kind decision) to the leads and the author.
@@ -41,8 +43,10 @@ export function leads(codeowners: string): Leads {
 
 export type OpenIssue = { number: number; title: string; labels: string[]; assignees: string[] };
 
-/** the leads an issue is missing: each lead of each of its six labels not assigned, never one who let it go */
+/** the leads an issue is missing: each lead of each of its six labels not assigned, never one who let it go, none
+ * on an issue someone took (`now`) */
 export function missingLeads(i: OpenIssue, l: Leads, letGo: string[] = []): { login: string; label: string }[] {
+  if (i.labels.includes("now")) return [];
   const have = new Set([...i.assignees, ...letGo].map(low));
   const out: { login: string; label: string }[] = [];
   for (const label of LABELS) {

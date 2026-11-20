@@ -10,6 +10,12 @@
 # move dist/ to dist.bad/, put dist.good/ back and leave dist/.reverted for the engine to read at its next start, so
 # every window hears "engine went back to its last good build". The build watcher writes dist/ again only when src/
 # changes, so the good build stays until the next edit. SOL_NO_KEEP=1 runs node bare (tests).
+# A release that does not start (#1576): an update that moved the checkout left .swap (src/team/ship.ts SWAP: from,
+# to, the node_modules it replaced, the folders it installed in place). Once the engine stays up its minute, .swap and
+# the kept node_modules go. At the third start that dies with .swap still here and HEAD still its `to`, the whole Sol
+# goes back, not only dist/: the checkout to `from` (git reset --keep: a file of the person's own is never lost), each
+# folder's node_modules put back (or installed again), and .skip names the release, so it does not install itself
+# again (Update still can; a newer release clears it). .went-back says it to the next engine.
 set -u
 cd "$(dirname "$0")"
 PORT="${SOL_PORT:-7777}"
@@ -45,8 +51,36 @@ if [ -n "$up" ]; then
   if [ -n "$code" ] && [ "$code" != 0 ]; then up=""; echo "keep: the engine came up and died within the minute ($code)"; fi
 fi
 
+# the way back a swap left (#1576), tab between words
+swap_lines() { [ -f .swap ] && while IFS=$'\t' read -r k a b; do [ "$k" = "$1" ] && printf '%s\t%s\n' "$a" "$b"; done < .swap; }
+swap_get() { swap_lines "$1" | head -1 | cut -f1; }
+swap_done() {
+  [ -f .swap ] || return 0
+  swap_lines nm | while IFS=$'\t' read -r _ was; do case "$was" in */sol-was/*) rm -rf "$was" ;; esac; done
+  rm -f .swap
+}
+swap_back() {
+  [ -f .swap ] || return 1
+  local from to head
+  from=$(swap_get from); to=$(swap_get to); head=$(git rev-parse HEAD 2>/dev/null)
+  if [ -z "$from" ] || [ -z "$to" ] || [ "$head" != "$to" ]; then rm -f .swap; return 1; fi   # moved since: not this one's way back
+  if ! git reset -q --keep "$from" 2>/dev/null; then echo "keep: the release ${to:0:7} did not start, and the checkout could not go back to ${from:0:7}"; return 1; fi
+  swap_lines nm | while IFS=$'\t' read -r live was; do
+    case "$live|$was" in */node_modules\|*/sol-was/*) ;; *) continue ;; esac   # only what ship.ts writes there
+    if [ -d "$was" ]; then rm -rf "$live" && mv "$was" "$live"; fi
+  done
+  swap_lines ci | while IFS=$'\t' read -r dir _; do
+    (cd "$dir" 2>/dev/null && npm ci --no-audit --no-fund >/dev/null 2>&1) || echo "keep: could not install $dir again"
+  done
+  echo "$to" > .skip
+  printf '%s\t%s\n' "$from" "$to" > .went-back
+  rm -f .swap
+  echo "keep: the release ${to:0:7} did not start; Sol went back to ${from:0:7}, and that release waits for a newer one"
+}
+
 if [ -n "$up" ]; then
   rm -f .keep
+  swap_done   # the release that moved in has stayed up: no way back is needed any more
   if [ -n "$code" ]; then echo "keep: engine ended ($code) by its own choice; this build stays the good one"; fi
   quiet_dist   # nor the build that is running
   if rsync -a --delete dist/ dist.good.new/ 2>/dev/null && rm -rf dist.good && mv dist.good.new dist.good; then
@@ -73,6 +107,7 @@ echo "$n" > .keep
 echo "keep: the engine did not come up (try $n of 3)"
 if [ "$n" -ge 3 ]; then
   rm -f .keep
+  swap_back || true
   if [ -d dist.good ]; then
     rm -rf dist.bad && mv dist dist.bad && rsync -a dist.good/ dist/ && date -u +%FT%TZ > dist/.reverted
     echo "keep: went back to the last good build; the broken one is in dist.bad/"

@@ -7,6 +7,10 @@
 //   the hour  the project's rhythm (`.sol/rhythm.json` on the default branch, tonight.ts rhythmOf), in its zone. The
 //             runner refuses before that hour, so a timer that fires early or a hand that runs it at 7 changes nothing.
 //   once      a day: `dev-YYYYMMDD` standing already is "released"; nothing merged since the last dev-* is no release
+//   green     (#30) only a commit whose four required checks (REQUIRED, ci.yml on a push to main) ended green is cut: a
+//             head whose ci was cancelled, is still running or has no checks yet is no release now. dev on green
+//             (ongreen.ts) releases it once it is green, and its 09:20 anchor gives the day's tag to where dev is then.
+//             dev-20261119 went out at 27fb29f with no ci at all and gate two could never read its leak check
 //   broke     a PR marked `broke` holds nothing but itself (#1562, part of #1559): the night pass opens its revert PR
 //             (broke.ts) and the day's release goes out; `sol/release --back` stays the brake
 //   urgent    an off-cycle `dev-YYYYMMDD-HHMM` (--urgent <pr>), refused unless the PR is merged into main and the day's
@@ -55,7 +59,7 @@ export type ReleaseDeps = {
   tell?: (p: { sha: string; tag: string; by: string; channel: "dev" }) => boolean | Promise<boolean>;
 };
 export type Released =
-  | { ok: true; tag: string; sha: string; already?: true; nothing?: true; dry?: true; told?: boolean }
+  | { ok: true; tag: string; sha: string; already?: true; nothing?: true; notGreen?: string; dry?: true; told?: boolean }
   | { ok?: false; error: string };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -66,6 +70,14 @@ const short = (s: string) => s.slice(0, 7);
 
 export type CheckRun = { id?: number; name?: string; status?: string; conclusion?: string | null };
 const PASSED = new Set(["success", "skipped", "neutral"]);
+
+/** the checks a main commit must carry, by the job names: the four of ci.yml that run on a push to main. The ruleset
+ *  "main" requires a fifth, `apart` (apart.yml), which runs on the pull request only and so is satisfied before the merge
+ *  and never a check run on main's own commit; asking for it here would leave every commit "not green yet" */
+export const REQUIRED = ["engine tests and build", "face build", "the gate", "leak check"];
+/** GitHub Actions' app id: the four are its jobs, so a check run of that name from any other app does not count */
+export const ACTIONS_APP = 15368;
+export type NamedRun = CheckRun & { app?: { id?: number; slug?: string } | null };
 /** the workflow runs a push to main started on one commit, read (pure, #1231): green only when there is at least one
  *  and each has ended in success, skipped or neutral (startup_failure, cancelled, action_required and the rest are not).
  *  A rerun updates its run (a new attempt, the same id); two of one name, the newer id counts */
@@ -82,6 +94,27 @@ export function checksOn(runs: CheckRun[]): { green: true } | { green: false; wh
   const red = [...newest.values()].filter((r) => !PASSED.has(String(r.conclusion ?? ""))).map((r) => `${r.name}: ${r.conclusion ?? "no result"}`);
   if (red.length) return { green: false, why: `its checks did not pass (${red.join(", ")})` };
   return { green: true };
+}
+
+/** the required checks on one commit, from GitHub's check runs (pure): green only when each required name is there,
+ *  made by GitHub Actions (never another app wearing the name), and, by checksOn's rule, its newest run has ended in
+ *  success, skipped or neutral */
+export function requiredGreen(runs: NamedRun[], required = REQUIRED): { green: true } | { green: false; why: string } {
+  const mine = runs.filter((r) => required.includes(String(r.name ?? "")) && (r.app?.id === ACTIONS_APP || r.app?.slug === "github-actions"));
+  const missing = required.filter((n) => !mine.some((r) => r.name === n));
+  if (missing.length) return { green: false, why: `no check named ${missing.join(", ")} on it yet` };
+  return checksOn(mine);
+}
+
+/** the required checks on one commit, asked of GitHub: a page short or GitHub not answering is not green */
+export async function greenOn(d: Pick<ReleaseDeps, "gh">, repo: string, sha: string, required = REQUIRED): Promise<{ green: true } | { green: false; why: string }> {
+  let runs: NamedRun[], total = 0;
+  try {
+    const j = JSON.parse(await d.gh(["api", `repos/${repo}/commits/${sha}/check-runs?per_page=100`]) || "{}");
+    runs = (j.check_runs ?? []) as NamedRun[]; total = Number(j.total_count ?? runs.length);
+  } catch (e) { return { green: false, why: `GitHub did not say how the checks went (${firstLine(String((e as Error)?.message ?? e))})` }; }
+  if (total > runs.length) return { green: false, why: `GitHub has ${total} check runs on it and gave ${runs.length}` };
+  return requiredGreen(runs, required);
 }
 
 export const DEV_TAG = /^dev-(\d{8})(?:-(\d{4}))?$/;
@@ -228,6 +261,11 @@ export async function release(d: ReleaseDeps, o: { repo: string; rhythm: Rhythm;
     const had = await rev(d, `refs/tags/${tag}^{commit}`);
     if (had) { d.say(`already released today: ${tag} at ${short(had)}`); return { ok: true, tag, sha: had, already: true }; }
     if (last && last.sha === sha) { d.say(`nothing merged since ${last.tag}: no dev release today`); return { ok: true, tag: last.tag, sha, nothing: true }; }
+    const green = await greenOn(d, o.repo, sha);
+    if (!green.green) {
+      d.say(`${base} at ${short(sha)} is not green (${green.why}): no day's release from it; dev on green releases it once its checks pass`);
+      return { ok: true, tag: last?.tag ?? "", sha, nothing: true, notGreen: green.why };
+    }
   }
 
   if (d.dryRun) { d.say(`would tag ${tag} at ${short(sha)}, move dev to it, and tell every Sol`); return { ok: true, tag, sha, dry: true }; }

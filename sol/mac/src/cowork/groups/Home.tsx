@@ -18,7 +18,7 @@ import { Side } from "./Side";
 import { Page, type AskNow, type Send } from "./Page";
 import { Consent, LeaveSheet, MyAiSheet, type MyAi } from "./Sheets";
 import { NewTable, SitDown } from "./New";
-import { levelOf, modeOf, tablesOf, titleOf, type Level } from "./view";
+import { levelOf, modeOf, stageWith, tablesOf, talkRows, titleOf, type Level, type TalkIn } from "./view";
 import "./groups.css";
 
 type View = { k: "home" } | { k: "table"; id: string } | { k: "new" } | { k: "code" };
@@ -46,18 +46,27 @@ function usePeople(team: Team): Record<string, string[]> {
 
 type Block = { id: string; title: string; sessions?: string[]; asks?: { q?: string; choices?: string[]; by?: string; from?: string }; at?: number; project?: string };
 /** the agents' asks that wait on me (team.chat `waiting`), read while a table is open; what is connected here (team.connectors) */
+// and the table's talk (team.chat `lines`, the room in use's): what was said and handed in at it, read again every 10 s
+// while it stays open, so a line someone else says shows without leaving the page (gate one q3)
 function useRoomReads(open: boolean, roomKey: string) {
   const [waiting, setWaiting] = useState<Block[]>([]);
+  const [talk, setTalk] = useState<{ room: string; lines: TalkIn[] }>({ room: "", lines: [] });
   const [reach, setReach] = useState<{ github: boolean; drive: boolean }>({ github: false, drive: false });
   const [n, setN] = useState(0);
   useEffect(() => {
     if (!open) return;
     let gone = false;
-    void askEngine("team.chat", {}, 20_000).then((r: any) => { if (!gone && Array.isArray(r?.waiting)) setWaiting(r.waiting); });   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const chat = (first: boolean) => void askEngine("team.chat", first ? { open: true } : {}, 20_000).then((r: any) => {   // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (gone) return;
+      if (Array.isArray(r?.waiting)) setWaiting(r.waiting);
+      if (Array.isArray(r?.lines)) setTalk({ room: roomKey, lines: r.lines });
+    });
+    chat(true);
+    const every = window.setInterval(() => chat(true), 10_000);
     void askEngine("team.connectors", {}, 15_000).then((r: any) => { if (!gone && r?.me) setReach({ github: !!r.me.github?.in, drive: !!r.me.google?.in }); });   // eslint-disable-line @typescript-eslint/no-explicit-any
-    return () => { gone = true; };
+    return () => { gone = true; window.clearInterval(every); };
   }, [open, roomKey, n]);
-  return { waiting, reach, again: () => setN((x) => x + 1) };
+  return { waiting, reach, talk, again: () => setN((x) => x + 1) };
 }
 
 export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
@@ -77,7 +86,9 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
   const [note, setNote] = useState("");
   const at = view.k === "table" ? tables.find((t) => t.id === view.id) ?? null : null;
   useEffect(() => { if (view.k === "table" && !at && tables.length) setView({ k: "home" }); }, [view, at, tables.length]);
-  const reads = useRoomReads(view.k === "table", at?.id ?? "");
+  // keyed on the room in use too: the talk read is the room in use's, so it is read again once the switch to this table took
+  const reads = useRoomReads(view.k === "table", `${at?.id ?? ""}|${inUse}`);
+  const talkHere = at && at.id === inUse && reads.talk.room === `${at.id}|${inUse}` ? talkRows(reads.talk.lines, me) : [];
 
   // the room in use follows the table I sit at: its talk, its asks and its roster are the engine's reads
   const sitAt = useCallback((id: string) => {
@@ -124,6 +135,7 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
     const r = await team.ask<{ ok?: boolean; error?: string }>("team.talk", { thread: "general", text: text || (thing ? thing.name : ""), ...(thing ? { file: { name: thing.name, bytes: thing.bytes, kind: thing.kind } } : {}) }, thing ? 120_000 : 30_000);
     // a line naming my own agent (#1677): my own AI reads it in a talk of mine and answers at the table, as in the room
     if (r?.ok && namesMyAgent(text, me)) link(ENGINE).send({ type: "work.say", sessionId: crypto.randomUUID(), text: askMine(text, at?.name ?? tables.find((t) => t.id === inUse)?.name), fresh: true, mode: "default" });
+    if (r?.ok) reads.again();
     if (r?.ok) return { ok: true, said: thing ? `handed to ${to || "the table"}` : `said to ${to || "the table"}` };
     return { ok: false, said: `not sent: ${r?.error || "no answer"}` };
   };
@@ -155,7 +167,8 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
   const getCode = () => { if (at) void team.ask<{ code?: string; error?: string }>("team.room.share", { id: at.id }, 30_000).then((r) => setNote(r?.code ? `the code is ${r.code}` : `no code: ${r?.error ?? "the cloud did not answer"}`)); };
   useEffect(() => { if (!note) return; const t = window.setTimeout(() => setNote(""), 4000); return () => window.clearTimeout(t); }, [note]);
 
-  if (view.k === "home") return <HomeView tables={tables} me={me} calling={calling?.id ?? ""} inUse={inUse} hands={hands} onOpen={sitAt} send={sendHome} note={note} />;
+  if (view.k === "home") return <HomeView tables={tables} me={me} calling={calling?.id ?? ""} inUse={inUse} hands={hands} onOpen={sitAt} send={sendHome} note={note}
+    onStart={() => { setView({ k: "new" }); setSheet(""); }} onCode={() => { setView({ k: "code" }); setSheet(""); }} />;
   const others = at ? at.seats.filter((s) => !s.me).map((s) => s.login) : [];
   const backed = sheet !== "";
   return (
@@ -166,7 +179,7 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
         {view.k === "new" && <NewTable me={me} team={team} onMade={() => undefined} onGone={home} onCopied={(ok) => setNote(ok ? "code copied" : "could not copy")} />}
         {view.k === "code" && <SitDown me={me} team={team} onSat={sitAt} onNotNow={home} />}
         {at && (
-          <Page t={at} me={me} my={my} lineOf={lineOf} away={away} code={rooms.find((r) => r.id === at.id)?.code || ""} onCode={getCode} ask={askNow} send={send} onChange={() => setSheet("myai")} back={backed}>
+          <Page t={{ ...at, stage: stageWith(at.stage, talkHere) }} me={me} my={my} lineOf={lineOf} away={away} code={rooms.find((r) => r.id === at.id)?.code || ""} onCode={getCode} ask={askNow} send={send} onChange={() => setSheet("myai")} back={backed}>
             {sheet === "consent" && <Consent me={me} table={at.name} others={others} my={my} onLevel={onLevel} onAgree={() => { agree(at.id); setSheet(""); }} onNotYet={home} />}
             {sheet === "myai" && <MyAiSheet me={me} table={at.name} others={others} my={my} onAi={onAi} onLevel={onLevel} onDone={() => setSheet("")} />}
             {sheet === "leave" && <LeaveSheet me={me} table={at.name} others={others} onLeave={() => void leave()} onStay={() => setSheet("")} busy={leaving} />}
@@ -178,9 +191,10 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
   );
 }
 
-function HomeView({ tables, me, calling, inUse, hands, onOpen, send, note }: {
+function HomeView({ tables, me, calling, inUse, hands, onOpen, send, note, onStart, onCode }: {
   tables: ReturnType<typeof tablesOf>; me: string; calling: string; inUse: string; hands: ReturnType<typeof useHands>;
   onOpen: (id: string) => void; send: (words: string, id: string) => Promise<{ ok: boolean; said: string }>; note: string;
+  onStart: () => void; onCode: () => void;
 }) {
   const [picked, setPicked] = useState("");
   const at = tables.some((t) => t.id === picked) ? picked : (tables.some((t) => t.id === inUse) ? inUse : tables[0]?.id ?? "");
@@ -207,7 +221,14 @@ function HomeView({ tables, me, calling, inUse, hands, onOpen, send, note }: {
               doing: hands.doingOf(t.ask.id),
             } : undefined} />
         ))}
-        {!tables.length && <p className="gh-none">when you start a table, or sit down at one with a code, it shows here.</p>}
+        {/* no table yet, or the last one left (gate one, #1676): the two ways in are here, not only in a table's left column */}
+        {!tables.length && <p className="gh-none">when you start a table, or sit down at one with a code, it shows here. or ask your ai to start one.</p>}
+        {!tables.length && (
+          <div className="gh-row g8" data-place="groups-none">
+            <button type="button" className="gh-pill ctl gh-lg" data-go="new" onClick={onStart}>start a table</button>
+            <button type="button" className="gh-pill gh-lg" data-go="code" onClick={onCode}>i have a code</button>
+          </div>
+        )}
       </div>
       {note && <div className="gh-note" role="status">{note}</div>}
       {tables.length > 0 && (

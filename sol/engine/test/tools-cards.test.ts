@@ -26,7 +26,7 @@ const allOn = (mode: string) => { process.env.SOL_VERSION = mode; process.env.SO
 const names = () => T.solToolsNow().map((t) => t.name);
 const txt = (r: { content: { type: string; text?: string }[] }) => String(r.content[0]?.text ?? "");
 
-test("each tool a card offers is one of Sol's tools, and the cards that offer some today are the three at concept", () => {
+test("each tool a card offers is one of Sol's tools, and the cards that offer some today are these three", () => {
   const real = new Set([...T.SOL_TOOLS, ...OPEN_TOOLS].map((t) => t.name));
   assert.ok(C.OFFERS.size > 0);
   for (const [t, o] of C.OFFERS) assert.ok(real.has(t), `${t} (offered by ${o.id}) is no tool of Sol's`);
@@ -52,10 +52,11 @@ test("the ladder: a tool is offered in a mode when its card's station is at or p
 test("product, every switch set on by hand: no tool of a card short of product is offered, and a call to one is refused", async () => {
   allOn("product");
   const short = Object.values(cards).filter((r) => !standsOn(r.station as never, "product")).flatMap((r) => r.offers ?? []);
-  assert.ok(short.includes("agents_room") && short.includes("ask_agent"));
+  assert.ok(short.includes("agents_room") && !short.includes("ask_agent"), "reach.room stands at concept; reach.tools at product (#1717)");
   const list = names();
   for (const t of short) assert.ok(!list.includes(t), `${t} is offered in product`);
   assert.ok(!short.includes("open_settings") && list.includes("open_settings"), "open.for's card stands at product (#1667), so its tools are offered");
+  assert.ok(list.includes("ask_agent"), "engine/team/reach stands at product (#1717), so ask_agent is offered");
   const r = await T.runSolTool("agents_room", {}, { sessionId: "s" });
   assert.equal(r.isError, true);
   assert.match(txt(r), /not part of this Sol yet/);

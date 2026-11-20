@@ -38,7 +38,7 @@ async function up() {
       SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1", SOL_TRACK: "off",
     },
   });
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 450; i++) {   // 90 s: a CI machine running every suite at once starts an engine slowly (#1703)
     try { if ((await fetch(`${at}/health`)).ok) return; } catch {}
     await new Promise((r) => setTimeout(r, 200));
   }
@@ -47,7 +47,7 @@ async function up() {
 const json = (body: unknown) => ({ method: "POST", headers: { "content-type": "application/json" }, body: typeof body === "string" ? body : JSON.stringify(body) });
 const plain = { method: "POST", headers: { "content-type": "text/plain" }, body: "{}" };
 
-test("files (parts/files.ts): GET /file, /pane-image, /pane-asset/ answer as before", { timeout: 60_000 }, async () => {
+test("files (parts/files.ts): GET /file, /pane-image, /pane-asset/ answer as before", { timeout: 120_000 }, async () => {
   await up();
   const f = await fetch(`${at}/file?path=${encodeURIComponent(join(HOME, "a.txt"))}`);
   assert.equal(f.status, 200);
@@ -64,7 +64,7 @@ test("files (parts/files.ts): GET /file, /pane-image, /pane-asset/ answer as bef
   assert.equal((await fetch(`${at}/pane-asset/pics/p.png`, { method: "POST" })).status, 404);
 });
 
-test("claim (parts/claim.ts): POST /claim takes JSON only and answers ok", { timeout: 60_000 }, async () => {
+test("claim (parts/claim.ts): POST /claim takes JSON only and answers ok", { timeout: 120_000 }, async () => {
   await up();
   assert.equal((await fetch(`${at}/claim`, plain)).status, 415);
   for (const body of ["{}", "not json"]) {
@@ -76,7 +76,7 @@ test("claim (parts/claim.ts): POST /claim takes JSON only and answers ok", { tim
   assert.equal((await fetch(`${at}/claim`)).status, 404);
 });
 
-test("cloud (parts/cloud.ts): sign in, sign out, move and the accounts answer as before", { timeout: 60_000 }, async () => {
+test("cloud (parts/cloud.ts): sign in, sign out, move and the accounts answer as before", { timeout: 120_000 }, async () => {
   await up();
   for (const p of ["/cloud/signin", "/cloud/signout", "/cloud/move"]) assert.equal((await fetch(`${at}${p}`, plain)).status, 415, p);
   const which = `{"ok":false,"error":"which cloud? (SOL_HUB, or { hub: \\"wss://…/relay\\" })"}`;
@@ -93,7 +93,7 @@ test("cloud (parts/cloud.ts): sign in, sign out, move and the accounts answer as
   assert.equal((await fetch(`${at}/nothing-here`)).status, 404, "what no part takes falls through to the engine's 404");
 });
 
-test("messages (parts/arrange.ts, goback.ts, browser.ts): answered as before", { timeout: 60_000 }, async () => {
+test("messages (parts/arrange.ts, goback.ts, browser.ts): answered as before", { timeout: 120_000 }, async () => {
   await up();
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}`);
   const got: any[] = [];

@@ -93,13 +93,16 @@ const fold = (repo: string, text: string) => {
   git(repo, "push", "-q");
   return git(repo, "rev-parse", "HEAD");
 };
+// #30: GitHub's word on a commit's check runs; the stand-in says the four required ended green on any commit
+const GREEN = JSON.stringify({ total_count: 4, check_runs: ["engine tests and build", "face build", "the gate", "leak check"].map((name, i) => ({ id: i + 1, name, status: "completed", conclusion: "success", app: { id: 15368, slug: "github-actions" } })) });
+const isChecks = (args: string[]) => args[0] === "api" && /^repos\/sol-mif\/sol-test\/commits\/[0-9a-f]{40}\/check-runs/.test(String(args[1]));
 function deps(cwd: string, at: string, over: Partial<ReleaseDeps> = {}) {
   const said: string[] = [], told: any[] = [], asked: string[][] = [];
   let now = new Date(at);
   const d: ReleaseDeps = {
     git: (args) => new Promise((ok) => execFile("git", args, { cwd }, (err, out, errOut) =>
       ok({ code: err ? (typeof (err as any).code === "number" ? (err as any).code : 128) : 0, out: String(out) || String(errOut) }))),
-    gh: async (args) => { asked.push(args); if (args[0] === "api" && args[1] === "repos/sol-mif/sol-test") return "main\n"; return ""; },
+    gh: async (args) => { asked.push(args); if (args[0] === "api" && args[1] === "repos/sol-mif/sol-test") return "main\n"; if (isChecks(args)) return GREEN; return ""; },
     now: () => now,
     dryRun: false,
     say: (l) => { said.push(l); },
@@ -158,6 +161,50 @@ test("the next morning: what folded since is released; with nothing folded there
 
   r = await release(x.d, O);
   assert.deepEqual(r, { ok: true, tag: "dev-20261102", sha: main2, told: true });
+  assert.equal(git(f.origin, "rev-parse", "refs/heads/dev"), main2);
+});
+
+test("#30 the day's release cuts only a commit whose four checks ended green: a cancelled ci, one running, none or a page short is no release", async () => {
+  const f = fixture();
+  const main1 = fold(f.repo, "2\n");
+  const x = deps(f.runner, "2026-10-30T13:05:00Z");
+  assert.equal((await release(x.d, O) as any).tag, "dev-20261030");
+  const main2 = fold(f.repo, "3\n");
+
+  const four = ["engine tests and build", "face build", "the gate", "leak check"];
+  const run = (id: number, name: string, status: string, conclusion: string | null) => ({ id, name, status, conclusion, app: { id: 15368, slug: "github-actions" } });
+  let word: unknown;
+  const y = deps(f.runner, "2026-10-31T13:01:00Z", {
+    gh: async (args) => {
+      if (args[0] === "api" && args[1] === "repos/sol-mif/sol-test") return "main\n";
+      if (args[0] === "api" && args[1] === `repos/sol-mif/sol-test/commits/${main2}/check-runs?per_page=100`) { if (word instanceof Error) throw word; return JSON.stringify(word); }
+      return "";
+    },
+  });
+  const held = async (why: RegExp, note: string) => {
+    const r = await release(y.d, O) as any;
+    assert.equal(r.ok, true, note); assert.equal(r.nothing, true, note); assert.equal(r.tag, "dev-20261030", note); assert.match(r.notGreen, why, note);
+    assert.equal(git(f.origin, "rev-parse", "refs/heads/dev"), main1, `${note}: dev stays`);
+    assert.equal(git(f.origin, "tag", "-l"), "dev-20261030", `${note}: no tag`);
+    assert.equal(y.told.length, 0, note);
+  };
+  // 27fb29f, 19 Nov: the ci run was cancelled before a job ran; only other workflows' checks were on it
+  word = { total_count: 2, check_runs: [run(1, "the registry", "completed", "success"), run(2, "which machines are online", "completed", "cancelled")] };
+  await held(/^no check named engine tests and build, face build, the gate, leak check on it yet$/, "no ci on it");
+  word = { total_count: 4, check_runs: four.map((n, i) => run(i + 1, n, "completed", n === "leak check" ? "cancelled" : "success")) };
+  await held(/leak check: cancelled/, "the leak check cancelled");
+  word = { total_count: 4, check_runs: four.map((n, i) => run(i + 1, n, n === "the gate" ? "in_progress" : "completed", n === "the gate" ? null : "success")) };
+  await held(/still running \(the gate\)/, "a check still running");
+  word = { total_count: 120, check_runs: four.map((n, i) => run(i + 1, n, "completed", "success")) };
+  await held(/^GitHub has 120 check runs on it and gave 4$/, "a page short");
+  word = new Error("HTTP 502");
+  await held(/^GitHub did not say how the checks went \(HTTP 502\)$/, "GitHub down");
+  const dry = deps(f.runner, "2026-10-31T13:01:00Z", { gh: y.d.gh, dryRun: true });
+  word = { total_count: 0, check_runs: [] };
+  assert.match((await release(dry.d, O) as any).notGreen, /no check named/, "a dry run says it too");
+
+  word = { total_count: 5, check_runs: [...four.map((n, i) => run(i + 1, n, "completed", n === "leak check" ? "cancelled" : "success")), run(9, "leak check", "completed", "success")] };
+  assert.deepEqual(await release(y.d, O), { ok: true, tag: "dev-20261031", sha: main2, told: true }, "the leak check run again and green: released");
   assert.equal(git(f.origin, "rev-parse", "refs/heads/dev"), main2);
 });
 
@@ -250,6 +297,7 @@ test("#1562: a broke mark does not hold the day's release; its revert PR is the 
     asked.push(args);
     if (args[0] === "api" && args[1] === "repos/sol-mif/sol-test") return "main\n";
     if (args[0] === "pr" && args[1] === "list" && args.includes("broke")) throw new Error("HTTP 502");
+    if (isChecks(args)) return GREEN;
     return "";
   };
   const y = deps(f.runner, "2026-10-31T13:05:00Z", { gh });

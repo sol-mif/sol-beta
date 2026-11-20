@@ -96,6 +96,10 @@ export type Settings = {
   // how many times a day Agents may ask the person's own cheapest model in Jev's place (#1476, agent/meta/own.ts): a
   // whole number 0–500, 0 never; unset, OWN_PER_DAY (100). The person's AI changes it on their word (openfor.ts SETTABLE)
   own?: { perDay?: number };
+  // a window card's switch kept as the person set it (#1694's settings half; Sol ticket #21): set by hand or by their AI
+  // on their word (openfor.ts set_setting), so it reaches every window. Only names in WINDOW_SWITCHES; readings' window
+  // sends it in place of the station. A name unset reads where its station stands, as before
+  switches?: Record<string, boolean>;
 };
 /** a daily cap for the own model a person may set (pure): a whole number 0–500 */
 const perDayOk = (v: unknown): boolean => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 500;
@@ -217,6 +221,10 @@ export function clean(raw: unknown): Settings {
   if (isObj(r.morning) && typeof r.morning.waits === "boolean") out.morning = { waits: r.morning.waits };
   if (isObj(r.updates) && typeof r.updates.paused === "boolean") out.updates = { paused: r.updates.paused };
   if (isObj(r.own) && perDayOk(r.own.perDay)) out.own = { perDay: r.own.perDay as number };
+  if (isObj(r.switches)) {
+    const sw = Object.fromEntries(Object.entries(r.switches).filter(([k, v]) => WINDOW_SWITCHES.includes(k) && typeof v === "boolean")) as Record<string, boolean>;
+    if (Object.keys(sw).length) out.switches = sw;
+  }
   return out;
 }
 
@@ -259,6 +267,15 @@ export function patchSettings(patch: unknown): Settings {
     const v = p[k];
     const kept = isObj(v) ? Object.fromEntries(keys.filter((x) => typeof v[x] === "boolean").map((x) => [x, v[x]])) : {};
     if (Object.keys(kept).length) p[k] = kept; else delete p[k];
+  }
+  // a window card's switch (#21): true or false is the person's; null takes theirs away (back to where its station stands)
+  if ("switches" in p) {
+    if (isObj(p.switches)) {
+      const was = { ...(isObj(base.switches) ? base.switches : {}) } as Record<string, unknown>;
+      for (const [k, v] of Object.entries(p.switches)) if (WINDOW_SWITCHES.includes(k)) { if (v === null) delete was[k]; else if (typeof v === "boolean") was[k] = v; }
+      base.switches = was;
+    }
+    delete p.switches;
   }
   // a null lens is "back to app" (#824); a lens the engine does not know leaves the one before
   if ("lens" in p && p.lens === null) { delete base.lens; delete p.lens; }
@@ -425,7 +442,8 @@ export function noteHomeWhole(): void {
  *  nothing is added. Not the frame: its switch is the window's own (frameFlag.ts), and Home writes it back when the
  *  setting differs (Home.tsx), so a reading sent there would be written as a person's choice. Moving the frame's station
  *  starts in the face. And `window` (#1551), always: for each switch the window reads (a card's side window), whether its
- *  station stands on in this mode when nobody set it, so the window keeps no list of its own; what a person set in the
+ *  station stands on in this mode when nobody set it, or what the person set in their settings (switches, #21), so the
+ *  window keeps no list of its own; what a developer set in the
  *  window still wins there. Never written: the settings file keeps only the keys it knows (clean) */
 export function readings(): Partial<Settings> & { window: Record<string, boolean> } {
   const s = getSettings(), out: Partial<Settings> = {};
@@ -433,8 +451,8 @@ export function readings(): Partial<Settings> & { window: Record<string, boolean
   if (uiNext() !== (s.ui?.next === true)) out.ui = { ...s.ui, next: uiNext() };
   if (stageWhole() !== (s.stage?.whole === true)) out.stage = { ...s.stage, whole: stageWhole() };
   if (homeWhole() !== (s.home?.whole === true)) out.home = { ...s.home, whole: homeWhole() };
-  const mode = versionMode();
-  return { ...out, window: Object.fromEntries(WINDOW_SWITCHES.map((n) => [n, standsOn(stageOf(n), mode)])) };
+  const mode = versionMode(), set = s.switches ?? {};
+  return { ...out, window: Object.fromEntries(WINDOW_SWITCHES.map((n) => [n, onFor(n, mode, set[n])])) };
 }
 
 /** the person's one lens (#824): the setting, app while unset. Only the stage with stage.whole on asks it */

@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 import { dirname, resolve, basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getTeam, patchTeam, forFace, onTeam, fillMe, roomKey, activeRoom, recordOf, sharedHub, hubKey, isCloud, connectedRepos, ROOMS_DIR, type TeamSettings, type Room } from "./settings.js";
+import { answeringWhy } from "./reach.js";
 import { findRecords } from "./findrecord.js";   // the record GitHub names (#510)
 import { getThings, changeThings, forgetThings, onThings, onAgain, thingsMsg, recordBranch, folderId, THINGS_PATH, serialize as serializeThings, type ThingsDeps, type Op as ThingsOp } from "./things.js";   // the room's things (#194)
 import { readGoal, readGoalFile, setGoal, addGoalFile, goalMsg, goalHead, goalSnapshot, GOAL_PATH } from "./goal.js";
@@ -406,6 +407,14 @@ const claimRooms = () => shareAgain(roomsDeps()).catch(() => []);
 /** a GitHub room moved to the cloud I am signed in to (#216, move.ts): POST /cloud/move, bash sol/cloud/move */
 export const moveNow = (id: unknown, as?: unknown) => moveRoom({ ...roomsDeps(), github: () => makeGithubRecord(runGh), files: record,
   dir: join(STATE_DIR, "cloud", "moves"), hub: sharedHub() }, id, as);
+/** a table made by the person's AI on their word (gate one, #1676; table-tools.ts open_table): what the face's
+ *  "start a table" asks (team.room.make with a code), the same change of room after it */
+export async function makeTableNow(name: string): Promise<{ room: Room; warn?: string } | { error: string }> {
+  const before = getTeam();
+  const r = await makeRoom(roomsDeps(), { name, where: "cloud" });   // Sol's cloud, never the person's GitHub unasked (gate one q2)
+  if (!("error" in r)) afterRoomChange(before, getTeam());
+  return r;
+}
 // --- end Share code
 
 /** my cloud groups' asks to be let in still out (#325, review P2-4), kept beside the engine's other state */
@@ -1007,9 +1016,9 @@ export async function handleTeam(w: Wire, m: any) {
         shareIfNew(before, s);   // #157: a new room on the shared hub gets its code at once
         void forgetGone(roomsDeps(), before, s).catch(() => {});   // a room of mine forgotten here is forgotten on its hub
         const learned = flipped(dialsBefore, s.dials).map((f) => learnedLine(f.kind, f.was, f.now));
-        if (learned.length) { void writeLearned(learned).catch(() => {}); return w.send({ type: "team.settings", rid, settings: forFace(s), learned }); }
+        if (learned.length) { void writeLearned(learned).catch(() => {}); return w.send({ type: "team.settings", rid, settings: { ...forFace(s), asksOff: answeringWhy() ?? "" }, learned }); }
       }
-      return w.send({ type: "team.settings", rid, settings: forFace(getTeam()) });
+      return w.send({ type: "team.settings", rid, settings: { ...forFace(getTeam()), asksOff: answeringWhy() ?? "" } });   // asksOff (#1703): why a teammate's agent is refused here, "" when it is answered
     }
     // --- Share code (#157, PROTOCOL.md round 35): a room's code (made on its hub when it has none), a room joined by one
     case "team.room.share": {
@@ -1052,7 +1061,7 @@ export async function handleTeam(w: Wire, m: any) {
       return w.send({ type: "team.letin.ask", rid, ...(await askCloud(letInDeps(), m.repo)) });
     case "team.room.make": {   // #160: a room from a name alone
       const before = getTeam();
-      const r = await makeRoom(roomsDeps(), { name: m.name, ...(typeof m.hub === "string" ? { hub: m.hub } : {}), ...(typeof m.key === "string" ? { key: m.key } : {}), ...(m.code === true ? { code: true } : {}), ...(typeof m.drive === "string" ? { drive: m.drive } : {}) });
+      const r = await makeRoom(roomsDeps(), { name: m.name, ...(typeof m.hub === "string" ? { hub: m.hub } : {}), ...(typeof m.key === "string" ? { key: m.key } : {}), ...(m.code === true ? { code: true } : {}), ...(m.where === "cloud" ? { where: "cloud" } : {}), ...(typeof m.drive === "string" ? { drive: m.drive } : {}) });
       if ("error" in r) return w.send({ type: "team.room.make", rid, error: r.error });
       afterRoomChange(before, getTeam());   // what team.settings does on a switch
       return w.send({ type: "team.room.make", rid, room: roomForFace(r.room), ...(r.warn ? { warn: r.warn } : {}) });
@@ -2018,7 +2027,10 @@ async function writeLearned(lines: string[]) {
 }
 // --- end Pings
 // --- Routing (#118, leads.ts): an issue I opened that wears a label gets its leads assigned and pinged on my board's
-// read, at once; only mine, so two Sols never route the same issue. The night job routes everyone's
+// read; only mine, so two Sols never route the same issue. The night job routes everyone's. Not at once: an issue I
+// open I usually take next, and a lead assigned first makes my own sol/take refuse it (#1711), so mine waits
+// ROUTE_AFTER untaken first
+const ROUTE_AFTER = 30 * 60_000;
 const routed = new Map<string, Set<number>>();   // repo -> issues settled in this engine's life
 onBoard((b) => void routeMine(b).catch(() => {}));
 async function routeMine(b: Board) {
@@ -2028,7 +2040,8 @@ async function routeMine(b: Board) {
   for (const repo of b.repos) {
     const l = b.leads?.[repo];
     if (!l) continue;
-    const mine = b.cards.filter((c) => c.repo === repo && c.state === "open" && c.author.toLowerCase() === me);
+    const mine = b.cards.filter((c) => c.repo === repo && c.state === "open" && c.author.toLowerCase() === me
+      && Date.now() - (Date.parse(c.created) || Date.now()) >= ROUTE_AFTER);
     if (!routed.has(repo)) routed.set(repo, new Set());
     await routeIssues({ gh: runGh, repo, dryRun: false, say: () => {}, seen: routed.get(repo),
       ping: (p) => !onCloud() && wakeUp().send({ to: p.to, pingKind: p.kind, line: p.line, issue: p.issue, repo }, true) }, mine, l);   // #214: GitHub logins

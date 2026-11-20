@@ -22,6 +22,7 @@ export type Team = {
   dials: Dials;   // per ping kind (#100): always bring to me, when it matters, never
   wake?: Record<string, WakeRule>;   // who may wake my agent, per repository (#1151); none by default
   wakeAsk?: { answer: "" | "yes" | "no" | "later"; at: string; room: string; off?: ("wake" | "asks")[] };   // may my group's members wake it, their agents ask it (#1313): asked once a group, "yes" both on, `off` a line turned off since
+  asksOff?: string;   // why a group member's agent is refused here (#1703, the engine's reach.ts answeringWhy); "" when it is answered
   channel?: "" | "dev" | "beta";   // the releases this Sol follows (#418, #1150): "" = dev for a developer, beta for a tester
 };
 /** one repository's wake rule (#1151, the engine's team/settings.ts WakeRule): mine, others (on only with `from` and

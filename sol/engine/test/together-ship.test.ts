@@ -36,7 +36,7 @@ function fixture() {
   git(repo, "init", "-q", "-b", "main");
   writeFileSync(join(repo, "sol", "engine", "src", "index.ts"), "export const a = 1;\n");
   writeFileSync(join(repo, "sol", "mac", "src", "App.tsx"), "export const b = 1;\n");
-  writeFileSync(join(repo, ".gitignore"), "sol/engine/dist.good/\n");
+  writeFileSync(join(repo, ".gitignore"), "sol/engine/dist.good/\nsol/engine/.swap\nsol/engine/.skip\n");   // as the repo's own
   git(repo, "add", "-A"); git(repo, "commit", "-qm", "start");
   git(repo, "remote", "add", "origin", origin);
   git(repo, "push", "-q", "-u", "origin", "main");
@@ -615,7 +615,7 @@ test("the lock files a release changed (#1150): npm ci runs in those folders onl
 // holds it, a turn in flight always does. At most one install every everyMs, the newest; pause updates holds the swap.
 function asideFixture() {
   const f = fixture();
-  writeFileSync(join(f.repo, ".gitignore"), "sol/engine/dist.good/\nnode_modules/\nsol/engine/dist/\n");
+  writeFileSync(join(f.repo, ".gitignore"), "sol/engine/dist.good/\nnode_modules/\nsol/engine/dist/\nsol/engine/.swap\nsol/engine/.skip\n");
   writeFileSync(join(f.repo, "sol", "engine", "tsconfig.json"), "{}\n");
   commit(f.repo, "sol/engine/package-lock.json", "{\"lock\":1}\n");
   const me = join(f.top, "aside");
@@ -659,7 +659,37 @@ test("#1566: built aside at the word; a background agent does not hold the swap,
   assert.ok(Number(readFileSync(join(f.me, ".git", "sol-next.at"), "utf8")) > 0, "when it installed, kept for the spacing");
   assert.equal(git(f.me, "status", "--porcelain"), "", "a clean tree");
   assert.deepEqual(runs, ["busy", "runs"]);
+  // #1576: the way back, should the new engine not start: from, to, and the replaced node_modules kept outside the checkout
+  const swap = Object.groupBy(readFileSync(join(f.sol, "engine", ".swap"), "utf8").trim().split("\n").map((l) => l.split("\t")), (l) => l[0]);
+  assert.equal(swap.to?.[0][1], s.sha);
+  assert.notEqual(swap.from?.[0][1], s.sha);
+  assert.equal(swap.nm?.[0][1], join(f.sol, "engine", "node_modules"));
+  assert.match(swap.nm?.[0][2] ?? "", /\/sol-was\//);
+  assert.equal(readFileSync(join(swap.nm![0][2], "marker"), "utf8"), "installed at start\n", "the old packages kept for going back");
+  assert.equal(swap.ci, undefined, "nothing installed in place");
   agents();
+});
+
+test("#1576: a release the keeper went back from (.skip) does not install itself again; a newer one does, and clears it", async () => {
+  const f = asideFixture();
+  commit(f.repo, "sol/engine/src/index.ts", "export const a = 90;\n");
+  const bad = released(f.repo, "dev-20261119-1300");
+  writeFileSync(join(f.sol, "engine", ".skip"), `${bad.sha}\n`);
+  const runs: string[] = [];
+  startShip(f.sol, () => {}, deps(f.sol, "dev", {
+    auto: true, quietMs: 0, pollMs: 10, everyMs: 0, runs: (why) => { runs.push(why ?? "runs"); },
+    build: async (dir) => { mkdirSync(join(dir, "dist"), { recursive: true }); writeFileSync(join(dir, "dist", "index.js"), "built aside\n"); },
+  }));
+  await hear({ sha: bad.sha, tag: bad.tag, by: "", channel: "dev" });
+  await soon(() => runs.includes("build"), 2000);
+  assert.notEqual(git(f.me, "rev-parse", "HEAD"), bad.sha, "the release that did not start stays out");
+  assert.equal(offerNow()?.behind, true, "still offered: Update can take it by hand");
+  commit(f.repo, "sol/engine/src/index.ts", "export const a = 91;\n");
+  const good = released(f.repo, "dev-20261119-1310");
+  await hear({ sha: good.sha, tag: good.tag, by: "", channel: "dev" });
+  await soon(() => git(f.me, "rev-parse", "HEAD") === good.sha && !existsSync(join(f.sol, "engine", ".skip")));
+  assert.equal(git(f.me, "rev-parse", "HEAD"), good.sha, "a newer release installs");
+  assert.equal(existsSync(join(f.sol, "engine", ".skip")), false, "and the skip is cleared");
 });
 
 test("#1566: one install every everyMs, the newest; pause updates holds the swap and says paused; a failed build installs nothing", async () => {

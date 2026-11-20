@@ -34,6 +34,8 @@ test("missingLeads: each label's leads not assigned, never one who let go, nothi
   assert.deepEqual(L.missingLeads(i(["work", "social"]), l), []);
   assert.deepEqual(L.missingLeads(i(["cowork", "base"]), l).map((x) => x.login), ["fktsai", "marcocyl04-ux"]);   // once each
   assert.deepEqual(L.missingLeads(i(["now", "bug"]), l), []);
+  // taken (sol/take: assigned + now): no lead is added, or the taker's own take would refuse it (#1717)
+  assert.deepEqual(L.missingLeads(i(["life", "now"], ["frank"]), l), []);
 });
 
 test("routeIssues: a board read's seen issues are not asked again; a failed assignment pings nobody", async () => {

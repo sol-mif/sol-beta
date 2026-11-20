@@ -97,9 +97,11 @@ const WINDOW = ["agents.mode", "build.one", "build.one.long", "build.one.team", 
 const TODAY: Record<string, string> = { "stage.whole": "settled", "ui.next": "hand", "tools.cards": "product", "identity.supabase": "product", ...Object.fromEntries([...ENGINE_CONCEPT, ...WINDOW].map((n) => [n, "concept"])),
   // moved on by gate one, then past their soak (#1667): on for the team and on a tester's Sol (product)
   "onboarding.reads": "product", "open.for": "product",
-  // released by Frank 2026-11-20 (#1712): on for the team in concept and complete, still off on a tester's Sol
-  "view.home": "complete" };
-const AT_PRODUCT = new Set(["onboarding.reads", "open.for"]);
+  // moved on by the station check of 2026-11-20 (#1717), straight to product (no soak, Frank 2026-11-20): on a tester's Sol too
+  "home.whole": "product", "reach.tools": "product", "view.home": "product",
+  // past gate one after #1739, straight to product (no soak, Frank 2026-11-20)
+  "view.cowork": "product" };
+const AT_PRODUCT = new Set(["onboarding.reads", "open.for", "home.whole", "reach.tools"]);
 /** every switch at hand, so a test tries one station at a time */
 const allHand = () => { for (const k of Object.keys(V.STAGES)) (V.STAGES as Record<string, string>)[k] = "hand"; };
 const putBack = () => {
@@ -181,7 +183,7 @@ const SWITCHES: [string, "coworkV3" | "frameOn" | "stageWhole" | "homeWhole", (v
 let starts = 0;
 const started = async (file: object): Promise<typeof S> => { writeFileSync(FILE, JSON.stringify(file)); return import(`../src/settings.ts?start-${starts++}`); };
 
-test("nobody set a switch (a settings file that names none): each of the four reads off in every version, but stage.whole on and home.whole on in concept", async () => {
+test("nobody set a switch (a settings file that names none): each of the four reads off in every version, but stage.whole on and home.whole on once a channel or pick names a mode (#1717: at product)", async () => {
   const versions: [string, "dev" | "beta" | null, string | undefined, string | null][] = [   // name, channel, pick, the mode it is
     ["no channel yet", null, undefined, null], ["concept by channel", "dev", undefined, "concept"], ["product by channel", "beta", undefined, "product"],
     ["concept by pick", "dev", "concept", "concept"], ["a pick on beta moves nothing (#1637)", "beta", "concept", "product"], ["complete by pick", "dev", "complete", "complete"], ["product by pick", "dev", "product", "product"],
@@ -192,7 +194,7 @@ test("nobody set a switch (a settings file that names none): each of the four re
     assert.equal(F.versionMode(), mode, vname);
     const st = F.getSettings();
     assert.deepEqual([st.cowork?.v3, st.frame, st.stage?.whole, st.home?.whole], [undefined, undefined, undefined, undefined], `${vname}: no switch is set`);
-    for (const [name, read] of SWITCHES) assert.equal(F[read](), name === "stage.whole" || (name === "home.whole" && mode === "concept"), `${name} never set, ${vname}`);
+    for (const [name, read] of SWITCHES) assert.equal(F[read](), name === "stage.whole" || (name === "home.whole" && mode !== null), `${name} never set, ${vname}`);
   }
 });
 
@@ -304,7 +306,7 @@ test("a face is sent the engine's reading: nothing added for the engine's switch
   const F = await started({});
   for (const ch of [null, "dev", "beta"] as const) {
     F.noteChannel(ch);
-    assert.deepEqual(F.readings(), { stage: { whole: true }, ...(ch === "dev" ? { home: { whole: true } } : {}), window: W(ch === "dev") }, `stage.whole settled, home.whole and the window's eleven at concept, channel ${ch}`);
+    assert.deepEqual(F.readings(), { stage: { whole: true }, ...(ch !== null ? { home: { whole: true } } : {}), window: { ...W(ch === "dev"), "view.home": ch !== null, "view.cowork": ch !== null } }, `stage.whole settled, home.whole and the window's eleven at concept, channel ${ch}`);
   }
   allHand();
   for (const ch of [null, "dev", "beta"] as const) { F.noteChannel(ch); assert.deepEqual(F.readings(), { window: W(false) }, `all at hand, channel ${ch}: today's settings and the window's eleven off`); }
@@ -391,7 +393,7 @@ test("SOL_VERSION=product: the eight engine switches at concept all off, stage.w
       assert.equal(F.versionMode(), "product");
       assert.deepEqual(reads(F), Object.fromEntries(ENGINE_CONCEPT.map((n) => [n, AT_PRODUCT.has(n)])), `channel ${ch}`);
       assert.equal(F.stageWhole(), true, "stage.whole is settled");
-      assert.deepEqual(F.readings(), { stage: { whole: true }, window: W(false) });
+      assert.deepEqual(F.readings(), { stage: { whole: true }, home: { whole: true }, window: { ...W(false), "view.home": true, "view.cowork": true } }, "home.whole, view.home and view.cowork stand at product (#1717)");
     }
     process.env.SOL_VERSION = "concept";
     F.noteChannel("beta");
@@ -407,8 +409,8 @@ test("the window's block: its eight switches, each by its station in this mode; 
     for (const [mode, on] of [["concept", true], ["complete", false], ["product", false]] as const) {
       F.patchSettings({ version: mode });
       assert.deepEqual(Object.keys(F.readings().window).sort(), WINDOW, mode);
-      // view.home stands at complete (#1712): on in concept and complete, off in product
-      assert.deepEqual(F.readings().window, { ...W(on), "view.home": mode !== "product" }, `${mode}: the eight at concept`);
+      // view.home and view.cowork stand at product (#1717): on in all three
+      assert.deepEqual(F.readings().window, { ...W(on), "view.home": true, "view.cowork": true }, `${mode}: the eight at concept`);
     }
     table["cross"] = "product";
     table["build.snap"] = "complete";

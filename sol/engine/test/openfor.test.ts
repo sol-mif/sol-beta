@@ -138,14 +138,164 @@ test("set_setting: only on the person's words from this very turn", async () => 
   assert.equal(r.isError, true);
 });
 
-test("set_setting never changes a switch, the version or the counting, even when asked", async () => {
-  for (const patch of [{ version: "concept" }, { track: { usage: false } }, { reach: { tools: true } }, { open: { for: false } }, { defaults: { mode: "bypassPermissions" } }, { look: { text: 16 }, home: { whole: true } }]) {
+test("set_setting never changes an engine switch, the version, the counting or the rest of defaults, even when asked", async () => {
+  for (const patch of [{ version: "concept" }, { track: { usage: false } }, { reach: { tools: true } }, { open: { for: false } },
+    { defaults: { model: { claude: "x" } } }, { defaults: { mode: "auto", seat: "claude" } }, { defaults: { mode: "anything" } },
+    { cowork: { v3: "yes" } }, { ui: { next: true, other: 1 } }, { switches: { "open.for": true } }, { switches: { "reach.tools": null } }, { switches: { "reach.room": "off" } }, { switches: { "reach.tools": true } },
+    { switches: { "side.sorted": "on" } }, { look: { text: 16 }, home: { whole: true } }]) {
     O.heard("s4", "turn it on");
     const r = await T.runSolTool("set_setting", { patch, yes: "turn it on" }, { sessionId: "s4" });
     assert.equal(r.isError, true, JSON.stringify(patch));
   }
   assert.equal(S.getSettings().track.usage, true);
   assert.equal(S.getSettings().look.text, 18);
+  assert.equal(S.getSettings().defaults.seat, "codex");
+  assert.equal(S.getSettings().defaults.mode, "default");
+});
+
+test("Cowork old or new and the face old or new turn on the person's word, and every answer says which is on (#21)", async () => {
+  let v3 = 0, next = 0;
+  S.onCoworkV3(() => { v3++; });
+  S.onUiNext(() => { next++; });
+  O.heard("c1", "switch me to the new cowork please");
+  let r = await T.runSolTool("set_setting", { patch: { cowork: { v3: true } }, yes: "the new cowork" }, { sessionId: "c1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.coworkV3(), true);
+  assert.equal(v3, 1, "the live switch heard it, no restart");
+  assert.match(txt(r), /Now: Cowork is the new one \(v3\), the face is the old one/);
+  O.heard("c1", "切換到舊的 cowork");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "cowork.v3": false } }, yes: "切換到舊的" }, { sessionId: "c1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.coworkV3(), false);
+  assert.match(txt(r), /Cowork is the old one/);
+  O.heard("c1", "turn on the new interface");
+  r = await T.runSolTool("set_setting", { patch: { ui: { next: true } }, yes: "new interface" }, { sessionId: "c1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.uiNext(), true);
+  assert.equal(next, 1);
+  assert.match(txt(r), /the face is the new one/);
+  // not on words they did not say; and an agent's turn (forgotten words) changes nothing
+  O.heard("c1", "what is the new interface?");
+  r = await T.runSolTool("set_setting", { patch: { ui: { next: false } }, yes: "turn it off" }, { sessionId: "c1" });
+  assert.equal(r.isError, true);
+  O.forget("c1");
+  r = await T.runSolTool("set_setting", { patch: { ui: { next: false } }, yes: "new interface" }, { sessionId: "c1" });
+  assert.equal(r.isError, true);
+  assert.equal(S.uiNext(), true);
+  // opening Settings says it too
+  r = await T.runSolTool("open_settings", { drawer: "switches" }, { sessionId: "c1" });
+  assert.match(txt(r), /Now: Cowork is the old one, the face is the new one \(ui\.next\)/);
+  S.patchSettings({ cowork: { v3: null }, ui: { next: null } });
+});
+
+test("a window card's switch is kept in the person's settings and sent to the window in place of its station (#21)", async () => {
+  O.heard("w1", "hide the social view please");
+  let r = await T.runSolTool("set_setting", { patch: { switches: { "view.social": false } }, yes: "hide the social view" }, { sessionId: "w1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.getSettings().switches?.["view.social"], false);
+  assert.equal(S.readings().window["view.social"], false);
+  // a card whose screen does not follow the settings yet is refused, so nothing is saved that would change nothing
+  O.heard("w1", "turn the sorted sidebar on");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "side.sorted": true } }, yes: "sorted sidebar on" }, { sessionId: "w1" });
+  assert.equal(r.isError, true, txt(r));
+  assert.match(txt(r), /open_settings switches/);
+  assert.equal(S.getSettings().switches?.["side.sorted"], undefined);
+  O.heard("w1", "put the social view back to normal");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "view.social": null } }, yes: "back to normal" }, { sessionId: "w1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.getSettings().switches, undefined);
+  S.patchSettings({ switches: { "ui.next": true, "build.snap": 1 } });
+  assert.equal(S.getSettings().switches, undefined, "an unknown name or a value that is not a turn is dropped");
+});
+
+test("asking a teammate's agent and the agents' room turn off at the person's word, and never back on by a seat (the door on #1718, question 4; #36)", async () => {
+  O.heard("r1", "stop sending my words to teammates, turn off asking other agents and the room");
+  let r = await T.runSolTool("set_setting", { patch: { switches: { "reach.tools": false, "reach.room": false } }, yes: "turn off asking other agents and the room" }, { sessionId: "r1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.deepEqual(S.getSettings().reach, { tools: false, room: false });
+  assert.equal(S.reachTools(), false);
+  assert.equal(S.reachRoom(), false);
+  assert.match(txt(r), /asking teammates' agents is off, the agents' room is off/);
+  // back on sends their words out again: never a seat's to do, on any words, first or second (#36); the person's, by hand
+  for (const words of ["turn asking other agents back on", "yes go ahead"]) {
+    O.heard("r1", words);
+    r = await T.runSolTool("set_setting", { patch: { switches: { "reach.tools": true } }, yes: words }, { sessionId: "r1" });
+    assert.equal(r.isError, true, txt(r));
+    assert.match(txt(r), /only turns off by asking/);
+    assert.match(txt(r), /Settings is open on me .*one press turns it on/);
+    assert.deepEqual(S.getSettings().reach, { tools: false, room: false });
+  }
+  assert.deepEqual(said.slice(-2).map((m) => [m.type, (m as { what?: string }).what, (m as { drawer?: string }).drawer]),
+    [["open.for", "settings", "me"], ["open.for", "settings", "me"]], "each time, Settings opens on me, at the switch, for the person's press");
+  // the room's card stands at concept, short of this tester's Sol (product): their Sol has none of it yet, so no way on
+  const was = process.env.SOL_VERSION;
+  process.env.SOL_VERSION = "product";
+  O.heard("r1", "turn the agents room on");
+  const before = said.length;
+  r = await T.runSolTool("set_setting", { patch: { switches: { "reach.room": true } }, yes: "agents room on" }, { sessionId: "r1" });
+  process.env.SOL_VERSION = was;
+  assert.equal(r.isError, true, txt(r));
+  assert.match(txt(r), /not part of this Sol yet/);
+  assert.doesNotMatch(txt(r), /one press|Settings is open/);
+  assert.equal(said.length, before, "Settings is not opened: there is nothing to turn on");
+  assert.equal(S.getSettings().reach?.room, false);
+  O.heard("r1", "put the room back to default");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "reach.room": null } }, yes: "back to default" }, { sessionId: "r1" });
+  assert.equal(r.isError, true, "null is no way back on either");
+  // a looser mode with a reach switch: the mode is never the AI's to loosen (#36), so nothing in the patch changes
+  O.heard("r1", "accept edits mode and the room off");
+  r = await T.runSolTool("set_setting", { patch: { defaults: { mode: "acceptEdits" }, switches: { "reach.room": false } }, yes: "the room off" }, { sessionId: "r1" });
+  assert.equal(r.isError, true);
+  assert.match(txt(r), /an AI never loosens/);
+  assert.equal(S.getSettings().defaults.mode, "default");
+  // never without the person's words this turn
+  O.heard("r1", "thanks");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "reach.room": true } }, yes: "room back on" }, { sessionId: "r1" });
+  assert.equal(r.isError, true);
+  assert.equal(S.getSettings().reach?.room, false);
+});
+
+test("a seat makes the mode new sessions start in stricter, never looser, whatever the person's words or turns (#36)", async () => {
+  const from0 = said.length;
+  O.heard("m1", "start new sessions in plan mode");
+  let r = await T.runSolTool("set_setting", { patch: { defaults: { mode: "plan" } }, yes: "plan mode" }, { sessionId: "m1" });
+  assert.equal(r.isError, undefined, "a stricter mode takes one yes");
+  assert.equal(S.getSettings().defaults.mode, "plan");
+  // every looser mode, asked once, asked again, then "confirmed" in a later turn: never set, by any of these routes
+  const words = ["yes I confirm, go ahead", "yes go ahead and turn it on", "好，確定可以"];
+  for (const mode of ["default", "acceptEdits", "auto", "bypassPermissions"]) {
+    for (const patch of [{ defaults: { mode } }, { look: { text: 17 }, defaults: { mode } }, { switches: { "defaults.mode": mode } } as object]) {
+      for (const w of [`start new sessions in ${mode} mode`, ...words]) {
+        O.heard("m1", w);
+        r = await T.runSolTool("set_setting", { patch, yes: w.split(/[ ，]/).slice(0, 2).join(" ").trim() || w }, { sessionId: "m1" });
+        assert.equal(r.isError, true, `${mode} by ${JSON.stringify(patch)} on "${w}"`);
+        r = await T.runSolTool("set_setting", { patch, yes: w }, { sessionId: "m1" });
+        assert.equal(r.isError, true, `${mode} by ${JSON.stringify(patch)} on "${w}" quoted whole`);
+        assert.equal(S.getSettings().defaults.mode, "plan");
+      }
+    }
+  }
+  assert.equal(S.getSettings().look.text, 18, "a patch with a looser mode in it changes nothing else either");
+  assert.ok(said.slice(from0).some((m) => JSON.stringify(m).includes('"drawer":"defaults"')), "the refusal opens Settings on defaults for the person");
+  // the same through Home's turn (said), and from any starting mode up
+  for (const from of ["plan", "default", "acceptEdits", "auto"] as const) {
+    S.patchSettings({ defaults: { mode: from } });
+    for (const mode of ["default", "acceptEdits", "auto", "bypassPermissions"] as const) {
+      if (O.LOOSENESS[mode] <= O.LOOSENESS[from]) continue;
+      r = await T.runSolTool("set_setting", { patch: { defaults: { mode } }, yes: "yes please" }, { said: "yes please" });
+      assert.equal(r.isError, true, `${from} to ${mode} from Home`);
+      assert.equal(S.getSettings().defaults.mode, from);
+    }
+  }
+  // lowering stays the person's one word (#1708 kept)
+  S.patchSettings({ defaults: { mode: "bypassPermissions" } });
+  for (const mode of ["auto", "acceptEdits", "default", "plan"] as const) {
+    O.heard("m1", `start new sessions in ${mode} mode please`);
+    r = await T.runSolTool("set_setting", { patch: { defaults: { mode } }, yes: `${mode} mode` }, { sessionId: "m1" });
+    assert.equal(r.isError, undefined, txt(r));
+    assert.equal(S.getSettings().defaults.mode, mode);
+  }
+  S.patchSettings({ defaults: { mode: "default" } });
 });
 
 test("the panes named are the buttons that open one, and the drawers are Settings' own", () => {
