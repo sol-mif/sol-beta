@@ -76,6 +76,9 @@ export type Settings = {
   // source when the person says so this turn. Off unless set, written only once someone sets it. readsVoice() is the
   // reading (env first). Off, "not here" still holds: the refusal reads the record, never this switch (connectors.ts)
   reads?: { voice?: boolean };
+  // the map grown (#1661, team/map/grow.ts): Cowork's map grows its setup from the team's members, the registry and
+  // GitHub, under the project's hand-written one and the person's own. Written only once someone sets it. mapGrown() is the reading (env first)
+  map?: { grown?: boolean };
   // the version this Sol runs as (versions.ts): concept, complete or product, picked by hand. Written only once someone
   // picks; unset, the channel decides (beta: product, dev: concept). versionMode() is the one reading of it (env first)
   version?: Mode;
@@ -90,7 +93,12 @@ export type Settings = {
   // pause updates (#1566, Settings › me, for a demo): a dev release is still fetched and built aside, but not swapped in
   // while it is on (team/ship.ts installDev). Off unless set, written only once someone sets it. updatesPaused() reads it
   updates?: { paused?: boolean };
+  // how many times a day Agents may ask the person's own cheapest model in Jev's place (#1476, agent/meta/own.ts): a
+  // whole number 0–500, 0 never; unset, OWN_PER_DAY (100). The person's AI changes it on their word (openfor.ts SETTABLE)
+  own?: { perDay?: number };
 };
+/** a daily cap for the own model a person may set (pure): a whole number 0–500 */
+const perDayOk = (v: unknown): boolean => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 500;
 // the lenses a stage is drawn in (#701); work/blocks.ts takes them from here, so settings.ts imports nothing of the stage
 export const LENSES = ["app", "tui", "cli", "ide"] as const;
 export type Lens = (typeof LENSES)[number];
@@ -195,6 +203,7 @@ export function clean(raw: unknown): Settings {
   if (isObj(r.open) && typeof r.open.for === "boolean") out.open = { for: r.open.for };
   if (isObj(r.pause) && typeof r.pause.signal === "boolean") out.pause = { signal: r.pause.signal };
   if (isObj(r.reads) && typeof r.reads.voice === "boolean") out.reads = { voice: r.reads.voice };
+  if (isObj(r.map) && typeof r.map.grown === "boolean") out.map = { grown: r.map.grown };
   if (isObj(r.onboarding) && typeof r.onboarding.reads === "boolean") out.onboarding = { reads: r.onboarding.reads };
   if (isObj(r.log) && typeof r.log.kinds === "boolean") out.log = { kinds: r.log.kinds };
   if (isObj(r.work) && typeof r.work.liveContext === "boolean") out.work = { liveContext: r.work.liveContext };
@@ -207,6 +216,7 @@ export function clean(raw: unknown): Settings {
   if (MODES.includes(r.version as Mode)) out.version = r.version as Mode;
   if (isObj(r.morning) && typeof r.morning.waits === "boolean") out.morning = { waits: r.morning.waits };
   if (isObj(r.updates) && typeof r.updates.paused === "boolean") out.updates = { paused: r.updates.paused };
+  if (isObj(r.own) && perDayOk(r.own.perDay)) out.own = { perDay: r.own.perDay as number };
   return out;
 }
 
@@ -236,9 +246,15 @@ export function patchSettings(patch: unknown): Settings {
   if ("home" in p && !(isObj(p.home) && typeof p.home.whole === "boolean")) delete p.home;
   if ("morning" in p && !(isObj(p.morning) && typeof p.morning.waits === "boolean")) delete p.morning;   // off unset too (#1128)
   if ("updates" in p && !(isObj(p.updates) && typeof p.updates.paused === "boolean")) delete p.updates;   // #1566
+  // the own model's daily cap (#1476): a null takes the person's number away (back to the default); a number out of
+  // 0–500 or not whole changes nothing, so a bad patch never drops the one they set
+  if ("own" in p) {
+    const v = isObj(p.own) ? p.own.perDay : p.own;
+    if (v === null) { delete base.own; delete p.own; } else if (!(isObj(p.own) && perDayOk(p.own.perDay))) delete p.own;
+  }
   // reach, onboarding.reads and log.kinds read on unset for the team (#1406): a key that is not a boolean is dropped from
   // the patch, so it never takes a person's false away
-  for (const [k, keys] of [["reach", ["tools", "room"]], ["onboarding", ["reads"]], ["log", ["kinds"]], ["work", ["liveContext"]], ["open", ["for"]], ["pause", ["signal"]], ["reads", ["voice"]]] as const) {
+  for (const [k, keys] of [["reach", ["tools", "room"]], ["onboarding", ["reads"]], ["log", ["kinds"]], ["work", ["liveContext"]], ["open", ["for"]], ["pause", ["signal"]], ["reads", ["voice"]], ["map", ["grown"]]] as const) {
     if (!(k in p)) continue;
     const v = p[k];
     const kept = isObj(v) ? Object.fromEntries(keys.filter((x) => typeof v[x] === "boolean").map((x) => [x, v[x]])) : {};
@@ -497,6 +513,10 @@ export const pauseSignal = (): boolean => envOr(process.env.SOL_PAUSE, "pause.si
 /** whether a seat is offered set_reading (#1656, reads.ts): env SOL_READS_VOICE, else the setting reads.voice, else where
  *  versions.ts stands it (no card station: off until set). Read at each turn's start and at each call, so it needs no restart */
 export const readsVoice = (): boolean => envOr(process.env.SOL_READS_VOICE, "reads.voice", getSettings().reads?.voice);
+/** whether Cowork's map grows its own setup (#1661, team/map/grow.ts): env SOL_MAP_GROWN, else the setting map.grown, else
+ *  where versions.ts stands it (its card engine/team-map). Off: the project's .sol/cowork-map.json or nothing, as before.
+ *  Read at each map read, so it needs no restart */
+export const mapGrown = (): boolean => envOr(process.env.SOL_MAP_GROWN, "map.grown", getSettings().map?.grown);
 
 /** whether the morning brings every wait on me older than a day to my first session after 05:00 (#1128 step 8,
  *  parts/waits.ts): env SOL_MORNING_WAITS=on or off decides for a Sol developer's own run or a test, else the setting

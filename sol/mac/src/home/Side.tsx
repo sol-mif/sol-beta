@@ -38,6 +38,9 @@ import { dur } from "../motion";
 import { EMPTY } from "../stage/store";
 import { useSpine } from "../spine/flag";
 import { useLamp } from "../spine/lamp";
+import { OneDoor } from "../one/OneDoor";   // the anchor's row beside settings (back beside orchestration, 2026-11-19)
+import { anchorId } from "../one/anchor";
+import { useOrchestrationOn } from "../one/orchestration";   // build.orchestration: promote only while it is on
 import { FolderPieces } from "../folderPieces/FolderPieces";   // #1092: a folder's pieces above its sessions (build.pieces)
 import { useBuildPieces } from "../folderPieces/flag";
 import { useOpenPiece } from "../folderPieces/open";
@@ -222,13 +225,15 @@ function Rename({ title, onDone, label = "rename the session" }: { title: string
     onBlur={() => onDone(null)} onKeyDown={(ev) => { ev.stopPropagation(); if (ev.key === "Enter") { ev.preventDefault(); onDone(v); } else if (ev.key === "Escape") { ev.preventDefault(); onDone(null); } }} />;
 }
 
-export function Side({ w, width = SIDE, live, wide, onOpen, onBeside, onFresh, onWide, onSettings, onMode, soft, onHover, list, footExtra, stageStore = store }: {
+export function Side({ w, width = SIDE, live, wide, onOpen, onBeside, onFresh, onWide, onSettings, onMode, soft, onHover, list, footExtra, one, onOne, stageStore = store }: {
   w: Work; width?: number; live: string | null; wide: boolean; onOpen: (id: string) => void; onBeside: (id: string) => void;
   onFresh: () => void; onWide: (v: boolean) => void; onSettings: () => void; onMode: (m: AppMode) => void;
   soft?: "open" | "closing"; onHover?: (on: boolean) => void;   // folded, soft-opened over the talk (Home.tsx)
   // Home's pass 1 (#692, sol.home.pass1): Home's own places (today, areas, tools) in S4 instead of the sessions, and
   // a row over the gear (Home's settings); the places S1-S3 and S6 stay where they are
   list?: ReactNode; footExtra?: ReactNode;
+  // the anchor's row (one/OneDoor.tsx): beside settings; `one` says it is the session in view
+  one?: boolean; onOne?: () => void;
   stageStore?: StageStore;   // the stage the artifacts are read from: the engine's, or a page's own (side-hold.html)
 }) {
   const steadyMem = useRef(new Map<string, string[]>());   // what each tray showed last draw (sideSort steady)
@@ -249,6 +254,7 @@ export function Side({ w, width = SIDE, live, wide, onOpen, onBeside, onFresh, o
   const [filter, setFilter] = useState<Filter>("all");
   // Build settings › sidebar (sidePrefs.ts): the sort, how long quiet work stays, whether rows move
   const prefs = useSidePrefs();
+  const orchOn = useOrchestrationOn();
   const [letOver, setLetOver] = useState(false);   // a child held over its group's let-go strip
   const [kidsOpen, setKidsOpen] = useState<Record<string, boolean>>({});   // the orchestration rows opened
   // a renewal (the engine's, one.ts finishOrch): the fresh copy keeps the old one's open fold, and takes its place in
@@ -297,10 +303,12 @@ export function Side({ w, width = SIDE, live, wide, onOpen, onBeside, onFresh, o
     ["rename", "rename", () => setNaming(s.id)],
     ["pin", s.pinned ? "unpin" : "pin", () => w.mark(s.id, { pinned: !s.pinned })],
     // two kinds of session (2026-11-14, the design's §2): a normal row is promoted; an orchestration row is demoted and
-    // its sessions go loose; every orchestration row is renewed or demoted by hand
+    // its sessions go loose; every orchestration row is renewed or demoted by hand. Promote only with build.orchestration
+    // on (2026-11-19); the anchor is renewed by hand too, and never promoted
     ...(s.kind === "orchestration"
       ? [["renew", "fresh copy now", () => renewNow(s.id)] as [string, string, () => void], ["kind", "demote", () => w.kind(s.id, null)] as [string, string, () => void]]
-      : s.archived ? [] : [["kind", "promote to orchestration", () => w.kind(s.id, "orchestration")] as [string, string, () => void]]),
+      : s.id === anchorId() ? [["renew", "fresh copy now", () => renewNow(s.id)] as [string, string, () => void]]
+      : s.archived || !orchOn ? [] : [["kind", "promote to orchestration", () => w.kind(s.id, "orchestration")] as [string, string, () => void]]),
     ["archive", s.archived ? "bring it back" : "archive", () => w.mark(s.id, { archived: !s.archived })],
     // the orchestrator lets it go (2026-11-14): a row of its own again; its `parent` (who started it) stays
     // moving by hand (step 3b): the keys' two moves, named with their keys; each undoes as a drop does
@@ -474,6 +482,7 @@ export function Side({ w, width = SIDE, live, wide, onOpen, onBeside, onFresh, o
       {/* one line: "moved under X · undo", undo the word to press */}
       {undo && <div className="hc-undo" role="status"><span className="hc-undo-w">{undo.words} · <button type="button" className="hc-undo-b" tabIndex={-1} title="take it back (⌘Z)" onClick={undoNow}>undo</button></span></div>}
       <div className="hd-foot">
+        {onOne && <OneDoor clean on={!!one} onPick={onOne} tail={<Lift />} />}
         {!list && !wide && prefs.sort === "needs" && <button type="button" className={`hd-word${edit ? " on" : ""}`} data-thing data-kind="head" data-edit aria-pressed={edit} title="arrange the folders: drag, rename, hide, add" onClick={() => setEdit((v) => !v)} tabIndex={-1}>{edit ? "done" : "edit"}<Lift /></button>}
         <button type="button" className="hd-word" data-thing data-kind="head" data-settings title={spine ? "build settings" : "settings"} onClick={onSettings} tabIndex={-1}>settings<Lift /></button>
       </div>

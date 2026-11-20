@@ -1,0 +1,7 @@
+/* the one session's door in Build's side foot (OneDoor.tsx): the body as the row's mark, and the air its six fly in */
+.newc .one-door-mark { flex: none; display: inline-flex; width: 20px; height: 20px; margin: -3px -3px -3px -2px; }
+/* in the clean side the mark sits in the row's 16px mark column, a little over it, and the row is in ink while it is the page */
+.hc-side .one-door .one-door-mark { position: relative; overflow: visible; }
+.hc-side .one-door .one-door-mark > * { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
+.hc-side .one-door.on { color: var(--ink); }
+.one-door-air { position: fixed; inset: 0; z-index: 60; pointer-events: none; }

@@ -87,6 +87,30 @@ const WAKE_MS = 30_000;   // how long a background task's end holds the counter 
 const MODES: PermissionMode[] = ["default", "acceptEdits", "plan", "auto", "bypassPermissions"];
 // the Work defaults from Marco's settings file (#94): Claude's model and effort, and the mode
 export const workDefaults = () => { const d = getSettings().defaults; return { model: latest(d.model.claude), effort: d.effort.claude, mode: d.mode as PermissionMode }; };
+// how free a ticket's executor or an orchestration's session is, as a mode (one.ts Free, ticketTypes.ts Mandate): the
+// mandate's `free` tells it apart only while the person's Work default asks at all; a default of bypassPermissions is the
+// person's word that every session runs unasked, and the sessions agents start are no exception (Frank, 2026-11-20: the
+// executors came up acceptEdits, each asking before a command, while his default said bypass)
+export const modeFor = (free: "ask" | "edits" | undefined, dflt: PermissionMode = workDefaults().mode): PermissionMode | undefined =>
+  !free ? undefined : dflt === "bypassPermissions" ? "bypassPermissions" : free === "edits" ? "acceptEdits" : "default";
+/** the mode a session started from `parent` begins on before any mandate: the parent's own while it is live (the picker
+ *  moved on it mid-session counts: a session switched to bypass starts the next ones on bypass, Frank 2026-11-20), never
+ *  plan (a sub-session is started to do the work), else the person's Work default */
+export const baseModeOf = (parent?: string): PermissionMode => { const p = parent ? runs.get(parent) : undefined; return p && p.mode !== "plan" ? p.mode : workDefaults().mode; };
+// the picker moved on a live session: told the session's id and its new mode, so the sessions under it can follow
+const modeChanges = new Set<(id: string, mode: PermissionMode) => void>();
+export function onModeChange(fn: (id: string, mode: PermissionMode) => void) { modeChanges.add(fn); return () => { modeChanges.delete(fn); }; }
+/** the live sessions that follow `id` when its mode moves (pure): the ones it started (marked parent, not under
+ *  another), and its tickets' executors (the ticket is subscribed to it). Plan is nobody's to hand down */
+export function modeFollowers(id: string, mode: PermissionMode, live: Iterable<string>, marks: Record<string, { parent?: string | null } | undefined>,
+  tickets: { executor?: { sessionId: string }; subs: { kind: string; key: string }[] }[]): string[] {
+  if (mode === "plan") return [];
+  const out = new Set<string>();
+  for (const c of live) if (c !== id && marks[c]?.parent === id) out.add(c);
+  for (const t of tickets) if (t.executor && t.subs.some((s) => s.kind === "session" && s.key === id)) out.add(t.executor.sessionId);
+  out.delete(id);
+  return [...out];
+}
 
 class Inbox implements AsyncIterable<SDKUserMessage> {
   private q: SDKUserMessage[] = [];
@@ -587,7 +611,10 @@ export class Run {
       if (s.model && latest(s.model) !== this.model) { const m = latest(s.model); await q.setModel(m); this.model = m; }
       // a woken session (#1151) asks first, or plans: the picker never moves it past that
       const held = !!workState().marks[this.id]?.woken && s.mode !== "default" && s.mode !== "plan";
-      if (s.mode && s.mode !== this.mode && MODES.includes(s.mode) && !held) { await q.setPermissionMode(s.mode); this.mode = s.mode; }
+      if (s.mode && s.mode !== this.mode && MODES.includes(s.mode) && !held) {
+        await q.setPermissionMode(s.mode); this.mode = s.mode;
+        for (const f of modeChanges) { try { f(this.id, s.mode); } catch { /* one listener never stops the run */ } }   // the sessions under it follow (wire.ts)
+      }
       const flags: Record<string, unknown> = {};
       if (s.effort && s.effort !== this.effort) { flags.effortLevel = s.effort; this.effort = s.effort; }
       if (s.fast !== undefined && s.fast !== this.fast) { flags.fastMode = s.fast; this.fast = s.fast; }

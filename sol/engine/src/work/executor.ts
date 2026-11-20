@@ -36,7 +36,8 @@ export const HOLD_MAX_MS = 10 * 60_000;
 export type ExecDeps = {
   store: Store;
   /** say to a session as a turn; `fresh` starts a new session with that id in that folder; worktree: a side copy of the repo at cwd */
-  say: (sessionId: string, text: string, fresh?: { cwd: string; worktree?: boolean }, how?: { free?: "ask" | "edits" }) => Promise<void>;
+  /** `how.from`: the session the ticket was opened from (its first session subscriber), whose own mode the executor starts on when that is bypass */
+  say: (sessionId: string, text: string, fresh?: { cwd: string; worktree?: boolean }, how?: { free?: "ask" | "edits"; from?: string }) => Promise<void>;
   run: (id: string) => RunLike | undefined;
   /** the session's transcript is still there (resumable) */
   exists: (id: string) => Promise<boolean>;
@@ -187,7 +188,7 @@ async function startCopy(t: Ticket, was?: { why: Past["why"]; noted: boolean }, 
   const n = nx ? t.past.length + 2 : t.executor?.n ?? t.past.length + 1;
   const copy = old && was ? { n, why: was.why } : undefined;
   stated.delete(id);
-  try { await d.say(id, FIRST_EXEC(t, d.store.brief(t.id, undefined, nx), { cwd, ...(worktree ? { side: true } : {}), ...(copy ? { copy } : {}) }), { cwd, ...(worktree ? { worktree: true } : {}) }, { free: t.mandate.free }); }
+  try { await d.say(id, FIRST_EXEC(t, d.store.brief(t.id, undefined, nx), { cwd, ...(worktree ? { side: true } : {}), ...(copy ? { copy } : {}) }), { cwd, ...(worktree ? { worktree: true } : {}) }, { free: t.mandate.free, from: openerOf(t) }); }
   catch (e) {
     takeTools(id);
     d.store.log(t.id, { by: "engine", kind: "executor", text: `copy ${n} did not start: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300), session: id });
@@ -203,8 +204,10 @@ async function startCopy(t: Ticket, was?: { why: Past["why"]; noted: boolean }, 
 async function sayTo(t: Ticket, text: string) {
   const d = need(), id = t.executor!.sessionId;
   giveTools(t.id, id); stated.delete(id);
-  await d.say(id, text, undefined, { free: t.mandate.free });
+  await d.say(id, text, undefined, { free: t.mandate.free, from: openerOf(t) });
 }
+/** the session a ticket was opened from: its first session subscriber (none for one the person opened) */
+const openerOf = (t: Ticket) => t.subs.find((s) => s.kind === "session")?.key;
 
 // ---- the door
 export async function open(from: string, a: OpenIn): Promise<Ticket> {

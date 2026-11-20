@@ -95,6 +95,14 @@ export function registerSource(ctx: Ctx, door: SourceDoor): boolean {
   doorsOf(ctx).set(door.id, door);
   return true;
 }
+/** the folders a sentence may name (#1686): every crumb of those registered and of the Things' folders, the person's own */
+export function foldersKnown(ctx: Ctx): string[] {
+  const out = new Set<string>();
+  const crumbs = (f: string) => { const names = f.split(" › "); for (let i = 1; i <= names.length; i++) out.add(names.slice(0, i).join(" › ")); };
+  for (const f of FOLDERS.get(ctx) ?? []) crumbs(f.name);   // a folder's parents are the person's folders too
+  for (const t of ctx.items.all()) if (!t.gone && t.folder && t.folder !== PROPOSAL_FOLDER) crumbs(t.folder);
+  return [...out];
+}
 /** a folder a Home knows (Places, later; tests). A second of the same name puts its own in place */
 export function registerFolder(ctx: Ctx, f: KnownFolder): void {
   FOLDERS.set(ctx, [...(FOLDERS.get(ctx) ?? []).filter((x) => x.name !== f.name), f]);
@@ -144,7 +152,7 @@ export function learnedOf(ctx: Ctx): LearnedLine[] {
 /** the whole of Sources now (R8: the same log and stores give the same message) */
 export function sourcesMsg(ctx: Ctx, done: SourcesDone | null): SourcesMsg {
   const now = ctx.now(), evs = ctx.log.all(), day0 = startOfDay(now), doors = doorList(ctx);
-  const text = policyText(ctx.home), sentences = READER(text, doors.map((d) => d.id));
+  const text = policyText(ctx.home), sentences = READER(text, doors.map((d) => d.id), foldersKnown(ctx));
   const rungs = new Map<SourceId, Rung>(SOURCE_IDS.map((id) => [id, rungOf(ctx, id)]));
   const sources: Source[] = doors.map((d) => {
     const h = d.health(now);
@@ -180,7 +188,7 @@ const isOpen = (t: Thing): boolean => !t.gone && t.state !== "done" && t.waitsOn
 /** the proposals put right: an open one no longer asked for is gone; with `open`, a source the paragraph asks higher
  *  than it is gets one, one rung up (an old Thing of that id is opened again). The sources it opened one for */
 function settle(ctx: Ctx, o: { cause: string; open: boolean }): SourceId[] {
-  const doors = doorsOf(ctx), sentences = READER(policyText(ctx.home), [...doors.keys()]);
+  const doors = doorsOf(ctx), sentences = READER(policyText(ctx.home), [...doors.keys()], foldersKnown(ctx));
   const wants = (id: SourceId): Rung | null => { const want = askedOf(sentences, id), cur = rungOf(ctx, id); return doors.has(id) && want && rungAt(want) > rungAt(cur) ? above(cur) : null; };
   for (const t of ctx.items.all()) {
     const m = PROPOSAL.exec(t.id);

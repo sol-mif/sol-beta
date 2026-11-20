@@ -7,7 +7,9 @@ import { homeChat } from "./migrate";
 import { sendUsage } from "./buttons/usage";
 import { heard, turnOf, type Offers } from "./homeSuggest";
 import { withFailure } from "./failed";
-import { markMine } from "./flag";   // #1224: Marco's own window, marked once by the engine's login
+import { markMine } from "./flag";
+import { tellAgents, agentsSwitchMsg } from "./agents/tell";   // #1702: the window's agents.mode reaches the engine
+import { agentsOn, subAgents } from "./agents/flag";   // #1224: Marco's own window, marked once by the engine's login
 import { tooLarge } from "./socket";
 
 // The wire to the engine, as written in sol/PROTOCOL.md.
@@ -300,6 +302,9 @@ export function useEngine() {
     if (!sessionRef.current && msgsRef.current.length === 0) applyDefaults(st, st.defaults.seat);
   }, [applyDefaults]);
 
+  // #1702: each turn of agents.mode (its row in Settings, another window, the version learned) is said to the engine at once
+  useEffect(() => tellAgents(send, agentsOn, subAgents), [send]);
+
   useEffect(() => {
     const L = link(ENGINE);
     linkRef.current = L;
@@ -323,6 +328,7 @@ export function useEngine() {
       // this hook listened, and Settings then called a current engine "older than this window"
       send({ type: "settings.get" });
       send({ type: "arrange.get" });
+      send(agentsSwitchMsg(agentsOn()));   // agents.mode as this window reads it, at every up (#1702); its turns: below
       interrupting.current = 0;
       const was = owed.current;
       owed.current = false;

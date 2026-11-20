@@ -22,7 +22,7 @@ export const REACH_TOOLS: { name: string; description: string; shape: z.ZodRawSh
       "(its release, branch, commits, open work, hand-overs, drift, its repository's files), usually within a minute; this call waits " +
       "for the answer. For where something stands or what they built, not for work (hand_over is for work). Kept in the team's Agents' room.",
     shape: {
-      to: z.string().describe("the teammate's GitHub login, e.g. franktsai2008-eng"),
+      to: z.string().describe("the teammate's GitHub login, e.g. octocat"),
       question: z.string().describe("the question, short and plain"),
       about: z.string().optional().describe("what it is about: an issue (#1150), a PR, a release"),
     },

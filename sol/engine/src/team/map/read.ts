@@ -1,14 +1,21 @@
 // The map's live records (#1433): the registry, git's last 72 h, the room's open PRs with their files, its open calls
-// and its newest notes, read for build.ts. The setup is the project's own file, .sol/cowork-map.json; with none, the map
-// says so and draws nothing (a team's setup is written for it, never guessed here). One read is kept five minutes.
+// and its newest notes, read for build.ts. The setup: with the switch map.grown off, the project's own file,
+// .sol/cowork-map.json, and with none the map says so and draws nothing. With it on (#1661), the setup grown from the
+// team's members, the registry's owners, CODEOWNERS and GitHub (grow.ts), with the project's file and then the
+// person's own (~/.sol/map.json) laid over it key by key. One read is kept five minutes.
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { mapGrown } from "../../settings.js";
 import { remoteOf } from "../letin.js";
+import { leads } from "../leads.js";
+import { refreshMembers, teamMembers } from "../members.js";
 import { runners } from "../record.js";
 import { readRegistry, recordsDir } from "../../work/systems.js";
 import { pathIndex, systemsOf } from "../../work/systemsLive.js";
 import { changesOf, commitsOf, wholeOf } from "../../work/systemsWhole.js";
 import { buildSpec } from "./build.js";
+import { growSetup, layOver } from "./grow.js";
 import type { MapInput, MapSpec, Setup } from "./spec.js";
 
 export const KEEP_MS = 5 * 60_000;
@@ -17,6 +24,18 @@ const WINDOW = 72;
 /** the setup sits beside the project's rhythm (.sol/rhythm.json), at the top of the registry's checkout */
 const topOf = (dir: string) => dirname(dirname(dirname(dir)));
 export const setupPath = (dir = recordsDir()) => join(topOf(dir), ".sol", "cowork-map.json");
+/** the person's own setup, laid over the rest when the map is grown: theirs, so an update never writes it */
+export const ownPath = () => process.env.SOL_MAP_OWN || join(homedir(), ".sol", "map.json");
+/** a JSON file's value, undefined when it is not there; a file that does not read says why */
+const readJson = (file: string): { v?: unknown; error?: string } => {
+  if (!existsSync(file)) return {};
+  try { return { v: JSON.parse(readFileSync(file, "utf8")) }; } catch (e) { return { error: (e as Error).message }; }
+};
+/** the name GitHub knows a login by, "" when it has none or gh cannot say */
+const nameOf = (login: string) => runners.board(["api", `users/${login}`, "-q", ".name"]).then((x) => {
+  const n = String(x ?? "").trim();
+  return n && n !== "null" && !/^[[{]/.test(n) ? n.slice(0, 60) : "";
+}).catch(() => "");
 /** me: the login of the person this engine reads as (their seat on the map), "" when gh cannot say */
 export type MapRead = { spec?: MapSpec; me?: string; error?: string; at: number };
 
@@ -42,16 +61,31 @@ export function readMap(refresh = false, dir = recordsDir()): Promise<MapRead> {
 }
 
 async function once(dir: string): Promise<MapRead> {
-  const at = Date.now(), file = setupPath(dir);
-  if (!existsSync(file)) return { at, error: "this project has no map setup yet (.sol/cowork-map.json)" };
-  let setup: Setup;
-  try { setup = JSON.parse(readFileSync(file, "utf8")); } catch (e) { return { at, error: `the map setup does not read: ${(e as Error).message}` }; }
+  const at = Date.now(), file = setupPath(dir), grown = mapGrown();
+  const project = readJson(file);
+  if (project.error) return { at, error: `the map setup does not read: ${project.error}` };
+  if (!grown && project.v === undefined) return { at, error: "this project has no map setup yet (.sol/cowork-map.json)" };
   const { recs } = readRegistry(dir), idx = pathIndex(recs);
   const parts = [...recs.values()].map((r) => ({ id: r.id, name: r.name, state: r.state, ...(r.owner ? { owner: r.owner } : {}), ...(r.about ? { about: r.about } : {}) }));
   let changes: MapInput["changes"] = [];
   try { changes = changesOf(await commitsOf(dir), idx, wholeOf(recs).links).map((c) => ({ sha: c.sha, at: c.at, author: c.author, agent: c.agent, subject: c.subject, systems: c.systems })); } catch { /* no git here */ }
   const repo = await remoteOf(topOf(dir)).catch(() => "");
   const me = await runners.board(["api", "user", "-q", ".login"]).then((x) => x.trim()).catch(() => "");
+  let setup = project.v as Setup;
+  if (grown) {
+    const members = await refreshMembers().catch(() => teamMembers());
+    let codeowners = "";
+    try { codeowners = readFileSync(join(topOf(dir), ".github", "CODEOWNERS"), "utf8"); } catch { /* no leads named */ }
+    const g = { parts, members, leads: leads(codeowners), me: /^[A-Za-z0-9-]{1,39}$/.test(me) ? me : "", own: ownPath() };
+    // the names GitHub knows the people by, so a commit's git name finds its person (a few at most, kept with the read);
+    // not asked when the project's own setup names its people, which then stand instead
+    const named = Array.isArray((project.v as Setup | undefined)?.people) ? []
+      : await Promise.all(growSetup(g).people.slice(0, 20).flatMap((p) => p.logins.map(async (l) => [l, await nameOf(l)] as const)));
+    const own = readJson(ownPath());
+    setup = layOver(layOver(growSetup({ ...g, names: Object.fromEntries(named.filter(([, n]) => n)) }), project.v), own.v);
+    // the person's own file that does not read is said on the spec, so their AI sees why its change did not take
+    if (own.error) setup = { ...setup, about: { ...(setup.about ?? {}), own_error: own.error } };
+  }
   let prs: MapInput["prs"] = [], issues: MapInput["issues"] = [], notes: MapInput["notes"] = [];
   const cut: NonNullable<MapSpec["cut"]> = {};
   if (repo) {

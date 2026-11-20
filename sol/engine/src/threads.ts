@@ -13,6 +13,7 @@ import { join, basename } from "node:path";
 import { getTitles } from "./titles.js";
 import { twinIn } from "./home.js";
 import { moved } from "./work/state.js";
+import { agentsOn } from "./agent/switch.js";   // agents.mode off: a folder agent's thread is a chat again (#18)
 
 export type Seat = "codex" | "claude";
 export type Thread = { seat: Seat; sessionId: string; title: string; updatedAt: string };
@@ -101,7 +102,8 @@ export const SOL_INTERNAL = "sol_internal";
  *  even one started before its turns were marked SOL_INTERNAL (its first line keeps the mark it was started with) */
 export const AGENT_OPENING = "You are the agent of the folder ";
 /** a thread that is Sol's own, not one the person started (pure): marked internal, or a folder agent's by how it opens */
-export const solsOwn = (t: Pick<CodexTalk, "originator" | "title">) => t.originator === SOL_INTERNAL || t.title.startsWith(AGENT_OPENING);
+export const solsOwn = (t: Pick<CodexTalk, "originator" | "title">, agents = agentsOn()) =>
+  t.title.startsWith(AGENT_OPENING) ? agents : t.originator === SOL_INTERNAL;   // agents.mode off (#18): a folder agent's thread is a chat again
 /** the variable Codex reads its originator from (the SDK sets it to codex_sdk_ts when it is not set) */
 export const ORIGINATOR_ENV = "CODEX_INTERNAL_ORIGINATOR_OVERRIDE";
 /** the environment a Codex for an internal turn runs with: this process's own, the originator Sol's internal one

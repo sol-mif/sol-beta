@@ -68,7 +68,8 @@ import { track } from "../track.js";
 import { kindsOf } from "./meta/kinds.js";
 import { placesOf } from "./meta/places.js";
 import type { Ask } from "./meta/jev.js";
-import { IDLE_DAYS, LOOK_AGAIN_MS, STUCK_RUNS } from "./meta/numbers.js";
+import { IDLE_DAYS, LOOK_AGAIN_MS, OWN_PER_DAY, STUCK_RUNS } from "./meta/numbers.js";
+import { cappedSay, ownPerDay } from "./meta/own.js";
 import { asksOf, shelvesOf, type WorkIn } from "./meta/asks.js";
 import { datesOf, nextFire, type Trigger, type Trust } from "./meta/when.js";
 import type { Made } from "./meta/traces.js";
@@ -575,7 +576,7 @@ async function firstGrouping(a: Host, ask: Ask): Promise<AgentsFile> {
   let blind = false;
   const seen: Ask = async (q, x, y) => { const p = await ask(q, x, y); if (p === null && q === "rule") blind = true; return p; };
   // Jev null on one place's pairs: the person's own model is asked once about all of them (a.d.say; none: code's links)
-  const g = await group(folders, at, seen, { kinds: async () => kindsOf(placesOf(homeOf(a)).places, ask), ...(a.d.say ? { say: a.d.say } : {}) });
+  const g = await group(folders, at, seen, { kinds: async () => kindsOf(placesOf(homeOf(a)).places, ask), ...(a.d.say ? { say: cappedSay(a.d.say, { home: homeOf(a), now: () => nowOf(a) }) } : {}) });
   // the names are code's, in the person's words (meta/names.ts): no Sol turn names anything, so nothing waits on one
   const key = ruleSetKey(folders);
   // Jev could not answer: the late look waits LOOK_AGAIN_MS too, so a face re-reading on agents.changed cannot loop
@@ -620,7 +621,7 @@ export async function lookLate(a: Host, ask: Ask): Promise<AgentsFile | null> {
   // inside each place: two steps Jev puts in the half band or over are asked, never joined (meta/chains.ts). Jev null:
   // the person's own model asks about them, once per rule set (`saidOn`); across places nothing is asked without Jev
   const order = (u: RuleIn) => rules.findIndex((r) => same(r, u));
-  const turn: { say?: Say; said?: boolean } = a.d.say && f.saidOn !== key ? { say: a.d.say } : {};
+  const turn: { say?: Say; said?: boolean } = a.d.say && f.saidOn !== key ? { say: cappedSay(a.d.say, { home, now: () => nowOf(a) }) } : {};
   const steps = await stepAsksLate([...units].sort((x, y) => order(x) - order(y)), blind ? async () => null : seen, skip, turn);
   if (blind && !turn.said) return f;
   // the file again, as it is now (the keeper may have written while Jev answered)
@@ -813,10 +814,14 @@ export function list(a: Host) {
     regroup: f.regroup?.state === "open" ? { before: f.agents.length, after: f.regroup.agents.length, at: f.regroup.at } : null,
   }, now);
   const shelves = shelvesOf(agents, new Set(agents.filter((x) => x.stucks.length || x.asks.length).map((x) => x.id)));
-  return { ok: true, agents, folderRules, offers: f.offers.filter((o) => o.state === "open").length, offersKey: offersKey(f.offers), joins, asks, shelves, changes: f.changes.slice(-20).reverse(), ...(f.met ? { met: f.met } : {}), ...(intro ? { intro } : {}), ...(f.jevNote && !f.jevNote.seen ? { jevNote: JEV_NOTE } : {}) };
+  return { ok: true, agents, folderRules, offers: f.offers.filter((o) => o.state === "open").length, offersKey: offersKey(f.offers), joins, asks, shelves, changes: f.changes.slice(-20).reverse(), ...(f.met ? { met: f.met } : {}), ...(intro ? { intro } : {}), ...(f.jevNote && !f.jevNote.seen ? { jevNote: jevNote() } : {}) };
 }
-/** the floor's one line when the person's own model asked in Jev's place: said once (agents.noted) */
-export const JEV_NOTE = "Your own model asked these. With Jev, Sol would ask you fewer: put its key in ~/.config/sol/jev.env as JEV_API_KEY.";
+/** the floor's one line when the person's own model asked in Jev's place: no key to paste, the cheapest model, a day's
+ *  cap (meta/own.ts OWN_PER_DAY, #1476); said once (agents.noted) */
+export const jevNote = (n: number = ownPerDay()): string => n > 0
+  ? `No Jev needed: Sol asks the cheapest model in your own AI instead, at most ${n} times a day. Tell Sol a smaller number to make it ask less.`
+  : "No Jev here, and you asked Sol not to use your own AI for this: code decides alone.";
+export const JEV_NOTE = jevNote(OWN_PER_DAY);
 /** agents.noted: the line about Jev was read; it is not said again */
 export function noted(a: Host) {
   const f = ensure(a);

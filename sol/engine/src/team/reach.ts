@@ -14,7 +14,8 @@
 // Who said it is the hub's word (`from.login`), never the payload's. A reply counts only from the one the hand or offer
 // was for. Who holds what (holdsOf) is the thread folded, so any engine reads the same record.
 //
-// Consent: an ask from a teammate (a person of docs/people, or anyone in my room when the checkout names none) is
+// Consent: an ask from a teammate (a member of the group in use: a GitHub org's or a cloud group's list, team/agents.ts
+// membersNow; never the team's own people list, which ships to nobody, #1692) is
 // answered only once this Sol's person turned answering on (#1224; it was on by default), and then read-only: a bare session held exactly as #1154's
 // woken ones (the `woken: "others"` mark: none of my settings, none of Sol's tools, ask-first mode, an empty folder)
 // with three tools held to that one ask: this Sol's state (release, branch, HEAD, open work, drift), a committed file
@@ -148,11 +149,13 @@ export function turnOnWords(me: string, to: string, why?: string): { what: strin
 /** the counts an answer is held to */
 export type Counts = { day: string; by: Record<string, number>; total: number };
 const today = (now: number) => localDay(now);   // the person's day, not UTC's (#1298)
-/** may an ask from `from` be answered now (pure): null yes, else why not. `team`: the team's logins (none: anyone in my room) */
-export function mayAnswer(o: { from: string; me: string; team: string[]; on: boolean; counts: Counts; busy: number; now: number }): string | null {
+/** may an ask from `from` be answered now (pure): null yes, else why not. `team`: my group's members (none listed: anyone
+ *  in my room; null: who they are cannot be read now, so nobody) */
+export function mayAnswer(o: { from: string; me: string; team: string[] | null; on: boolean; counts: Counts; busy: number; now: number }): string | null {
   if (!o.on) return `${o.me}'s agent ${OFF_WHY}`;
   if (same(o.from, o.me)) return "an ask to my own agent is not answered here";
-  if (o.team.length && !o.team.some((t) => same(t, o.from))) return `${o.from} is not on the team (docs/people)`;
+  if (!o.team) return `who is in ${o.me}'s group cannot be read right now (GitHub or the cloud did not answer); ask again in a minute`;
+  if (o.team.length && !o.team.some((t) => same(t, o.from))) return `${o.from} is not a member of ${o.me}'s group`;
   const c = o.counts.day === today(o.now) ? o.counts : { day: today(o.now), by: {}, total: 0 };
   if ((c.by[o.from.toLowerCase()] ?? 0) >= ASKS_A_PERSON) return `${o.from} asked ${ASKS_A_PERSON} times today already; ask ${o.me} directly`;
   if (c.total >= ASKS_A_DAY) return `${o.me}'s agent answered ${ASKS_A_DAY} asks today already`;
@@ -268,8 +271,8 @@ export type Given = { name: string; description: string; shape: Record<string, z
 export type ReachDeps = {
   /** who I am on the hub (relay.ts hubLogin) */
   me: () => string;
-  /** the team's logins (docs/people); none: anyone in my room */
-  team: () => string[];
+  /** my group's members (the group in use, team/agents.ts membersNow); none: anyone in my room; null: cannot be read now */
+  team: () => string[] | null | Promise<string[] | null>;
   send: (payload: Record<string, unknown>) => boolean;
   /** start the answering session, marked woken by others before it starts, in `cwd` */
   say: (sessionId: string, text: string, cwd: string) => Promise<void>;
@@ -385,7 +388,8 @@ function keepAsked(id: string, sessionId?: string) {
 /** an ask for my agent: refused with the reason, or answered in a bare session (the module's top) */
 async function answer(a: Ask) {
   const d = D!;
-  const no = mayAnswer({ from: a.from, me: d.me(), team: d.team(), on: answering(), counts: kept.counts, busy, now: now() });
+  const team = await Promise.resolve(d.team()).catch(() => null);
+  const no = mayAnswer({ from: a.from, me: d.me(), team, on: answering(), counts: kept.counts, busy, now: now() });
   if (no) { say({ type: "refused", id: randomUUID(), re: a.id, to: a.from, why: no }); return; }
   kept = { ...kept, counts: counted(kept.counts, a.from, now()) };
   save();   // counted before the session starts: a crash in it still used the answer
@@ -439,7 +443,7 @@ const who = (v: unknown) => (typeof v === "string" ? v.trim().replace(/^@/, "").
 export async function ask(to: string, question: string, about?: string, wait = WAIT_MS, sessionId?: string): Promise<string> {
   if (!D) return "reach is not started in this Sol";
   const t = who(to), q = words(question, TEXT_MAX);
-  if (!LOGIN.test(t)) return "refused: `to` is a teammate's login, like franktsai2008-eng";
+  if (!LOGIN.test(t)) return "refused: `to` is a teammate's login, like octocat";
   if (same(t, D.me())) return "refused: that is your own agent";
   if (!q) return "refused: a question needs words";
   const id = randomUUID();

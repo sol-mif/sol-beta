@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { answers, artifactOfUrl, atOptions, atQuery, colourIndex, nameOf, peopleOf, pickAt, reviewOf, type ChatLine, type Member } from "./cowork/whole/room-chat.ts";
+import { alone, answers, artifactOfUrl, askMine, atOptions, atQuery, colourIndex, nameOf, namesMyAgent, peopleOf, pickAt, reviewOf, type ChatLine, type Member } from "./cowork/whole/room-chat.ts";
 
 const M: Member[] = ["a", "b", "c"].flatMap((login) => [{ login, agent: false }, { login, agent: true }]);
 
@@ -22,11 +22,29 @@ test("the @ completion: what is typed before the caret, the members it may name 
   assert.equal(atQuery("hi @b"), "b");
   assert.equal(atQuery("hi @b's ag"), "b's ag");
   assert.equal(atQuery("mail x@b"), null, "an address is not an @");
-  assert.deepEqual(atOptions(M, "a", "").map(nameOf), ["b", "b's agent", "c", "c's agent"], "never me");
+  assert.deepEqual(atOptions(M, "a", "").map(nameOf), ["a's agent", "b", "b's agent", "c", "c's agent"], "my own agent, never me");
   assert.deepEqual(atOptions(M, "a", "b's").map(nameOf), ["b's agent"]);
   assert.deepEqual(atOptions(M, "a", "b’s a").map(nameOf), ["b's agent"]);
   const r = pickAt("ok @b can you", 5, { login: "b", agent: true });
   assert.deepEqual(r, { text: "ok @b's agent  can you", caret: 14 });
+});
+
+test("alone at a table (#1677): my own agent is in the @ list, a line naming it is handed to my AI, nothing else is", () => {
+  const ME: Member[] = [{ login: "a", agent: false }, { login: "a", agent: true }];
+  assert.equal(alone(ME, "a"), true);
+  assert.equal(alone([], "a"), true);
+  assert.equal(alone(M, "a"), false);
+  assert.deepEqual(atOptions(ME, "a", "").map(nameOf), ["a's agent"], "someone to @ when alone");
+  assert.equal(namesMyAgent("@a's agent what is open?", "a"), true);
+  assert.equal(namesMyAgent("hey @A’s agent, look", "a"), true);
+  assert.equal(namesMyAgent("@a can you look", "a"), false, "me as a person is not my agent");
+  assert.equal(namesMyAgent("@ab's agent look", "a"), false);
+  assert.equal(namesMyAgent("```\n@a's agent\n```", "a"), false, "a code fence names nobody");
+  assert.equal(namesMyAgent("@b's agent look", "a"), false);
+  const w = askMine("@a's agent what is open?", "sf trip");
+  assert.match(w, /@a's agent what is open\?/);
+  assert.match(w, /sf trip's room/);
+  assert.match(w, /talk tool/);
 });
 
 test("an address made an artifact: a PR, its diff, a commit, a file; anything else is not one", () => {

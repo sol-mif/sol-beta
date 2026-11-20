@@ -14,7 +14,8 @@ import { reachTools, reachRoom } from "../settings.js";
 import { getTeam, wakeLineOn } from "../team/settings.js";
 import { holdsOf } from "../team/reach.js";
 import { onRelay, sendRelay, hubLogin } from "../team/relay.js";
-import { peopleOf, runsNow } from "../team/runs.js";
+import { runsNow } from "../team/runs.js";
+import { membersNow } from "../team/agents.js";
 import { driftFor } from "../team/drift.js";
 import { versionNow } from "../version.js";
 import { quietGh } from "../quiet.js";
@@ -115,7 +116,9 @@ export default function (p: Parts) {
     const home = join(STATE_DIR, "reach", "work");
     startReach({
       me: () => hubLogin(),
-      team: () => peopleOf(TOP).map((x) => x.login),
+      // a teammate is a member of my group in use (#1692): its GitHub org's or cloud group's list; no group, or a list
+      // Sol cannot read or that is empty, lets nobody ask (there is nobody to hold the askers to)
+      team: async () => { const r = await membersNow(true); return r.source && r.list?.length ? r.list : null; },
       send: (payload) => sendRelay("agents", payload, true),
       say: async (sessionId, text, cwd) => {
         mark(sessionId, { woken: "others" });   // before its first run: bare, as #1151's woken by another person
@@ -132,12 +135,9 @@ export default function (p: Parts) {
       home,
       late: (sid, e, of) => { void late(sid, e, of); },
       arrived,
-      // my yes to the one question (#1313): their agents may ask mine, in the group I answered for, while it is the
-      // GitHub group with an org it was asked in (wake.ts groupYes), and only with a team list to hold the askers to
-      asked: () => {
-        const t = getTeam(), room = t.rooms.find((r) => r.id === t.room);
-        return wakeLineOn(t.wakeAsk, t.room, "asks") && room?.provider === "github" && !!room.org && peopleOf(TOP).length > 0;
-      },
+      // my yes to the one question (#1313), or its row in Settings: their agents may ask mine, in the group I answered
+      // for. Who counts as a member is read at each ask (team, above), never the team's own people list (#1692)
+      asked: () => { const t = getTeam(); return wakeLineOn(t.wakeAsk, t.room, "asks"); },
     });
     onRelay("agents", (m) => heard(m));
   });

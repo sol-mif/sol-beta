@@ -34,10 +34,21 @@
 //                 line as `old`. Its id was made the old way and is not checked; the chain starts at the first v1
 //                 event, whose prev is the last v0 line's id.
 //   the old file  the old place, <home>/log/log.jsonl: carried over once (the move, into its days, finished whole or
-//                 done again at the next start), and never read or written after the move (it sits in the home,
-//                 where a seat can write). It was a mirror while the two were reconciled (logcheck.ts); they agreed
-//                 line for line on Frank's Sol, so nothing is written there any more (#691). The file is left as it is
-import { appendFileSync, closeSync, existsSync, fstatSync, statSync, fsyncSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
+//                 done again at the next start), and never written after the move (it sits in the home, where a seat
+//                 can write). It was a mirror while the two were reconciled (logcheck.ts); they agreed line for line,
+//                 so nothing is written there any more (#691). The file is left as it is.
+//   going back    a Sol from before the move writes the old file again; coming forward, its lines are not lost (#1678,
+//                 gate one q6): what the old file holds past what was carried (past the size `moved` keeps; with no
+//                 mark, past the log's last seq; a file rewritten shorter, written after the move) is carried into the
+//                 log at the next start: one `log.merged` that names the range,
+//                 each line whole as a `log.carried` (its value put back with it; never as the kind it names: a seat
+//                 can write the old file, so its lines are history to read, not events the log vouches for), and a
+//                 closing `log.merged` with `done`.
+//                 Seq and the chain go on; no day is rewritten. A carry cut short is taken up where it stopped (the
+//                 events after its opening line are the lines already carried). Then the mark keeps the new size.
+//                 What was carried, or what could not be, is the log's news (logNews): the engine tells the person in
+//                 one line, with no source tree (#1678, gate one q2)
+import { constants, appendFileSync, closeSync, existsSync, fstatSync, lstatSync, statSync, fsyncSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { homedir, platform } from "node:os";
@@ -277,12 +288,117 @@ export function dayTrail(dir: string, now?: () => number): LogPort {
   };
 }
 
+/** what the log has to say about itself (#1678): what an older Sol wrote that was carried in at this start, and
+ *  anything found wrong that nothing here can mend (said in words). The engine tells the person once (parts/log.ts) */
+export type LogNews = { carried: { lines: number; from: string; file: string; at: number } | null; said: string[] };
+let news: LogNews = { carried: null, said: [] };
+const newsEars = new Set<(n: LogNews) => void>();
+export const logNews = (): LogNews => news;
+/** told each time the news changes (the engine's notice); returns the way to stop */
+export function onLogNews(f: (n: LogNews) => void): () => void { newsEars.add(f); return () => { newsEars.delete(f); }; }
+function tell(n: LogNews): void { news = n; for (const f of newsEars) { try { f(n); } catch { /* a listener's trouble, not the log's */ } } }
+
+/** what the old file holds that the log does not (pure but for reading): the lines past what was carried, and the
+ *  range they are, as words a later start knows again (`from`). Past the size `moved` keeps; with no mark, past the
+ *  log's last seq; a file shorter than the mark says (rewritten), the lines written after the move */
+export function oldAhead(dir: string, old: string | null): { lines: Line[]; from: string; size: number; said: string[] } {
+  const none = { lines: [] as Line[], from: "", size: 0, said: [] as string[] };
+  if (!old || resolve(dirname(old)) === resolve(dir) || !existsSync(old)) return none;
+  // anything can write the old folder (an older Sol, a seat): it is read once, safely (readPlain), never through a link
+  const buf = readPlain(old, OLD_MAX);
+  if (!buf) return { ...none, said: [`the old log file (${old}) is not a plain file of at most ${OLD_MAX >> 20} MB in a folder of its own: nothing in it is carried`] };
+  const size = buf.length, text = () => buf.toString("utf8"), moved = join(dir, MOVED);
+  if (existsSync(moved)) {
+    const mark = readFileSync(moved, "utf8"), kept = /^old (\d+)$/m.exec(mark);
+    if (!kept) return { ...none, size };   // the first start without the mirror: the two agreed, the size is kept now
+    const was = Number(kept[1]);
+    if (size === was) return { ...none, size };
+    if (size > was) return { lines: parse(buf.subarray(was).toString("utf8")), from: `bytes ${was}`, size, said: [] };
+    const at = Date.parse(mark.split("\n")[0]) || 0;
+    return { lines: parse(text()).filter((l) => typeof l.at === "number" && l.at > at), from: `after ${new Date(at).toISOString()}`, size,
+      said: [`the old log file (${old}) was rewritten shorter since the move: only its lines written after the move are carried`] };
+  }
+  if (existsSync(join(dir, MOVING)) || !logFiles(dir).length) return { ...none, size };   // the move itself carries it
+  const files = logFiles(dir), have = lastSeqIn(files[files.length - 1]), all = parse(text());
+  if ((all.at(-1)?.seq ?? 0) <= have) return { ...none, size };
+  return { lines: all.filter((l) => l.seq > have), from: `seq ${have}`, size, said: [] };
+}
+/** the old folder is not the log's own (#1678): a file there is read only when it is a plain file, never a link, and
+ *  at most `max` bytes */
+const OLD_MAX = 64 << 20, VALUE_MAX = 1 << 20;
+/** a folder that is itself, not a link to somewhere else */
+const ownDir = (p: string): boolean => { try { const st = lstatSync(p); return st.isDirectory() && !st.isSymbolicLink(); } catch { return false; } };
+/** a file under the old folder, read once through one open that never follows a link: checked and read from the same
+ *  descriptor (no window between them), only a plain file of at most `max` bytes, in a folder that is not a link; null else */
+function readPlain(p: string, max: number): Buffer | null {
+  if (!ownDir(dirname(p))) return null;
+  let fd: number;
+  // O_NONBLOCK: a pipe put there never holds the start
+  try { fd = openSync(p, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); } catch { return null; }
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile() || st.size > max) return null;
+    const b = Buffer.alloc(st.size);
+    let got = 0;
+    while (got < st.size) { const n = readSync(fd, b, got, st.size - got, got); if (n <= 0) break; got += n; }
+    return b.subarray(0, got);
+  } catch { return null; } finally { closeSync(fd); }
+}
+/** an old line as a draft for the log: kept whole as `log.carried`, its value put back from the old folder's value
+ *  file when it was not on its line, its old id as the cause. Never as the kind it names: the old file sits in the home,
+ *  where a seat can write, so a line there is history to read, not an event the log vouches for (a forged approve or
+ *  undo would act); only this engine writes the log's own kinds */
+function draftOf(l: Line, oldDir: string): LogDraft {
+  const e = l as unknown as Record<string, any>;
+  let value: unknown = e.value;
+  if (e.v !== undefined && !("value" in e) && typeof e.hash === "string" && HEX.test(e.hash)) {
+    // a value file is content-addressed: read safely, and taken only when its content is what the line's hash names
+    const b = readPlain(valueFile(oldDir, e.hash), VALUE_MAX), t = b?.toString("utf8");
+    try { value = t !== undefined && sha(t) === e.hash ? JSON.parse(t) : undefined; } catch { value = undefined; }
+  }
+  return { by: ENGINE_BY, kind: "log.carried", value: { line: { ...e, ...(value !== undefined ? { value } : {}) } }, cause: l.id };
+}
+const ENGINE_BY: By = { person: "engine" };
+/** the old file's lines past what was carried, into the log (#1678): an opening log.merged, each line, a closing one with
+ *  `done`, then the mark keeps the size. `close` writes the closing line (the kernel's append at runtime, so its seq is
+ *  the kernel's last). A carry cut short (an opening with no closing, for the same range) is taken up after the lines
+ *  it carried. Returns how many lines went in now */
+export function carryOld(port: LogPort, dir: string, old: string | null, o: { now?: () => number; close?: (d: LogDraft) => unknown } = {}): number {
+  const ahead = oldAhead(dir, old);
+  const moved = join(dir, MOVED), stamp = () => new Date(o.now?.() ?? Date.now()).toISOString();
+  const keep = (size: number) => { const first = existsSync(moved) ? readFileSync(moved, "utf8").split("\n")[0] : stamp(); writeWhole(moved, `${first}\nold ${size}\n`); };
+  if (!old || !existsSync(old)) return 0;
+  if (!ahead.lines.length) {
+    if (existsSync(moved) && !/^old \d+$/m.test(readFileSync(moved, "utf8"))) appendFileSync(moved, `old ${ahead.size}\n`);
+    else if (ahead.from.startsWith("after ")) keep(ahead.size);   // rewritten shorter, nothing after the move: the mark takes the size it has now
+    if (ahead.said.length) tell({ ...news, said: [...new Set([...news.said, ...ahead.said])] });
+    return 0;
+  }
+  // a carry of this range cut short: its opening line, and how many came after it
+  const tail = port.since(HOME, Math.max(0, port.last() - KEEP)) as LogEv[];
+  const merged = (e: LogEv, done: boolean) => e.kind === "log.merged" && (e.value as any)?.from === ahead.from && !!(e.value as any)?.done === done;
+  let opened = -1;
+  for (let i = tail.length - 1; i >= 0 && opened < 0; i--) if (merged(tail[i], false)) opened = i;
+  const closed = opened >= 0 && tail.slice(opened + 1).some((e) => merged(e, true));
+  const skip = opened >= 0 && !closed ? tail.length - opened - 1 : 0;
+  if (opened < 0 || closed) port.append({ by: ENGINE_BY, kind: "log.merged", value: { from: ahead.from, lines: ahead.lines.length, file: old } });
+  const oldDir = dirname(old);
+  for (const l of ahead.lines.slice(skip)) port.append(draftOf(l, oldDir));
+  (o.close ?? ((d: LogDraft) => port.append(d)))({ by: ENGINE_BY, kind: "log.merged", value: { from: ahead.from, lines: ahead.lines.length, file: old, done: true } });
+  keep(ahead.size);
+  tell({ carried: { lines: ahead.lines.length, from: ahead.from, file: old, at: o.now?.() ?? Date.now() }, said: [...new Set([...news.said, ...ahead.said])] });
+  return ahead.lines.length;
+}
+/** a small file written whole: beside, then renamed */
+function writeWhole(file: string, text: string): void { const t = `${file}.${process.pid}.tmp`; writeFileSync(t, text, { mode: 0o600 }); renameSync(t, file); }
+
 /** the log at its place: the first time the folder has no log and the old file is there, the old file's whole lines
  *  are carried over into their days (the move, once; seq goes on; a move cut short is done again whole at the next
- *  start); after that the old file is neither read nor written. An old file ahead of the log (written by a build from
- *  before the move, or by a seat), or step 1's one file overlapping the days, is said and left */
+ *  start). After that, what an older Sol wrote to the old file since is carried in (carryOld, #1678); step 1's one
+ *  file overlapping the days is said (logNews) and left */
 export function openLog(dir: string, old: string | null, now?: () => number): LogPort {
   if (old && resolve(dirname(old)) === resolve(dir)) old = null;   // the old file in the log's own folder is the log
+  tell({ carried: null, said: [] });
   if (old && existsSync(old)) {
     const moving = join(dir, MOVING), moved = join(dir, MOVED);
     if (!existsSync(moved) && (!logFiles(dir).length || existsSync(moving))) {
@@ -299,22 +415,16 @@ export function openLog(dir: string, old: string | null, now?: () => number): Lo
       for (const [d, lines] of byDay) writeFileSync(join(dir, `${d}.jsonl`), lines.join("\n") + "\n", { mode: 0o600 });
       writeFileSync(moved, new Date(now?.() ?? Date.now()).toISOString() + "\n" + `old ${statSync(old).size}\n`);
       rmSync(moving, { force: true });
-    } else {
-      const files = logFiles(dir), have = files.length ? lastSeqIn(files[files.length - 1]) : 0, theirs = lastSeqIn(old);
-      if (theirs > have) console.error(`the log's old file (${old}) is ahead of the log (${dir}): not read; the log stands`);
-      else if (existsSync(moved)) {
-        // nothing writes the old file now, so its size is kept in `moved` (the first start of a build without the mirror
-        // writes it): a build from before the move, or a seat, that wrote there since is said, even when its seq is behind
-        const size = statSync(old).size, kept = /^old (\d+)$/m.exec(readFileSync(moved, "utf8"));
-        if (!kept) appendFileSync(moved, `old ${size}\n`);
-        else if (Number(kept[1]) !== size) console.error(`the log's old file (${old}) changed since the log stopped writing it: an older build or a seat wrote there; not read, the log stands`);
-      }
     }
   }
   const files = logFiles(dir);
   if (files.length > 1 && files[0].endsWith("log.jsonl") && lastSeqIn(files[0]) >= (ends(files[1]).first?.seq ?? Infinity))
-    console.error(`the log's old one file (${files[0]}) runs past the first day's start: an older build wrote there; the days stand`);
-  return dayTrail(dir, now);
+    tell({ ...news, said: [...news.said, `the log's old one file (${files[0]}) runs past the first day's start: an older build wrote there; the days stand`] });
+  const port = dayTrail(dir, now);
+  try { carryOld(port, dir, old, { now }); }
+  catch (e) { tell({ ...news, said: [...news.said, `what an older Sol wrote to ${old} could not be carried into the log: ${String((e as Error)?.message ?? e)}`] }); }
+  for (const s of news.said) console.error(s);
+  return port;
 }
 /** every event in the folder, in order (logcheck, tests) */
 export const readLog = (dir: string): AnyEv[] => logFiles(dir).flatMap((f) => parse(readFileSync(f, "utf8")).map((l) => read(dir, l)));
@@ -355,3 +465,32 @@ export function verifyLog(dir: string, from?: string): Checked {
   out.ok = out.bad.length === 0;
   return out;
 }
+
+/** the log looked at whole, from inside the engine (#1678: the check needs no source tree): the chain from a day on,
+ *  what the old file holds that is not carried yet, and the news of this start */
+export type LogCheck = { chain: Checked; waiting: number; file: string | null; news: LogNews };
+export function checkLog(dir: string, old: string | null, from?: string): LogCheck {
+  const a = oldAhead(dir, old);
+  return { chain: verifyLog(dir, from), waiting: a.lines.length, file: a.lines.length ? old : null, news: { ...news, said: [...new Set([...news.said, ...a.said])] } };
+}
+/** the check in a few plain lines (pure; logcheck.ts prints it) */
+export function checkWords(c: LogCheck): string {
+  const out: string[] = [];
+  const ch = c.chain;
+  out.push(ch.ok ? `The history holds: ${ch.events} event(s) check out${ch.old ? `, ${ch.old} from before the current format (read, not chained)` : ""}${ch.erased ? `, ${ch.erased} with their words erased` : ""}.`
+    : `The history cannot be vouched for from ${ch.bad[0].file} (seq ${ch.bad[0].seq}) on: ${ch.bad[0].say}${ch.bad.length > 1 ? `, and ${ch.bad.length - 1} more line(s)` : ""}. Nothing here rewrites a line, so this cannot be mended; the log goes on and every new event is checked as before.`);
+  if (c.news.carried) out.push(`At this start ${c.news.carried.lines} event(s) an older version of Sol wrote were carried into the history (kept as history to read).`);
+  out.push(c.waiting ? `${c.waiting} event(s) an older version wrote are not in the history yet: they are carried in at Sol's next start.` : "Nothing an older version wrote is missing.");
+  for (const s of c.news.said) out.push(s);
+  return out.join("\n");
+}
+/** the one line the person reads (pure; parts/log.ts says it as a moment); none when there is nothing to say */
+export function newsLine(n: LogNews): string {
+  if (n.carried) return `Sol found ${n.carried.lines} event(s) an older version wrote and put them back in your history.`;
+  if (n.said.length) return "Something in Sol's history does not line up. Sol goes on and checks every new event.";
+  return "";
+}
+
+/** whether erase can take this event's words: they are in a value file, not on its line */
+export const canErase = (e: AnyEv): boolean => e.v === 1 && !e.erased && FILED.has(e);
+

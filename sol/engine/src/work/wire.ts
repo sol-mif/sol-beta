@@ -8,7 +8,7 @@ import { gist, saidOf, type Said } from "./gist.js";
 import { openThread, codexCwd } from "../threads.js";
 import { mkdirSync, statSync } from "node:fs";
 import { pickTopic } from "../titles.js";
-import { workSay, getRun, allRuns, lastInit, setChanging, workDefaults, type WorkSay } from "./runs.js";
+import { workSay, getRun, allRuns, lastInit, setChanging, workDefaults, modeFor, baseModeOf, onModeChange, modeFollowers, type WorkSay } from "./runs.js";
 export { setChanging as setWorkChanging };
 import { workState, mark, forget, groupOp, folderOp, folderMoved, setOrder, prefs, setPrefs, stricter, STATE_DIR } from "./state.js";
 import { renameFolder, ENGINE_ROOT, SOL_HOME, windowRoot } from "./rename.js";
@@ -478,7 +478,7 @@ export async function handleWork(w: Wire, m: any) {
       const id = sid(m.sessionId), to = typeof m.under === "string" && m.under ? sid(m.under) : null;
       // every answer, a refusal too, goes back by its rid so the face hears it; a refusal changes and broadcasts nothing
       const no = (error: string) => w.send({ type: "work.under", rid: m.rid, error });
-      if (to && !one.isOrchestrator(to)) return no("only an orchestration session runs others");
+      if (to && !one.runsOthers(to)) return no("only an orchestration session or the anchor runs others");
       if (to && underCycle(id, to)) return no("that would run it under itself");
       const was = workState().marks[id]?.under;
       const undone = was !== to && group.left(id, was);   // out of a grouping the engine made: that pair stays apart (#1336)
@@ -613,13 +613,20 @@ export async function handleWork(w: Wire, m: any) {
       try { return reply(m.type === "work.pr.create" ? await createPr(cwd) : await changesSummary(cwd)); }
       catch (err) { return reply({ error: err instanceof Error ? err.message.split("\n")[0] : String(err) }); }
     }
-    // orchestration sessions as kept (the side: sideKept.ts), a renewal on the person's ask, and build.tickets as the
-    // face says it (an orchestration session then routes to tickets; one.ts setTickets)
-    case "work.one.kept": case "work.one.renew": case "work.tickets.on": {
+    // orchestration sessions and the anchor as kept (the side: sideKept.ts, one/anchor.ts), a renewal on the person's ask,
+    // build.tickets as the face says it (an orchestration session then routes to tickets; one.ts setTickets), the anchor
+    // opened from its row (one.ts openAnchor), and build.orchestration as the face says it (one.ts setOrchestration)
+    case "work.one.kept": case "work.one.renew": case "work.tickets.on": case "work.one.open": case "work.orchestration.on": {
       const reply = (o: object) => w.send({ type: m.type, rid: m.rid, ...o });
       try {
         if (m.type === "work.one.kept") return reply(one.kept());
         if (m.type === "work.tickets.on") return reply({ ...one.setTickets(m.on === true), on: one.ticketsOn() });
+        if (m.type === "work.orchestration.on") return reply({ ...one.setOrchestration(m.on !== false), on: one.orchestrationOn() });
+        if (m.type === "work.one.open") {
+          const r = await one.openAnchor(typeof m.cwd === "string" && m.cwd ? m.cwd : undefined);
+          if (r.made) invalidate();
+          reply(r); return broadcastSessions();
+        }
         return reply(await one.renew("asked", typeof m.sessionId === "string" && m.sessionId ? sid(m.sessionId) : undefined));
       } catch (err) { return reply({ error: err instanceof Error ? err.message : String(err) }); }
     }
@@ -778,7 +785,7 @@ children.setChildDeps({
 });
 // the orchestration sessions' hands: the engine's own say, runs and list, given so one.ts never imports this file
 one.setOneDeps({
-  say: async (sessionId, text, fresh, how) => { await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd } : {}), ...(how?.free ? { mode: how.free === "edits" ? "acceptEdits" as const : "default" as const } : {}) }, bus); if (fresh) invalidate(); broadcastSessions(); },
+  say: async (sessionId, text, fresh, how) => { const mode = modeFor(how?.free); await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd } : {}), ...(mode ? { mode } : {}) }, bus); if (fresh) invalidate(); broadcastSessions(); },
   run: (id) => getRun(id),
   sessions: async () => (await workSessions()).sessions as never,
   lastWords: async (id) => {
@@ -826,7 +833,7 @@ snap.setSnapDeps({
 });
 
 // the executors' hands (tickets): say (a fresh one in a folder, or a side copy of a repo there, on the mode its ticket's
-// mandate gives), whether a session is still there, its last words, its folder, and every face told of the tickets.
+// mandate gives, or bypass when the person's Work default is bypass), whether a session is still there, its last words, its folder, and every face told of the tickets.
 // No parent is marked: an executor is its ticket's, never a child of an orchestration session (no report twice, nothing
 // done to it by a renewal). After an engine restart, wake() gives the executors their tools again; with no tickets it
 // touches nothing.
@@ -839,7 +846,8 @@ const lastWordsOf = async (id: string) => {
 executor.setExecDeps({
   store: tickets,
   say: async (sessionId, text, fresh, how) => {
-    await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd, worktree: !!fresh.worktree } : {}), ...(how?.free ? { mode: how.free === "edits" ? "acceptEdits" as const : "default" as const } : {}) }, bus);
+    const mode = modeFor(how?.free, baseModeOf(how?.from));   // bypass when the opener's own mode or the Work default is bypass, else the mandate's free (runs.ts modeFor)
+    await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd, worktree: !!fresh.worktree } : {}), ...(mode ? { mode } : {}) }, bus);
     if (fresh) invalidate(); broadcastSessions();
   },
   run: (id) => getRun(id),
@@ -850,6 +858,13 @@ executor.setExecDeps({
   tell: (m) => everyone(m),
   name: (id, title) => nameWhenWritten(id, title),
   holding: (id) => one.renewing(id),   // an orchestration session writing its handover: reports wait for its fresh copy
+});
+// the picker moved on a live session: the live sessions under it follow (Frank, 2026-11-20: a session he switched to
+// bypass kept starting and running its sessions on the old mode). The ones it started and its tickets' executors; each of
+// those tells its own in turn (a tree, so it ends). A woken session never moves past ask-first (Run.adjust holds it)
+onModeChange((id, mode) => {
+  const live = allRuns().map((r) => r.id);
+  for (const c of modeFollowers(id, mode, live, workState().marks, tickets.list())) { const r = getRun(c); if (r && r.mode !== mode) void r.adjust({ mode }); }
 });
 try { executor.wake(); } catch (e) { console.error("tickets: wake failed", e); }
 
@@ -931,9 +946,12 @@ setWorkHooks({
   async start(from, a) {
     if (one.isRouter(from)) return "refused: with tickets on you do not start sessions yourself: open a ticket (ticket_open) and its own session does the work";
     if (a.initiation === "proposal") return "proposed: a card waits in the talk and Marco starts it when he wants. Carry on.";
-    // an orchestration session runs what it starts (step 4): under it as well as parent, its block on this stage
-    const id = await startFrom(from, { ...a, ...(one.isOrchestrator(from) ? { under: from } : {}) });
-    return one.isOrchestrator(from) ? `started ${id}; it runs under you: its block is on your stage and it reports back here` : `started ${id}; it appears beside this one in the person's side, marked as started from here`;
+    // an orchestration session runs what it starts (step 4): under it as well as parent, its block on this stage. The
+    // anchor too runs what it starts (under it, reporting back), with no block on its stage (children.ts is orchestration's)
+    const id = await startFrom(from, { ...a, ...(one.runsOthers(from) ? { under: from } : {}) });
+    return one.isOrchestrator(from) ? `started ${id}; it runs under you: its block is on your stage and it reports back here`
+      : one.isAnchor(from) ? `started ${id}; it runs under you and reports back here when its turn ends`
+      : `started ${id}; it appears beside this one in the person's side, marked as started from here`;
   },
   async handoff(from, title, plan, blocks) {
     if (one.isRouter(from)) return "refused: with tickets on you do not hand your work to a session yourself: open a ticket (ticket_open) and its own session does the work";
@@ -1209,7 +1227,8 @@ const carding = new Map<string, Promise<string>>();   // proposal cards being st
 async function startFrom(from: string, a: Start & { card?: string; under?: string }): Promise<string> {
   const parent = getRun(from);
   const d = workDefaults();
-  const mode = a.free === "edits" ? "acceptEdits" : a.free === "ask" ? "default" : parent && parent.mode !== "plan" ? parent.mode : d.mode;
+  const base = baseModeOf(from);   // the parent's own mode while it is live (never plan), else the Work default (runs.ts)
+  const mode = modeFor(a.free, base) ?? base;
   // its part in the dev cycle (#484): the one asked for, never less held than the session that starts it
   const role = stricter(workState().marks[from]?.role, a.role);
   const like = { parent: from, ...d, mode, ...(role ? { role } : {}) };

@@ -150,6 +150,27 @@ test("the chat read: the line, its answer under it with its artifact, a refusal 
   assert.deepEqual(C.membersOf(["c", "b", "a"], "a").map((m) => `${m.login}${m.agent ? "'s agent" : ""}`), ["a", "a's agent", "b", "b's agent", "c", "c's agent"], "n people, 2n members, me first");
 });
 
+test("alone at a table (#1677): my line naming my own agent is read by it on my usage; reach never asks it; others' lines are not", () => {
+  const T = Date.UTC(2026, 10, 20, 10);
+  assert.equal(C.namesOwnAgent("@a's agent what is open?", "a"), true);
+  assert.equal(C.namesOwnAgent("@A’s agent look", "a"), true);
+  assert.equal(C.namesOwnAgent("@a look", "a"), false, "me as a person is not my agent");
+  assert.equal(C.namesOwnAgent("```\n@a's agent\n```", "a"), false, "a code fence names nobody");
+  assert.deepEqual(C.mentionsIn("@a's agent look", PEOPLE, "a"), { agents: [], people: [] }, "never asked over reach");
+  const lines = [
+    { id: "s1", from: "a", at: T, text: "@a's agent what is open?" },
+    { id: "s2", from: "b", at: T + 1_000, text: "@a's agent hi" },
+    { id: "s3", from: "a's agent", agent: true, at: T + 2_000, text: "@a's agent" },
+  ];
+  const chat = C.chatOf({ lines, thread: [], settled: [], repos: [], me: "a" });
+  assert.deepEqual(C.ruleWords(chat[0].rule), ["read by a's agent · a's usage"]);
+  assert.equal(chat[0].rule.runs, 1);
+  assert.deepEqual(C.ruleWords(chat[1].rule), ["no agent reads this"], "b's line: b's window opens nothing of mine");
+  assert.equal(chat[2].rule.runs, 0, "an agent's line wakes nobody");
+  assert.equal(C.chatOf({ lines, thread: [], settled: [], repos: [] })[0].rule.runs, 0, "without me, as before");
+  assert.deepEqual(C.membersOf([], "a").map((m) => `${m.login}${m.agent ? "'s agent" : ""}`), ["a", "a's agent"], "alone: me and my agent");
+});
+
 test("live: every 10 s while the room is open, every minute otherwise", () => {
   assert.equal(QUICK_MS, 10_000);
   assert.equal(due(10_000, 0, 0), false, "closed: not before a minute");

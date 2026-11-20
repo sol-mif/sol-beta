@@ -11,27 +11,32 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
-import { NOW, TUE, THU, HIS, SENTENCES, DAYS, calendar, weekOf, norm } from "./fixtures/home/sentences.ts";
+import { NOW, TUE, THU, HIS, HIS_RULES, SENTENCES, DAYS, calendar, weekOf, norm } from "./fixtures/home/sentences.ts";
 import { seed } from "./fixtures/home/seed.ts";
 import { rig, cleanup, SCHEMAS } from "./fixtures/home/rig.ts";
 import { FileAsk, ReadMsg, learnedId, learnedText, type Filed } from "../src/contract/home/reads.ts";
 import { DoneMsg, TodayMsg } from "../src/contract/home/today.ts";
 import { readSentence, receiptLine, thingOf } from "../src/home/reads.ts";
 import { dayOf, verdictOf, READS } from "../src/home/judge.ts";
-import { ruleFiler } from "../src/home/filer.ts";
+import { ruleFiler, personFiler } from "../src/home/filer.ts";
+import { writeOwn } from "../src/home/rules.ts";
 import { buildTable, UNITS } from "../src/home/wire.ts";
 import { isHomeKind } from "../src/contract/kinds.ts";
 import { freePort } from "./test-engine.ts";
 
 after(cleanup);
+// his filing rules are his (#1686): in his Home's own rules file, and handed to the pure reads, never in the engine's code
+const HIS_FILER = personFiler(HIS_RULES);
+const his = (text: string, week: Parameters<typeof readSentence>[1], now: number) => readSentence(text, week, now, [], undefined, HIS_FILER);
+const hisRig = (o: Parameters<typeof rig>[0]) => { const r = rig(o); writeOwn(r.home, HIS_RULES); return r; };
 const SCHEMAS3 = { ...SCHEMAS, "home.read": ReadMsg };
-const make = (now = NOW) => rig({ now, schemas: SCHEMAS3 });
+const make = (now = NOW) => hisRig({ now, schemas: SCHEMAS3 });
 const today = (ms: any[]) => ms.filter((m) => m.type === "home.today").at(-1);
 const done = (ms: any[]) => ms.find((m) => m.type === "home.done");
 /** the parts of a read as Enter sends them (his filedOf, home-say.test.ts l.17) */
 const filedOf = (r: { parts: any[] }): Filed[] => r.parts.map((p) => ({ text: p.text, read: p.read, folder: p.folder, at: p.at, after: p.after, found: p.found }));
 /** a read against his week (the calendar's marks the face holds; the engine has no calendar source) */
-const readHis = (text: string, now = NOW) => readSentence(text, calendar(now), now);
+const readHis = (text: string, now = NOW) => his(text, calendar(now), now);
 
 test("1. “call Sam about the offer Thursday”, his week: one part, for you, sure, jobs, Thursday 13:00 after the bio exam", () => {
   const r = readHis("call Sam about the offer Thursday");
@@ -87,7 +92,7 @@ test("3. scene 2: “bio exam thursday, make notes from the slides”: the exam 
 
 test("4. the split: at “, ”, “; ” and “ and then ”: four parts, over the socket's handler too", async () => {
   const text = "bio exam thursday, make notes from the slides; call mum and then book the dentist";
-  assert.deepEqual(readSentence(text, [], NOW).parts.map((p) => p.text), HIS.split);
+  assert.deepEqual(his(text, [], NOW).parts.map((p) => p.text), HIS.split);
   const r = make();
   const got = await r.ask(r.face(), { type: "home.say", text });
   assert.deepEqual(got.map((m) => m.type), ["home.read"]);
@@ -96,16 +101,16 @@ test("4. the split: at “, ”, “; ” and “ and then ”: four parts, over
 });
 
 test("5. the five and the verdicts: a date, a guess, a note that asks; every part has all five, summing to one", () => {
-  const [g] = readSentence("dinner friday", [], NOW).parts;
+  const [g] = his("dinner friday", [], NOW).parts;
   assert.equal(g.read, "date");
-  const [m] = readSentence("thursday", [], NOW).parts;
+  const [m] = his("thursday", [], NOW).parts;
   assert.equal(verdictOf(m.p[m.read]), "guess");
   assert.equal(READS.filter((x) => x !== m.read).sort((a, b) => m.p[b] - m.p[a])[0], "you", "his words: “a guess · or for you?”");
-  const [n] = readSentence("the blue one was nicer", [], NOW).parts;
+  const [n] = his("the blue one was nicer", [], NOW).parts;
   assert.equal(n.read, "note");
   assert.equal(verdictOf(n.p[n.read]), "asks");
   assert.equal(verdictOf(0.7), "sure"); assert.equal(verdictOf(0.45), "guess"); assert.equal(verdictOf(0.44), "asks");
-  for (const s of SENTENCES) for (const p of readSentence(s.text, weekOf(s), DAYS[s.day]).parts) {
+  for (const s of SENTENCES) for (const p of his(s.text, weekOf(s), DAYS[s.day]).parts) {
     assert.deepEqual(Object.keys(p.p), [...READS], `${p.text}: a bar for each of the five`);
     assert.ok(Math.abs(READS.reduce((a, r) => a + p.p[r], 0) - 1) < 0.02, `${p.text}: the probabilities make one`);
   }
@@ -154,7 +159,7 @@ test("8. the baseline: every sentence read by the rule judge as Marco's own code
   const file = new URL("./fixtures/home/reads-baseline.json", import.meta.url);
   const base = JSON.parse(readFileSync(file, "utf8"));
   const now = SENTENCES.map((s) => {
-    const at = DAYS[s.day], r = readSentence(s.text, weekOf(s), at), filed = filedOf(r);
+    const at = DAYS[s.day], r = his(s.text, weekOf(s), at), filed = filedOf(r);
     return { text: s.text, day: s.day, week: s.week, parts: norm(r.parts), receipt: receiptLine(filed, at), things: norm(filed.map((x, i) => thingOf(x, `t-${i}`, at))) };
   });
   if (process.env.SOL_BASELINE === "write") {
@@ -172,7 +177,7 @@ test("9. home.done of a filing names every Thing made: thingIds are the thing.ne
   const r = make();
   const f = r.face();
   const text = "call Sam about the offer Thursday, make notes from the slides; a deck for the bio presentation and then the blue one was nicer";
-  const parts = filedOf(readSentence(text, [], NOW));
+  const parts = filedOf(his(text, [], NOW));
   assert.equal(parts.length, 4);
   const d = done(await r.ask(f, { type: "home.file", parts }));
   const ev = r.events();
@@ -235,15 +240,19 @@ test("home.say reads against the engine's own week: Thursday at 10:00, no “aft
   // the folders the person has are the Things' own: the seed's “jobs › applications” starts with the rule's “jobs”
   assert.deepEqual([p.read, p.folder, p.at, p.after], ["you", "jobs › applications", THU(10), undefined]);
   assert.equal(typeof got[0].ms, "number");
-  assert.equal(ruleFiler.file("call Sam", ["jobs › applications"]).folder, "jobs › applications");
-  assert.deepEqual(ruleFiler.file("the blue one was nicer", []), { folder: "life", confidence: 0.3 });
+  assert.equal(HIS_FILER.file("call Sam", ["jobs › applications"]).folder, "jobs › applications");
+  assert.deepEqual(HIS_FILER.file("the blue one was nicer", []), { folder: "life", confidence: 0.3 });
+  // the engine's own filer knows nobody's life (#1686): his words file nowhere but by the folders a person has
+  assert.deepEqual(ruleFiler.file("call Sam about the offer", []), { folder: "life", confidence: 0.3 });
+  assert.equal(ruleFiler.file("notes for the jobs search", ["jobs › applications"]).folder, "life", "a folder's name, not a word in it, files there");
+  assert.equal(ruleFiler.file("put it in applications", ["jobs › applications"]).folder, "jobs › applications");
 });
 
 test("the undo of a filing: one reverse act and each Thing gone, earlier lines untouched; a second undo writes nothing; refused once a Thing changed", async () => {
   const r = make();
   r.seed(seed(NOW));
   const f = r.face(), g = r.face();
-  const d = done(await r.ask(f, { type: "home.file", parts: filedOf(readSentence("call mum today, make notes from the slides", [], NOW)) }));
+  const d = done(await r.ask(f, { type: "home.file", parts: filedOf(his("call mum today, make notes from the slides", [], NOW)) }));
   assert.equal(d.thingIds.length, 2);
   const bytes = r.bytes(), n = r.events().length;
   const u = await r.ask(f, { type: "home.undo", ledgerId: d.ledgerId });
@@ -259,7 +268,7 @@ test("the undo of a filing: one reverse act and each Thing gone, earlier lines u
   assert.deepEqual((await r.ask(f, { type: "home.undo", ledgerId: d.ledgerId })).map((x) => x.type), ["home.today"]);
   assert.equal(r.events().length, m);
   // refused: a Thing the filing made was answered since
-  const d2 = done(await r.ask(f, { type: "home.file", parts: filedOf(readSentence("call mum today", [], NOW)) }));
+  const d2 = done(await r.ask(f, { type: "home.file", parts: filedOf(his("call mum today", [], NOW)) }));
   assert.ok(today(await r.ask(f, { type: "home.today" })).today.needs.includes(d2.thingId), "for you today: on the list now");
   await r.ask(f, { type: "home.answer", thingId: d2.thingId, answer: "done" });
   const k = r.events().length;
@@ -300,7 +309,7 @@ test("a stop half-way through a filing: at the next start the Things not yet mad
   for (const k of [1, 2, 4]) {
     const dir = stopDir();
     assert.equal((await child(dir, "file", String(k))).signal, "SIGKILL", `killed after the filing's line ${k}`);
-    const r = rig({ now: NOW, dir, schemas: SCHEMAS3 });
+    const r = hisRig({ now: NOW, dir, schemas: SCHEMAS3 });
     assert.equal(r.events().length, k, "the stop left the filing half made");
     const f = r.face();
     assert.deepEqual(words(await r.ask(f, { type: "home.today" })), ["call mum", "make notes from the slides"], `after line ${k}: both Things are there`);
@@ -310,7 +319,7 @@ test("a stop half-way through a filing: at the next start the Things not yet mad
     const news = ev.filter((e) => e.kind === "thing.new").map((e) => e.item);
     assert.deepEqual(ev.filter((e) => e.kind === "judge.read").map((e) => e.item), news, "each read names its Thing");
     // a second start writes nothing more
-    const n = ev.length, r2 = rig({ now: NOW, dir, schemas: SCHEMAS3 });
+    const n = ev.length, r2 = hisRig({ now: NOW, dir, schemas: SCHEMAS3 });
     await r2.ask(r2.face(), { type: "home.today" });
     assert.equal(filing(r2).length, n);
     // and the filing undoes whole
@@ -325,7 +334,7 @@ test("a stop half-way through the undo of a filing: at the next start the undo i
     const { ledgerId, thingIds } = JSON.parse((await child(dir, "prep")).out);
     assert.equal(thingIds.length, 2);
     assert.equal((await child(dir, "undo", ledgerId, String(k))).signal, "SIGKILL", `killed after the undo's line ${k}`);
-    const r = rig({ now: NOW, dir, schemas: SCHEMAS3 });
+    const r = hisRig({ now: NOW, dir, schemas: SCHEMAS3 });
     assert.equal(r.events().filter((e) => e.cause === ledgerId && e.value?.undo).length, k, "the stop left the undo half done");
     const f = r.face();
     assert.deepEqual(today(await r.ask(f, { type: "home.today" })).things, [], `after line ${k}: both Things are gone`);
@@ -333,7 +342,7 @@ test("a stop half-way through the undo of a filing: at the next start the undo i
     assert.deepEqual(undo.map((e) => [e.kind, e.item, e.value.gone]), [["thing.file", undefined, undefined], ...thingIds.map((id: string) => ["thing.state", id, true])]);
     const n = filing(r).length;
     await r.ask(f, { type: "home.undo", ledgerId });
-    const r2 = rig({ now: NOW, dir, schemas: SCHEMAS3 });
+    const r2 = hisRig({ now: NOW, dir, schemas: SCHEMAS3 });
     await r2.ask(r2.face(), { type: "home.today" });
     assert.equal(filing(r2).length, n, "a press again, and a second start, write nothing");
   }
@@ -342,7 +351,7 @@ test("a stop half-way through the undo of a filing: at the next start the undo i
 test("an undo of a filing cut short without a restart (a write that threw): pressing undo again finishes it", async () => {
   const r = make();
   const f = r.face();
-  const d = done(await r.ask(f, { type: "home.file", parts: filedOf(readSentence("call mum today, make notes from the slides", [], NOW)) }));
+  const d = done(await r.ask(f, { type: "home.file", parts: filedOf(his("call mum today, make notes from the slides", [], NOW)) }));
   const write = r.ctx.log.write;
   r.ctx.log.write = (w) => { if (w.kind === "thing.state") throw new Error("the disk is full"); return write(w); };
   await r.ask(f, { type: "home.undo", ledgerId: d.ledgerId });
@@ -357,7 +366,7 @@ test("no words on the line: the parts, the override's sentence and the learned l
   const r = make();
   const f = r.face();
   await r.ask(f, { type: "home.learn", learned: { text: "ring the zebra keeper", from: "you", to: "job" } });
-  await r.ask(f, { type: "home.file", parts: filedOf(readSentence("ring the zebra keeper friday", [], NOW)) });
+  await r.ask(f, { type: "home.file", parts: filedOf(his("ring the zebra keeper friday", [], NOW)) });
   const lines = r.bytes();
   assert.ok(!/zebra/i.test(lines), "no free text on the day's lines");
   const ev = r.events();
@@ -419,6 +428,7 @@ async function engine(port: number, env: Record<string, string>) {
   spawned.push(dir);
   const home = join(dir, "home");
   mkdirSync(home);
+  writeOwn(home, HIS_RULES);   // his filing rules, his Home's own (#1686)
   const base = { ...process.env };
   base.SOL_HOME_WHOLE = "off";   // off unless the test says on (on for the team by default since #691)
   const e = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {

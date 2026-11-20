@@ -87,14 +87,19 @@ test("a switch's reading: what was set by hand wins both ways, else its stage; a
   assert.equal(V.stageOf("constructor", stages), "hand");
 });
 
-// the engine's seven at concept (#1113, #1406, #1519, #1521), stage.whole settled (#1111), the window's eleven at concept
+// the engine's eight at concept (#1113, #1406, #1519, #1521, #1661), stage.whole settled (#1111), the window's eleven at concept
 // (#1544; the three views, #1637: a tester's Sol is Build only until each card reaches product); cowork.v3, frame and
 // morning.waits are on no card, so they stand at hand
-const ENGINE_CONCEPT = ["home.whole", "reach.tools", "reach.room", "onboarding.reads", "log.kinds", "work.liveContext", "open.for"];
+const ENGINE_CONCEPT = ["home.whole", "reach.tools", "reach.room", "onboarding.reads", "log.kinds", "work.liveContext", "open.for", "map.grown"];
 const WINDOW = ["agents.mode", "build.one", "build.one.long", "build.one.team", "build.snap", "cross", "look.shown", "side.sorted", "view.cowork", "view.home", "view.social"];
 // tools.cards (#1589) stands at product: the tools follow their cards in every mode, and in concept that drops nothing;
 // identity.supabase (#1607) at product too: a tester's Sol signs in on Supabase
-const TODAY: Record<string, string> = { "stage.whole": "settled", "ui.next": "hand", "tools.cards": "product", "identity.supabase": "product", ...Object.fromEntries([...ENGINE_CONCEPT, ...WINDOW].map((n) => [n, "concept"])) };
+const TODAY: Record<string, string> = { "stage.whole": "settled", "ui.next": "hand", "tools.cards": "product", "identity.supabase": "product", ...Object.fromEntries([...ENGINE_CONCEPT, ...WINDOW].map((n) => [n, "concept"])),
+  // moved on by gate one, then past their soak (#1667): on for the team and on a tester's Sol (product)
+  "onboarding.reads": "product", "open.for": "product",
+  // released by Frank 2026-11-20 (#1712): on for the team in concept and complete, still off on a tester's Sol
+  "view.home": "complete" };
+const AT_PRODUCT = new Set(["onboarding.reads", "open.for"]);
 /** every switch at hand, so a test tries one station at a time */
 const allHand = () => { for (const k of Object.keys(V.STAGES)) (V.STAGES as Record<string, string>)[k] = "hand"; };
 const putBack = () => {
@@ -105,7 +110,7 @@ const putBack = () => {
 /** the window's block of the readings: each of its switches, on or off */
 const W = (on: boolean) => Object.fromEntries(WINDOW.map((n) => [n, on]));
 
-test("today's table: stage.whole on for everyone (#1111), the engine's seven and the window's eleven on for the team, identity.supabase at product (#1607); cowork.v3, frame and morning.waits at hand", () => {
+test("today's table: stage.whole on for everyone (#1111), the engine's eight and the window's eleven on for the team, identity.supabase at product (#1607); cowork.v3, frame and morning.waits at hand", () => {
   assert.deepEqual(V.STAGES, TODAY);
   assert.deepEqual(V.WINDOW_SWITCHES, WINDOW);
   for (const n of ["cowork.v3", "frame", "morning.waits", "ui.next"]) assert.equal(V.stageOf(n), "hand", n);
@@ -338,21 +343,23 @@ test("which checkout runs as concept: only one that clearly is sol-dev, or a pic
 
 // #1406 (Frank 2026-11-17): a switch off by default is on for the team; these four stand at concept, so a dev-channel Sol
 // reads them on with nothing set, a tester's stays off, and a person's false and the env's off still win
-const TEAM: [string, "reachTools" | "reachRoom" | "onboardReads" | "logKinds" | "liveContext" | "openFor", (v: boolean) => object, string][] = [
+const TEAM: [string, "reachTools" | "reachRoom" | "onboardReads" | "logKinds" | "liveContext" | "openFor" | "mapGrown", (v: boolean) => object, string][] = [
   ["reach.tools", "reachTools", (v) => ({ reach: { tools: v } }), "SOL_REACH_TOOLS"],
   ["reach.room", "reachRoom", (v) => ({ reach: { room: v } }), "SOL_REACH_ROOM"],
   ["onboarding.reads", "onboardReads", (v) => ({ onboarding: { reads: v } }), "SOL_ONBOARD_READS"],
   ["log.kinds", "logKinds", (v) => ({ log: { kinds: v } }), "SOL_LOG_KINDS"],
   ["work.liveContext", "liveContext", (v) => ({ work: { liveContext: v } }), "SOL_LIVE_CONTEXT"],   // the context ring's live count (#1519)
   ["open.for", "openFor", (v) => ({ open: { for: v } }), "SOL_OPEN_FOR"],   // #1521
+  ["map.grown", "mapGrown", (v) => ({ map: { grown: v } }), "SOL_MAP_GROWN"],   // #1661
 ];
 test("the team's four (#1406): on in concept unset, off in complete and with no channel; false and env off win; a bad patch keeps a false", async () => {
   for (const [name, read, patch, env] of TEAM) {
     const F = await started({});
+    const tester = AT_PRODUCT.has(name);   // at product, a tester's reads it on too (#1667)
     F.noteChannel(null);
     assert.equal(F[read](), false, `${name}: no channel yet, off`);
     F.noteChannel("beta");
-    assert.equal(F[read](), false, `${name}: a tester's, off`);
+    assert.equal(F[read](), tester, `${name}: a tester's, ${tester ? "on" : "off"}`);
     F.noteChannel("dev");
     assert.equal(F[read](), true, `${name}: the team's, on with nothing set`);
     process.env[env] = "off";
@@ -371,18 +378,18 @@ test("the team's four (#1406): on in concept unset, off in complete and with no 
   }
 });
 
-// #1551: the done of the engine's modes. A Sol run as product shows none of the seven at concept and keeps the whole
+// #1551: the done of the engine's modes. A Sol run as product shows none of the eight at concept and keeps the whole
 // stage; one run as concept reads every switch as it did before product came
-test("SOL_VERSION=product: the seven engine switches at concept all off, stage.whole on, the window's eleven off", async () => {
+test("SOL_VERSION=product: the eight engine switches at concept all off, stage.whole on, the window's eleven off", async () => {
   const F = await started({});
   const reads = (G: typeof S) => ({ "home.whole": G.homeWhole(), "reach.tools": G.reachTools(), "reach.room": G.reachRoom(), "onboarding.reads": G.onboardReads(),
-    "log.kinds": G.logKinds(), "work.liveContext": G.liveContext(), "open.for": G.openFor() });
+    "log.kinds": G.logKinds(), "work.liveContext": G.liveContext(), "open.for": G.openFor(), "map.grown": G.mapGrown() });
   process.env.SOL_VERSION = "product";
   try {
     for (const ch of [null, "dev", "beta"] as const) {
       F.noteChannel(ch);
       assert.equal(F.versionMode(), "product");
-      assert.deepEqual(reads(F), Object.fromEntries(ENGINE_CONCEPT.map((n) => [n, false])), `channel ${ch}`);
+      assert.deepEqual(reads(F), Object.fromEntries(ENGINE_CONCEPT.map((n) => [n, AT_PRODUCT.has(n)])), `channel ${ch}`);
       assert.equal(F.stageWhole(), true, "stage.whole is settled");
       assert.deepEqual(F.readings(), { stage: { whole: true }, window: W(false) });
     }
@@ -400,7 +407,8 @@ test("the window's block: its eight switches, each by its station in this mode; 
     for (const [mode, on] of [["concept", true], ["complete", false], ["product", false]] as const) {
       F.patchSettings({ version: mode });
       assert.deepEqual(Object.keys(F.readings().window).sort(), WINDOW, mode);
-      assert.deepEqual(F.readings().window, W(on), `${mode}: the eight at concept`);
+      // view.home stands at complete (#1712): on in concept and complete, off in product
+      assert.deepEqual(F.readings().window, { ...W(on), "view.home": mode !== "product" }, `${mode}: the eight at concept`);
     }
     table["cross"] = "product";
     table["build.snap"] = "complete";

@@ -89,6 +89,9 @@ export const KINDS: readonly KindRow[] = [
   k("engine.start", "kernel", { release: "name?", commit: "name?", mine: "number?", head: "name?", kinds: "name", os: "name", node: "name", tz: "name", offset: "number" }),
   k("engine.tz", "kernel", { tz: "name", offset: "number" }),
   k("log.erase", "kernel", { hash: "name" }, { fsync: true }),
+  // what an older Sol wrote to the old file, carried in (log.ts carryOld, #1678): an opening and a closing (`done`) around the lines
+  k("log.merged", "kernel", { from: "name", lines: "number", file: "text", done: "boolean?" }, { fsync: true }),
+  k("log.carried", "kernel", { line: "text" }),   // an old line kept whole: history to read, never the kind it names (a seat can write the old file)
   // Home (#790 to #874, home/): every Home kind registered at once by Home 1, so no later Home unit edits this file. Home
   // writes them only through home/log.ts, only with its switch on (settings.ts homeWhole()). `ver` is the SHA-256 of a
   // stored Thing's (or the policy's) canonical JSON, `from` the version before; `undo` marks the reverse event of an

@@ -5,8 +5,9 @@
 // the engine's shelves, a shelf with a blocked agent open; at the foot the routines and what Sol changed this week.
 // The engine decides what is asked, in what order and how many (agents.list's asks, shelves); this draws them.
 // A job Sol noticed peeks "again?" beside the cards (at most one); a dashed card takes a typed job.
-// When the person's own model asked in Jev's place (no Jev key), one line under the asks says Jev would ask fewer and
-// where its key goes, until "Got it" (agents.noted): said once.
+// When the person's own model asked in Jev's place (no Jev key), one line under the asks says no Jev is needed: the
+// cheapest model of their own AI asks instead, as many a day as they said, and that they can say fewer (#1476), until
+// "Got it" (agents.noted): said once.
 // Before the first visit it is the first open: "Meet your agents", the cast walking in, the pauses Sol made in one
 // sentence with one undo, and one button to the top ask (AgentsView sends agents.meet once it is shown).
 // Nothing yet (no agents, no routines): "None yet: they appear when your work repeats" and a one-line field for a job.

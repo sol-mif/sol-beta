@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const DIR = mkdtempSync(join(tmpdir(), "sol-openfor-"));
 process.env.SOL_SETTINGS = join(DIR, "settings.json");
-process.env.SOL_VERSION = "complete";   // a tester's Sol: open.for stands off until set
+process.env.SOL_VERSION = "product";   // a tester's Sol: open.for stands on unset now its card stands at product (#1667)
 delete process.env.SOL_OPEN_FOR;
 after(() => { delete process.env.SOL_OPEN_FOR; delete process.env.SOL_VERSION; rmSync(DIR, { recursive: true, force: true }); });
 
@@ -24,12 +24,15 @@ S.onSeatSet(() => { settingsTold++; });
 const txt = (r: { content: { type: string; text?: string }[] }) => String(r.content[0]?.text ?? "");
 const names = () => T.solToolsNow().map((t) => t.name);
 
-test("off: none of the three is offered, and a call is refused", async () => {
+test("on for a tester unset (product, #1667); off: none of the three is offered, and a call is refused", async () => {
+  assert.equal(S.openFor(), true, "at product a tester's Sol has it on");
+  process.env.SOL_OPEN_FOR = "off";
   assert.equal(S.openFor(), false);
   for (const n of ["open_settings", "open_pane", "set_setting"]) assert.ok(!names().includes(n), n);
   const r = await T.runSolTool("open_settings", { drawer: "look" }, { sessionId: "a" });
   assert.equal(r.isError, true);
   assert.deepEqual(said, []);
+  delete process.env.SOL_OPEN_FOR;
 });
 
 test("on for the team (concept), and by the setting or the env", () => {

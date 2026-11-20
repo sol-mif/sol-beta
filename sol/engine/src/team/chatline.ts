@@ -43,6 +43,15 @@ export function mentionsIn(text: string, logins: readonly string[], me = ""): Me
   return { agents, people };
 }
 
+/** whether a line names its writer's own agent ("@<me>'s agent"), outside a code fence (pure). mentionsIn never hands it
+ *  over reach (an agent is not asked by its own person there); the window opens a talk with that person's own AI on the
+ *  line instead, which answers in the room (gate one, #1677: alone at a table, my AI is who reads) */
+export function namesOwnAgent(text: string, me: string): boolean {
+  if (!LOGIN.test(me)) return false;
+  const t = String(text ?? "").replace(FENCE, " ").replace(/[‘’]/g, "'");
+  return new RegExp(`(?:^|[^\\w@-])@${esc(me)}'s agent\\b`, "i").test(t);
+}
+
 /** an artifact as the face may open it, or null (pure): a known kind, a ref of one line, a title cut to 120 */
 export function artifactOf(v: unknown): Artifact | null {
   const a = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
@@ -127,7 +136,7 @@ const loginOf = (from: string) => from.replace(/'s agent$/i, "");
 /** the group's chat in time order (pure): the Discussion's lines, the agents' thread folded in (an ask a line made is
  *  that line; its answer a line after it; a refusal goes under the line it refuses), the settled asks one line each.
  *  The artifacts are checked against `repos` and the blocks' sessions; one that fails is dropped, its link stays */
-export function chatOf(o: { lines: readonly Spoken[]; thread: readonly Reached[]; settled: readonly Settled[]; repos: readonly string[]; blocks?: Record<string, string>; last?: number }): ChatLine[] {
+export function chatOf(o: { lines: readonly Spoken[]; thread: readonly Reached[]; settled: readonly Settled[]; repos: readonly string[]; blocks?: Record<string, string>; last?: number; me?: string }): ChatLine[] {
   const out: ChatLine[] = [], byId = new Map<string, ChatLine>();
   const checked = (a: Artifact | undefined): ChatLine["artifact"] => {
     if (!a || !refOk(a, o.repos)) return undefined;
@@ -140,7 +149,9 @@ export function chatOf(o: { lines: readonly Spoken[]; thread: readonly Reached[]
     return { text: f.text, artifact: checked(carried ?? f.artifact ?? prInText(f.text, o.repos) ?? undefined) };
   };
   for (const l of o.lines) {
-    const read = l.woke ?? [];
+    // my own line naming my own agent (#1677): my AI reads it, in a talk of mine the window opened, on my usage
+    const self = !!o.me && !l.agent && same(loginOf(l.from), o.me) && namesOwnAgent(l.text, o.me);
+    const read = [...(l.woke ?? []), ...(self && !(l.woke ?? []).some((x) => same(x, o.me!)) ? [o.me!] : [])];
     const c: ChatLine = { id: l.id, at: l.at, from: loginOf(l.from), agent: !!l.agent, ...art(l.text, l.artifact), rule: { read: [...read], pinged: [...(l.pinged ?? [])], refused: [], runs: read.length }, kind: "said" };
     out.push(c); byId.set(c.id, c);
   }

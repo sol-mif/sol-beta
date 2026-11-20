@@ -15,7 +15,7 @@ import { NOW, WORDS as FACE_WORDS, SEED_TEXT, SEED_FOLDERS, SEED_LEARNED, SEED_R
 import { SourcesMsg, SOURCE_IDS, RUNGS, type SourceId } from "../src/contract/home/policy.ts";
 import { WORDS, folderRung, parse, readLine, readSentence, rewrite } from "../src/home/rung-reader.ts";
 import { registerFolder, registerSource, rungOf, setRung, sourcesMsg } from "../src/home/sources.ts";
-import { filesSource } from "../src/home/source-files.ts";
+import { filesSource, NOTHING_YET } from "../src/home/source-files.ts";
 import { policyText, policyVer, putPolicy } from "../src/home/policy.ts";
 import { ENGINE, YOU } from "../src/home/log.ts";
 import { handleHome } from "../src/home/wire.ts";
@@ -43,9 +43,16 @@ function scene(o: { broken?: boolean } = {}) {
 }
 
 test("1. the 20: every rung's words read back as that rung of that source, and they are his words", () => {
-  assert.deepEqual(WORDS, FACE_WORDS, "the engine's 20 are the face's, word for word");
+  // the engine's 20 are the face's, word for word, but for Files: the face's said "For school … the class folders",
+  // one person's life; the engine's say "my folders" (#1686), and his old words still read as Files
+  assert.deepEqual({ ...WORDS, files: FACE_WORDS.files }, FACE_WORDS, "the other four sources' words are the face's");
+  assert.ok(Object.values(WORDS.files).every((w) => !/school|class/i.test(w)), "Files' words name nobody's life");
   let n = 0;
-  for (const id of SOURCE_IDS) for (const rung of RUNGS) { assert.deepEqual(readSentence(FACE_WORDS[id][rung]), { span: FACE_WORDS[id][rung], source: id, rung }, `${id} ${rung}`); n++; }
+  for (const id of SOURCE_IDS) for (const rung of RUNGS) {
+    assert.deepEqual(readSentence(WORDS[id][rung]), { span: WORDS[id][rung], source: id, rung }, `${id} ${rung}`);
+    assert.deepEqual(readSentence(FACE_WORDS[id][rung]).source, id, `the face's own ${id} ${rung} still reads`);
+    n++;
+  }
   assert.equal(n, 20);
 });
 
@@ -56,8 +63,9 @@ test("2. a source no sentence names gets one, at the end", () => {
 });
 
 test("3. his paragraph read into rungs; a sentence that names no rung sets nothing, and says so", () => {
-  const p = parse(SEED_TEXT);
+  const p = parse(SEED_TEXT, SOURCE_IDS, SEED_FOLDERS.map((f) => f.name));   // the folders he has, not four fixed names (#1686)
   assert.deepEqual(p.sentences.map((s) => [s.source ?? s.folder, s.rung]), PARSED_SEED);
+  assert.equal(parse(SEED_TEXT).sentences.at(-1)!.folder, undefined, "a folder nobody has is named by no sentence");
   assert.equal(readLine(p), READ_LINE);
 });
 
@@ -276,7 +284,13 @@ test("12. the files source alone: one source, files, at read; it reads its folde
     mkdirSync(join(user, "School", "bio 201"), { recursive: true });
     mkdirSync(join(user, "Downloads", "x"), { recursive: true });
     const d = filesSource(r.home, user);
-    assert.deepEqual(d.scope(), { reads: ["~/School"], never: ["~/Desktop", "~/Downloads"] }, "the default: ~/School and ~/Jobs that exist");
+    // a fresh Sol (#1686): no record, so nothing is read and nothing is wrong; no one's ~/School is guessed
+    assert.deepEqual(d.scope(), { reads: [], never: ["~/Desktop", "~/Downloads"] });
+    assert.deepEqual([d.health(NOW).state, d.health(NOW).why], ["ok", NOTHING_YET]);
+    // the folder Home made for the person (their record's solHome) is what it reads when nothing is set
+    mkdirSync(join(user, ".sol", "record"), { recursive: true });
+    writeFileSync(join(user, ".sol", "record", "me.json"), JSON.stringify({ solHome: "~/School", areas: [] }));
+    assert.deepEqual(d.scope(), { reads: ["~/School"], never: ["~/Desktop", "~/Downloads"] }, "the default: the folder Home made, when it is there");
     assert.equal(d.health(NOW).state, "ok");
     assert.deepEqual(d.read(), [{ folder: "~/School", names: ["bio 201"] }]);
     mkdirSync(join(r.home, "sources"), { recursive: true });

@@ -3,14 +3,14 @@
 // as four kinds that never carry words. The last test runs a real engine with a stand-in codex and reads the log back.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync, realpathSync, cpSync } from "node:fs";
-import { spawn, type ChildProcess } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync, realpathSync, cpSync, symlinkSync } from "node:fs";
+import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { tmpdir, homedir, platform } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocket } from "ws";
 import { Kernel } from "./kernels.ts";
-import { logDir, logFile, logFiles, readLog, openLog, dayTrail, dayOf, lastSeqIn, KEEP, PAGE } from "../src/log.ts";
+import { logDir, logFile, logFiles, readLog, openLog, dayTrail, dayOf, lastSeqIn, logNews, verifyLog, KEEP, PAGE } from "../src/log.ts";
 import { fileOf, sizeOf, claudeTokens, codexTokens, codexStepOf, base64Bytes, turnStarted, stepTaken, sentAtStart } from "../src/seatlog.ts";
 import { summarize, claudeCounts, codexCounts, reconcile } from "../src/logcheck.ts";
 import type { Ev } from "../src/file-trail.ts";
@@ -66,13 +66,21 @@ test("the move: an old log in the home is carried over once into its days, seq g
   const lone = openLog(join(h, "lone"), null);
   lone.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "x" });
   assert.ok(!existsSync(join(h, "lone", "home")));
-  // the old file ahead (a seat wrote in the home's file, or an older build wrote only there): never read back; the log
-  // stands, and seq goes on from the log's own last
+  // the old file ahead (an older build wrote only there, or a seat wrote in the home's file): carried in at the next
+  // start (#1678), between two log.merged, whole as log.carried: history to read, never an event of the kind it names
   writeFileSync(old, readFileSync(old, "utf8") + JSON.stringify({ ...c, seq: 5, id: "forged" }) + "\n");
   const back = openLog(dir, old, () => day2 + 3000);
-  assert.deepEqual(back.since("home").map((e) => e.seq), [1, 2, 3, 4], "the forged line is not the log's");
-  assert.equal(back.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "y" }).seq, 5);
-  assert.ok(!joined().includes("forged"));
+  const came = back.since("home").slice(4) as any[];
+  assert.deepEqual(came.map((e) => e.kind), ["log.merged", "log.carried", "log.merged"], "carried, bracketed");
+  assert.equal(came[1].value.line.id, "forged");
+  assert.equal(came[1].cause, "forged");
+  assert.ok(!back.since("home").some((e) => e.kind === "seat.turn" && e.id === "forged"), "never as the kind it names");
+  assert.equal(logNews().carried?.lines, 1, "and said");
+  assert.equal(back.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "y" }).seq, 8);
+  assert.equal(verifyLog(dir).ok, true, "the chain holds");
+  // not twice
+  assert.equal(openLog(dir, old, () => day2 + 4000).last(), 8);
+  assert.equal(logNews().carried, null);
   // an old file written again behind the log's seq (a build from before the move, after this one stopped writing it):
   // not read, and said, since its size is kept in `moved`; one untouched is said nothing of
   {
@@ -87,8 +95,13 @@ test("the move: an old log in the home is carried over once into its days, seq g
       assert.deepEqual(said, [], "untouched: nothing said");
       writeFileSync(old2, readFileSync(old2, "utf8") + JSON.stringify({ ...b, seq: 2, id: "late" }) + "\n");
       const late = openLog(dir2, old2, () => day2 + 2000);
-      assert.ok(said.some((m) => /changed since the log stopped writing it/.test(m)), said.join(" | "));
-      assert.ok(!late.since("home").some((e) => e.id === "late"), "and not read");
+      assert.ok(late.since("home").some((e: any) => e.kind === "log.carried" && e.value.line.id === "late"), "behind the log's seq, still carried: the mark's size says it is new");
+      // rewritten shorter: only what was written after the move
+      writeFileSync(old2, JSON.stringify({ ...b, seq: 1, id: "early", at: day2 - 86_400_000 }) + "\n" + JSON.stringify({ ...b, seq: 2, id: "after", at: day2 + 5000 }) + "\n");
+      const short = openLog(dir2, old2, () => day2 + 6000);
+      const ids = short.since("home").filter((e: any) => e.kind === "log.carried").map((e: any) => e.value.line.id);
+      assert.deepEqual(ids, ["late", "after"]);
+      assert.ok(said.some((m) => /rewritten shorter/.test(m)), said.join(" | "));
     } finally { console.error = was; }
   }
   // an old file inside the log's own folder is the log: not carried over onto itself
@@ -189,12 +202,22 @@ test("the move cut short is done again whole at the next start; a finished move 
   assert.deepEqual(logFiles(dir).map((f) => f.slice(dir.length + 1)), ["2026-11-06.jsonl", "2026-11-07.jsonl"], "done again, whole");
   assert.ok(existsSync(join(dir, "moved")) && !existsSync(join(dir, ".moving")));
   assert.equal(log.last(), 2);
-  // the old file grows (a seat wrote in it): a finished move is not done again, the log stands
+  // the old file grows (a seat wrote in it): a finished move is not done again; the new line is carried, as history only
   writeFileSync(old, readFileSync(old, "utf8") + JSON.stringify({ ...b, seq: 3, id: "forged" }) + "\n");
   const again = openLog(dir, old, () => d2 + 2000);
-  assert.equal(again.last(), 2);
+  assert.equal(again.last(), 5);
   assert.equal(lastSeqIn(old), 3);
   assert.ok(!readLog(dir).some((e) => e.id === "forged"));
+  // a carry cut short (its opening written, one line of two, no closing): the next start takes it up after that line
+  writeFileSync(old, readFileSync(old, "utf8") + JSON.stringify({ ...b, seq: 4, id: "x1" }) + "\n" + JSON.stringify({ ...b, seq: 5, id: "x2" }) + "\n");
+  const cut = dayTrail(dir, () => d2 + 3000);
+  const size = readFileSync(old).length - (JSON.stringify({ ...b, seq: 4, id: "x1" }).length + JSON.stringify({ ...b, seq: 5, id: "x2" }).length + 2);
+  cut.append({ by: { person: "engine" }, kind: "log.merged", value: { from: `bytes ${size}`, lines: 2, file: old } });
+  cut.append({ by: { person: "engine" }, kind: "log.carried", value: { line: { id: "x1" } }, cause: "x1" });
+  const taken = openLog(dir, old, () => d2 + 4000);
+  const carried = taken.since("home").filter((e: any) => e.kind === "log.carried").map((e: any) => e.cause);
+  assert.deepEqual(carried, ["forged", "x1", "x2"], "x1 not twice");
+  assert.equal(verifyLog(dir).ok, true);
   // the two-ends read: the last seq of a long file without reading it whole
   const long = join(h, "long.jsonl");
   writeFileSync(long, Array.from({ length: 3000 }, (_, i) => JSON.stringify({ id: `i${i}`, seq: i + 1, at: d1, project: "home", by: { person: "engine" }, kind: "line", value: { pad: "x".repeat(100) } })).join("\n") + "\n");
@@ -414,4 +437,39 @@ process.stdin.on("end", () => {
   const rows = reconcile(log.events, () => rollout);
   assert.deepEqual(rows.map((r) => [r.session, r.ok, r.note]), [[id, true, "tokens agree"]]);
   engine.kill();
+});
+
+test("the old folder is not trusted: an old log file that is a link is never followed, and nothing is carried from it (#1678)", () => {
+  const h = tmp("sol-log-link-"), home = join(h, "home"), dir = join(h, "applog");
+  const old = logFile(home);
+  mkdirSync(dirname(old), { recursive: true });
+  const day = Date.parse("2026-11-07T12:00:00");
+  const seed = openLog(join(h, "seed"), null, () => day);
+  const a = seed.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "x" });
+  writeFileSync(old, JSON.stringify(a) + "\n");
+  openLog(dir, old, () => day + 1000);   // the move
+  // something puts a link where the old file was, to a file elsewhere with more lines
+  const elsewhere = join(h, "elsewhere.jsonl");
+  const b = seed.append({ project: "home", by: { person: "engine" }, kind: "plugin.load", item: "secret" });
+  writeFileSync(elsewhere, [a, b].map((e) => JSON.stringify(e)).join("\n") + "\n");
+  rmSync(old);
+  symlinkSync(elsewhere, old);
+  const back = openLog(dir, old, () => day + 2000);
+  assert.equal(back.since("home").some((e) => e.kind === "log.carried"), false, "nothing carried through a link");
+  assert.equal(logNews().carried, null);
+  assert.match(logNews().said.join(" "), /not a plain file/, "and it says why");
+  // nor when the old file's folder itself is a link to somewhere else
+  rmSync(dirname(old), { recursive: true });
+  const other = join(h, "other");
+  mkdirSync(other);
+  writeFileSync(join(other, "log.jsonl"), [a, b].map((e) => JSON.stringify(e)).join("\n") + "\n");
+  symlinkSync(other, dirname(old));
+  const again = openLog(dir, old, () => day + 3000);
+  assert.equal(again.since("home").some((e) => e.kind === "log.carried"), false, "nothing carried through a linked folder");
+  // nor from a pipe put where the file was: the start is not held waiting on it
+  rmSync(dirname(old)); mkdirSync(dirname(old));
+  execFileSync("mkfifo", [old]);
+  const t0 = Date.now(), piped = openLog(dir, old, () => day + 4000);
+  assert.ok(Date.now() - t0 < 2000, "not held");
+  assert.equal(piped.since("home").some((e) => e.kind === "log.carried"), false);
 });

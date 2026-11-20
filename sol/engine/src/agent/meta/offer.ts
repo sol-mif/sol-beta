@@ -101,7 +101,7 @@ export function offerSaid(text: string | null): Written | null {
 // ---------------------------------------------------------------- noticing (the scan)
 
 const running = new Map<string, Promise<Offer[]>>();
-const askOf = (a: Host): Ask => a.d.ask ?? makeAsk();
+const askOf = (a: Host): Ask => a.d.ask ?? makeAsk({ home: a.d.home });
 const sayOf = (a: Host): Say => a.d.say ?? (async () => null);
 const and = (l: string[]) => (l.length < 2 ? l.join("") : `${l.slice(0, -1).join(", ")} and ${l[l.length - 1]}`);
 /** the names masked out of everything Jev and the turn see: every place's name and its folder's words */

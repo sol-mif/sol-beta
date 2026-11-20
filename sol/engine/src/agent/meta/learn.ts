@@ -22,7 +22,7 @@ import { capped, triggerFor } from "./when.js";
 import { jobFor, rewritePlace, writePlace } from "./render.js";
 import { lineOf } from "./policy.js";
 
-const askOf = (a: Host): Ask => a.d.ask ?? makeAsk();
+const askOf = (a: Host): Ask => a.d.ask ?? makeAsk({ home: a.d.home });
 const sayOf = (a: Host): Say => a.d.say ?? (async () => null);
 const rid = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const words = (s: string) => new Set(maskOf(s, []).toLowerCase().replace(/<[a-z]+>/g, " ").split(/[^a-z']+/).filter((w) => w.length > 1 && !/^\d/.test(w)));

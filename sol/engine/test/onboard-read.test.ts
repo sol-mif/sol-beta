@@ -457,7 +457,7 @@ after(async () => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 
-test("a real engine, the switch unset, as a tester's Sol runs: onboard.read over the socket is answered \"none\", why off", { timeout: 90_000 }, async () => {
+test("a real engine, the switch turned off, as a tester's Sol runs: onboard.read over the socket is answered \"none\", why off", { timeout: 90_000 }, async () => {
   const dir = mkdtempSync(join(tmpdir(), "sol-onboard-read-e-"));
   dirs.push(dir);
   mkdirSync(join(dir, "home"));
@@ -470,7 +470,7 @@ test("a real engine, the switch unset, as a tester's Sol runs: onboard.read over
       ...base, SOL_PORT: String(port), SOL_HOME: join(dir, "home"), SOL_STATE: join(dir, "state", "work.json"), SOL_TEAM: join(dir, "team", "team.json"),
       SOL_LOGDIR: join(dir, "log"), SOL_LOG: join(dir, "engine.log"), SOL_PROFILE: join(dir, "profile"), SOL_APPDIR: join(dir, "app"),
       SOL_SETTINGS: join(dir, "settings.json"), SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1", SOL_TRACK: "off",
-      SOL_VERSION: "complete",   // a sol-dev checkout runs as the team's, where the switch stands on unset (#1406)
+      SOL_VERSION: "product", SOL_ONBOARD_READS: "off",   // a tester's Sol reads it on unset now its card stands at product (#1667), so turn it off
     },
   });
   engines.push(e);

@@ -60,6 +60,8 @@ import { useRole, openOn, sessionElsewhere, tellFacts, saidThis, screensState, k
 import { drawnOn as screenOf } from "../screens/model";
 import { ME as SCREEN_ME } from "../screens/store";
 import { useTicketsToEngine } from "../one/tickets";   // build.tickets: the engine told of the switch
+import { useAnchor } from "../one/anchor";   // the anchor, the kept session opened as any session (back beside orchestration, 2026-11-19)
+import { useOrchestrationToEngine } from "../one/orchestration";   // build.orchestration: the engine told of the switch
 import { anchorFacts } from "../screens/model";   // #1090: this window's role among the windows of one Jelly
 import { shareOf } from "../screens/share";
 import { HeadMap } from "../screens/HeadMap";
@@ -211,6 +213,7 @@ export function Home({ e, onMode }: { e: ReturnType<typeof useEngine>; onMode: (
   const [draft, setDraft] = useState<Draft>(() => ({ text: kept("sol.home.clean.draft", ""), atts: [] }));
   useEffect(() => keepS("sol.home.clean.draft", draft.text), [draft.text]);
   useTicketsToEngine();
+  useOrchestrationToEngine();
   // words taken back come into an empty box; their files always come back beside what is there (#1448, as WorkApp.tsx)
   useEffect(() => {
     const u = w.unsent;
@@ -386,6 +389,8 @@ export function Home({ e, onMode }: { e: ReturnType<typeof useEngine>; onMode: (
       if (card) { memory.current.set("talk", card); put(card); } else type();
     }));
   }, [w.open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the anchor: the kept session, opened as any session by its row beside settings (one/anchor.ts)
+  const anchor = useAnchor(live, open, e.flash, cwd);
   // a new session, already set to the folder you were in; nothing exists until you send
   const fresh = () => { setWide(false); if (sheet) sheetHow.current = "moved"; setSheet(false); w.fresh(session ? session.folder || session.project || session.cwd : w.freshCwd || undefined); requestAnimationFrame(type); };
   const overlay = (set: (v: boolean) => void, v: boolean) => {
@@ -580,7 +585,8 @@ export function Home({ e, onMode }: { e: ReturnType<typeof useEngine>; onMode: (
         {!docked && !wide && !peek && (!spine || crowded) && <div className="hc-edge" onMouseEnter={() => setSft((s) => soft(s, "edge"))} aria-hidden />}
         {(docked || wide || peekUp) && <Site name="sidebar"><Side w={w} width={sideW} live={role === "anchor" ? sessionElsewhere() ?? live : live} wide={wide} onOpen={(id) => open(id)} onBeside={(id) => setPane({ kind: "session", id })}
           onFresh={fresh} onWide={(v) => { setWide(v); requestAnimationFrame(() => h.current.goPlace("side")); }} onSettings={() => { setScope("build"); overlay(setSheet, true); }} onMode={onMode}
-          soft={!docked && !wide ? (peek ? "open" : "closing") : undefined} onHover={(on) => setSft((s) => soft(s, on ? "enter" : "leave"))} /></Site>}
+          soft={!docked && !wide ? (peek ? "open" : "closing") : undefined} onHover={(on) => setSft((s) => soft(s, on ? "enter" : "leave"))}
+          one={anchor.on && !wide} onOne={() => { setWide(false); anchor.go(); }} /></Site>}
         {!wide && (
           <section data-place="talk" tabIndex={-1} className={`hc-talk ${dropping ? "dropping" : ""}`}
             onDragOver={(ev) => { if (ev.dataTransfer.types.includes("text/sol-session")) { ev.preventDefault(); setDropping(true); } }} onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setDropping(false); }} onDrop={onDrop}>

@@ -47,7 +47,8 @@ test("mayAnswer: off, my own, not the team, over a person's or the day's limit, 
   assert.equal(mayAnswer(base), null);
   assert.match(mayAnswer({ ...base, on: false })!, /does not answer/);
   assert.match(mayAnswer({ ...base, from: "Marco" })!, /own agent/);
-  assert.match(mayAnswer({ ...base, from: "stranger" })!, /not on the team/);
+  assert.match(mayAnswer({ ...base, from: "stranger" })!, /not a member of marco's group/);
+  assert.match(mayAnswer({ ...base, team: null })!, /cannot be read right now/, "a group whose members cannot be read lets nobody ask");
   assert.equal(mayAnswer({ ...base, from: "stranger", team: [] }), null, "no people listed: anyone in my room");
   let c = base.counts;
   for (let i = 0; i < ASKS_A_PERSON; i++) c = counted(c, "Frank", T);
@@ -150,11 +151,11 @@ test("an ask: answered in a session given only the three read-only tools, the an
   const ans = e.sent.at(-1)!.p as any;
   assert.equal(ans.type, "answer"); assert.equal(ans.re, "ask000009"); assert.equal(ans.to, "frank"); assert.equal(ans.text, "yes, green at 14:10");
 
-  // an ask from someone not on the team is refused with the reason, and nothing starts
+  // an ask from someone not in my group is refused with the reason, and nothing starts
   heard(msg("stranger", { type: "ask", id: "ask000010", to: "marco", question: "your keys?" }));
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(e.started.length, 1);
-  assert.match(String((e.sent.at(-1)!.p as any).why), /not on the team/);
+  assert.match(String((e.sent.at(-1)!.p as any).why), /not a member of marco's group/);
   // an ask for someone else is kept in the thread, never answered here
   heard(msg("frank", { type: "ask", id: "ask000011", to: "isaac", question: "q" }));
   await new Promise((r) => setTimeout(r, 20));

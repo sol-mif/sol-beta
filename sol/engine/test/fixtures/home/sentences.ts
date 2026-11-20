@@ -79,6 +79,16 @@ export const HIS = {
   overrideLine: "jobs · a job, started · ready Thursday 13:00",                                                 // l.85
 };
 
+/** his own filing rules (#1686): what the engine once held as constants for everyone, now his, in his order, as his
+ *  <HOME>/home-rules.json would hold them (src/home/rules.ts) */
+export const HIS_RULES = { file: [
+  { words: ["bio", "biology", "slides", "midterm"], folder: "school › bio 201" },
+  { words: ["chem", "chemistry", "lab", "equilibrium"], folder: "school › chem 110" },
+  { words: ["stats", "statistics", "survey", "maya"], folder: "school › stats 140" },
+  { words: ["offer", "interview", "application", "cv", "cover letter", "recruiter", "sam", "shopify"], folder: "jobs" },
+  { words: ["exam", "lecture", "class", "course", "homework"], folder: "school" },
+] };
+
 const TIMES = new Set(["at", "end", "from", "due"]);
 const pad = (n: number) => String(n).padStart(2, "0");
 const local = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };

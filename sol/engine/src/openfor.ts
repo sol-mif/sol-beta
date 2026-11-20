@@ -21,7 +21,7 @@ export const PANES = ["changes", "files", "browser", "terminal", "page", "pr", "
 /** the settings a seat may change for the person: how Sol looks and sounds to them. Not defaults (it holds what a session
  *  may do without asking: a seat must never raise its own leash), nor mic, cowork, frame, stage, home, onboarding, log,
  *  reach, open, version, morning (switches), nor track (counting stays a hand's choice) */
-export const SETTABLE = ["voice", "voiceVendor", "elevenVoice", "patienceMs", "language", "look", "notify", "lens"] as const;
+export const SETTABLE = ["voice", "voiceVendor", "elevenVoice", "patienceMs", "language", "look", "notify", "lens", "own"] as const;
 
 export const OPEN_TOOLS = [
   {
@@ -41,7 +41,8 @@ export const OPEN_TOOLS = [
     name: "set_setting",
     description: "Change one of the person's settings, only when they asked for that change or said yes to it in this " +
       "very turn; never before, never on a guess. `patch` is the part of the settings that changes (look: { text: 18 }; " +
-      "voice: \"Kore\"; notify, language, lens …). `yes` is the person's own words from this turn that ask for it " +
+      "voice: \"Kore\"; notify, language, lens …; own: { perDay: 20 } is how many times a day Agents may ask the person's own " +
+      "cheapest model when there is no Jev, 0 never, at most 500, null back to 100). `yes` is the person's own words from this turn that ask for it " +
       "or agree to it, two words at least (in Chinese or Japanese, four characters), copied exactly: the change is refused when those words are not in what they said this turn.",
     shape: { patch: z.record(z.string(), z.unknown()), yes: z.string().min(2).max(400) },
   },

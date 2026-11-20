@@ -37,11 +37,14 @@ import { runTicket, sessionOf, type RunDeps, type RunOut } from "./run.js";
 import { pageHtml } from "./page.js";
 import { jobsTurn } from "./jobs/index.js";   // the jobs folder (step 3): its turns pass through here first
 import { askFirst, askForm, askWhere } from "./whereJev.js";   // Home's world (#1093): Jev's picks 1, 2 and 6
+import { askWhereByModel } from "./whereModel.js";   // no Jev: the person's cheapest model says where (#1485)
+import { jevKey } from "./jev.js";
 import { finishedFor } from "./doneJev.js";   // Home's world (#1093): Jev's pick 3
 import { askOpens } from "./opensJev.js";   // Home's world (#1093): Jev's pick 5
 import { askTied } from "./tiedJev.js";   // Home's world (#1093): Jev's pick 4
 import { readAreas, SYSTEMS_BOARD } from "./areas.js";
 import * as St from "./stickies.js";   // a folder's stickies, kept by the engine (#1228)
+import { agentsOn, bindAgentsSwitch } from "./switch.js";   // agents.mode reaches the engine (#18): off, the keeper and the meta rest
 import { heldNow, keep as keepAgents, signedIn as agentsSignedIn, hasAgentsFile, type Say } from "./agents.js";   // Agents (#1327): the keeper
 import { keepMeta } from "./meta/keeper.js";   // Agents (#1327, pass 2): first runs, joining, date triggers
 import { notice } from "./meta/offer.js";   // Agents (#1327, pass 2): offers noticed on the tick
@@ -64,7 +67,8 @@ export type AgentDeps = {
   signin?: Partial<SignInOpts>;
   /** a run's step, as it happens (the wire tells the faces: agent.step) (#1228) */
   step?: (folder: string, step: RunStep) => void;
-  /** Agents' meta (#1327): Jev's same-job, same-kind and same-fix questions (default: the real Jev, null without a key) */
+  /** Agents' meta (#1327): Jev's same-job, same-kind and same-fix questions (default: the real Jev; without a key, the
+   *  person's own cheapest model, a few a day: meta/own.ts) */
   ask?: Ask;
   /** Agents' meta (#1327): one whole Sol turn that answers in words (default: a read-only Codex turn in the home) */
   say?: Say;
@@ -87,7 +91,8 @@ export class Agents {
   readonly running = new Map<string, Running>();
   private pressing = new Set<string>();
   constructor(readonly d: AgentDeps) {
-    d.ask ??= makeAsk();
+    bindAgentsSwitch(d.home);
+    d.ask ??= makeAsk({ home: d.home });   // no Jev key: the person's own cheapest model, counted a day in the home (#1476)
     if (!d.say && d.run) d.say = codexSay(d.run, d.home);
     setSessionProfiles((sid) => { const m = /^agent:(.+)$/.exec(sid); const f = m ? this.folderOf(m[1]) : null; return f ? profileFor(f) : undefined; });
     setAgentGuard(guardTool);   // read only where people talk (guard.ts), in every mode
@@ -366,15 +371,16 @@ export class Agents {
   tick(at = new Date(this.now())): Promise<unknown[]> {
     const jobs: Promise<unknown>[] = [];
     // Agents (#1327): the keeper first (held, rested, woken; nothing until agents.json exists), then the clock skips
-    // what it holds. policy.md is not changed for it
-    try { keepAgents(this.d.home, at.getTime()); } catch { /* a torn agents.json: the clock runs as before */ }
+    // what it holds. policy.md is not changed for it. With agents.mode off (switch.ts) none of it: the rules run as before
+    const on = agentsOn(this.d.home);
+    if (on) try { keepAgents(this.d.home, at.getTime()); } catch { /* a torn agents.json: the clock runs as before */ }
     // Agents' meta: a capped first run lifted, a new sibling joined, a date trigger due (each date once); then the
     // offers noticed in the background (one scan at a time), once the Agents view has made agents.json
     let due: { folder: string; rule: string }[] = [];
-    try { due = keepMeta(this.d.home, at.getTime()).due; } catch { /* a torn agents.json: as before */ }
+    if (on) try { due = keepMeta(this.d.home, at.getTime()).due; } catch { /* a torn agents.json: as before */ }
     for (const r of due) jobs.push(this.runRule(r.folder, r.rule, true).catch(() => {}));
-    if (hasAgentsFile(this.d.home)) void notice(this, true).catch(() => {});
-    const held = heldNow(this.d.home, at.getTime());
+    if (on && hasAgentsFile(this.d.home)) void notice(this, true).catch(() => {});
+    const held = on ? heldNow(this.d.home, at.getTime()) : new Set<string>();
     for (const f of this.folders()) {
       const fired = readLast<{ keys: string[] }>(f.path, "clock")?.keys ?? [];
       const exam = examOf(f.path);
@@ -469,7 +475,7 @@ export async function handleAgent(m: Record<string, any>): Promise<object> {
     case "agent.press": return { type: m.type, ...rid, ...(await a.press(String(m.folder ?? ""), String(m.key ?? ""), typeof m.yes === "string" ? m.yes : undefined)) };
     case "agent.made.open": return { type: m.type, ...rid, ok: true };   // Home's made thing opened (#1490): only counted (track.ts home.made.open)
     case "agent.run": return { type: m.type, ...rid, ...(await a.runRule(String(m.folder ?? ""), String(m.ruleId ?? ""))) };
-    case "agent.where": return { type: m.type, ...rid, ok: true, ...((await askWhere(String(m.sticky ?? ""), Array.isArray(m.folders) ? m.folders : [])) ?? { folder: null }) };   // Home's world (#1093): Jev's pick 1
+    case "agent.where": { const sticky = String(m.sticky ?? ""), folders = Array.isArray(m.folders) ? m.folders : []; return { type: m.type, ...rid, ok: true, ...((await (jevKey() ? askWhere(sticky, folders) : askWhereByModel(sticky, folders))) ?? { folder: null }) }; }   // Home's world (#1093): Jev's pick 1; with no Jev, the cheapest model (#1485)
     case "agent.first": return { type: m.type, ...rid, ok: true, ...((await askFirst(Array.isArray(m.things) ? m.things : [])) ?? { first: null }) };   // Home's world (#1093): Jev's pick 2
     case "agent.form": return { type: m.type, ...rid, ok: true, ...((await askForm({ name: String(m.name ?? ""), part: String(m.part ?? ""), things: Array.isArray(m.things) ? m.things.map(String) : [] })) ?? { form: null }) };   // Home's world (#1093): Jev's pick 6
     case "agent.finished": {   // Home's world (#1093): Jev's pick 3, told the talk's shape only: a title can be the first prompt, so it stays here

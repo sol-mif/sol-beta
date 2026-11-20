@@ -101,3 +101,19 @@ export function readPart(text: string, week: Mark[], now: number): Reading {
 
 /** the factory default: Marco's rules */
 export const ruleJudge: Judge = { name: "rule", read: (sentence, week, now) => split(sentence).map((t) => readPart(t, week, now)) };
+
+// ── corrections (#1686, gate one q4) ──
+/** the key a correction is kept under: the part's words without its day and hour, plain (pure) */
+export const correctionKey = (text: string): string => bare(text).normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** a judge that reads a part the person corrected the way they corrected it, .9 sure, before its own rules; every
+ *  other part as `judge` reads it. `corrected`: each correction's key and the read it goes as */
+export function correctedJudge(judge: Judge, corrected: Map<string, Read>): Judge {
+  if (!corrected.size) return judge;
+  return {
+    name: judge.name,
+    read: (sentence, week, now) => judge.read(sentence, week, now).map((r) => {
+      const to = corrected.get(correctionKey(r.text));
+      return to && to !== r.read ? { ...r, read: to, p: spread(to, 0.9) } : r;
+    }),
+  };
+}

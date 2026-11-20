@@ -115,7 +115,7 @@ export function fixtureOf(now = Date.now(), who: Who = "baker", o: { meet?: bool
 }
 
 /** the one line the engine says once when the person's own model asked in Jev's place (agents.ts JEV_NOTE) */
-export const JEV_NOTE = "Your own model asked these. With Jev, Sol would ask you fewer: put its key in ~/.config/sol/jev.env as JEV_API_KEY.";
+export const JEV_NOTE = "No Jev needed: Sol asks the cheapest model in your own AI instead, at most 100 times a day. Tell Sol a smaller number to make it ask less.";
 /** an in-place join on a home (pure on its list): its first agent's first place gets a routine beside it, a step that
  *  may use what the agent makes, asked as the engine asks it with no Jev (no score) */
 function withSteps(l: List, now: number) {

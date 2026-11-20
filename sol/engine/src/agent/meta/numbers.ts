@@ -25,6 +25,11 @@ export const DEFAULT_LEAD_DAYS = 1;
 export const DEFAULT_HOUR = 9;
 /** Jev's budget per call, as the other Jev clients (whereJev.ts, doneJev.ts) */
 export const JEV_BUDGET_MS = 4000;
+/** no Jev key: the person's own cheapest model asks in its place (own.ts), at most this many questions a day (stated
+ *  default; past it, code decides as it does with no Jev at all) ... */
+export const OWN_PER_DAY = 100;
+/** ... each within this long (a CLI starts for each, so far more than Jev's budget) */
+export const OWN_BUDGET_MS = 30_000;
 /** Jev questions in flight at once, never unbounded (jev.ts inOrder: groupRules, kindsOf; stated default) */
 export const JEV_AT_ONCE = 4;
 /** a late look that Jev could not answer (null) is not started again by agents.list for the same rule set until this

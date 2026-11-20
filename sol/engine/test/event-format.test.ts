@@ -124,7 +124,8 @@ test("2. every kind the engine writes is family.action and has its row; no old b
     // a call of append(, seat(, note( on something, or of seatlog.ts's own line(; and the kind log.ts writes itself
     const calls = [...t.matchAll(/\.(?:append|seat|note)\(\s*("[^"]*"|[^,)\n]{0,40})/g)].map((m) => m[1].trim());
     const lined = short(f) === "seatlog.ts" ? [...t.matchAll(/(?<![.\w])line\(\s*("[^"]*"|[^,)\n]{0,40})/g)].map((m) => m[1].trim()) : [];
-    const own = short(f) === "log.ts" ? [...t.matchAll(/\bappend\(\{[^}]*\bkind: ("[^"]*")/g)].map((m) => m[1]) : [];
+    // log.ts's own kinds: the erase, and what an older Sol wrote carried in (carryOld, #1678), each a literal `kind: "log.*"`
+    const own = short(f) === "log.ts" ? [...t.matchAll(/\bkind: ("log\.[a-z]+")/g)].map((m) => m[1]) : [];
     for (const c of [...calls, ...lined, ...own]) {
       if (c.startsWith('"')) written.add(c.slice(1, -1));
       else notLiteral.push(`${short(f)}: ${c}`);
@@ -141,6 +142,9 @@ test("2. every kind the engine writes is family.action and has its row; no old b
     join("work", "runs.ts") + ": a",            // Run.note(a): a run's own note, not the log
     join("home", "log.ts") + ": w.kind",        // Home's one door (#790): its kinds through the kernel's append, every one a row
     "way-own.ts: d.kind",                       // a person's own ways' one door (4c): way.* drafts through the kernel's append, every one a row
+    "log.ts: draftOf(l",                         // carryOld (#1678): an old line again, its kind a row (else log.carried)
+    "log.ts: { by: ENGINE_BY",                  // carryOld's opening log.merged
+    "log.ts: d",                                // carryOld's closing log.merged, when no kernel closes it
   ].sort());
   assert.equal(text(join(SRC, "home", "log.ts")).match(/\bk\.append\(/g)?.length, 1, "Home writes through the kernel's append, once, nowhere else");
   assert.equal(text(join(SRC, "way-own.ts")).match(/\.append\(/g)?.length, 1, "a person's own ways write through the kernel's append, once, nowhere else");
@@ -333,7 +337,7 @@ test("4. free text lives in a value file; log.erase removes a content and the ch
 
 test("5. \"about to do\" (run.about, rung.asked) is fsynced: on the disk before append returns, and there after a SIGKILL", async () => {
   const marked = KINDS.filter((r) => r.fsync).map((r) => r.kind);
-  assert.deepEqual(marked.sort(), ["log.erase", "run.about", "rung.asked"]);
+  assert.deepEqual(marked.sort(), ["log.erase", "log.merged", "run.about", "rung.asked"]);
 
   // (a) the call itself: fsync is called on the day's file, on the value's file and on their folders, inside append
   type Seen = { ino: number; day: string };

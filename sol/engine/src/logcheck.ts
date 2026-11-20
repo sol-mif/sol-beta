@@ -6,6 +6,8 @@
 //      turn's tokens when it ends (seat.done), so while one is running its tokens are compared up to its start
 //   2. the log's own chain (the event format v1, log.ts verifyLog): each v1 line's id is its body's hash, its prev the
 //      line before it, its content the one its hash names
+//   The second, with what an older Sol wrote that is not carried in yet, is what the engine does at every start (log.ts
+//   carryOld, #1678), so nobody needs this file or a source tree.
 // Run from sol/engine:  node --import tsx src/logcheck.ts [--home <home>] [--logdir <dir>] [--since <seq>]
 // Pure parts (summarize, claudeCounts, codexCounts, reconcile) are tested in test/seat-log.test.ts. A
 // background agent's steps (agent: true) are not counted: they are in the agent's own transcript, not the session's.
@@ -13,7 +15,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { logDir, logFiles, readLog, verifyLog, type AnyEv } from "./log.js";
+import { logDir, logFile, logFiles, readLog, checkLog, checkWords, type AnyEv } from "./log.js";
 
 /** an event as these counts read it: a line from before v1 (read with the name its kind has now) or a v1 one */
 type Counted = Pick<AnyEv, "by" | "kind" | "at"> & { value?: unknown; ctx?: { session?: string } };
@@ -133,7 +135,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const rows = reconcile(events, findTranscript);
   console.log(`1. ${rows.length} conversation(s) on the log${since ? ` since seq ${since}` : ""}:`);
   for (const r of rows) console.log(`   ${r.ok === null ? "?" : r.ok ? "ok" : "NO"}  ${r.seat.padEnd(6)} ${r.session}  log turns ${r.log.turns} steps ${r.log.steps} out ${r.log.out}  ${r.transcript ? `transcript turns ${r.transcript.turns} steps ${r.transcript.steps} out ${r.transcript.out}` : ""}  ${r.note}`);
-  const c = verifyLog(dir);
+  const whole = checkLog(dir, logFile(home)), c = whole.chain;
   console.log(c.ok ? `2. the chain holds: ${c.events} v1 line(s), ${c.old} from before v1 (not chained), ${c.erased} with their content erased` : `2. the chain is BROKEN at ${c.bad.length} line(s), first: ${c.bad[0].say}`);
+  console.log(`3. in plain words:\n${checkWords(whole).replace(/^/gm, "   ")}`);
   process.exit(rows.some((r) => r.ok === false) || !c.ok ? 1 : 0);
 }

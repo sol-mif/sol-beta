@@ -49,13 +49,18 @@
     "side": "window",
     "id": "product/home/look-shown"
   },
-  "onboarding.reads": {
+  "map.grown": {
     "station": "concept",
+    "side": "engine",
+    "id": "engine/team-map"
+  },
+  "onboarding.reads": {
+    "station": "product",
     "side": "engine",
     "id": "product/onboarding/ask"
   },
   "open.for": {
-    "station": "concept",
+    "station": "product",
     "side": "engine",
     "id": "product/settings/open-for",
     "offers": [
@@ -110,7 +115,7 @@
     "id": "product/cowork"
   },
   "view.home": {
-    "station": "concept",
+    "station": "complete",
     "side": "window",
     "id": "product/home"
   },

@@ -29,10 +29,30 @@ export function atQuery(before: string): string | null {
   return m ? m[1] : null;
 }
 
-/** the members an @ may name, matching what is typed, never me: "@b" and "@b's agent" for each person */
+/** the members an @ may name, matching what is typed: "@b" and "@b's agent" for each person, and my own agent (gate
+ *  one, #1677: alone at a table, my AI is the one who can read a line), never me as a person */
 export function atOptions(members: readonly Member[], me: string, q: string): Member[] {
   const want = q.toLowerCase().replace(/’/g, "'");
-  return members.filter((m) => m.login.toLowerCase() !== me.toLowerCase() && nameOf(m).toLowerCase().startsWith(want));
+  return members.filter((m) => (m.agent || m.login.toLowerCase() !== me.toLowerCase()) && nameOf(m).toLowerCase().startsWith(want));
+}
+
+/** nobody else is here: no person in the members but me (an empty read too) */
+export const alone = (members: readonly Member[], me: string) => !members.some((m) => !m.agent && m.login.toLowerCase() !== me.toLowerCase());
+
+/** whether a line names my own agent ("@me's agent"), outside a code fence, as the engine's @ rule reads a name
+ *  (team/chatline.ts mentionsIn). The engine hands it to nobody (my agent is not asked over reach): the window opens a
+ *  talk with my own AI on it, and my AI answers in the room */
+export function namesMyAgent(text: string, me: string): boolean {
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(me)) return false;
+  const t = text.replace(/```[^\n]*\n[\s\S]*?(?:```|$)/g, " ").replace(/[‘’]/g, "'");
+  return new RegExp(`(?:^|[^\\w@-])@${me.replace(/-/g, "\\-")}'s agent\\b`, "i").test(t);
+}
+
+/** what my own AI is handed when a line names it: the line as I wrote it, and where to answer (the room's chat, with
+ *  its talk tool, short) */
+export function askMine(text: string, group?: string): string {
+  return `I wrote this in ${group ? `${group}'s` : "my group's"} room in Cowork and named you:\n\n${text.trim()}\n\n` +
+    "Answer me there, in the room, with your talk tool (thread general), short; a PR link instead of a paragraph.";
 }
 
 /** the words with the @ before the caret replaced by the picked member, and where the caret goes */

@@ -9,7 +9,8 @@ import type { Codex } from "@openai/codex-sdk";
 import { profileFor, type TurnCtx } from "../browser.js";
 import { parseReport, type Card, type Report, type Rule, type Ticket, type Trigger } from "./harness.js";
 import { readThread, saveThread } from "./store.js";
-import { AGENT_OPENING } from "../threads.js";   // how its thread opens: never listed as a talk (#1430)
+import { AGENT_OPENING } from "../threads.js";
+import { agentsOn } from "./switch.js";   // how its thread opens: never listed as a talk (#1430)
 import { refusalFor } from "./jobs/refuse.js";
 import { both, levelFor, refusalIn, rungOfLevel } from "../consent.js";   // what the person allowed (#1216): the record's level for this folder
 import { logging, turnStarted, turnEnded, codexTokens } from "../seatlog.js";   // the turn on the log as seat codex, session agent:<folder> (#1628)
@@ -94,7 +95,9 @@ export async function runTicket(folder: string, rule: Rule, trigger: Trigger, ti
   const turn: TurnCtx = { sessionId: session, seat: "codex", profile: profileFor(folder), refuse: turnRefusal(folder, ticket.mandate.mode, deps.personHome), ...(deps.sink ? { sink: deps.sink } : {}) };
   deps.turns.set(token, turn);
   const opts = { workingDirectory: folder, skipGitRepoCheck: true, sandboxMode: deps.sandboxMode, approvalPolicy: "never" as const, networkAccessEnabled: deps.networkAccessEnabled, ...(deps.model ? { model: deps.model } : {}) };
-  const codex = deps.codexFor(token, { internal: true });   // the agent's own work: its desk shows it, never a list of chats (calm, 2026-11-17)
+  // the agent's own work: its desk shows it, never a list of chats (calm, 2026-11-17); with agents.mode off (switch.ts)
+  // a chat again, as before Agents
+  const codex = deps.codexFor(token, { internal: agentsOn() });
   const had = readThread(folder);
   let thread = had ? codex.resumeThread(had, opts) : codex.startThread(opts);
   // on the log, with the frame on: the turn and what it spent, so a night's and an agent's work show where the week went (#1628)

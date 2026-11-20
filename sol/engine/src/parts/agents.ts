@@ -18,6 +18,8 @@
 //   agents.rest {id, on}                  → holds or wakes all its rules; a change line
 //   agents.undo {changeId | changeIds}    → one change reversed, or one cause's changes together
 //   agents.meet {}                        → the person saw the floor: the keeper keeps fully from now on
+//   agents.switch {on?}                   → the window's agents.mode, kept (agent/switch.ts): off, the keeper and the meta
+//                                           rest, the clock skips nothing they held, an agent's runs are chats again → { on }
 //   agents.noted {}                       → the line about Jev was read: it is not said again
 //   agents.regroup {answer}               → an older Sol's grouping asked about: "regroup" (the agents as Sol groups
 //                                           them now, what the person set kept) or "keep" (never asked again); a change line
@@ -58,6 +60,7 @@
 // seat row lapsed or missing, or a site row it is stuck at), null when nothing blocks it, and ABSENT when not known
 // (no `connections {seats: true}` read since the engine started). It reads the kept list and never asks it anew.
 //   (pushed) agents.changed               → to every face when agents.json changes (and with agent.changed, index.ts)
+import { agentsOn, setAgentsOn } from "../agent/switch.js";   // agents.mode reaches the engine (#18)
 import type { Parts, Heard } from "../parts.js";
 import { agentsNow } from "../agent/index.js";
 import { startSignIn } from "../agent/comms.js";
@@ -83,7 +86,7 @@ export async function answer(m: Record<string, any>): Promise<object> {
   if (!a) return { ok: false, why: "the folder agents are not running on this engine" };
   const id = String(m.id ?? "");
   switch (m.type) {
-    case "agents.list": { const r = await listNow(a, a.d.ask ?? makeAsk()); return seatsOn() ? seated(r) : r; }
+    case "agents.list": { const r = await listNow(a, a.d.ask ?? makeAsk({ home: a.d.home })); return seatsOn() ? seated(r) : r; }
     case "agents.offers": return offers(a);
     case "agents.offer": return answerOffer(a, id, String(m.answer ?? ""), Array.isArray(m.places) ? m.places.map(String) : undefined);
     case "agents.scope": return scope(a, { id, ...(m.add ? { add: String(m.add) } : {}), ...(m.remove ? { remove: String(m.remove) } : {}) });
@@ -102,6 +105,7 @@ export async function answer(m: Record<string, any>): Promise<object> {
     case "agents.rest": return rest(a, id, m.on !== false);
     case "agents.undo": return Array.isArray(m.changeIds) ? undoMany(a, m.changeIds.map(String)) : undo(a, String(m.changeId ?? ""));
     case "agents.meet": return meet(a);
+    case "agents.switch": { if (typeof m.on === "boolean") setAgentsOn(a.d.home, m.on); return { on: agentsOn(a.d.home) }; }
     case "agents.noted": return noted(a);
     case "agents.regroup": return m.answer === "regroup" || m.answer === "keep" ? regroup(a, m.answer) : { ok: false, why: "answer regroup or keep" };
     case "agents.make": return make(a, String(m.line ?? ""), String(m.folder ?? ""), String(m.time ?? ""));

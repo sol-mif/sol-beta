@@ -2,8 +2,8 @@
 // nothing else. The face is a renderer of this shape; it names no person, outcome or view of its own. Three kinds of
 // thing sit in it: the places (a tree of circles with their counts), the things on them (changes, open PRs, calls, PR
 // pairs), and the reading of them (views, each person's order and pins, the Layers). The spec is built by build.ts from
-// a team's setup (setup below: today ours, by hand in .sol/cowork-map.json; later the blind rules write it for any
-// team) and the team's live records (MapInput).
+// a team's setup (setup below: by hand in .sol/cowork-map.json, or grown from the team's members and GitHub behind the
+// switch map.grown, grow.ts) and the team's live records (MapInput).
 
 /** a person or an agent; an agent acts for a person and is drawn in that person's colour, ringed */
 export type MapPerson = {
@@ -102,10 +102,12 @@ export type Setup = {
  *  unread night reads "unread" */
 export type ClockRule = { what: string; hour?: string; at?: string; from?: string; after?: string };
 export type PinRule = {
-  kind: "calls" | "cross" | "broken" | "pairs" | "stale";
+  /** say: words and a press only, counting nothing (the grown setup's "shape it", grow.ts) */
+  kind: "calls" | "cross" | "broken" | "pairs" | "stale" | "say";
   at: string[]; view: string; says: string; short: string; press: string; why: string;
   who?: string; by?: string; into?: string; under?: string; with?: string; days?: number;
-  act?: MapPin["act"];
+  /** the press, each field a template over the count's {vars} (an issue as "{oldest}"), filled by build.ts */
+  act?: { issue?: number | string; view?: string; talk?: string };
 };
 /** the live records: the registry's parts, the changes git saw, the open PRs with their files, open issues, notes */
 export type MapInput = {

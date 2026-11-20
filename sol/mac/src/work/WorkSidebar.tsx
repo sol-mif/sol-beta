@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { OneDoor } from "../one/OneDoor";   // the anchor, a row beside settings
+import { anchorId } from "../one/anchor";
 import type { AppMode } from "../ModeSwitch";
 import { ModeWheel } from "../ModeWheel";
 import { CFG, enter, useSpring } from "../motion";
@@ -124,8 +126,9 @@ const CHAT_PINS = "sol.home.chatpins";
 // the layout and the split's share, from the person's arrangement, and the way to change them (arrange.set)
 export type Lay = { layout?: string; share?: number; arrange: (patch: object) => void };
 
-export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConversations, onFresh, menuHold, onBeside, onPop, chats, lay }: {
+export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConversations, onOne, onFresh, menuHold, onBeside, onPop, chats, lay }: {
   w: Work; pinned: boolean; view: "chat" | "settings" | "conversations" | "one"; onMode: (m: AppMode) => void; onSettings: () => void; onConversations: () => void;
+  onOne?: () => void;   // the anchor's row (one/OneDoor.tsx), beside settings
   onFresh: (cwd?: string) => void; menuHold?: boolean; onBeside: (id: string) => void; onPop: (id: string, title: string) => void; chats?: Chats; lay?: Lay;
 }) {
   const [pins, setPins] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem(CHAT_PINS) ?? "[]"); return Array.isArray(v) ? v : []; } catch { return []; } });
@@ -736,6 +739,7 @@ export function WorkSidebar({ w, pinned, view: page, onMode, onSettings, onConve
             title={waiting ? `conversations (cmd+;): ${waiting} talk${waiting === 1 ? "" : "s"} not opened yet` : "conversations (cmd+;)"}>
             <Talks /><span>conversations{waiting > 0 && <i className="newc-dot" aria-label="a talk waits" />}</span><kbd>⌘;</kbd>
           </button>
+          {onOne && <OneDoor on={page === "chat" && !!w.live && w.live === anchorId()} onPick={onOne} />}
           <button className={`newc setc ${page === "settings" ? "on" : ""}`} data-s onClick={onSettings} aria-pressed={page === "settings"} title="settings (cmd+,)">
             <Gear /><span>settings</span><kbd>⌘,</kbd>
           </button>

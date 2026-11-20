@@ -17,11 +17,30 @@ test("the engine's orchestration words read as one line each; the person's words
   assert.equal(engineSaid("promote this one please"), null);
 });
 
-test("the row menu: promote on a normal row, a fresh copy and demote on every orchestration row (#1209: no row is kept apart); work.kind is what it sends", () => {
+test("the anchor's words from the engine read as one line: kept, and renewed (one.ts FIRST_PLAIN, ANCHOR_RENEWED)", () => {
+  assert.equal(engineSaid("You are the anchor session: the session this person mostly works in"), "the anchor: this session is kept from now on");
+  assert.match(engineSaid("You are the anchor session: the session ... Your folder is /a.\n\nYou are renewal 3 of the same anchor session: ...")!, /^renewed: .*this stage/);
+  assert.equal(engineSaid("is this the anchor session?"), null);
+});
+
+test("build.orchestration stands at concept (MINE_ON) and is told to the engine from both sides' apps", () => {
+  const flag = readFileSync(new URL("./flag.ts", import.meta.url), "utf8");
+  assert.match(flag, /MINE_ON = new Set\(\[[^\]]*"build\.orchestration"/);
+  for (const f of ["./home/Home.tsx", "./work/WorkApp.tsx"]) {
+    const t = readFileSync(new URL(f, import.meta.url), "utf8");
+    assert.match(t, /useOrchestrationToEngine\(\);/, f);
+    assert.match(t, /useAnchor\(/, f);
+  }
+  const o = readFileSync(new URL("./one/orchestration.ts", import.meta.url), "utf8");
+  assert.match(o, /type: "work\.orchestration\.on", on/);
+});
+
+test("the row menu: promote on a normal row while build.orchestration is on, a fresh copy and demote on every orchestration row, a fresh copy only on the anchor (2026-11-19: the anchor is back beside them); work.kind is what it sends", () => {
   const side = readFileSync(new URL("./home/Side.tsx", import.meta.url), "utf8");
   assert.match(side, /s\.kind === "orchestration"\s*\? \[\["renew", "fresh copy now", \(\) => renewNow\(s\.id\)\][^\n]*\["kind", "demote", \(\) => w\.kind\(s\.id, null\)\]/);
-  assert.doesNotMatch(side, /anchorId/);
-  assert.match(side, /\["kind", "promote to orchestration", \(\) => w\.kind\(s\.id, "orchestration"\)\]/);
+  assert.match(side, /: s\.id === anchorId\(\) \? \[\["renew", "fresh copy now", \(\) => renewNow\(s\.id\)\][^\n]*\]\n/, "the anchor: a fresh copy, never promote");
+  assert.match(side, /s\.archived \|\| !orchOn \? \[\] : \[\["kind", "promote to orchestration", \(\) => w\.kind\(s\.id, "orchestration"\)\]/, "promote only with the switch on");
+  assert.match(side, /\{onOne && <OneDoor clean on=\{!!one\} onPick=\{onOne\}/, "the anchor's row beside settings");
   const work = readFileSync(new URL("./work/useWork.ts", import.meta.url), "utf8");
   assert.match(work, /kind: \(id: string, kind: "orchestration" \| null\) => ask<[^>]*>\("work\.kind", \{ sessionId: id, kind \}\)/);
   assert.match(work, /under: \(id: string, under: string \| null, undo\?: boolean\) => ask<[^>]*>\("work\.under", \{ sessionId: id, under, \.\.\.\(undo \? \{ undo: true \} : \{\}\) \}\)/, "a refusal is heard; an undo says so (G7)");

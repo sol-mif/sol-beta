@@ -7,6 +7,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { useEngine } from "../../useEngine";
 import { askEngine } from "../askEngine";
+import { link } from "../../socket";
+import { ENGINE } from "../../useEngine";
+import { askMine, namesMyAgent } from "../whole/room-chat";
 import { Gl } from "./Coin";
 import { later, take, useHands } from "../handed";
 import { useTeam, type Team } from "../useTeam";
@@ -119,6 +122,8 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
     }
     const text = to ? `@${to} ${words}`.trim() : words;
     const r = await team.ask<{ ok?: boolean; error?: string }>("team.talk", { thread: "general", text: text || (thing ? thing.name : ""), ...(thing ? { file: { name: thing.name, bytes: thing.bytes, kind: thing.kind } } : {}) }, thing ? 120_000 : 30_000);
+    // a line naming my own agent (#1677): my own AI reads it in a talk of mine and answers at the table, as in the room
+    if (r?.ok && namesMyAgent(text, me)) link(ENGINE).send({ type: "work.say", sessionId: crypto.randomUUID(), text: askMine(text, at?.name ?? tables.find((t) => t.id === inUse)?.name), fresh: true, mode: "default" });
     if (r?.ok) return { ok: true, said: thing ? `handed to ${to || "the table"}` : `said to ${to || "the table"}` };
     return { ok: false, said: `not sent: ${r?.error || "no answer"}` };
   };

@@ -17,7 +17,7 @@ import { ENGINE } from "../../useEngine";
 import { askEngine } from "../askEngine";
 import { openUrl } from "../util";
 import { Who } from "../bits";
-import { answers, artifactOfUrl, atOptions, atQuery, colourIndex, nameOf, pickAt, reviewOf, type Artifact, type ChatLine, type Member } from "./room-chat";
+import { alone, answers, artifactOfUrl, askMine, atOptions, atQuery, colourIndex, nameOf, namesMyAgent, pickAt, reviewOf, type Artifact, type ChatLine, type Member } from "./room-chat";
 import "./room-chat.css";
 
 type RoomBlock = Block & { project: string };
@@ -54,8 +54,15 @@ export function RoomChat() {
   };
   const say = async (text: string, artifact?: Artifact) => {
     const r: any = await askEngine("team.talk", { thread: "general", text, ...(artifact ? { artifact: { kind: artifact.kind, ref: artifact.ref, title: artifact.title } } : {}) }, 30_000);
-    if (r?.ok) setN((x) => x + 1);
-    return r?.ok ? "" : String(r?.error ?? "that did not go out");
+    if (!r?.ok) return String(r?.error ?? "that did not go out");
+    // a line naming my own agent (#1677): a talk of mine with my AI on those words, which answers in the room (the
+    // engine's rule under the line says my agent read it, team/chatline.ts chatOf)
+    if (d && namesMyAgent(text, d.me) && !link(ENGINE).send({ type: "work.say", sessionId: crypto.randomUUID(), text: askMine(text, d.group), fresh: true, mode: "default" })) {
+      setN((x) => x + 1);
+      return "said in the room, but your AI could not be reached: the engine is not answering";
+    }
+    setN((x) => x + 1);
+    return "";
   };
   if (!d) return <div className="cw-pad">{error ? <p className="cw-dim">Could not read the room: {error}. <button className="cw-link" data-act="read again" onClick={() => setN((x) => x + 1)}>read again</button></p> : <p className="cw-dim">reading the room…</p>}</div>;
   return <RoomChatView d={d} pressing={pressing} press={press} say={say} />;
@@ -104,7 +111,10 @@ export function RoomChatView({ d, pressing = "", press, say }: { d: ChatRead; pr
       )}
       <div className="rc-scroll" ref={scroller}>
         <div className="rc-lines" ref={inner} data-room="thread">
-          {d.lines.length === 0 && <p className="cw-dim rc-empty">Nobody has said anything yet. Write a line below: it is read by nobody's agent unless you @ it.</p>}
+          {d.lines.length === 0 && (alone(d.members, d.me)
+            // alone at the table (#1677): my own AI is the one who can read a line, so the page says how to reach it
+            ? <p className="cw-dim rc-empty" data-room="alone">Just you here so far. Write @{d.me}'s agent and your own AI reads the line and answers here, on your usage. Without an @, nobody's agent reads it.</p>
+            : <p className="cw-dim rc-empty">Nobody has said anything yet. Write a line below: it is read by nobody's agent unless you @ it.</p>)}
           {d.lines.map((l) => l.kind === "settled" ? (
             <p key={l.id} data-line={l.id} className="rc-settled"><span className="cw-dim">{time(l.at)}</span> {l.text}</p>
           ) : (

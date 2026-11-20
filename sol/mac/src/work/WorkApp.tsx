@@ -2,6 +2,8 @@ import { ran, setRunner } from "../run";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { useEngine, Seat, Thread } from "../useEngine";
 import { useTicketsToEngine } from "../one/tickets";   // build.tickets: the engine told of the switch
+import { useAnchor } from "../one/anchor";   // the anchor, the kept session opened as any session (back beside orchestration, 2026-11-19)
+import { useOrchestrationToEngine } from "../one/orchestration";   // build.orchestration: the engine told of the switch
 import type { AppMode } from "../ModeSwitch";
 import { Space } from "../creature/Space";
 import { useCreatureDriver } from "../creature/state";
@@ -104,6 +106,7 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   }, []);
   useEffect(() => keepS("sol.work.view", view), [view]);
   useTicketsToEngine();
+  useOrchestrationToEngine();
   useEffect(() => { if (view === "one") setView("chat"); }, [view]);   // a view kept from before #1209, when a page was the kept one session's
   // leaving Settings, told to the window (#911/#1029, App.tsx): a real close (the x, Esc, ⌘, again, the side's button off)
   // may go back to the view Settings was asked from; any other way out (a session, a new session, conversations) stays
@@ -370,6 +373,7 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cwd = w.thread?.cwd ?? (w.live ? w.sessions.find((s) => s.id === w.live)?.cwd : w.freshCwd);
+  const anchor = useAnchor(w.live, w.open, e.flash, cwd);   // the side foot beside settings (one/OneDoor.tsx)
   const title = chat ? (e.sessionId ? e.threads.find((t) => t.sessionId === e.sessionId)?.title ?? w.sessions.find((s) => s.id === e.sessionId)?.title ?? "" : e.cwd ? "new talk" : "new chat")
     : w.live ? (w.sessions.find((s) => s.id === w.live)?.title ?? w.thread?.title ?? "") : "new session";
   const branch = w.thread?.branch;
@@ -476,7 +480,7 @@ export function WorkApp({ e, onMode, solo }: { e: ReturnType<typeof useEngine>; 
       <div className="shell">
         {!solo && <Site name="sidebar"><WorkSidebar w={chat ? { ...w, live: null } : w} pinned={lay.docked} view={view} onMode={onMode}
           chats={{ threads: e.threads, active: chat ? e.sessionId ?? null : undefined, onOpen: openChat, onNew: freshChat, onRename: e.rename }}
-          lay={{ layout: e.arrangement?.layout.home, share: e.arrangement?.split.share, arrange: e.arrange }} onSettings={() => flipSettings(view)} onConversations={() => setView((v) => (v === "conversations" ? "chat" : "conversations"))} onFresh={fresh}
+          lay={{ layout: e.arrangement?.layout.home, share: e.arrangement?.split.share, arrange: e.arrange }} onSettings={() => flipSettings(view)} onConversations={() => setView((v) => (v === "conversations" ? "chat" : "conversations"))} onOne={() => { setView("chat"); anchor.go(); }} onFresh={fresh}
           onBeside={(id) => { if (id === w.live) return; setBeside(id); setView("chat"); }} onPop={(id, t) => { void popOut(id, t).then((ok) => { if (!ok) e.flash("pop-out needs the next Sol.app build"); }); }} /></Site>}
         <div ref={main} className="main">
           <div className="wcols">

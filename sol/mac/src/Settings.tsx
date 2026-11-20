@@ -41,6 +41,7 @@ import { HomePiecesRow } from "./folderPieces/HomePiecesRow";   // #1092: pieces
 import { LongRow } from "./one/LongRow";   // #1002: the long project's switch, under the one session's
 import { WorldRow } from "./home/world3d/WorldRow";   // #1093: Home's world, in Home's own section
 import { ConnectionsRow } from "./onboard/ConnectionsRow";   // #1229: what Sol reads, each way in with its state, in Home's own section
+import { useOrchestrationOn, setOrchestrationOn } from "./one/orchestration";   // build.orchestration: beside the anchor, behind a switch
 import { useTicketsOn, setTicketsOn } from "./one/tickets";   // build.tickets: an orchestration session routes to tickets
 import { SpaceRow } from "./pieces/SpaceRow";   // build.space: Build as one space of pieces
 
@@ -92,6 +93,22 @@ function TicketsRow() {
       <div className="field-r">
         <div className="lab"><span>tickets</span><small>an orchestration session hands each piece of work to its own session and keeps only a summary</small></div>
         <Switch on={on} set={setTicketsOn} label="tickets" />
+      </div>
+    </div>
+  );
+}
+
+// build.orchestration (on at concept, off elsewhere): orchestration sessions beside the anchor; off, nothing is promoted
+// and what was promoted keeps running (engine one.ts setOrchestration)
+function OrchestrationRow() {
+  const sh = useShell();
+  const on = useOrchestrationOn();
+  if (!sh || sh.sel !== "switches") return null;
+  return (
+    <div className="v3-switch">
+      <div className="field-r">
+        <div className="lab"><span>orchestration sessions</span><small>a session can be promoted to run other sessions, beside the anchor; off, nothing is promoted and the ones promoted keep running</small></div>
+        <Switch on={on} set={setOrchestrationOn} label="orchestration sessions" />
       </div>
     </div>
   );
@@ -439,6 +456,7 @@ export function Settings({ s: real, stale, info, up, health = null, goBack = nul
           <SnapRow />
           <YoursRow />
           <PiecesRow />
+          <OrchestrationRow />
           <TicketsRow />
           <SpaceRow />
         </Drawer>

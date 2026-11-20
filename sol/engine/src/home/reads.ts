@@ -24,18 +24,51 @@
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import type { Mark } from "../contract/home/today.js";
-import { FileAsk, Filed, LearnAsk, learnedId, learnedText, SayAsk, type Part, type ReadMsg } from "../contract/home/reads.js";
-import { ruleFiler, type Filer } from "./filer.js";
-import { labelOf, bare, ruleJudge, verdictOf, type Judge } from "./judge.js";
+import { FileAsk, Filed, LearnAsk, Learned, learnedId, learnedText, SayAsk, type Part, type Read, type ReadMsg } from "../contract/home/reads.js";
+import { personFiler, ruleFiler, type Filer } from "./filer.js";
+import { correctedJudge, correctionKey, labelOf, bare, ruleJudge, verdictOf, type Judge } from "./judge.js";
+import { placesMsg } from "./places.js";
+import { readOwn, readRecordOf } from "./rules.js";
 import { newThing, putThing, verOf, type Thing } from "./items.js";
 import { ENGINE, YOU, type HomeEv } from "./log.js";
 import { sendToday, todayMsg } from "./today.js";
 import { isUndone } from "./undo.js";
 import type { Ctx, Handler, Reverser, Unit } from "./unit.js";
 
-/** the judge and the filer the engine uses: the rule ones, the factory default (design §7.6, §7.9) */
+/** the judge and the filer with nothing of the person's: the rule ones, the factory default (design §7.6, §7.9). A Home
+ *  reads with the person's own (judgeOf, filerOf, #1686) */
 const JUDGE: Judge = ruleJudge;
 const FILER: Filer = ruleFiler;
+
+/** the corrections that stand (#1686): each judge.override's words and the read it went to, the last for the same
+ *  words winning; one whose learned line the person dropped since stands no more */
+export function correctionsOf(ctx: Ctx): Map<string, Read> {
+  const out = new Map<string, Read>(), lineOf = new Map<string, string>(), dropped = new Set<string>();
+  for (const e of ctx.log.all()) {
+    if (e.kind === "policy.learned" && e.item) {
+      const what = (e.value as { what?: unknown } | undefined)?.what;
+      if (what === "drop" && !isUndo(e)) dropped.add(e.item); else if (what === "seen") dropped.delete(e.item);
+      continue;
+    }
+    if (e.kind !== "judge.override" || isUndo(e)) continue;
+    const v = e.value as { from?: unknown; to?: unknown } | undefined, l = Learned.safeParse({ text: ctx.log.words(e), from: v?.from, to: v?.to });
+    if (!l.success) continue;
+    const k = correctionKey(l.data.text);
+    if (k) { out.set(k, l.data.to); lineOf.set(k, learnedId(l.data)); }
+  }
+  for (const [k, id] of lineOf) if (dropped.has(id)) out.delete(k);
+  return out;
+}
+/** the judge a Home reads with: the rule judge, the person's corrections first */
+export const judgeOf = (ctx: Ctx): Judge => correctedJudge(JUDGE, correctionsOf(ctx));
+/** the filer a Home files with: the person's own rules, their record, their folders (rules.ts) */
+export const filerOf = (ctx: Ctx): Filer => personFiler(readOwn(ctx.home), readRecordOf());
+/** the folders the person has: those of the Things, in the order made, then the places on disk */
+function foldersHere(ctx: Ctx, things: { folder: string }[]): string[] {
+  let disk: string[] = [];
+  try { disk = placesMsg(ctx).places.map((p) => p.path); } catch { /* no places: the Things' own */ }
+  return [...new Set([...foldersOf(things), ...disk])];
+}
 
 /** a sentence read (MR reads.ts readOf): the judge's parts, each with the filer's folder; ms as measured */
 export function readSentence(sentence: string, week: Mark[], now: number, folders: string[] = [], judge: Judge = JUDGE, filer: Filer = FILER): ReadMsg {
@@ -93,7 +126,7 @@ const say: Handler = (ctx, face, msg) => {
   const m = SayAsk.safeParse(msg);
   if (!m.success) return face.send({ type: "home.read", text: "", ms: 0, parts: [] });
   const t = todayMsg(ctx);
-  face.send(readSentence(m.data.text, t.today.week, ctx.now(), foldersOf(t.things)));
+  face.send(readSentence(m.data.text, t.today.week, ctx.now(), foldersHere(ctx, t.things), judgeOf(ctx), filerOf(ctx)));
 };
 
 /** the id of the Thing a filing's part makes: from the filing's id and the part's place, so a filing a stop cut short
@@ -111,11 +144,12 @@ function fill(ctx: Ctx, act: HomeEv, parts: Filed[], now: number, week: Mark[], 
     if (t && (have.things.has(t.id) || newThing(ctx, t, { cause: act.id, by: YOU }))) ids.push(t.id);
   });
   let k = 0;
+  const judge = judgeOf(ctx);
   parts.forEach((f, i) => {
-    const t0 = performance.now(), r = JUDGE.read(f.text, week, now)[0], ms = Math.round(performance.now() - t0);
+    const t0 = performance.now(), r = judge.read(f.text, week, now)[0], ms = Math.round(performance.now() - t0);
     if (!r || k++ < have.reads) return;
     const id = thingIdOf(act.id, i), item = makes(f) && ids.includes(id) ? { item: id } : {};
-    ctx.log.write({ kind: "judge.read", ...item, value: { question: "read", verdict: verdictOf(r.p[r.read]), read: r.read, p: r.p, judge: JUDGE.name, ms }, cause: act.id, by: ENGINE });
+    ctx.log.write({ kind: "judge.read", ...item, value: { question: "read", verdict: verdictOf(r.p[r.read]), read: r.read, p: r.p, judge: judge.name, ms }, cause: act.id, by: ENGINE });
   });
   return ids;
 }

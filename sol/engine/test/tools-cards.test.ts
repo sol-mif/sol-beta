@@ -52,9 +52,10 @@ test("the ladder: a tool is offered in a mode when its card's station is at or p
 test("product, every switch set on by hand: no tool of a card short of product is offered, and a call to one is refused", async () => {
   allOn("product");
   const short = Object.values(cards).filter((r) => !standsOn(r.station as never, "product")).flatMap((r) => r.offers ?? []);
-  assert.ok(short.includes("agents_room") && short.includes("ask_agent") && short.includes("open_settings"));
+  assert.ok(short.includes("agents_room") && short.includes("ask_agent"));
   const list = names();
   for (const t of short) assert.ok(!list.includes(t), `${t} is offered in product`);
+  assert.ok(!short.includes("open_settings") && list.includes("open_settings"), "open.for's card stands at product (#1667), so its tools are offered");
   const r = await T.runSolTool("agents_room", {}, { sessionId: "s" });
   assert.equal(r.isError, true);
   assert.match(txt(r), /not part of this Sol yet/);

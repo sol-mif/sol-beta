@@ -1582,7 +1582,7 @@ export async function handleTeam(w: Wire, m: any) {
       const blocks: Record<string, string> = {}, mine: { id: string; title: string; at: number }[] = [];
       for (const p of stage.projects()) for (const b of stage.allBlocks(p)) if (b.sessions[0]) { blocks[b.id] = b.sessions[0]; if (b.state !== "dead") mine.push({ id: b.id, title: b.title, at: b.at }); }
       const lines = chat.chatOf({
-        lines: history("general").filter((l) => l.source === "relay"), thread: threadNow(), repos: chatRepos(), blocks,
+        lines: history("general").filter((l) => l.source === "relay"), thread: threadNow(), repos: chatRepos(), blocks, me,
         settled: r.settled.flatMap((g) => g.blocks.filter((b) => b.asks?.answer).map((b) => ({ id: b.id, title: b.title, issue: g.issue, answer: b.asks!.answer! }))),
       });
       return w.send({ type: "team.chat", rid, me, group: activeRoom(s).name, members: chat.membersOf(teamMembers(), me), waiting: r.waiting, lines: lines.map((l) => ({ ...l, said: chat.ruleWords(l.rule) })),

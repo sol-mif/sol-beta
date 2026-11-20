@@ -1,7 +1,8 @@
 // Agents' meta (#1327, pass 2): Jev's three questions, as the other Jev clients are made (whereJev.ts, doneJev.ts): a
 // pure body builder, a pure answer reader, a thin call. Each is a `noul` over two short texts the caller has already
 // masked (traces.ts maskOf: the place, people's names and dates taken out), so Jev weighs the shape of the work, never
-// whose it is. No key, an error, over the budget or an answer that is not a number: null, and the caller falls back to
+// whose it is. No Jev key: the same question goes to the person's own cheapest model (own.ts, #1476), a few a day. An
+// error, over the budget, past the day's count or an answer that is not a number: null, and the caller falls back to
 // code (jobs.ts sameByCode, kinds.ts: the shape alone, learn.ts: the same words).
 //   job   "same job?"            two traces
 //   rule  "same job?"            two rule sentences: the core (input, trigger, thing made); extras on top still the same
@@ -14,6 +15,7 @@
 import { JEV_URL, jevKey } from "../jev.js";
 import { isQuiet } from "../../quiet.js";
 import { JEV_AT_ONCE, JEV_BUDGET_MS } from "./numbers.js";
+import { defaultOwn, type Own } from "./own.js";
 
 export type Question = "job" | "rule" | "kind" | "fix" | "feeds";
 /** how the meta asks Jev; a test hands in its own */
@@ -61,13 +63,16 @@ export function metaSaid(json: any): number | null {
   const v = json?.answers?.same?.noul;
   return typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null;
 }
-/** the thin call: null with no key, on an error, past the budget */
-export function makeAsk(o: { key?: string | null; fetch?: typeof fetch; budget?: number } = {}): Ask {
+/** the thin call: Jev with its key; with none, the person's own model (`own`; by default own.ts's, counted in `home`,
+ *  none when a test names the key); null on an error, past the budget */
+export function makeAsk(o: { key?: string | null; fetch?: typeof fetch; budget?: number; own?: Own | null; home?: string } = {}): Ask {
+  const own = o.own !== undefined ? o.own : o.key !== undefined ? null : defaultOwn(o.home);
   return async (q, a, b) => {
     // a quiet Sol asks Jev nothing: each call is paid and leaves this machine (#1293)
     if (isQuiet()) return null;
+    if (!a.trim() || !b.trim()) return null;
     const key = o.key !== undefined ? o.key : jevKey();
-    if (!key || !a.trim() || !b.trim()) return null;
+    if (!key) return own ? own(ASK[q], a, b) : null;
     const ac = new AbortController(), t = setTimeout(() => ac.abort(), o.budget ?? JEV_BUDGET_MS);
     try {
       const r = await (o.fetch ?? fetch)(JEV_URL, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}` }, body: JSON.stringify(metaBody(q, a, b)), signal: ac.signal });
