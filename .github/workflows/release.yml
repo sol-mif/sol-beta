@@ -94,7 +94,7 @@ jobs:
         with:
           node-version: 24.22.1
       - name: the feed's own tests
-        run: node --test sol/mac/release/
+        run: node --test sol/mac/release/feed.test.mjs   # named: on Node 24 a folder is loaded as a module (#1850)
       - name: the signer, no package's scripts run
         working-directory: sol/mac
         run: npm ci --ignore-scripts --no-audit --no-fund
