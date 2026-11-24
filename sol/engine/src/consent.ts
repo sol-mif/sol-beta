@@ -46,7 +46,7 @@ export function consentRefusal(level: Level | null, tool: string, folder = "this
 }
 
 export type Consent = { levels?: Record<string, Level>; sources?: Record<string, "yes" | "no">; at?: string };
-type Rec = { hands?: Level; solHome?: string | null; areas?: { id: string }[]; consent?: Consent };
+export type Rec = { hands?: Level; solHome?: string | null; areas?: { id: string }[]; consent?: Consent };
 const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
 const isLevel = (x: unknown): x is Level => typeof x === "string" && (LEVELS as readonly string[]).includes(x);
 
@@ -65,7 +65,8 @@ export function levelIn(rec: Rec, folder: string): { id: string; level: Level } 
   const levels = rec.consent?.levels && typeof rec.consent.levels === "object" ? rec.consent.levels : {};
   const ids = new Set([...areas.map((a) => a?.id), ...Object.keys(levels)].filter((x): x is string => typeof x === "string" && !!x));
   for (const id of ids) {
-    if (real(join(base, id)) !== at) continue;
+    // an id is a folder under solHome; a level "How Sol sees you" set on a place outside it is keyed by its own path
+    if (real(id.startsWith("/") ? id : join(base, id)) !== at) continue;
     const l = rec.consent?.levels?.[id];
     return { id, level: isLevel(l) ? l : isLevel(rec.hands) ? rec.hands : "show" };
   }
@@ -108,11 +109,19 @@ export function sourcesOff(home = homedir()): Set<string> {
  *  writes it (onboard/consent.ts withSource): everything else kept, the consent's `at` moved, never a half-written file.
  *  The reason when it cannot be written: there is no record yet (Home's setup makes it) or it will not read */
 export function setSource(id: string, said: "yes" | "no", home = homedir()): { ok: true } | { why: string } {
+  return patchRecord((rec) => {
+    const c = rec.consent && typeof rec.consent === "object" ? rec.consent : {};
+    return { ...rec, consent: { ...c, sources: { ...(c.sources ?? {}), [id]: said }, at: new Date().toISOString() } };
+  }, home);
+}
+
+/** the record changed by `f` and written whole the same way (everything `f` keeps kept, never a half-written file); the
+ *  reason when it cannot be: no record yet, or one that will not read (next/you.ts writes its fields through this) */
+export function patchRecord(f: (rec: Rec & Record<string, unknown>) => object, home = homedir()): { ok: true } | { why: string } {
   const rec = readRecord(home);
   if (rec === "missing") return { why: "there is no record yet: Home's setup makes it" };
   if (rec === "broken") return { why: `the record (~/${RECORD}) will not read, so nothing was written into it` };
-  const at = new Date().toISOString(), c = rec.consent && typeof rec.consent === "object" ? rec.consent : {};
-  const next = { ...rec, consent: { ...c, sources: { ...(c.sources ?? {}), [id]: said }, at } };
+  const next = f(rec as Rec & Record<string, unknown>);
   const file = join(home, RECORD), tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   try { writeFileSync(tmp, JSON.stringify(next, null, 2) + "\n", { mode: 0o600, flag: "wx" }); renameSync(tmp, file); }   // a fresh name, never one already there
   catch (e) { try { unlinkSync(tmp); } catch { /* none was made */ } return { why: `the record could not be written (${(e as Error).message})` }; }

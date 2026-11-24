@@ -18,7 +18,7 @@ import { execFile } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
-import { getSettings } from "./settings.js";
+import { uiNext } from "./settings.js";
 
 /** the switch, a name of ours: on unless it says off (#691). Off, the engine answers `off: true` and reads nothing */
 export const CONNECTIONS_ENV = "SOL_CONNECTIONS";
@@ -27,13 +27,10 @@ export function connectionsOn(): boolean {
   return !(env === "off" || env === "0" || env === "false");
 }
 /** the new face's switch, ui.next (#1604): the seat and site rows, `expires`, connections.changed and agents.list's
- *  seat and blocked are there only with it on. SOL_UI_NEXT on or off decides first, else the setting ui.next. Until
- *  uiNext() (settings.ts, #1615) is on main the setting is not kept, so only the env turns it on; then this reads it */
+ *  seat and blocked are there only with it on. Read as the face's own switch is (settings.ts uiNext: SOL_UI_NEXT, then
+ *  the setting, then the card's station), so a Sol the station turns on gets its seats too (#1615) */
 export function seatsOn(): boolean {
-  const env = (process.env.SOL_UI_NEXT ?? "").trim().toLowerCase();
-  if (env === "on" || env === "1" || env === "true") return true;
-  if (env === "off" || env === "0" || env === "false") return false;
-  return (getSettings() as { ui?: { next?: unknown } }).ui?.next === true;
+  return uiNext();
 }
 
 export type From = "claude-account" | "mac-tool" | "sol" | "seat" | "site";

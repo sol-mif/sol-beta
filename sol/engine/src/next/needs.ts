@@ -15,6 +15,8 @@ import type { Ctx } from "../home/unit.js";
 export type Need = {
   id: string; piece: string; words: string; kind: "code" | "life"; yes?: string;
   serious: boolean; due: number | null; rank: number; why: string;
+  /** work is stopped until the person answers (a permission; a step an agent stopped before): never silent (next/raise.ts) */
+  stopped?: boolean;
 };
 /** the face's tiers, the same numbers (needs/rank.ts TIER) */
 export const TIER = { serious: 1, money: 2, holds: 3, due: 4, other: 6 } as const;
@@ -37,7 +39,7 @@ export function rankNeeds(i: NeedsIn): Need[] {
   for (const p of i.perms) {
     const it = p.item;
     const what = it.tool === "Bash" && typeof it.input?.command === "string" ? `run ${String(it.input.command).slice(0, 80)}` : it.title || `use ${it.tool ?? "a tool"}`;
-    out.push({ id: `p:${p.sessionId}:${it.id}`, piece: p.sessionId, words: `allow ${what}?`, kind: "code", yes: "Allow", serious: false, due: null, tier: "holds", why: `${it.tool ?? "a tool"} · permission: the session has stopped until you answer` });
+    out.push({ id: `p:${p.sessionId}:${it.id}`, piece: p.sessionId, words: `allow ${what}?`, kind: "code", yes: "Allow", serious: false, due: null, stopped: true, tier: "holds", why: `${it.tool ?? "a tool"} · permission: the session has stopped until you answer` });
   }
   for (const t of i.things) {
     const tier: Tier = t.due ? "due" : "other";   // the face's fromThing, exactly
@@ -52,7 +54,7 @@ export function rankNeeds(i: NeedsIn): Need[] {
   for (const d of i.drafts) {
     const ask = /^did:\s*ask:/i.test(d.line), words = one(d.line.replace(/^did:\s*(draft|ask):\s*/i, ""));
     out.push({ id: `d:${d.folder}:${d.sticky}`, piece: d.folder, words, kind: "life", yes: ask ? "Do it" : "Keep it",
-      serious: false, due: d.due ?? null, tier: MONEY.test(words) ? "money" : d.due ? "due" : "other", why: `${d.folder} · ${ask ? "it stopped before the step" : "a draft waits to be kept"}` });
+      serious: false, due: d.due ?? null, ...(ask ? { stopped: true } : {}), tier: MONEY.test(words) ? "money" : d.due ? "due" : "other", why: `${d.folder} · ${ask ? "it stopped before the step" : "a draft waits to be kept"}` });
   }
   const seen: Partial<Record<Tier, number>> = {};
   const ranked = out.map((n) => { const k = seen[n.tier] ?? 0; seen[n.tier] = k + 1; const { tier, ...rest } = n; return { ...rest, rank: Math.round((TIER[tier] + Math.min(k, 99) * 0.01) * 100) / 100 }; });

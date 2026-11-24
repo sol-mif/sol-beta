@@ -39,7 +39,10 @@ export type Rhythm = { handIn: string; review: string; release: string; until: s
   /** which file this rhythm was read from (rhythmOf), so a refusal can say it */
   from?: RhythmFrom;
   /** read from the record: what `.sol/rhythm.json` says too (null: none, or it could not be read), for `agreeOn` */
-  file?: Rhythm | null };
+  file?: Rhythm | null;
+  /** one New York day, YYYY-MM-DD, on which a dev release made that same day may go to beta without waiting a day
+   *  (beta.ts sameDayOnce, #1615): a one-time exception on Frank's word, read only from `.sol/rhythm.json` */
+  betaSameDay?: string };
 export type RhythmFrom = ".sol/project.json" | ".sol/rhythm.json";
 export type Role = "dev" | "beta";
 
@@ -60,6 +63,10 @@ export function parseRhythm(text: unknown): Rhythm | null {
     dev: logins(j.dev), beta: logins(j.beta),
     handover: hhmm(j.handover, HANDOVER), devBackup: logins(j.devBackup), betaBackup: logins(j.betaBackup),
   };
+  // the one-time exception to the beta pass's day (#1615): one real calendar day, or nothing
+  const once = typeof j.betaSameDay === "string" ? j.betaSameDay.trim() : "";
+  const noon = /^\d{4}-\d{2}-\d{2}$/.test(once) ? Date.parse(`${once}T12:00:00Z`) : NaN;
+  if (!Number.isNaN(noon) && new Date(noon).toISOString().slice(0, 10) === once) r.betaSameDay = once;
   return r.dev.length || r.beta.length ? r : null;
 }
 
@@ -507,6 +514,7 @@ export async function rhythmOf(d: Pick<TonightDeps, "gh" | "now">, repo: string,
     const own = source ? await source(repo) : undefined;
     if (own !== undefined) {
       r = parseRhythm(JSON.stringify(own));
+      if (r) delete r.betaSameDay;   // the exception to the beta day is the committed file's alone (#1615)
       // the committed file too (#478): the NucBox beta pass reads only it, so the beta backup counts only when the two
       // agree (agreeOn). Not read, or none: null, and a beta backup named in the record does not count
       if (r) {

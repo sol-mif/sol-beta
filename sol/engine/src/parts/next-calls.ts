@@ -11,8 +11,9 @@ import { homeNow } from "../home/wire.js";
 import type { Ctx } from "../home/unit.js";
 import { keptWithSeats, onConnectionsChanged } from "../connections.js";
 import { call, undo } from "../next/calls.js";
-import { needsNow, type DraftIn, type PermIn, type StageIn } from "../next/needs.js";
+import { needsNow, type DraftIn, type Need, type PermIn, type StageIn } from "../next/needs.js";
 import { BACK_WORDS, doneOf, goBack, readBack, seatsOf, type Ai } from "../next/seats.js";
+import { becauseOf } from "../next/you-known.js";
 
 /** the Home the gate and the needs read: the live one (null while home.whole or the frame is off); a test's own */
 let home: () => Ctx | null = homeNow;
@@ -44,10 +45,27 @@ let given: Partial<Awaited<ReturnType<typeof readers>>> | null = null;
 export function useReaders(r: typeof given): () => void { const was = given; given = r; return () => { given = was; }; }
 const read = async () => (given ? { perms: () => [], stage: () => [], drafts: () => [], ais: () => [], ...given } : live());
 
-/** the ranked list as next.needs answers it, for next.state's answer to one of Sol's own windows (parts/next.ts) */
-export async function needsList(): Promise<unknown[]> {
+/** the ranked list as next.needs answers it, for next.state's answer to one of Sol's own windows (parts/next.ts). With
+ *  the SOL home, a session's ask says why the session knew what it knew: `because`, the keys of the facts its first turn
+ *  told (next.session.told); a session told nothing has none */
+/** more candidates for the one list, each a part's own (builder T's tidy offers, "o:<kind>:<to>", parts/next-tidy.ts):
+ *  added when the part loads, read per home, never throwing. They are judged like any ask (next/raise.ts, next.raises),
+ *  so the judgment, not their place in the list, decides whether they are raised (BR1 #1615, builder J) */
+export type MoreNeed = Need & { no?: string; because?: string[]; offer?: unknown };
+const more: ((sol: string) => MoreNeed[])[] = [];
+export function addNeeds(f: (sol: string) => MoreNeed[]): () => void { more.push(f); return () => { const i = more.indexOf(f); if (i >= 0) more.splice(i, 1); }; }
+const moreOf = (sol: string): MoreNeed[] => more.flatMap((f) => { try { const r = f(sol); return Array.isArray(r) ? r : []; } catch { return []; } });
+
+export async function needsList(sol?: string): Promise<unknown[]> {
   const r = await read();
-  return needsNow({ home, perms: r.perms, stage: r.stage, drafts: r.drafts });
+  const needs = needsNow({ home, perms: r.perms, stage: r.stage, drafts: r.drafts });
+  if (!sol) return needs;
+  const own = needs.map((n) => { const because = n.id.startsWith("p:") ? becauseOf(sol, n.piece) : []; return because.length ? { ...n, because } : n; });
+  // the sort offered after the move-in (builder T, parts/next-tidy.ts), loaded when first asked; that part may also add
+  // itself by addNeeds, so an ask is kept once by its id: either way in, or both, lists each offer once
+  const tidy: MoreNeed[] = await import("./next-tidy.js").then((m) => m.tidyNeeds(sol, own.length) as MoreNeed[], () => []);
+  const seen = new Set<string>();
+  return [...own, ...tidy, ...moreOf(sol)].filter((n) => !seen.has(n.id) && !!seen.add(n.id)).sort((a, b) => a.rank - b.rank);
 }
 
 export default function (p: Parts) {
@@ -71,7 +89,7 @@ export default function (p: Parts) {
     if (!ctx) return { ok: false, why: "home is off" };
     return undo(ctx, { id: msg.id }, typeof msg.ai === "string" ? msg.ai : "you");
   });
-  hear("next.needs", async () => ({ needs: await needsList() }));
+  hear("next.needs", async (_m, h) => ({ needs: await needsList(h.HOME) }));
   hear("next.seats", async () => {
     const r = await read();
     const { type: _t, ...m } = seatsOf(keptWithSeats(), r.ais(), Date.now());

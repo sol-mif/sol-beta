@@ -1,0 +1,667 @@
+{
+ "at": "2026-11-22T21:53:26.559Z",
+ "model": "claude-haiku-5-5",
+ "reader": "jev-latest",
+ "n": 50,
+ "raised": 32,
+ "worth": 32,
+ "silent": 17,
+ "missed": 3,
+ "drawing": {
+  "n": 8,
+  "matched": 7
+ },
+ "passed": 44,
+ "rows": [
+  {
+   "id": "d1",
+   "home": "drawing",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "A session on the Desserts page is stopped waiting for your answer on whether to use photos for cakes and ices or leave space, and it's due in 4 hours, with a preview you promised the client today."
+   },
+   "got": "raise",
+   "cold": 0.95,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "d2",
+   "home": "drawing",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "You asked for the starters and mains page and it finished normally with menu.html saved, so nothing is waiting on you; it can go to the diary."
+   },
+   "got": "silence",
+   "cold": 0.72,
+   "ok": false,
+   "why": "a miss"
+  },
+  {
+   "id": "d3",
+   "home": "drawing",
+   "expect": "raise",
+   "care": {
+    "level": 2,
+    "why": "You asked for this case study draft from Friday's work two days ago and it is ready, so it is waiting on you to read it or decide when to come back to it."
+   },
+   "got": "raise",
+   "cold": 0.88,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "d4",
+   "home": "drawing",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "A new notes-3.txt appeared in Old drafts, a folder you haven't opened in 34 days, and nothing in your context shows it needs an answer now, so it can wait for the diary."
+   },
+   "got": "silence",
+   "cold": 0.29,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "d5",
+   "home": "drawing",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "The invoice run is a routine Monday automation that ran as scheduled and made 5 invoices, so nothing needs your attention and it can wait in the diary."
+   },
+   "got": "silence",
+   "cold": 0.11,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "d6",
+   "home": "drawing",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "Your Monday invoice run failed because the bank export came back empty, and its next run starts in about an hour, so you need to decide whether to retry it or skip this week."
+   },
+   "got": "raise",
+   "cold": 0.92,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "d7",
+   "home": "drawing",
+   "expect": "dot",
+   "care": {
+    "level": 0,
+    "why": "You put the last two mood boards off with 'later', so this one can wait in the folder until you want to look at it."
+   },
+   "got": "silence",
+   "cold": 0.5,
+   "ok": false,
+   "why": "the drawing says dot"
+  },
+  {
+   "id": "d8",
+   "home": "drawing",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "The bistro site's style file already says headings use Fraunces, which you read an hour ago, so the working session doesn't need to ask you."
+   },
+   "got": "silence",
+   "cold": 0.64,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-1",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your session in dev/web is stopped, waiting on your OK to run npm run migrate, and the auth-to-tokens move you planned for tonight depends on that migration."
+   },
+   "got": "raise",
+   "cold": 0.95,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-2",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your session in dev/web is stopped on a permission prompt to run npm test, so nothing moves until you answer it."
+   },
+   "got": "raise",
+   "cold": 0.94,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-3",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your session in dev/billing is stopped waiting for permission to run git push origin HEAD, so nothing moves until you answer."
+   },
+   "got": "raise",
+   "cold": 0.94,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-4",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your session is stopped at a permission prompt, so no work moves until you allow `git push origin HEAD`, and that push is the last step of the setup you asked for."
+   },
+   "got": "raise",
+   "cold": 0.94,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-5",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Two agents both changed src/the.ts in dev/web and are stuck until you choose which version to keep, so work on that file is blocked until you answer."
+   },
+   "got": "raise",
+   "cold": 0.87,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-6",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "A Bash run of npm test is waiting on your permission and the session is stopped until you answer, so nothing in dev/api moves until you decide."
+   },
+   "got": "raise",
+   "cold": 0.91,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-7",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Two agents are both changing src/the.ts in dev/billing and they're blocked until you choose which version to keep, so the work stops until you answer."
+   },
+   "got": "raise",
+   "cold": 0.92,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-8",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your api domain renewal is due in 3 days, and a lapsed domain takes the api down, so it needs a decision from you now."
+   },
+   "got": "raise",
+   "cold": 0.7,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-9",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "A Bash run in dev/infra is paused waiting for your OK to run terraform apply, and it has been stalled for 3 days, so the work is blocked until you answer."
+   },
+   "got": "raise",
+   "cold": 0.91,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-10",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your session has stopped and is waiting on your yes or no before it can run brew upgrade, so nothing in this folder moves until you answer."
+   },
+   "got": "raise",
+   "cold": 0.92,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-11",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "Tomorrow night's plan is a draft waiting to be kept, and nothing is blocked or due tonight, so it can wait until you're back in the dev folder."
+   },
+   "got": "silence",
+   "cold": 0.45,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-12",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "A draft of the usage page release notes is sitting in dev/web, but nothing is blocked on it and no deadline is attached, so it can wait until you return to the folder."
+   },
+   "got": "silence",
+   "cold": 0.46,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-13",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "The session on dev/api is stopped and waiting for your yes or no on running npm test, and the tests already passed on this branch 10 minutes ago, so approving it should let the work continue right away."
+   },
+   "got": "raise",
+   "cold": 0.91,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-14",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "A run in dev/api is stopped and waiting on your yes/no to push HEAD to origin, and your 'tonight: split the billing worker' plan is still pending, so this is blocking work now."
+   },
+   "got": "raise",
+   "cold": 0.94,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-15",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Your session in dev/infra is paused on a request to run npm run migrate and won't continue until you say yes or no."
+   },
+   "got": "raise",
+   "cold": 0.93,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "developer-16",
+   "home": "developer",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Two agents are both changing src/the.ts in dev/billing and can't both land, and you've answered similar asks in this folder within the last 40 minutes, so this one is waiting on your choice of which version to keep."
+   },
+   "got": "raise",
+   "cold": 0.79,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-1",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "Your draft price-list.md is saved and waiting, and nothing is blocked on you or due soon, so it can wait until you come back to it."
+   },
+   "got": "silence",
+   "cold": 0.72,
+   "ok": false,
+   "why": "a miss"
+  },
+  {
+   "id": "shop-2",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "A booking for Thursday needs a reply, and it's due in 24 hours, so this should be answered now before the slot is lost or the requester has to chase."
+   },
+   "got": "raise",
+   "cold": 0.87,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-3",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Denise's new client's time in her bookings folder still needs confirming and it is due within 24 hours, so it should be answered now."
+   },
+   "got": "raise",
+   "cold": 0.84,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-4",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "Friday's 3pm booking in your bookings folder is due in 24 hours and still needs to be moved, and you've recently answered similar asks there, so this is likely waiting on your decision."
+   },
+   "got": "raise",
+   "cold": 0.86,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-5",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 2,
+    "why": "You asked for this week's newsletter, and newsletter-5.md is a draft waiting for you to keep it, so it's ready for your review now."
+   },
+   "got": "raise",
+   "cold": 0.86,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-6",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "A booking request for Thursday is waiting on your reply and is due in 24 hours, while your booking page still says Thursdays are closed, so the request may conflict with your own availability and needs your answer now."
+   },
+   "got": "raise",
+   "cold": 0.85,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-7",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "You already confirmed the new client's time by phone this morning, so this item is covered and can wait."
+   },
+   "got": "silence",
+   "cold": 0.21,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "shop-8",
+   "home": "shop",
+   "expect": null,
+   "care": {
+    "level": 2,
+    "why": "You asked for this week's newsletter seven minutes ago and the run finished, so newsletter-5.md is ready and waiting for you to keep it."
+   },
+   "got": "raise",
+   "cold": 0.89,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "consultant-1",
+   "home": "consultant",
+   "expect": null,
+   "care": {
+    "level": 2,
+    "why": "A client brief in lucy/clients/cafe is waiting on your yes, so the work can't move until you answer, though nothing here shows a deadline."
+   },
+   "got": "raise",
+   "cold": 0.78,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "consultant-2",
+   "home": "consultant",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "This is an unsent invoice draft with no due date, no promise, and no work stopped on it, so it can wait until you next open the gym client folder."
+   },
+   "got": "silence",
+   "cold": 0.38,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "consultant-3",
+   "home": "consultant",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "The florist logo work is waiting on your pick from three sketches, and you've answered every earlier ask in this folder within hours, so this is the one that is holding things up."
+   },
+   "got": "raise",
+   "cold": 0.83,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "consultant-4",
+   "home": "consultant",
+   "expect": null,
+   "care": {
+    "level": 2,
+    "why": "A draft reply to the cafe client (note-3-2.md) is waiting for you to keep or discard, and you have answered the asks in this folder within a day each time, so a quick look should be enough."
+   },
+   "got": "raise",
+   "cold": 0.55,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "consultant-5",
+   "home": "consultant",
+   "expect": null,
+   "care": {
+    "level": 3,
+    "why": "The cafe's colour choice is still open and blocks the work here, and you've answered every ask in this folder within a day, so this one is likely to be answered quickly too."
+   },
+   "got": "raise",
+   "cold": 0.69,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "consultant-6",
+   "home": "consultant",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "You already answered an ask in this folder 3 hours ago, and that ask was answered, so the colour choice is probably handled and nothing is blocked on you now."
+   },
+   "got": "silence",
+   "cold": 0.53,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s1",
+   "home": "student",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "Your Biology lab report is due at 23:59 in about 4 hours, and the agent's finished draft is waiting for you to review and submit it."
+   },
+   "got": "raise",
+   "cold": 0.93,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s2",
+   "home": "student",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "The session finished normally and saved your week 9 lecture notes as you asked three hours ago, so there's nothing you need to act on now; they're waiting in the Biology folder whenever you want them."
+   },
+   "got": "silence",
+   "cold": 0.7,
+   "ok": false,
+   "why": "a miss"
+  },
+  {
+   "id": "s3",
+   "home": "student",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "Your Statistics session is paused waiting for permission to run analysis.py, so the work stops until you answer, and problem set 6 is due tomorrow at 9am."
+   },
+   "got": "raise",
+   "cold": 0.95,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s4",
+   "home": "student",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "A new job post was saved to Job hunt, but you haven't opened that folder in 40 days and nothing in it is waiting on you, so this can wait until you next look."
+   },
+   "got": "silence",
+   "cold": 0.44,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s5",
+   "home": "student",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "The cafe is waiting on a yes or no about Saturday's shift, and it's due in 18 hours, so you should answer now."
+   },
+   "got": "raise",
+   "cold": 0.9,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s6",
+   "home": "student",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "The rent reminder ran on its usual schedule as set up two months ago, so there is nothing you need to act on."
+   },
+   "got": "silence",
+   "cold": 0.12,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s7",
+   "home": "student",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "Your rent payment was declined and is due in 24 hours on the 20th, so you need to pay another way now to avoid missing it."
+   },
+   "got": "raise",
+   "cold": 0.92,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s8",
+   "home": "student",
+   "expect": "silence",
+   "care": {
+    "level": 1,
+    "why": "The course page you read three days ago says all essays use Chicago style, so the session can apply that without stopping to ask you."
+   },
+   "got": "dot",
+   "cold": 0.64,
+   "ok": false,
+   "why": "the drawing says silence"
+  },
+  {
+   "id": "s9",
+   "home": "student",
+   "expect": "dot",
+   "care": {
+    "level": 0,
+    "why": "You've said later to the last two flyers from this agent, so this one can wait in the folder until you're ready to look at it."
+   },
+   "got": "silence",
+   "cold": 0.44,
+   "ok": false,
+   "why": "the drawing says dot"
+  },
+  {
+   "id": "s10",
+   "home": "student",
+   "expect": "raise",
+   "care": {
+    "level": 3,
+    "why": "Sam is waiting on which dataset you picked for the group project, and they start tonight, so answering in the next three hours keeps the work moving."
+   },
+   "got": "raise",
+   "cold": 0.85,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s11",
+   "home": "student",
+   "expect": null,
+   "care": {
+    "level": 0,
+    "why": "Your chapter 12 flashcards are drafted and waiting for a look, but your biology exam is still three weeks out, so this can wait until you have a free moment to review them."
+   },
+   "got": "silence",
+   "cold": 0.56,
+   "ok": true,
+   "why": ""
+  },
+  {
+   "id": "s12",
+   "home": "student",
+   "expect": "silence",
+   "care": {
+    "level": 0,
+    "why": "A session finished normally after fixing a typo in your notes, so nothing is stopped and nothing needs your answer; it's just a record in the diary."
+   },
+   "got": "silence",
+   "cold": 0.29,
+   "ok": true,
+   "why": ""
+  }
+ ]
+}

@@ -1,0 +1,4 @@
+/* Where Sol put this folder, in its head (Placed.tsx): the grey words sit after the summary; unfolded, the fact takes its
+   own line under the head's row, in flow. Signed: marcocyl04-ux's agent (builder F), BR1 (#1615). */
+[data-face="next"] .fv-head .fv-placed { display: contents; }
+[data-face="next"] .fv-head .fv-placed .bc-open { order: 1; flex-basis: 100%; }

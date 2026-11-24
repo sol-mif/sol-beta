@@ -179,6 +179,21 @@ test("sending: the days before today go once each with the tester, the day and t
   assert.equal(posts.length, 2);
 });
 
+test("sending: a day written before #1250 goes without a folder's name, and the Mac's copy loses it too (#1249)", async () => {
+  mkdirSync(join(home, "track"), { recursive: true });
+  const old = JSON.stringify({ at: "2026-10-27T10:00:00.000Z", name: "files.claude.day", props: { day: "2026-10-26", model: "m", via: "cli", folder: "secret-client", dir: "abcdef012345", prompts: 1 } });
+  const other = JSON.stringify({ at: "2026-10-27T10:00:01.000Z", name: "files.plan", props: { claude: "max" } });
+  writeFileSync(join(home, "track", "2026-10-27-files.jsonl"), old + "\n" + other + "\n");
+  const posts: string[] = [];
+  const f = (async (_url: any, init: any) => { posts.push(String(init.body)); return { ok: true, status: 200 }; }) as unknown as typeof fetch;
+  assert.deepEqual((await sendPending("https://box.example/track", f)).sent, ["2026-10-27-files.jsonl"]);
+  assert.doesNotMatch(posts[0], /secret-client|"folder"/);
+  const sent = posts[0].split("\n");
+  assert.deepEqual(JSON.parse(sent[0]).props, { day: "2026-10-26", model: "m", via: "cli", dir: "abcdef012345", prompts: 1 });
+  assert.equal(sent[1], other, "a line with no folder goes as it was written");
+  assert.doesNotMatch(readFileSync(join(home, "track", "2026-10-27-files.sent"), "utf8"), /secret-client/);
+});
+
 test("sending: a refusal leaves the file for next time; no address sends nothing; files older than 90 days go", async () => {
   mkdirSync(join(home, "track"), { recursive: true });
   const old = new Date(now.getTime() - (KEEP_DAYS + 1) * 86_400_000);

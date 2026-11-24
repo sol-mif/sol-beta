@@ -1,0 +1,108 @@
+/* Fits you can see and take back (round 8, #1615; the mockup's merge/views/fits.css): a fit's why, who set it, a hold,
+   the weekly summary, the knob a find lands on, the Diary card's "+N more", the top bar's ⋯. Every space, size and corner
+   is the scale's (palette.css), every colour the next set's roles (kit/next.css); the look and layout lints hold this.
+   Signed: marcocyl04-ux's agent, port slice R8 (#1615). */
+
+/* who set it: you, Sol, or a hold */
+.ft-who { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; white-space: nowrap; flex: none; }
+.ft-who-sol { background: var(--hover); color: var(--ink); }
+.ft-who-you { background: var(--paper); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line); }
+.ft-who-hold { background: var(--ink); color: var(--paper); }
+
+/* the why, one press away */
+.ft-why { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); text-decoration: underline; text-decoration-color: var(--ink4); text-underline-offset: 3px; padding: 0 var(--s1); white-space: nowrap; cursor: pointer; flex: none; }
+.ft-why[aria-expanded="true"] { color: var(--ink); text-decoration-color: var(--ink); }
+.ft-whytext { margin: var(--s1) 0 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.ft-whytext small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ft-whytext[hidden] { display: none; }
+.ft-whyin { color: var(--ink2); }
+
+/* a fit's line in the Diary */
+.ft-la { display: inline-flex; gap: var(--s1); margin-left: var(--s1); }
+.ft-la button { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); white-space: nowrap; cursor: pointer; }
+.ft-la button:hover { background: var(--hover); color: var(--ink); }
+.ft-la .ft-keep { background: var(--ink); color: var(--paper); }
+.ft-tag { margin-left: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+
+/* the weekly summary: a mode reshaped is an offer here, at most one per mode */
+.ft-week { margin: var(--s3) 0 var(--s1); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.ft-wh { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.ft-wh b { font-family: var(--serif); font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 600; }
+.ft-wh small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ft-offer { margin-top: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.ft-offer.on { box-shadow: inset 0 0 0 1px var(--ink); }
+.ft-offer p { margin: var(--s1) 0 0; font-size: var(--t-body); line-height: var(--t-body-line); }
+.ft-mode { font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--ink3); }
+.ft-because { color: var(--ink2); font-weight: 400; }
+.ft-acts { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; margin-top: var(--s2); }
+.ft-kept { font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); font-weight: 550; }
+.ft-wsmall, .ft-wheld { margin: var(--s2) 0 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.ft-wsmall b { font-weight: 550; color: var(--ink); }
+.ft-sf { margin-top: var(--s1); padding: var(--s1) 0 0; border-top: 1px solid var(--line); }
+.ft-wheld .ft-who { margin-right: var(--s1); }
+
+/* Settings: Who set what, the care card, What I've learned */
+.ft-card { border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.ft-page h2 small { color: var(--ink3); font-weight: 500; margin-left: var(--s1); }
+.ft-back { margin-bottom: var(--s2); }
+.ft-row { padding: var(--s3) var(--s4); margin-top: var(--s2); }
+.ft-rh { display: flex; align-items: center; gap: var(--s2); }
+.ft-rt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ft-rt b { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; }
+.ft-rt small { font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.ft-rw { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ft-rh > .ft-who { align-self: flex-start; }
+.ft-rh .st-btn { flex: none; }
+.ft-row.held .ft-rt b { color: var(--ink2); }
+.ft-heldw { margin: var(--s2) 0 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ft-none { font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink3); margin: var(--s1) 0 0; }
+.ft-crow .st-t { flex: 1; min-width: 0; }
+.ft-all { display: flex; align-items: center; gap: var(--s1); width: 100%; margin-top: var(--s3); padding: var(--s2) var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; color: var(--ink); text-align: left; cursor: pointer; }
+.ft-all span { font-weight: 400; color: var(--ink3); flex: 1; }
+.ft-undo { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
+.ft-res { margin-top: var(--s2); }
+.ft-pals { color: var(--ink3); }
+
+/* the knob a find lands on, in its place */
+.ft-knob { position: fixed; top: var(--s12); right: var(--s6); margin-top: var(--s4); width: 380px; max-width: calc(100vw - 2 * var(--s6)); padding: var(--s3) var(--s4); border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.ft-kh { display: flex; align-items: center; gap: var(--s2); }
+.ft-kwhere { flex: 1; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ft-x { width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); cursor: pointer; }
+.ft-x:hover { background: var(--hover); color: var(--ink); }
+.ft-kn { display: block; margin-top: var(--s2); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; }
+.ft-kv { font-family: var(--serif); font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 500; margin: 0 0 var(--s1); }
+.ft-knob .ft-why { padding: 0; }
+
+/* the ring a found thing wears */
+.ft-ring { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* the move-in's one ask */
+.ft-reach { padding: var(--s3) var(--s4); }
+.ft-q { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; }
+.ft-w, .ft-said { font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); margin-top: var(--s1); }
+
+/* round 8 fixes (F2): the Diary card's foot, "+N more" as the sidebar's */
+.pl-diary .dy-more { display: flex; width: 100%; height: var(--h-row); align-items: center; padding: 0 var(--s2); margin-top: var(--s1); font-size: var(--t-body); line-height: var(--t-body-line); border-radius: var(--r-row); color: var(--ink2); cursor: pointer; }
+.pl-diary .dy-more:hover { background: var(--hover); color: var(--ink); }
+
+/* round 8 fixes (F4): the top bar's ⋯ and its menu */
+.nx-right { position: relative; }
+.ft-more { cursor: pointer; }
+.ft-more.on { color: var(--ink); }
+.ft-topmenu { min-width: 220px; display: flex; flex-direction: column; padding: var(--s2); border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow-up); }
+.ft-tmf { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); padding: var(--s1) var(--s2); }
+.ft-more[hidden] { display: none; }
+
+/* a fit's press: Keep, Not now, Back, Let Sol suggest it again */
+.ft-btn { flex: none; display: inline-flex; align-items: center; height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); white-space: nowrap; cursor: pointer; }
+.ft-btn:hover { background: var(--hover); }
+.ft-btn.pri { background: var(--ink); color: var(--card); box-shadow: none; }
+
+/* round 8 fixes (F2, F4): the card kept at DIARY_PX reads its date on one line and spends less on its frame, so its story
+   and "+N more" fit whole (diary.css's own rules at the join; requests/fits.md) */
+.pl-diary .dy-far { padding: var(--s4); }
+.pl-diary .dy-far .dy-date { font-size: var(--t-head); line-height: var(--t-head-line); }
+.pl-diary .dy-far .dy-dn { font-size: var(--t-label); line-height: var(--t-label-line); }
+/* the marks beside Why and Back (builder F, BR1 #1615) */
+.ft-ic { flex: none; width: 12px; height: 12px; margin-right: 3px; vertical-align: -2px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ft-la button, .ft-acts button { display: inline-flex; align-items: center; }

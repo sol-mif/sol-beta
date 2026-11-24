@@ -387,6 +387,21 @@ function markSent(file: string, as: "sent" | "refused" = "sent") {
 }
 let sending: Promise<Sent> | null = null;   // the send under way: a second tick while it runs joins it
 
+/** props an older Sol wrote that are never sent: a folder's name says as much as a file name (#1249) */
+export const NEVER_SENT = ["folder"];
+/** a day's file without NEVER_SENT, each other line as it was written (pure) */
+export function scrubDay(body: string): string {
+  return body.split("\n").map((l) => {
+    if (!l.includes('"folder"')) return l;
+    try {
+      const v = JSON.parse(l);
+      if (!v?.props || typeof v.props !== "object") return l;
+      for (const k of NEVER_SENT) delete v.props[k];
+      return JSON.stringify(v);
+    } catch { return l; }
+  }).join("\n");
+}
+
 /** one day's file put where usage is kept (seams/store.ts): its headers and body; the answer's HTTP status, 0 when
  *  nothing answered. 2xx and 409 (kept already) are done; any other 4xx but 429 is refused for good */
 export type Put = (headers: Record<string, string>, body: string) => Promise<number>;
@@ -424,6 +439,9 @@ async function sendNow(put: Put | null): Promise<Sent> {
     const file = join(trackDir(), name);
     let body: string;
     try { body = readFileSync(file, "utf8"); } catch { continue; }
+    // a day written before #1250 still holds a folder's name: it is taken out here, and on the Mac too
+    const clean = scrubDay(body);
+    if (clean !== body) { try { writeFileSync(file, clean); } catch {} body = clean; }
     if (!body.trim()) { try { markSent(file); } catch {} continue; }
     const sha = createHash("sha256").update(body).digest("hex");
     const status = await put({ "content-type": "application/x-ndjson", "x-sol-tester": testerCode(), "x-sol-day": m[1], "x-sol-sha256": sha, "x-sol-version": VERSION, "x-sol-who": w.name, "x-sol-user": w.user, ...(auth ? { authorization: `Bearer ${auth}` } : {}) }, body);

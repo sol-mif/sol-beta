@@ -10,7 +10,7 @@ export type Install = { frac: number; phrase: string; failed: string | null; don
 type Step = "sol" | "node" | "engine" | "claude";
 // where each step starts on the line and what the page says while it runs
 const AT: Record<Step, [number, string]> = {
-  sol: [0.04, "getting Sol"], node: [0.22, "getting Node"], engine: [0.42, "setting up the engine, a minute or two"], claude: [0.94, "nearly there"],
+  sol: [0.04, "getting Sol"], node: [0.22, "getting Node"], engine: [0.42, "setting up the engine, a few minutes"], claude: [0.94, "nearly there"],
 };
 const ORDER: Step[] = ["sol", "node", "engine", "claude"];
 const inApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

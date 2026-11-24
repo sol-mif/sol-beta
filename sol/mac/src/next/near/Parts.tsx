@@ -7,6 +7,7 @@ import { S, useNext, type Piece } from "../cv/index.ts";
 import { asksFor, partCols, sentence, stateOf } from "./runs.ts";
 import { openPart } from "../cv/moves/near.ts";
 import { AskCard } from "./Talk.tsx";
+import { talkWords } from "../lead/rules.ts";
 
 const Kbd = ({ t }: { t: string }) => <span className="nr-kbd">{t}</span>;
 
@@ -22,9 +23,9 @@ export function Parts({ p, width }: { p: Piece; width: number }) {
           const st = stateOf(x);
           return (
             <section key={x.id} className={`nr-part${i === sel ? " sel" : ""}`} data-part={x.ai} onClick={() => openPart(x.id)}>
-              <div className="nr-ph"><span className={`nr-aura${st === "working" ? "" : " still"}`} /><b>{x.ai}</b><span className="nr-ps">part {i + 1} · {x.copy}</span><span className="nr-st">{st}</span></div>
+              <div className="nr-ph"><span className={`nr-aura${st === "working" ? "" : " still"}`} /><b>Part {i + 1}</b><span className="nr-ps">{x.copy}</span><span className="nr-st">{st}</span></div>
               <h3>{x.name}</h3><p className="nr-psay">{sentence(x)}</p>
-              <div className="nr-pface">{`talk · change ${x.files} files\nterminal · ${x.term?.waiting ? "waiting for input" : x.term?.stateWord ?? ""}`}</div>
+              <div className="nr-pface">{`${talkWords(x.files)}\nterminal · ${x.term?.waiting ? "waiting for input" : x.term?.stateWord ?? ""}`}</div>
               {asksFor(x).map((a) => <AskCard key={a.id} a={a} />)}
             </section>
           );

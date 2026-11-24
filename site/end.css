@@ -1,0 +1,52 @@
+/* The ending, "Good morning." (end.js drives it). It opens on the page's night, the next beat after the road's sun
+   still rising: the six, one per AI, come in one by one from the edges, circle and fuse into the jelly above the words;
+   then the jelly's own light grows out of it until the whole ground is morning, the words turn from pearl to deep and
+   the footer sits on pearl. The pick of 2026-11-17: options D then B (options/end/notes.md).
+   Layers, back to front: the sky (.end-day, the ground going from night to pearl; .end-light, the jelly's glow; both faded to nothing at
+   the section's top so it joins the road's night with no line), the six's field (.end-field, only the band above the
+   words, so they never cross them), the jelly, the words. end.js sets the glow's centre (--cx, --cy), its size and
+   the day's strength each frame, and which colour each line of words wears. The glow is drawn at an eighth of its
+   full size and scaled up (end.js, GROW): soft gradients lose nothing, and their rasters stay small. */
+#end { min-height:100vh; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto auto 1fr; justify-items:center;
+       padding:110px 6% 0; text-align:center; overflow:hidden; background:var(--bg); color:#111; }
+#end > * { position:relative; z-index:1; }
+
+#end .end-sky { position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+                --m:transparent 0, rgba(0,0,0,.06) calc(var(--fade, 260px) * .2), rgba(0,0,0,.24) calc(var(--fade, 260px) * .4), rgba(0,0,0,.52) calc(var(--fade, 260px) * .6),
+                    rgba(0,0,0,.8) calc(var(--fade, 260px) * .8), #000 var(--fade, 260px);
+                -webkit-mask-image:linear-gradient(var(--m)); mask-image:linear-gradient(var(--m)); }
+#end .end-day { position:absolute; inset:0; }
+/* under the sky at the top, where it fades to the night above: the sunrise's colours, so the join with the section above
+   goes night, terracotta, morning, never through grey. It comes up with the day (end.js). */
+#end .end-dusk { position:absolute; z-index:0; left:0; right:0; top:0; height:var(--fade, 260px); pointer-events:none; opacity:0;
+                 background:linear-gradient(var(--bg), #2a0f0c 34%, #b9583f 68%, #eaa585); }
+#end .end-light { position:absolute; left:var(--cx, 50%); top:var(--cy, 320px); width:21.25vmax; height:21.25vmax; margin:-10.625vmax 0 0 -10.625vmax; border-radius:50%;
+                  opacity:0; transform:scale(.03); will-change:transform, opacity; }
+#end .end-field { position:absolute; z-index:2; left:0; right:0; top:0; height:var(--field, 60%); pointer-events:none; }
+
+/* the jelly's place: A's box (16:9, 760 wide, 40px under the words) so the ending keeps its height */
+#end .endjelly { width:min(760px,100%); aspect-ratio:16/9; margin:0 auto -40px; pointer-events:none; z-index:3; }
+#end .rise { position:absolute; left:50%; top:47%; transform:translate(-50%, -50%); pointer-events:none; }
+#end.rest .rise { pointer-events:auto; }                       /* at rest it comes apart under the pointer (jelly.js, hover) */
+#end .rise .soljelly { transition:opacity .12s; }
+#end.away .rise .soljelly { opacity:0; }                       /* hidden while the six are still on their way */
+
+/* the words: pearl on the night, deep on the morning; end.js adds .lit to a line when the ground behind it is light
+   enough that deep reads better, so each line changes at the moment its ground passes the middle */
+#end h2 { margin:0; color:var(--pearl); font-size:clamp(48px,7.4vw,108px); letter-spacing:-.05em; font-weight:650; line-height:.95; transition:color .3s; }
+#end h2.lit { color:#141416; }
+#end p { color:rgba(255,255,255,.74); font-size:18px; margin:16px 0 30px; transition:color .3s; }
+#end p.lit { color:rgba(0,0,0,.64); }
+#end .dl { background:#111; color:var(--pearl); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+#end .dl:focus-visible, #end footer.foot a:focus-visible { outline:2px solid #fb7129; outline-offset:3px; border-radius:999px; }
+#end footer.foot { margin-top:96px; width:100%; align-self:end; align-items:center; color:rgba(255,255,255,.5); transition:color .3s; }
+#end footer.foot.lit { color:rgba(0,0,0,.56); }
+#end footer.foot > span:last-child { flex-wrap:wrap; justify-content:center; gap:4px 18px; }
+#end footer.foot a { padding:6px 0; } #end footer.foot a:hover { color:var(--pearl); } #end footer.foot.lit a:hover { color:#000; }
+
+@media (max-width:900px) {
+  #end { padding-top:80px; }
+  #end footer.foot { flex-direction:column; align-items:center; gap:12px; margin-top:72px; }
+  #end footer.foot a { padding:10px 0; }                        /* a finger's height */
+}
+@media (prefers-reduced-motion: reduce) { #end h2, #end p, #end footer.foot, #end .rise .soljelly { transition:none; } }

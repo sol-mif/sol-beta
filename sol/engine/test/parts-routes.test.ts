@@ -117,3 +117,26 @@ test("messages (parts/arrange.ts, goback.ts, browser.ts): answered as before", {
     assert.equal(got.filter((m) => m.type === "error").length, 0, "no error for a tab nobody has");
   } finally { ws.close(); }
 });
+
+test("shell update (parts/shell-update.ts, J4 of #1824): the shell's POST passes the door, a page's does not; its word reaches a face", { timeout: 120_000 }, async () => {
+  await up();
+  assert.equal((await fetch(`${at}/shell/update`, plain)).status, 415);
+  assert.equal((await fetch(`${at}/shell/update`, { ...json({}), headers: { "content-type": "application/json", origin: "https://example.com" } })).status, 403, "a web page is refused at the door");
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}`);
+  const got: any[] = [];
+  ws.on("message", (raw) => got.push(JSON.parse(raw.toString())));
+  await new Promise((ok, no) => { ws.once("open", ok); ws.once("error", no); });
+  const next = async (type: string, ms = 10_000) => {
+    for (let t = 0; t < ms; t += 50) { const i = got.findIndex((m) => m.type === type); if (i >= 0) return got.splice(i, 1)[0]; await new Promise((r) => setTimeout(r, 50)); }
+    throw new Error(`no ${type}; got ${got.map((m) => m.type).join(" ")}`);
+  };
+  try {
+    ws.send(JSON.stringify({ type: "team.shell.get", rid: 1 }));
+    assert.deepEqual(await next("team.shell"), { type: "team.shell", rid: 1, event: null });
+    const r = await fetch(`${at}/shell/update`, json({ event: "ready", version: "0.20261123.1820" }));
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { paused: false, relaunch: true });
+    const w = await next("team.shell");
+    assert.deepEqual([w.event, w.version], ["ready", "0.20261123.1820"]);
+  } finally { ws.close(); }
+});

@@ -1,9 +1,7 @@
-// Near's talk (#1615, slice 3; the mockup's views/near.js askCard and the talk box): an ask inside the piece it is about,
-// and the box under a session's talk. At Near on a session the pill hides and this is the one place to talk: a move said
-// here runs, as in the pill; anything else goes to the AI, into its thread (M.talk). Redirect (#14) is said here too
-// ("redirect Ada to …") or by M.redirect. Signed: marcocyl04-ux's agent, slice 3 (#1615).
-import { useState } from "react";
-import { M, answer, canAnswer, looked, open, say, snap, S, type Ask } from "../cv/index.ts";
+// Near's talk (#1615, slice 3; the mockup's views/near.js askCard): an ask inside the piece it is about. The box under a
+// session's talk is gone (BR1 inside.html §1, builder E): there is never a second bar, and the one pill talks to the
+// session in front or beside the canvas (Next.tsx Pill, cv/moves/talkto.ts). Signed: marcocyl04-ux's agent, slice 3 (#1615).
+import { M, answer, canAnswer, looked, type Ask } from "../cv/index.ts";
 
 const Kbd = ({ t }: { t: string }) => <span className="nr-kbd">{t}</span>;
 
@@ -22,31 +20,5 @@ export function AskCard({ a }: { a: Ask }) {
         <button className="nr-btn" onClick={() => answer(a.id, "later")}>Later <Kbd t="⌘⌫" /></button>
       </div>
     </div>
-  );
-}
-
-/** what the store looks like to "did a move happen" (views/near.js: the place, follow, calm, the line, the asks) */
-const state = () => snap() + S.follow + S.calm + S.askLine + open().length;
-
-/** the box under a session's talk: a move said here runs; any other words go to its AI */
-export function TalkBox({ pid, ai }: { pid: string; ai: string }) {
-  const [v, setV] = useState("");
-  return (
-    <label className="nr-compose">
-      <input className="nr-say" data-pid={pid} value={v} placeholder={`Talk to ${ai}, or say a move`} aria-label={`Talk to ${ai}, or say a move`} autoComplete="off"
-        onChange={(e) => setV(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") { e.currentTarget.blur(); return; }
-          if (e.key !== "Enter") return;
-          const w = v.trim();
-          if (!w) return;
-          e.preventDefault(); setV("");
-          const before = state();
-          say(w);
-          if (state() !== before) return;
-          M.talk(pid, w);
-        }} />
-      <Kbd t="↩" />
-    </label>
   );
 }

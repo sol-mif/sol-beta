@@ -19,6 +19,7 @@ import { JoinAsk } from "./cowork/JoinAsk";
 import { WakeAskCard } from "./WakeAskCard";   // may my teammates wake my agent (#1313)
 import { CountsCard } from "./CountsCard";
 import { cleanHome, useCleanHome } from "./home/flag";
+import { useTellFrame } from "./home/frameFlag";
 import { poppedOf } from "./stage/pop";
 import { Spine } from "./spine/Spine";
 import { afterLeave, settingsPlan, type Leave } from "./spine/settings";   // #911/#1029: Settings asked from Home closes back to Home
@@ -39,7 +40,7 @@ import { useBuildRuns } from "./flag";
 import { RunsDoor } from "./runs/Door";
 import { useDoorDot } from "./runs/doorDot";
 import { VersionSwitch } from "./VersionSwitch";   // #1295: concept, complete, product, at the top of the team's window
-import { nextOn } from "./next/flag";   // #1604: the new face behind ui.next; nothing else under next/ loads while it is off
+import { nextOn, waitsFirst } from "./next/flag";   // #1604: the new face behind ui.next; nothing else under next/ loads while it is off
 
 // the new face (#1604, docs/port/switch.md): loaded only when ui.next is on
 const Next = lazy(() => import("./next/Next"));
@@ -210,8 +211,12 @@ export default function App() {
     return label === "main" ? startPresence(wireSend) : undefined;
   }, []);
   useOneSol();   // One Sol (#62): the main window watches the NucBox, whatever the mode shows
+  useTellFrame(e.subscribe, e.setSettings);   // the frame's switch (#630): every window tells the engine its own turn, not only the clean Home (#1108, #1846)
   if (POP) return <Suspense fallback={null}><Popped e={e} id={POP.id} session={POP.session} /></Suspense>;
   if (SOLO) return <WorkApp e={e} onMode={() => {}} solo={SOLO} />;
+  // until the engine's settings come the window is the first frame (index.html's paper), never the old face: only an
+  // answer of off draws it (next/flag.ts waitsFirst, BR1 #1615)
+  if (waitsFirst(e.settings)) return <div className="first-frame" data-first-frame aria-busy="true" />;
   if (nextOn(e.settings)) return <Suspense fallback={null}><Next e={e} /></Suspense>;
   return (
     <>

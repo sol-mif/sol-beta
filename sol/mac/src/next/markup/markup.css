@@ -1,0 +1,73 @@
+/* Mark up (BR1, #1615; MarkUp.tsx, MarkBar.tsx; mine/look/br1/markup.html): the strip and the canvas's edge while
+   marking, the hand's outline with the thing's name, numbered pins with their notes, all in the pop-ups' layer; none
+   takes a press, so the press reaches the thing. The marks' chips ride in the talk pill. The pin's colour is the face's
+   red (--bad), named --mu-pin here so Mark up reads as one thing. Words wrap, never cut, except a name in one row.
+   Signed: marcocyl04-ux's agent (builder P), BR1 (#1615); the drawing's look: marcocyl04-ux's agent (builder M). */
+[data-face="next"] { --mu-pin: var(--bad); --mu-pin-soft: color-mix(in srgb, var(--mu-pin) 16%, transparent); --mu-pin-chip: color-mix(in srgb, var(--mu-pin) 12%, var(--card)); }
+.mu-root { position: static; width: 0; height: 0; }
+/* while marking a folder's contents card stays shut: the hand points at things, and the card would cover their pins */
+.nx-over:has(.mu-strip) .fo-peek { display: none; }
+
+/* marking: a thin dark strip at the canvas's top with the keys, and the canvas's edge in the pin's colour */
+.mu-edge { position: fixed; pointer-events: none; outline: 2px solid var(--mu-pin); outline-offset: -2px; }
+.mu-strip { position: fixed; display: flex; align-items: center; gap: var(--s2); height: var(--h-head); padding: 0 var(--s4); box-sizing: border-box; background: var(--ink); color: var(--paper); font-size: var(--t-label); line-height: var(--t-label-line); pointer-events: none; }
+.mu-strip b { color: var(--card); font-weight: 600; }
+.mu-strip .mu-sw { color: color-mix(in srgb, var(--paper) 82%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mu-strip .mu-keys { margin-left: auto; flex: none; color: color-mix(in srgb, var(--paper) 66%, transparent); white-space: nowrap; }
+/* the first time only (MarkUp.tsx, model.ts tipDue): what Mark up is, under the strip; it takes no press */
+.mu-tip { display: flex; align-items: center; gap: var(--s2); max-width: 360px; padding: var(--s2) var(--s3); box-sizing: border-box; border-radius: var(--r-row); background: var(--card); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); outline: 2px solid var(--mu-pin); outline-offset: -2px; box-shadow: var(--shadow-up); pointer-events: none; }
+.mu-strip kbd { font: inherit; padding: 0 var(--s1); border-radius: var(--r-s); background: color-mix(in srgb, var(--paper) 18%, var(--ink)); color: var(--card); }
+
+/* the outline: the hand's (or the keys') before the press, named; a marked thing's after */
+.mu-ring { position: fixed; pointer-events: none; border-radius: var(--r); }
+.mu-ring.mu-hov { outline: 2px solid var(--mu-pin); box-shadow: 0 0 0 var(--s2) var(--mu-pin-soft); }
+.mu-ring.mu-kb { outline-offset: 2px; }
+.mu-ring.on { outline: 2px solid var(--mu-pin); }
+.mu-nm { position: absolute; left: 0; bottom: calc(100% + var(--s1)); max-width: 360px; padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--mu-pin); color: var(--card); font-size: var(--t-label); line-height: var(--t-pill-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* a pin: its number on the thing's top right corner; its note hangs under it while marking */
+.mu-pin { position: fixed; width: var(--h-chip); height: var(--h-chip); border-radius: 50% 50% 50% var(--s1); background: var(--mu-pin); color: var(--card); font-size: var(--t-label); line-height: var(--h-chip); font-weight: 700; text-align: center; box-shadow: var(--shadow-up); pointer-events: none; }
+.mu-pin.mu-sent { background: var(--card); color: var(--mu-pin); outline: 2px solid var(--mu-pin); outline-offset: -2px; pointer-events: auto; transition: opacity var(--d-pour) var(--ease), transform var(--d-pour) var(--ease), background var(--d-turn) var(--ease), color var(--d-turn) var(--ease); }
+.mu-pin.mu-sent.done { background: var(--good); color: var(--card); outline-color: var(--good); opacity: 0; transform: scale(.6) translateY(calc(-1 * var(--s2))); }
+.mu-note { position: fixed; width: 210px; padding: var(--s1) var(--s2); box-sizing: border-box; border-radius: var(--r-row); background: var(--card); outline: 2px solid var(--mu-pin); outline-offset: -2px; box-shadow: var(--shadow-up); }
+.mu-note input { display: block; width: 100%; border: 0; padding: 0; background: none; font: inherit; color: var(--ink); }
+.mu-note input::placeholder { color: var(--ink3); }
+.mu-note input:focus { outline: none; }
+.mu-note small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); overflow-wrap: anywhere; }
+.mu-n { display: inline-grid; place-items: center; flex: none; width: var(--t-label-line); height: var(--t-label-line); border-radius: 50%; background: var(--mu-pin); color: var(--card); font-size: var(--t-label); font-weight: 700; font-style: normal; line-height: var(--t-label-line); }
+
+/* the bar while marks ride in it (MarkBar.tsx): where they go, a chip each with ×, a word for all, Send; the talk
+   pill's own box and hint step aside meanwhile */
+.nx-talk:has(.mu-bar) > #say, .nx-talk:has(.mu-bar) > .nx-hint-q { display: none; }
+.mu-bar { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s1); overflow-x: auto; scrollbar-width: none; }
+.mu-bar::-webkit-scrollbar { display: none; }
+.mu-to { flex: none; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); font-size: var(--t-label); white-space: nowrap; }
+.mu-to b { color: var(--ink); font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.mu-chip { flex: none; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); max-width: 180px; padding: 0 0 0 var(--s1); border-radius: var(--r-pill); background: var(--mu-pin-chip); color: color-mix(in srgb, var(--mu-pin) 55%, var(--ink)); font-size: var(--t-label); }
+.mu-cw { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mu-ic { flex: none; width: 14px; height: var(--t-pill-line); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nx .mu-x { flex: none; display: inline-grid; place-items: center; width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); color: color-mix(in srgb, var(--mu-pin) 50%, var(--ink3)); }
+.nx .mu-x:hover { background: var(--hover); color: var(--ink); }
+.mu-x .mu-ic { width: 12px; }
+.nx-talk input.mu-all { flex: 1 0 120px; }
+.nx .mu-go { flex: none; display: inline-grid; place-items: center; width: var(--h-row); height: var(--h-row); margin-right: calc(-1 * var(--s2)); border-radius: 50%; background: var(--ink); color: var(--paper); }
+.nx .mu-go:disabled { opacity: .35; cursor: default; }
+.mu-bar :focus-visible, .mu-note :focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+/* attachments in the bar (attach.ts): a picture's thumbnail, else its kind's icon, then its name */
+.mu-file { background: var(--side); color: var(--ink2); }
+.mu-th { flex: none; width: var(--t-label-line); height: var(--t-label-line); border-radius: var(--r-pill); object-fit: cover; }
+
+/* the attach menu (Attach.tsx): a + in the chat bar, one menu above it, each entry an icon and its name; while marking
+   the + is lit with Mark up's sign */
+.at-root { position: relative; display: inline-flex; flex: none; }
+.nx .at-plus { display: inline-grid; place-items: center; width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); color: var(--ink2); }
+.nx .at-plus:hover, .nx .at-plus[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
+.nx .at-plus.on { background: var(--ink); color: var(--paper); }
+.at-plus .mu-ic { width: 16px; height: var(--t-label-line); }
+.at-menu { position: absolute; left: 0; bottom: calc(100% + var(--s2)); z-index: var(--z-lift); display: flex; flex-direction: column; min-width: 250px; padding: var(--s1); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); }
+.nx .at-it { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-row); color: var(--ink); font-size: var(--t-pill); text-align: left; white-space: nowrap; }
+.nx .at-it:hover, .nx .at-it:focus-visible { background: var(--hover); }
+.nx .at-it[data-at="markup"] { font-weight: 600; }
+.nx .at-it[data-at="markup"] .mu-ic { color: var(--mu-pin); }
+.at-k { margin-left: auto; padding-left: var(--s3); color: var(--ink3); font-size: var(--t-label); font-weight: 400; }
+.at-root :focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }

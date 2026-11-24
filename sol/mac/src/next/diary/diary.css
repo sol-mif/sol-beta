@@ -6,27 +6,31 @@
 .dy button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
 .dy-aura { display: inline-block; flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); }
 .dy-aura.still { opacity: 0.5; }
-.dy-av { display: inline-grid; place-items: center; flex: none; width: var(--s4); height: var(--s4); border-radius: var(--r-chip); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); }
 .dy-dot { display: inline-block; flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-chip); background: var(--ink4); }
 
 /* the top: the date, the day's name, the turn of a page */
-.dy-top { display: flex; align-items: baseline; gap: var(--s3); }
-.dy-date { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); }
-.dy-dn { font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 600; color: var(--ink2); }
-.dy-nav { margin-left: auto; display: flex; gap: var(--s1); align-items: center; }
-.dy-nav button { min-width: var(--h-chip); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); color: var(--ink2); transition: background var(--d-turn) var(--ease); }
+.dy-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); padding-bottom: var(--s3); border-bottom: 1px solid var(--line); }
+.dy-date { font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 700; }
+.dy-where { display: block; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 500; color: var(--ink3); }   /* a folder's Diary: which folder (BR1 item 1) */
+.dy-nav { display: flex; gap: var(--s2); align-items: center; }
+.dy-nav button { min-width: var(--h-chip); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--side); color: var(--ink2); transition: background var(--d-turn) var(--ease); }
 .dy-nav button:hover { background: var(--hover); }
-.dy-nav .dy-today { background: var(--side); }
+.dy-nav .dy-today { padding: 0 var(--s3); }
 
 /* the night's story */
 .dy-story { display: block; margin-top: var(--s2); }
 .dy-sw { display: flex; align-items: center; gap: var(--s2); color: var(--ink3); }
-.dy .dy-h { font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 500; margin: var(--s2) 0 0; }
+.dy .dy-h { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: var(--display-w); margin: var(--s1) 0 0; }
 .dy-proof { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); color: var(--ink2); }
 .dy-pk { font-weight: 600; }
-.dy-need { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); cursor: pointer; }
-.dy-need.none { cursor: default; color: var(--ink2); }
-.dy-cnt { display: inline-grid; place-items: center; min-width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.dy .dy-need { display: flex; align-items: center; gap: var(--s2); margin-left: auto; min-height: var(--h-chip); padding: 0 var(--s3) 0 var(--s1); border-radius: var(--r-card); background: var(--side); font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; min-width: 0; overflow-wrap: break-word; }
+/* a page too narrow for its date: the bare page (index.tsx, BR1 root part 3) */
+.dy.dy-bare { padding: 0; }
+.dy .dy-need b { font-weight: 600; }
+.dy .dy-need:hover { background: var(--hover); }
+.dy-need.none { cursor: default; color: var(--ink3); }
+.dy-cnt { display: inline-grid; place-items: center; min-width: var(--s4); height: var(--s4); padding: 0 var(--s1); border-radius: var(--r-pill); background: var(--ink); color: var(--paper); font-weight: 600; }
+.dy-need.none .dy-cnt { background: var(--card); color: var(--ink3); box-shadow: inset 0 0 0 1px var(--line); }
 .dy-ask { margin-top: var(--s1); padding: var(--s1) var(--s3); color: var(--ink2); }
 .dy .dy-fold { margin-top: var(--s3); color: var(--ink3); padding: var(--s1) var(--s3); border-radius: var(--r-row); }
 .dy .dy-fold:hover { background: var(--hover); }
@@ -36,37 +40,55 @@
 .dy-sl { font-family: var(--sans); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); flex: none; min-width: calc(var(--s12) + var(--s6)); }
 .dy-go { margin-left: auto; padding-left: var(--s3); color: var(--ink3); font-family: var(--sans); font-size: var(--t-body); white-space: nowrap; }
 
-/* a folder's part of the page */
-.dy-f { margin-top: var(--s8); }
-.dy .dy-fh { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s2); font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 600; }
-.dy .dy-fh small { font-size: var(--t-body); font-weight: 400; color: var(--ink3); }
-.dy .dy-fh[role=link] { cursor: pointer; width: max-content; padding: var(--s1) var(--s3) var(--s1) var(--s2); margin-left: calc(var(--s2) * -1); border-radius: var(--r-row); }
-.dy .dy-fh[role=link]:hover { background: var(--hover); }
+/* the day */
+.dy-f { margin-top: var(--s4); }
 
 /* a line: its time in the margin, who wrote it, the fact, why it is here */
-.dy-l { position: relative; display: grid; grid-template-columns: var(--s12) var(--s4) 1fr auto; gap: 0 var(--s3); align-items: baseline; padding: var(--s2) var(--s3); margin: 0 calc(var(--s3) * -1); border-radius: var(--r-row); }
+.dy-l { position: relative; display: grid; grid-template-columns: calc(var(--s8) + var(--s2)) minmax(0, 1fr) auto; gap: 0 var(--s2); align-items: baseline; padding: var(--s1) var(--s2); margin: 0 calc(var(--s2) * -1); border-radius: var(--r-row); }
 .dy-l:hover { background: var(--hover); }
-.dy-tm { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.dy-tm { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dy-by { margin-left: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); overflow-wrap: anywhere; }
 .dy-b { min-width: 0; }
 .dy-ai { font-weight: 600; }
-.dy-why, .dy-via { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); white-space: nowrap; }
+.dy-why, .dy-via { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); overflow-wrap: anywhere; }
+/* a line's words wrap inside the card, never past its edge (BR1 first-timer line 4, builder F) */
+.dy-b { overflow-wrap: anywhere; }
+/* a move-in line's folder on the Shelf: Bring back takes it off (next.shelf.take) */
+.dy .dy-back { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); font-size: var(--t-label); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); vertical-align: middle; }
+.dy .dy-back:hover { background: var(--hover); }
+.dy .dy-back svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .dy-why::before { content: "· "; }
-.dy-l.mine .dy-t { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 500; }
-.dy-yours { margin-left: var(--s1); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--side); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.dy-l.mine .dy-t { font-family: var(--serif); font-style: italic; font-size: var(--t-read); line-height: var(--t-read-line); }
+/* yours: the italic says it; the word is there for a screen reader */
+.dy-l .dy-yours { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.dy-l.dy-asking { margin-top: var(--s1); margin-bottom: var(--s1); background: var(--side); box-shadow: inset var(--s1) 0 0 var(--yellow-strong); }
+.dy .dy-answer { align-self: center; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-chip); background: var(--ink); color: var(--paper); font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+.dy .dy-answer:hover { box-shadow: var(--shadow-up); }
 .dy-l.dy-undone .dy-t { color: var(--ink3); text-decoration: line-through; text-decoration-color: var(--ink4); }
 .dy-l.dy-small .dy-t { color: var(--ink2); }
-.dy-acts { display: flex; gap: var(--s1); opacity: 0; transition: opacity var(--d-turn) var(--ease); }
-.dy-l:hover .dy-acts, .dy-l:focus-within .dy-acts { opacity: 1; }
+.dy-acts { display: flex; gap: var(--s1); }
+/* a calm day (BR1, #1615): a line's presses (Answer, and the person's own: chat, sticky, remove) show only while the
+   line is pointed at or holds the keys; at rest the asks are counted at the page's top and in the canvas's line */
+.dy-l :is(.dy-answer, .dy-acts > button) { transition: opacity var(--d-turn) var(--ease); }
+.dy-l:not(:hover, :focus-within) :is(.dy-answer, .dy-acts > button) { opacity: 0; }
 .dy .dy-acts button { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); color: var(--ink3); white-space: nowrap; }
 .dy .dy-acts button:hover { background: var(--side); color: var(--ink); }
-.dy-quiet summary { cursor: pointer; color: var(--ink3); padding: var(--s1) 0 var(--s1) calc(var(--s12) + var(--s6)); }
+.dy-quiet:not([open]) > :not(summary) { display: none; }   /* a closed details' lines still have boxes in Chrome; none past the frame's edge */
+.dy-quiet summary { cursor: pointer; color: var(--ink3); padding: var(--s1) 0 var(--s1) calc(var(--s8) + var(--s4)); }
 
 /* a line can carry its thing, live */
 .dy-emb { display: flex; align-items: center; gap: var(--s2); margin: var(--s2) 0 var(--s1); }
 .dy .dy-open { display: flex; align-items: center; gap: var(--s3); min-width: 0; max-width: 100%; padding: var(--s2) var(--s3); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); text-align: left; transition: box-shadow var(--d-turn) var(--ease); }
 .dy .dy-open:hover { box-shadow: var(--shadow-up); }
-.dy-et { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dy-es { color: var(--ink3); white-space: nowrap; }
+/* calm (BR1, #1615, scope's go ~05:00): at rest a run card is plain text in its line, and still the line's press; the card
+   and its Open › come back while the line is pointed at or holds the keys (builder F) */
+.dy .dy-open, .dy-go { transition: background var(--d-turn) var(--ease), box-shadow var(--d-turn) var(--ease), padding var(--d-turn) var(--ease), opacity var(--d-turn) var(--ease); }
+.dy .dy-open { min-height: 40px; }
+.dy .dy-l:not(:hover, :focus-within) .dy-open { min-width: 160px; padding-left: 0; padding-right: 0; background: none; box-shadow: none; }
+.dy .dy-l:not(:hover, :focus-within) .dy-go { opacity: 0; }
+.dy-et { flex: 0 1 auto; min-width: min(8em, 40%); overflow-wrap: break-word; }   /* a name keeps a word's width; never one letter a line */
+.dy-es { min-width: 0; color: var(--ink3); white-space: nowrap; }
+.dy-e-piece .dy-es { white-space: normal; overflow-wrap: anywhere; }   /* a piece's own words wrap beside its name (a long first line squeezed the name to one letter a line) */
 .dy-doc, .dy-stk { flex: none; width: var(--s4); height: var(--s6); border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
 .dy-stk { background: var(--side); }
 .dy-parts { display: flex; gap: var(--s1); }
@@ -85,8 +107,11 @@
 .dy-paused { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); }
 .dy .dy-btn { height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line); }
 .dy .dy-btn:hover { background: var(--hover); }
-.dy-write { margin-top: var(--s6); }
-.dy-write input { width: 100%; height: var(--h-head); padding: 0 var(--s3); border: 0; border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font: inherit; color: var(--ink); }
+.dy-write { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s4); height: var(--h-head); padding: 0 var(--s3); border: 1px dashed var(--ink4); border-radius: var(--r-row); cursor: text; }
+.dy-write input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; outline: none; font-family: var(--serif); font-style: italic; font-size: var(--t-read); color: var(--ink); }
+.dy-write input::placeholder { color: var(--ink3); }
+.dy-write i { flex: none; font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.dy-write:focus-within { border-style: solid; border-color: var(--ink3); }
 .dy-close { margin-top: var(--s6); font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); }
 .dy-close small { font-family: var(--sans); font-size: var(--t-label); color: var(--ink3); }
 .dy-empty { margin-top: var(--s6); color: var(--ink3); }
@@ -97,8 +122,49 @@
 .dy-foot { margin-top: var(--s6); color: var(--ink3); }
 .dy-foot p { margin: var(--s2) 0 0; }
 .dy-fk { display: inline-block; min-width: calc(var(--s12) * 3); color: var(--ink2); font-weight: 600; }
+.dy-meter { position: relative; display: block; height: var(--s2); margin: var(--s1) 0; border-radius: var(--r-pill); background: var(--side); }   /* the floor's meter (builder J) */
+.dy-meter i { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-pill); background: var(--green); }
+.dy-meter b { position: absolute; top: calc(var(--s1) * -1); bottom: calc(var(--s1) * -1); width: 1px; background: var(--ink); }
 .dy-tag { margin-right: var(--s1); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--side); color: var(--ink2); }
 .dy .dy-pause { margin-left: var(--s2); color: var(--ink2); text-decoration: underline; text-decoration-color: var(--ink4); }
 
 /* the short form: a page too narrow to read */
 .dy-far .dy-f { margin-top: var(--s4); }
+
+/* the day: the hours down the left, the lines in the order of the day, the notes pinned at its right */
+.dy-day { --dy-rail: calc(var(--s12) * 2); position: relative; display: flow-root; min-height: calc(var(--s12) * 3); padding-left: calc(var(--dy-rail) + var(--s3)); }
+.dy-rail { position: absolute; left: 0; top: 0; bottom: 0; width: var(--dy-rail); border-right: 1px solid var(--line); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.dy-hrs { --run-l: var(--s6); position: absolute; left: 0; right: var(--s2); top: var(--s2); bottom: var(--s2); }
+.dy-hr { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--line); }
+.dy-hr span { position: absolute; top: calc(var(--s2) * -1); left: 0; padding-right: var(--s1); background: var(--card); font-variant-numeric: tabular-nums; }
+.dy-run, .dy-ev { position: absolute; left: var(--run-l); right: 0; padding: 0 var(--s1); overflow: hidden; border-radius: var(--r-chip); white-space: nowrap; text-overflow: ellipsis; color: var(--ink2); box-sizing: border-box; }
+.dy-ev { min-height: var(--s4); }
+/* a run: as long as it ran (placeRail), filled in its folder's colour, its edge saying how it ended; overlapping runs share the width in lanes */
+.dy-run { right: auto; left: calc(var(--run-l) + (100% - var(--run-l)) * var(--lane, 0) / var(--lanes, 1)); width: calc((100% - var(--run-l)) / var(--lanes, 1) - 1px);
+  background: color-mix(in oklab, var(--tint, var(--ink4)) 45%, var(--card)); border-left: 2px solid color-mix(in oklab, var(--tint, var(--ink3)), var(--ink) 25%); }
+.dy-r-done { border-left-color: var(--green-strong); }
+.dy-r-waiting { border-left-color: var(--yellow-strong); }
+.dy-r-failed { border-left-color: var(--red-strong); }
+.dy-ev { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-family: var(--serif); font-style: italic; }
+.dy-now { position: absolute; left: var(--s4); right: calc(var(--s2) * -1); height: 0; border-top: 2px solid var(--ink); }
+.dy-now::before { content: ""; position: absolute; left: calc(var(--s1) * -1); top: calc(var(--s1) * -1); width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink); }
+.dy-nocal { clear: both; margin: var(--s2) 0 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.dy-earlier { margin: 0 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.dy-notes { float: right; display: flex; flex-direction: column; gap: var(--s3); width: calc(var(--s12) * 3); margin: 0 0 var(--s3) var(--s3); }
+.dy-l.dy-sticky { display: block; margin: 0; padding: var(--s2) var(--s3); border-radius: var(--r-chip) var(--r-chip) var(--r-row) var(--r-chip); background: var(--yellow-soft); box-shadow: var(--shadow); transform: rotate(1.5deg); }
+.dy-l.dy-sticky:nth-child(even) { transform: rotate(-1deg); }
+.dy-l.dy-sticky:hover { background: var(--yellow-soft); }
+.dy-sticky .dy-t { font-size: var(--t-body); line-height: var(--t-body-line); }
+.dy-l.dy-sticky.mine .dy-t { font-family: var(--sans); font-style: normal; font-size: var(--t-body); line-height: var(--t-body-line); }
+.dy-sticky small { display: block; margin-top: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.dy-sticky small .dy-yours { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+/* a narrow page: the hours a slim rail, its bars strips (their words in the title); the notes over the lines' width */
+.dy-narrow .dy-day, .dy-far .dy-day { --dy-rail: calc(var(--s12) + var(--s2)); padding-left: calc(var(--dy-rail) + var(--s2)); min-height: calc(var(--s12) * 2); }
+.dy-narrow .dy-hrs, .dy-far .dy-hrs { right: var(--s1); }
+.dy-narrow .dy-hrs, .dy-far .dy-hrs { --run-l: calc(var(--s8) + var(--s1)); }
+/* the rail draws when, the lines beside it say what: a bar or a dated note is a strip at every width, its words in its title and label
+   (a lane's width cut a task's name to "Main ch…"; nothing is cut) */
+.dy-run, .dy-ev { padding: 0; }
+.dy-narrow .dy-now, .dy-far .dy-now { left: var(--s8); right: 0; }
+.dy-narrow .dy-notes { float: none; width: auto; flex-direction: row; flex-wrap: wrap; margin: 0 0 var(--s3); }
+.dy-narrow .dy-l.dy-sticky { flex: 1 1 calc(var(--s12) * 3); }

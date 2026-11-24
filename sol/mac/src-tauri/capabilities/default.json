@@ -49,8 +49,11 @@
     "allow-idle-seconds",
     "allow-haptic",
     "allow-permit-state",
+    "allow-app-update-state",
+    "allow-app-update-apply",
     "allow-permit-open",
     "allow-permit-back",
+    "allow-app-relaunch",
     "allow-places-copy",
     "allow-places-drop",
     {

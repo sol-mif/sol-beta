@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, mkdtempSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -17,7 +17,7 @@ Object.assign(process.env, {
   SOL_SETTINGS: join(mkdtempSync(join(tmpdir(), "sol-settings-")), "settings.json"),   // Ship tells settings.ts its channel: never the real file
 });
 delete process.env.SOL_VERSION;
-const { update, heardStable, hear, startShip, offerNow, askOrigin, mirror, hasBeta, channelOf, channelIn, installDev, lockedFolders, staleFolders } = await import("../src/team/ship.ts");
+const { update, heardStable, hear, startShip, offerNow, askOrigin, mirror, hasBeta, channelOf, channelIn, installDev, lockedFolders, staleFolders, faceOnly } = await import("../src/team/ship.ts");
 const { handleTeam, addTeamFace } = await import("../src/team/wire.ts");
 const { join: joinBusy } = await import("../src/busy.ts");
 const { readFileSync, existsSync } = await import("node:fs");
@@ -151,7 +151,7 @@ test("update on yes: ff-only to the channel's branch, on main or that branch; re
   const s = released(f.repo, "dev-20261030");
 
   writeFileSync(join(frank, "sol", "mac", "src", "App.tsx"), "his edit\n");
-  assert.deepEqual(await update(fd), { error: "you have changes; commit or stash first", why: "changes" });
+  assert.deepEqual(await update(fd), { error: "you have changes; commit or stash first (sol/mac/src/App.tsx)", why: "changes" }, "main is not a */mine Sol: its face edits are its developer's, never kept for them; the file is named (#1821)");
   git(frank, "checkout", "-q", "--", ".");
   git(frank, "checkout", "-q", "-b", "frank/plan");
   assert.deepEqual(await update(fd), { error: "you are on frank/plan; switch to main first" });
@@ -291,7 +291,7 @@ test("update on a dev */mine Sol: sol/mine/rebase goes onto dev, never stable", 
   assert.equal(git(mine, "rev-parse", "HEAD~1"), s.sha, "his commit sits on dev, not on the day-old stable");
 });
 
-test("a dev release installs itself at a quiet moment, on a */mine Sol too (#1150); the beta Sol is offered its stable", async () => {
+test("a dev release installs itself at a quiet moment, on a */mine Sol too (#1150); a beta Sol hears only its stable", async () => {
   const f = fixture();
   const frank = join(f.top, "frank-dev");
   git(f.top, "clone", "-q", f.origin, frank);
@@ -337,7 +337,8 @@ test("a dev release installs itself at a quiet moment, on a */mine Sol too (#115
   assert.equal(git(mine, "branch", "--show-current"), "marco/mine");
   assert.deepEqual(runs2, ["runs"]);
 
-  // a beta Sol hears a dev word and says nothing; its stable is offered, never installed
+  // a beta Sol hears a dev word and says nothing; its stable is offered (installing it by itself, #1615:
+  // beta-self-install.test.ts). Here GitHub has no stable, so nothing moves
   const tester = join(f.top, "tester");
   git(f.top, "clone", "-q", f.origin, tester);
   git(tester, "reset", "-q", "--hard", "HEAD~1");
@@ -348,7 +349,7 @@ test("a dev release installs itself at a quiet moment, on a */mine Sol too (#115
   await hear({ sha: s.sha, tag: s.tag, by: "" });
   assert.equal(told3[0]?.channel, "beta");
   await new Promise((ok) => setTimeout(ok, 60));
-  assert.notEqual(git(tester, "rev-parse", "HEAD"), s.sha, "a beta Sol waits for Update");
+  assert.notEqual(git(tester, "rev-parse", "HEAD"), s.sha, "a stable GitHub does not have is never installed");
 });
 
 test("a */mine Sol that cannot install by itself (#1150): a clash goes to the carry with no press, changes not kept wait, and each says why", async () => {
@@ -376,8 +377,8 @@ test("a */mine Sol that cannot install by itself (#1150): a clash goes to the ca
   assert.deepEqual(runs, ["clash"]);
   assert.equal(git(mine, "rev-parse", "HEAD"), was, "the Sol stays where it was");
 
-  // changes not kept: nothing moves, and the reason is said
-  writeFileSync(join(mine, "sol", "mac", "src", "App.tsx"), "export const b = 2;\n");
+  // changes not kept outside the face (sol/mac, sol/design; those are kept by themselves, #1821): nothing moves, and the reason is said
+  writeFileSync(join(mine, "sol", "engine", "src", "index.ts"), "export const a = 42;\n");
   runs.length = 0;
   startShip(join(mine, "sol"), () => {}, deps(join(mine, "sol"), "dev", { auto: true, quietMs: 0, carry, runs: (why) => { runs.push(why ?? "runs"); } }));
   assert.equal(await installDev(s.sha), false, "no offer standing yet: nothing to install");
@@ -755,4 +756,73 @@ test("#1566: a word whose sha is not GitHub's dev (old, or never released) build
   assert.equal(git(f.me, "rev-parse", "HEAD"), was, "nothing moved");
   assert.deepEqual(built, [], "nothing built");
   assert.deepEqual(runs, [], "and no false reason said");
+});
+
+test("#1821: a */mine Sol keeps the face's unsaved edits before an update (sol/mutate), and names what it will not keep", async () => {
+  const f = fixture();
+  const mine = join(f.top, "my-sol-face");
+  git(f.top, "clone", "-q", f.origin, mine);
+  git(mine, "checkout", "-q", "-b", "lucy/mine");
+  mkdirSync(join(mine, "sol", "mine"), { recursive: true });
+  copyFileSync(join(import.meta.dirname, "..", "..", "mine", "rebase"), join(mine, "sol", "mine", "rebase"));
+  chmodSync(join(mine, "sol", "mine", "rebase"), 0o755);
+  copyFileSync(join(import.meta.dirname, "..", "..", "mutate"), join(mine, "sol", "mutate"));
+  chmodSync(join(mine, "sol", "mutate"), 0o755);
+  mkdirSync(join(mine, "sol", "design"), { recursive: true });
+  writeFileSync(join(mine, "sol", "design", "tokens.json"), "{}\n");   // as every checkout has it (mutate keeps sol/mac and sol/design)
+  git(mine, "add", "-A"); git(mine, "commit", "-qm", "mine: the tools");
+  const md = deps(join(mine, "sol"), "beta");
+  commit(f.repo, "sol/engine/src/index.ts", "export const a = 60;\n");
+  const s = released(f.repo, "dev-20261124", "stable");
+
+  // the seat changed the face and did not run mutate: kept as one commit, then the update goes on
+  writeFileSync(join(mine, "sol", "mac", "src", "App.tsx"), "export const b = 7;\n");
+  const r = await update(md) as any;
+  assert.equal(r.ok, true, r.error);
+  assert.equal(git(mine, "status", "--porcelain", "--untracked-files=no"), "", "nothing left unsaved");
+  assert.match(git(mine, "log", "-1", "--format=%s"), /^mutate: kept before the update/);
+  assert.equal(git(mine, "show", "HEAD:sol/mac/src/App.tsx"), "export const b = 7;");
+  assert.equal(git(mine, "merge-base", "--is-ancestor", s.sha, "HEAD"), "", "and it sits on the new release");
+
+  // a new file beside the face edit: mutate would add it too, so nothing is kept by itself and nothing moves (refute #5)
+  writeFileSync(join(mine, "sol", "mac", "src", "App.tsx"), "export const b = 9;\n");
+  writeFileSync(join(mine, "sol", "design", "scratch.md"), "not an edit\n");
+  const was0 = git(mine, "rev-parse", "HEAD");
+  commit(f.repo, "sol/engine/src/index.ts", "export const a = 65;\n");
+  released(f.repo, "dev-20261124b", "stable");
+  const u = await update(md) as any;
+  assert.equal(u.why, "changes");
+  assert.match(String(u.error), /sol\/design\/scratch\.md/, "the new file that stopped the keep is the one named (refute)");
+  assert.equal(git(mine, "rev-parse", "HEAD"), was0, "nothing committed, scratch file never swept in");
+  rmSync(join(mine, "sol", "design", "scratch.md"));
+
+  // a seat mid-turn: its edit may be half-written, so it is not kept for it, and nothing moves under it (refute)
+  const turn = joinBusy("session", "seat-1");
+  try {
+    const t = await update(md) as any;
+    assert.equal(t.why, "changes");
+    assert.equal(git(mine, "rev-parse", "HEAD"), was0, "nothing committed mid-turn");
+  } finally { turn(); }
+  git(mine, "checkout", "-q", "--", "sol/mac/src/App.tsx");
+
+  // an unsaved change outside the face is not the update's to keep: nothing moves, and the file is named
+  writeFileSync(join(mine, "sol", "engine", "src", "index.ts"), "export const a = 61;\n");
+  writeFileSync(join(mine, "sol", "mac", "src", "App.tsx"), "export const b = 8;\n");
+  commit(f.repo, "sol/engine/src/index.ts", "export const a = 70;\n");
+  released(f.repo, "dev-20261125", "stable");
+  const was = git(mine, "rev-parse", "HEAD");
+  const c = await update(md) as any;
+  assert.equal(c.why, "changes");
+  assert.match(String(c.error), /sol\/engine\/src\/index\.ts/);
+  assert.equal(git(mine, "rev-parse", "HEAD"), was, "nothing kept, nothing moved");
+});
+
+test("#1821 faceOnly: the unsaved paths an update may keep by itself are the face's (sol/mac, sol/design), renames both ends", () => {
+  assert.equal(faceOnly([" M sol/mac/src/App.tsx", "M  sol/design/tokens.json"]), true);
+  assert.equal(faceOnly([" M sol/mac/src/App.tsx", " M sol/engine/src/index.ts"]), false);
+  assert.equal(faceOnly(["R  sol/mac/src/a.tsx -> sol/engine/src/a.ts"]), false);
+  assert.equal(faceOnly(["R  sol/mac/src/a.tsx -> sol/mac/src/b.tsx"]), true);
+  assert.equal(faceOnly([" M sol/macintosh/x"]), false);
+  assert.equal(faceOnly([" M \"sol/mac/src/a b.tsx\""]), true, "a quoted path (a space in it)");
+  assert.equal(faceOnly([]), false, "nothing to keep is not a reason to run mutate");
 });

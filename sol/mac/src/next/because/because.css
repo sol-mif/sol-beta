@@ -1,0 +1,40 @@
+/* The because (Because.tsx; BR1, #1615; picked drawing mine/look/br1/folder.html): grey words after what Sol did, and
+   the fact they unfold under it, in flow: no card, no shadow, a thin rule at its left. Every piece is a span, so each
+   says its own display. The scale's variables only; every word wraps, nothing is cut.
+   Signed: marcocyl04-ux's agent (builder F). */
+.bc { display: inline-flex; align-items: baseline; gap: var(--s1); padding: 0; border: 0; border-bottom: 1px dashed var(--ink4); background: none; color: var(--ink3); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
+.bc-mark { flex: none; align-self: center; width: var(--s3); height: var(--s3); fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .16s var(--ease); }   /* BecauseMark: grey like the words */
+.bc-mark.open { transform: rotate(90deg); }
+.bc:hover, .bc:focus-visible, .bc[aria-expanded="true"] { color: var(--ink); border-bottom-color: var(--ink3); }
+.bc-open { display: flex; flex-direction: column; gap: var(--s2); max-width: calc(var(--s12) * 8); margin: var(--s2) 0 var(--s1); padding: var(--s1) 0 var(--s1) var(--s3); border-left: 2px solid var(--line); scroll-margin: var(--s8) 0 calc(var(--s12) * 3); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); font-weight: normal; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.bc-fact { display: flex; flex-direction: column; gap: var(--s2); }
+.bc-fact + .bc-fact { padding-top: var(--s2); border-top: 1px solid var(--line); }
+.bc-why { display: block; margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); }
+.bc-from { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.bc-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.bc-btn { min-height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: var(--side); color: var(--ink); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.bc-btn:hover, .bc-btn:focus-visible { box-shadow: inset 0 0 0 1px var(--line); }
+.bc-note { display: block; margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.bc-gone { display: inline; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); overflow-wrap: anywhere; }
+.bc-tx { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.bc-btn.on { background: var(--ink); color: var(--card); }
+.bc-btn.q { background: none; color: var(--ink2); }
+.bc-btn:disabled { color: var(--ink3); cursor: default; }
+.bc-btn.on:disabled { background: var(--side); }
+/* Not anymore: what is true now, in one line; then the preview of what Sol would do differently, Keep or Back */
+.bc-now { display: flex; flex-direction: column; gap: var(--s2); margin: 0; }
+.bc-now input { min-width: 0; height: var(--h-row); padding: 0 var(--s3); border: 0; border-radius: var(--r-chip); background: var(--side); color: var(--ink); font: inherit; font-size: var(--t-body); outline: none; box-shadow: inset 0 0 0 1px var(--line); }
+.bc-now input:focus-visible { box-shadow: inset 0 0 0 1px var(--ink3); }
+.bc-preview { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); }
+.bc-preview b { font-weight: 600; }
+.bc-preview .bc-ch { display: block; color: var(--ink2); }
+.bc-preview .bc-what { color: var(--ink); font-weight: 600; }
+.bc-preview s { color: var(--ink3); }
+.bc-preview small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+/* a press with its icon (the card check: an icon on every choice); one Edit this fact a fact at rest, the ways once pressed */
+.bc-btn { display: inline-flex; align-items: center; gap: var(--s1); }
+.bc-ic { flex: none; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bc-btn[data-more] { align-self: flex-start; padding-left: 0; }
+/* inside the window, ".nx button { font: inherit }" outweighs a single class: the because keeps its own sizes */
+.nx .bc, .nx .bc-btn, .nx .bc-tx { font-size: var(--t-label); line-height: var(--t-label-line); }
+.nx .bc-tx { font-size: inherit; }

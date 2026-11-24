@@ -25,10 +25,13 @@ export type Team = { label: string; groups: Group[]; viewer?: { role: string; ai
 export type Friend = {
   n: string; h: string; close: number; pres: string | null; line: string; theirs: Record<string, number>; since?: string; via?: string; mine?: Record<string, number>;
   team?: string; teamRole?: string; waiting?: string; isnew?: number; quiet?: number;
+  /** live (cv/wire/social.ts): what their AI asked yours, counted, and the last ask with how it went */
+  asked?: { n: number; last?: { q: string; how: string } };
 };
-export type Inbox = { k: string; from: string; h: string; close?: boolean | number; title?: string; need?: string | null; size?: string; file?: string; free?: string; clash?: boolean; clashWith?: string; what?: string; src?: string; known?: number | boolean };
+export type Inbox = { k: string; from: string; h: string; close?: boolean | number; title?: string; need?: string | null; size?: string; file?: string; free?: string; clash?: boolean; clashWith?: string; what?: string; src?: string; known?: number | boolean; rid?: string /* live: #1072's request id (cv/wire/social.ts) */ };
 export type Circle = {
-  label: string; me: { line: string; level: number; badges?: string[] }; shares: Record<string, number>; friends: Friend[]; inbox: Inbox[];
+  // face and busy, live only (cv/wire/social.ts): the jelly the person keeps, and today's twelve hours from 8 am, busy or not
+  label: string; me: { line: string; level: number; badges?: string[]; face?: number; busy?: number[] }; shares: Record<string, number>; friends: Friend[]; inbox: Inbox[];
   fav: { n: number; from: string; used: number }; first?: number; published?: { n: string; k: string; inst: number; rep: number }[];
   reports?: { n: number; on: string }; links?: { name: string; joined: number; of: number; days: number }[]; showLink?: number;
 };
@@ -60,7 +63,7 @@ export const COWORK: Record<string, Team> = {
       people: [ME(), P("Ana", "ana", { st: "work" }), P("Joon", "joon", { st: "done" }), P("Ravi", "leo", { st: "work", ai: "Codex" }), P("Eli", "ivy", { st: "rest" }), P("Tom", "kai", { st: "work" })],
       waits: [{ from: "Ana", h: "ana", kind: "ask", text: "Ship the new pricing page tonight?", sub: "Her AI checked the copy and links", btns: ["Ship it", "Not yet", "Open"] },
         { from: "Joon", h: "joon", kind: "hand", text: "Joon handed you: onboarding copy, first pass", sub: "Opens at the top of your next session", btns: ["Take it", "Not mine"] },
-        { from: "Your AI", h: "sam", kind: "ai", text: "Two tests are flaky on main", sub: "Raised by your AI · doesn’t count in Needs you", btns: ["Look", "Dismiss"] }],
+        { from: "Your AI", h: "sam", kind: "ai", text: "Two tests are flaky on main", sub: "Raised by your AI · doesn’t count in Waiting on you", btns: ["Look", "Dismiss"] }],
       lines: [{ who: "Ana", h: "ana", you: 1, t: "@You can you read the pricing copy before 6?", time: "10:12" }, { fold: "parcel-web · 14 changes by 3 people", build: 1, makers: 1 }, { fold: "Joon’s AI · 4 updates", h: "joon", makers: 1 }, { who: "Joon’s AI", h: "joon", ai: 1, kind: "done", t: "Checkout fix · before and after", time: "11:41" }, { who: "Ravi", h: "leo", t: "Release Thursday unless someone shouts.", time: "12:30" }, { fold: "Ravi’s AI · 6 updates", h: "leo", makers: 1 }],
       shared: [{ k: "repository", n: "parcel-web", c: K.repo, makers: 1 }, { k: "repository", n: "parcel-api", c: K.repo, makers: 1 }, { k: "Figma", n: "Pricing", c: K.figma }],
       notes: "<b>Doing:</b> pricing, checkout, onboarding. <b>Stuck:</b> flaky tests on main.", decided: [{ t: "Release moves to Thursday", who: "Ravi · Tue" }], last: "Checkout fix landed; pricing waits on you." }] },

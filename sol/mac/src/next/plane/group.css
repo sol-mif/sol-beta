@@ -1,0 +1,10 @@
+/* The infinite canvas, its groups (BR1, #1615; plane/group.ts, groupFar.ts): cards that would overlap at their smallest
+   size, drawn as one labelled stack at their middle: a card with two behind it (its shadows), how many on top, then the names and what
+   needs you. Under the plane's camera, at screen size like a card; it grows to its words and never cuts one.
+   Signed: marcocyl04-ux's agent (builder F), BR1 (#1615). */
+.pl-group { position: absolute; display: flex; flex-direction: column; justify-content: center; gap: var(--s1); padding: var(--s2) var(--s3); box-sizing: border-box; border-radius: var(--r-card); background: var(--card); color: var(--ink); font-size: var(--t-head); line-height: var(--t-head-line); cursor: pointer; transform-origin: 0 0; overflow-wrap: normal; --stack: var(--s1) calc(var(--s1) * -1) 0 0 var(--card), var(--s1) calc(var(--s1) * -1) 0 1px var(--line), calc(var(--s1) * 2) calc(var(--s1) * -2) 0 0 var(--card), calc(var(--s1) * 2) calc(var(--s1) * -2) 0 1px var(--line); box-shadow: inset 0 0 0 1px var(--line), var(--stack), var(--shadow); }
+.pl-group .pl-gn { font-weight: 600; }
+.pl-group:hover { box-shadow: inset 0 0 0 1px var(--ink3), var(--stack), var(--shadow-up); }
+.pl-group:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pl-group.pl-asks { box-shadow: inset 0 0 0 1px var(--asks), var(--stack), var(--shadow); }
+.pl-group.pl-sel { box-shadow: inset 0 0 0 1px var(--ink3), var(--stack), var(--shadow-up); }

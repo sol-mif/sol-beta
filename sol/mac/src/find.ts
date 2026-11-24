@@ -20,3 +20,12 @@ export function firstFrom(tops: number[], top: number): number {
 export function step(at: number, by: 1 | -1, count: number): number {
   return count ? (at + by + count) % count : 0;
 }
+
+type Focusable = { isConnected: boolean; focus: (o?: { preventScroll?: boolean }) => void };
+/** where focus goes when the bar closes: where it was when ⌘F opened it, if that is still on screen and not the bar
+ *  itself (#1241); nothing to go back to leaves it be */
+export function focusBack(was: Focusable | null, bar: { contains: (n: any) => boolean } | null): boolean {
+  if (!was || !was.isConnected || (bar && bar.contains(was))) return false;
+  was.focus({ preventScroll: true });
+  return true;
+}

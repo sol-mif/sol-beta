@@ -1,0 +1,8 @@
+/* the because's dev page (dev.tsx): Ana's things Sol did, one card each, on the paper. Signed: marcocyl04-ux's agent (builder F). */
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+.bcd { max-width: calc(var(--s12) * 14); margin: 0 auto; padding: var(--s8) var(--s6); display: flex; flex-direction: column; gap: var(--s3); }
+.bcd h1 { margin: 0 0 var(--s2); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: var(--display-w); letter-spacing: var(--title-k); }
+.bcd-did { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow); }
+.bcd-did small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.bcd-did p { margin: 0; font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); overflow-wrap: anywhere; }
+.bcd-did p .bc, .bcd-did p .bc-gone { font-family: var(--sans); }

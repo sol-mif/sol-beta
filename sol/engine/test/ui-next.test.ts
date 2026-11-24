@@ -1,5 +1,5 @@
 // The new face's switch ui.next (#1604, docs/port/switch.md): read like cowork.v3, the env SOL_UI_NEXT first, then the
-// person's setting ui.next, then where its card's station stands in this Sol's version (hand: off until set). The face
+// person's setting ui.next, then where its card's station stands in this Sol's version (product since the BR1 join: on unless turned off). The face
 // is sent it already resolved (readings). On a settings file of its own (SOL_SETTINGS), so the real one is never touched.
 // Signed: marcocyl04-ux's agent, the port's prep (#1615).
 import { test, after } from "node:test";
@@ -28,20 +28,22 @@ test("clean keeps ui.next only as a boolean, and drops anything else under ui", 
 });
 
 test("the env wins both ways, then the setting, then the station (hand: off in every mode)", () => {
+  // nobody set it: the card stands at product (ring 3, BR1 #1615), so a downloaded Sol (beta, product) shows the new face
+  assert.equal(V.stageOf("ui.next"), "product", "its card stands at product (ring 3: testers on sol-beta)");
+  S.noteChannel("beta");
+  assert.equal(S.uiNext(), true, "a tester's Sol shows the new face by default");
   S.noteChannel("dev");
-  // nobody set it: the card stands at hand, so off even in concept
-  assert.equal(V.stageOf("ui.next"), "hand", "its card stands at hand (ring 1: a person's own setting)");
-  assert.equal(S.uiNext(), false);
-  // the station, when a ring moves the card: on in concept once it stands at concept
+  assert.equal(S.uiNext(), true, "and so does the team's");
+  // the station at hand (ring 1): off in every mode until set
   const was = Object.getOwnPropertyDescriptor(V.STAGES, "ui.next");
-  (V.STAGES as Record<string, string>)["ui.next"] = "concept";
+  (V.STAGES as Record<string, string>)["ui.next"] = "hand";
   try {
-    assert.equal(S.uiNext(), true, "a station at concept turns it on for a dev-channel Sol");
-    S.patchSettings({ ui: { next: false } });
-    assert.equal(S.uiNext(), false, "a person who turned it off stays off through a ring's move");
+    assert.equal(S.uiNext(), false, "a station at hand leaves it off until a person sets it");
   } finally {
     if (was) Object.defineProperty(V.STAGES, "ui.next", was); else delete (V.STAGES as Record<string, string>)["ui.next"];
   }
+  S.patchSettings({ ui: { next: false } });
+  assert.equal(S.uiNext(), false, "a person who turned it off stays off through a ring's move");
   // the setting
   S.patchSettings({ ui: { next: true } });
   assert.deepEqual(onDisk().ui, { next: true });
@@ -71,4 +73,21 @@ test("the face's settings message carries ui.next resolved, and the hearers hear
   S.patchSettings({ ui: { next: true } });
   assert.deepEqual(heard, [true, false, true]);
   S.patchSettings({ ui: { next: false } });
+});
+
+test("the station turns the rest of the new face too: the channel learned tells ui.next's hearers, and the seats follow uiNext (#1615)", async () => {
+  const C = await import("../src/connections.ts");
+  S.patchSettings({ ui: { next: null } as unknown as { next: boolean } });
+  S.noteChannel(null);
+  assert.equal(S.uiNext(), false, "no channel yet: off");
+  const heard: boolean[] = [];
+  S.onUiNext((on) => heard.push(on));
+  S.noteUiNext();
+  S.noteChannel("beta");
+  assert.equal(S.uiNext(), true);
+  assert.deepEqual(heard.slice(-1), [true], "learning the channel tells the hearers the face is on");
+  assert.equal(C.seatsOn(), true, "the seats are on with the face the station turned on, no setting needed");
+  S.patchSettings({ ui: { next: false } });
+  assert.equal(C.seatsOn(), false, "and off with it");
+  S.noteChannel(null);
 });

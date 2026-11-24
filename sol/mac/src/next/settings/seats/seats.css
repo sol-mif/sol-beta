@@ -1,0 +1,31 @@
+/* Seats and sign-ins (round 6 · M2, slice 6b, #1615; merge/views/seats.css, its structure only): the page in Settings,
+   and the blocked AI's ask, first on Needs you, ringed. Every space, size and corner is the scale's (--s*, --t-*, --h-*,
+   --r-*), every colour and shadow the next set's; the gate's layout and look lints hold this. Signed: marcocyl04-ux's
+   agent, slice 6b (#1615). */
+
+/* the page */
+.se-page .se-row { flex-wrap: nowrap; }
+.se-page .se-row .st-t { min-width: 0; }
+.se-page .se-row .st-state, .se-acts { flex: none; }
+.se-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s2); }
+.se-soon .st-row { flex-wrap: nowrap; }
+.se-g-done, .se-g-saw, .se-g-ask { display: grid; place-items: center; width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); flex: none; font-weight: 700; background: var(--side); color: var(--ink2); }
+.se-g-ask { background: var(--ink); color: var(--card); }
+.se-need { color: var(--ink); font-weight: 600; }
+.se-work { color: var(--ink); }
+.se-wait { display: inline-flex; align-items: center; gap: var(--s2); flex: none; }
+.se-who { display: inline-flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
+.se-who > span { display: inline-flex; align-items: center; gap: var(--s1); margin-left: var(--s1); }
+.se-use { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s2); }
+.se-bar { width: calc(var(--s12) * 2.5); height: var(--s1); border-radius: var(--r-pill); background: var(--side); overflow: hidden; flex: none; }
+.se-bar i { display: block; height: 100%; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--a1), var(--a2)); }
+.se-tag { display: inline-block; margin-left: var(--s1); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); }
+.se-calm { display: flex; align-items: center; gap: var(--s2); color: var(--ink3); }
+/* opened at a row: that row ringed */
+.st-row.se-row.hl { border-radius: var(--r-row); background: var(--hover); box-shadow: inset 0 0 0 1px var(--a1); }
+
+/* the blocked AI's ask, first on Needs you (a .pnrow of the people's, with the ask's own glyph) */
+.r6needs { margin-top: var(--s4); }
+.r6needs .pnrow.r6-ask { box-shadow: var(--shadow), inset 0 0 0 1px var(--a2); }
+.r6needs .pnrow.r6-ask.focus { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); }
+.r6needs .r6-g { flex: none; width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); display: grid; place-items: center; background: var(--side); color: var(--ink); font-weight: 700; }

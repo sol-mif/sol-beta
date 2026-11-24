@@ -62,6 +62,12 @@ export function readRecordOf(user: string = homedir()): Record_ | null {
 /** the folder Home made for the person (the record's solHome), or null */
 export const solHomeOf = (rec: Record_ | null): string | null => (typeof rec?.solHome === "string" && rec.solHome.trim() ? rec.solHome : null);
 
+/** the folders of the record's areas directly in Sol's home: the first name of each area's id ("school/bio" → "school") */
+export const areaTops = (rec: Record_ | null): string[] => {
+  const areas = (Array.isArray(rec?.areas) ? rec!.areas : []) as Area[];
+  return [...new Set(areas.flatMap((a) => (typeof a.id === "string" && a.id.split("/")[0] ? [a.id.split("/")[0]] : [])))];
+};
+
 /** each area of a record as a rule: its name, to its crumb (the names along its id's parents) (pure) */
 export function recordRules(rec: Record_ | null): Rule[] {
   const areas = (Array.isArray(rec?.areas) ? rec!.areas : []) as Area[];

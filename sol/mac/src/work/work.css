@@ -371,11 +371,11 @@ div.wask { max-height: calc(100vh - 240px); overflow-y: auto; overscroll-behavio
 .wseg button.on { background: var(--ink); color: var(--base-color); }
 .wdstat { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--mute); }
 .wdstat b { font-weight: 500; color: var(--ink); }
-.wdfiles { display: flex; flex-direction: column; padding: 6px 8px; border-bottom: 1px solid var(--line); max-height: 34%; overflow: auto; }
+.wdfiles { flex: none; display: flex; flex-direction: column; padding: 6px 8px; border-bottom: 1px solid var(--line); max-height: 34vh; overflow: auto; }   /* never squeezed by a long body (BR1 gate 2) */
 .wdf { display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; background: none; border: 0; border-radius: var(--r-s); color: var(--dim); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; min-width: 0; }
 .wdf:hover { background: var(--raised); color: var(--ink); }
 .wdf.on { background: var(--raised); color: var(--ink); }
-.wdf .st { flex: none; width: 6px; height: 6px; align-self: center; background: var(--mute); }
+.wdf .st { flex: none; display: block; width: 6px; height: 6px; padding: 0; align-self: center; background: var(--mute); }   /* its own display and padding: settings.css has a bare .st */
 .wdf.added .st { background: var(--green-strong); }
 .wdf.deleted .st { background: var(--red-strong); }
 .wdf .n { flex: none; color: inherit; }
@@ -389,6 +389,8 @@ div.wask { max-height: calc(100vh - 240px); overflow-y: auto; overscroll-behavio
 .wdfh .c b { font-weight: 500; color: var(--dim); }
 .wdtag { flex: none; font-size: 10px; color: var(--dim); border: 1px solid var(--line); border-radius: var(--pill); padding: 0 6px; line-height: 15px; }
 .wdlines { max-height: none; overflow-x: auto; }
+.wdmore { align-self: flex-start; margin: 4px 0; }   /* the "more" of a big change: the list, the files, an open file's lines (BR1 gate 2) */
+.wdf.wdmore .n { color: var(--dim); }
 .wdlines .dl u { flex: none; width: 34px; padding-right: 6px; text-align: right; text-decoration: none; color: var(--mute); font-size: 10.5px; user-select: none; }
 .wdlines .dl.can { cursor: text; }
 .wdlines .dl.can:hover { box-shadow: inset 2px 0 0 var(--ink); }

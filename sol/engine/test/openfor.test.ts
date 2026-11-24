@@ -155,6 +155,8 @@ test("set_setting never changes an engine switch, the version, the counting or t
 
 test("Cowork old or new and the face old or new turn on the person's word, and every answer says which is on (#21)", async () => {
   let v3 = 0, next = 0;
+  // the new face stands on by default since the BR1 join (#1615): this person had turned it off
+  S.patchSettings({ ui: { next: false } });
   S.onCoworkV3(() => { v3++; });
   S.onUiNext(() => { next++; });
   O.heard("c1", "switch me to the new cowork please");
@@ -206,6 +208,33 @@ test("a window card's switch is kept in the person's settings and sent to the wi
   assert.equal(S.getSettings().switches, undefined);
   S.patchSettings({ switches: { "ui.next": true, "build.snap": 1 } });
   assert.equal(S.getSettings().switches, undefined, "an unknown name or a value that is not a turn is dropped");
+});
+
+test("agents.mode is turned by the person's word as the views are: the window reads it from settings.window (#18)", async () => {
+  O.heard("w2", "turn agents off please");
+  let r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": false } }, yes: "turn agents off" }, { sessionId: "w2" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.getSettings().switches?.["agents.mode"], false);
+  assert.equal(S.readings().window["agents.mode"], false);
+  O.heard("w2", "put agents back to normal");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": null } }, yes: "back to normal" }, { sessionId: "w2" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.getSettings().switches, undefined);
+  // on by word only where its card stands in this Sol's version: at concept, a tester's Sol (product) has none of it yet
+  const was = process.env.SOL_VERSION;
+  try {
+    process.env.SOL_VERSION = "product";
+    O.heard("w2", "turn agents on please");
+    r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": true } }, yes: "turn agents on" }, { sessionId: "w2" });
+    assert.equal(r.isError, true, txt(r));
+    assert.match(txt(r), /not part of this Sol yet/);
+    assert.equal(S.getSettings().switches, undefined);
+    process.env.SOL_VERSION = "concept";
+    r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": true } }, yes: "turn agents on" }, { sessionId: "w2" });
+    assert.equal(r.isError, undefined, txt(r));
+    assert.equal(S.readings().window["agents.mode"], true);
+    S.patchSettings({ switches: { "agents.mode": null } });
+  } finally { process.env.SOL_VERSION = was; }
 });
 
 test("asking a teammate's agent and the agents' room turn off at the person's word, and never back on by a seat (the door on #1718, question 4; #36)", async () => {

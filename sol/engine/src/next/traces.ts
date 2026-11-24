@@ -30,8 +30,9 @@ export type Step = { at: number; kind: string; facts: Facts };
 export type Wait = { at: number; on: string; until: number | null };
 export type Permission = { at: number; act: string; rung: string; answer: "yes" | "no" | "let" | "refused" | null };
 export type Tool = { tool: string; n: number; ok: number; failed: number; unsaid: number };
-export type Source = { kind: "session" | "folder" | "thing" | "block" | "home" | "diary"; id: string; seat: string | null };
-export type Back = { session?: string; place?: string; thing?: string; block?: string; day?: string };
+export type Source = { kind: "session" | "folder" | "thing" | "block" | "home" | "diary" | "plan" | "automation" | "planner"; id: string; seat: string | null };
+/** plan, automation: "Sol works for you" (next/traces-work.ts) */
+export type Back = { session?: string; place?: string; thing?: string; block?: string; day?: string; plan?: string; automation?: string };
 export type Run = {
   id: string;
   source: Source;
@@ -49,6 +50,8 @@ export type Run = {
   back: Back | null;
   /** what this run's records do not say: "provider", "model", "tokens", "outcome", "tools" */
   unknown: string[];
+  /** a session run that was a work plan's step or an automation's run (next/traces-work.ts): ids only, never words */
+  of?: { plan?: string; step?: string; automation?: string };
 };
 export type Gap = { what: string; say: string };
 export type Traces = {

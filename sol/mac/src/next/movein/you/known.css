@@ -1,0 +1,62 @@
+/* The circle at its two small sizes, and the source card (Circle.tsx; BR1 root part 5, #1615). The scale's variables
+   only; every word wraps, nothing is cut. Signed: marcocyl04-ux's agent (builder F). */
+.kn-badge { display: inline-flex; align-items: center; gap: var(--s2); min-height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-pill); background: var(--side); color: var(--ink2); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; white-space: normal; text-align: left; }
+.kn-badge:hover, .kn-badge:focus-visible { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.kn-dots { display: inline-flex; gap: var(--s1); flex: none; }
+.kn-dots i, .kn-dot { width: var(--s2); height: var(--s2); border-radius: 50%; display: inline-block; flex: none; }
+.kn-line { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.kn-line.gone { flex-direction: row; flex-wrap: wrap; align-items: center; color: var(--ink2); }
+.kn-press { display: flex; align-items: flex-start; gap: var(--s2); width: 100%; min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.kn-press .kn-dot { margin-top: calc((var(--t-body-line) - var(--s2)) / 2); }
+.kn-w { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.kn-w small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.kn-tx { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.kn-src { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); overflow-wrap: anywhere; }
+.kn-src h3 { margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; color: var(--ink); }
+.kn-src .src { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.kn-src .src.mute { color: var(--ink3); }
+.kn-src .acts { display: flex; gap: var(--s2); margin-top: var(--s1); }
+.kn-pill { min-height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: var(--side); color: var(--ink); font: inherit; font-size: var(--t-label); cursor: pointer; }
+/* on a folder card's tab (plane/Folder.tsx): the tab's own height, no plate, the tab's ink (over the folder's own button look) */
+/* the tab is two-fifths of the card (the plane's): the count only, on one line (measured: 79px of 85 at 1440 and 2560); the
+   dots and the dial drop here, the aria says them and the circle a press opens shows them */
+/* BR1 conform row 18 (builder G): it reads as the card's other badge (plane/folder.css .fo-badge, "3 need you"): a pill,
+   the label's size and weight, "2 facts", in the card's white where that one is the asks' colour */
+.fo-tab .kn-badge .kn-dots, .fo-tab .kn-badge .kn-dial, .fo-tab .kn-badge .kn-bwr { display: none; }
+[data-face] .fo .fo-tab button.kn-badge { height: auto; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 700; min-height: 0; padding: 0 var(--s2); border-radius: var(--r-pill); gap: var(--s1); background: var(--card); white-space: nowrap; color: var(--ink2); }
+[data-face] .fo .fo-tab button.kn-badge:hover, [data-face] .fo .fo-tab button.kn-badge:focus-visible { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+/* calm per screen (BR1, #1615): at rest a folder's tab says nothing of what Sol knows; the count shows while the pointer or
+   the keys are on that folder (plane/Folder.tsx's fo-on), still in the tab order and read by its aria at rest */
+[data-face] .fo .fo-tab button.kn-badge { transition: opacity var(--d-turn) var(--ease); }
+[data-face] .fo:not(.fo-on):not(:focus-within) .fo-tab button.kn-badge { opacity: 0; }
+/* inside an opened folder (folder/index.tsx), over the folder's own button look */
+[data-face] .fo button.kn-press, [data-face] .fo button.kn-tx { height: auto; padding: 0; border-radius: 0; background: none; font-size: inherit; line-height: inherit; }
+[data-face] .fo button.kn-pill { height: auto; min-height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); font-size: var(--t-label); }
+[data-face] .fo button.kn-badge { height: auto; min-height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); align-self: flex-start; }
+[data-face] .fo .fo-ctx button.kn-badge { background: var(--card); }
+/* the move-in (You.tsx): Taking shape, the circle forming in the read's one column; How Sol sees you, the circle beside the
+   pressed card, as tall as the screen leaves it (the picture sizes itself from the room it is given) */
+.kn-forming { flex: 1 1 0; min-height: 240px; min-width: 0; overflow: hidden; }
+.yu .yk-place.still { cursor: default; }
+.yu .yk-place.still:hover b { text-decoration: none; }
+.kn-seen { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) 45%; gap: var(--s4); align-items: start; }
+.kn-room { min-width: 0; }
+.kn-side { min-width: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.kn-more { margin: var(--s1) 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+/* #yu calm (BR1): at most five controls at rest. The picture's places and chips are words until the pointer or a key is in
+   it (Circle.tsx calm); what needs the person is one line (.rq-need) that unfolds its questions; What I used shows on
+   pointing at the footer, or on a key reaching it */
+.yu .yk.rest .at-rest { cursor: default; }
+.yu .yk.rest:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 12px; }
+.yu .rq-need { display: flex; gap: 10px; align-items: center; width: 100%; border: 0; border-radius: 10px; padding: 6px 10px; background: #FFF3D6; color: #1D1C1A; font: 600 12.5px/1.3 var(--sans, inherit); text-align: left; cursor: pointer; }
+.yu .rq-need > b { width: 20px; height: 20px; border-radius: 50%; background: #1D1C1A; color: #FFF3D6; display: grid; place-items: center; font: 800 12px var(--disp); flex: none; }
+.yu .rq-need > i { margin-left: auto; font-style: normal; color: var(--ink3); }
+.yu .rq-need:hover, .yu .rq-need:focus-visible { box-shadow: inset 0 0 0 1px #1D1C1A; }
+.yu .pv-used .link { transition: opacity var(--d-turn, .2s) var(--ease, ease); }
+.yu .pvf:not(:hover):not(:focus-within) .pv-used .link { opacity: 0; }
+.yu .pvf:not(:hover):not(:focus-within) .pv-used { color: transparent; }
+/* the move-in's Found rows: a place's facts as chips under its line, all their words, wrapping (part 5 step 6) */
+.kn-chips { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s1); min-width: 0; }
+.kn-row { display: flex; flex-wrap: wrap; gap: var(--s1); min-width: 0; }
+.kn-chip { display: inline-flex; align-items: center; gap: var(--s1); min-height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-pill); background: var(--side); color: var(--ink2); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
+.kn-chip:hover, .kn-chip:focus-visible, .kn-chip.on { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }

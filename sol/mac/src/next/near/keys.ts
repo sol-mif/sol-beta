@@ -22,7 +22,7 @@ export function shellChord(e: KeyLike, ans: boolean): boolean {
 
 /** who takes this key (pure): the shell's chords, ⌘N and the open starter, a split job's parts, else the pane at Near */
 export function route(e: KeyLike, at: At): Route {
-  if (e.metaKey && e.code === "KeyN" && !e.shiftKey && at.dist !== "near" && at.dist !== "needs") return "starter";
+  if (e.metaKey && e.code === "KeyN" && !e.shiftKey) return "starter";   // ⌘N everywhere: a new session (BR1 gate 1)
   if (at.dist === "near" && !at.beside && at.parts !== "none") {
     if (at.parts === "open") { if (e.metaKey && !e.shiftKey && (e.code === "ArrowUp" || e.code === "BracketLeft")) return "parts"; }
     else if ((/^Arrow(Left|Right|Up|Down)$/.test(e.code) && !e.metaKey && !e.altKey) || (e.code === "Enter" && !e.metaKey) || (e.metaKey && e.code === "ArrowDown")) return "parts";

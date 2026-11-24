@@ -1,0 +1,85 @@
+/* Social (fr-31, social/Social.tsx): on the window's tokens (tokens.css), the jelly's own colours per person (--a, --b,
+   --pace from model.ts styleOf). Game touches: the XP bar in the jelly's bands, badges, the quest line, the premium banner. */
+.so-core { padding: 18px 28px 64px; overflow-y: auto; height: 100%; box-sizing: border-box; color: var(--ink); }
+.so-page { max-width: 920px; }
+.so-page h1 { font-size: 22px; font-weight: 650; margin: 4px 0 4px; } .so-page h1 small { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
+.so-page h2 { font-size: 14px; font-weight: 600; margin: 22px 0 8px; } .so-page h2 small { color: var(--mute); font-weight: 400; margin-left: 6px; }
+.so-lead { color: var(--dim); margin: 0 0 16px; max-width: 640px; }
+.so-dim { color: var(--dim); } .so-small { font-size: 12.5px; } .so-warn { color: var(--warn); } .so-ok { color: var(--ok); }
+.so-row { display: flex; align-items: center; gap: 10px; } .so-wrap { flex-wrap: wrap; } .so-grow { flex: 1; min-width: 0; } .so-gap { margin-top: 10px; } .so-end { justify-content: flex-end; margin-top: 16px; }
+.so-big { gap: 28px; margin-bottom: 16px; }
+.so-card { background: rgba(255, 255, 255, .035); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.so-card small { display: block; margin-top: 6px; }
+.so-inset { margin: 10px 0 0; background: rgba(0, 0, 0, .25); }
+.so-btn { font: inherit; color: var(--ink); background: none; border: 1px solid var(--edge); border-radius: 10px; padding: 6px 13px; cursor: pointer; white-space: nowrap; }
+.so-btn:hover { background: rgba(255, 255, 255, .06); } .so-btn:disabled { opacity: .4; cursor: default; }
+.so-btn.first { background: var(--ink); color: #111; border-color: var(--ink); font-weight: 600; }
+.so-btn.go { background: var(--ok); color: #06240f; border-color: var(--ok); font-weight: 600; }
+.so-btn.ghost { border-color: transparent; color: var(--dim); }
+.so-in { font: inherit; color: var(--ink); background: rgba(0, 0, 0, .3); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; min-width: 120px; }
+.so-wide { width: 340px; }
+.so-area { width: 100%; min-height: 70px; margin: 8px 0; box-sizing: border-box; resize: vertical; }
+.so-chip { display: inline-flex; font-size: 11.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--dim); }
+.so-chip.common { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); } .so-chip.on { color: var(--ink); border-color: var(--ink); } .so-chip.gold { color: #f4c82a; border-color: #4a3f1a; }
+/* the jelly: a blob in a person's two colours, breathing at their pace */
+.so-jelly { position: relative; flex: none; display: inline-block; border-radius: 46% 54% 50% 50% / 55% 48% 52% 45%; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .5) 0 8%, transparent 9%), radial-gradient(circle at 60% 70%, var(--b), var(--a)); box-shadow: 0 0 18px -6px var(--a); animation: so-wob var(--pace, 5s) ease-in-out infinite; }
+.so-jelly img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.so-dot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #111; }
+.so-dot.online { background: var(--ok); } .so-dot.away { background: #f4c82a; } .so-dot.offline { background: #444; }
+@keyframes so-wob { 50% { border-radius: 54% 46% 45% 55% / 47% 55% 45% 53%; } }
+/* a person's agent at work: the box takes their jelly's style */
+.so-agent { border-radius: 12px; padding: 9px 12px; margin-top: 10px; font-size: 13px; border: 1px solid color-mix(in srgb, var(--a) 40%, var(--line)); background: linear-gradient(120deg, color-mix(in srgb, var(--a) 14%, transparent), color-mix(in srgb, var(--b) 9%, transparent)); background-size: 200% 200%; animation: so-drift calc(var(--pace, 5s) * 2) ease-in-out infinite; }
+@keyframes so-drift { 50% { background-position: 100% 50%; } }
+/* the side */
+.so-side { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; }
+.so-me { display: flex; align-items: center; gap: 10px; padding: 4px 6px 12px; } .so-me small { display: block; color: var(--mute); font-size: 12px; }
+.so-tab, .so-fr { font: inherit; text-align: left; display: flex; align-items: center; gap: 8px; background: none; border: 0; color: var(--dim); padding: 6px 8px; border-radius: 9px; cursor: pointer; }
+.so-tab:hover, .so-fr:hover { background: rgba(255, 255, 255, .05); color: var(--ink); } .so-tab.on { background: rgba(255, 255, 255, .08); color: var(--ink); }
+.so-fr { font-size: 13px; } .so-fr.so-dim { color: var(--mute); margin-top: 10px; }
+.so-n { margin-left: auto; background: var(--ok); color: #06240f; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 7px; }
+.so-h { font-size: 11.5px; color: var(--mute); margin: 12px 8px 2px; } .so-none { font-size: 12.5px; color: var(--mute); padding: 2px 8px; }
+/* the notch's green request button, and the notch drawn above the view under ?dev=social */
+.so-notch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 460px; white-space: nowrap; margin: -18px auto 14px; padding: 7px 16px; background: #000; border: 1px solid #1b1b1e; border-top: 0; border-radius: 0 0 20px 20px; font-size: 12px; color: var(--mute); }
+.so-req { display: inline-flex; align-items: center; gap: 7px; background: var(--ok); color: #06240f; border: 0; border-radius: 999px; padding: 4px 11px 4px 4px; font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+.so-req.none { background: #1a1a1d; color: var(--mute); padding: 4px 11px; font-weight: 500; cursor: default; }
+/* the bar of happenings */
+.so-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 6px; }
+.so-it { flex: none; font: inherit; font-size: 12.5px; color: var(--ink); background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; } .so-it.seen { opacity: .5; }
+/* the jelly step */
+.so-pick { background: none; border: 2px solid transparent; border-radius: 50%; padding: 4px; cursor: pointer; } .so-pick:hover { border-color: var(--line); } .so-pick.on { border-color: var(--ink); }
+.so-prof-jelly { position: relative; } .so-prof-jelly::after { content: "change"; position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); font-size: 11px; color: var(--ink); background: rgba(0, 0, 0, .7); border-radius: 999px; padding: 1px 8px; opacity: 0; transition: opacity .15s; } .so-prof-jelly:hover::after { opacity: 1; }
+.so-dock { display: flex; gap: 10px; padding: 10px 14px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); border-radius: 18px; width: max-content; margin: 0 auto 8px; }
+.so-dock span:not(.so-jelly) { width: 44px; height: 44px; border-radius: 11px; background: #2a2a2e; } .so-dock .so-jelly { border-radius: 11px; animation: none; }
+/* the profile */
+.so-banner { height: 110px; border-radius: 16px; background: linear-gradient(110deg, #1a1a1f, #141418); position: relative; overflow: hidden; }
+.so-banner.premium { background: linear-gradient(110deg, #ff4888, #fb7129 30%, #f4c82a 55%, #70df45 80%, #ff4888); background-size: 300% 100%; animation: so-shine 9s linear infinite; }
+.so-banner.premium::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, .35) 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, rgba(255, 255, 255, .3) 0 2px, transparent 3px); background-size: 120px 80px; animation: so-spark 6s linear infinite; }
+@keyframes so-shine { to { background-position: 300% 0; } } @keyframes so-spark { to { background-position: 120px -80px; } }
+.so-prof { display: flex; gap: 18px; align-items: flex-end; margin: -44px 0 0 20px; position: relative; }
+.so-xp { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .07); overflow: hidden; } .so-xp i { display: block; height: 100%; background: linear-gradient(90deg, #ff4888, #fb7129, #f4c82a, #70df45); border-radius: inherit; transition: width .5s; }
+.so-lvl { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; border: 2px solid #f4c82a; font-weight: 700; color: #f4c82a; flex: none; } .so-lvl.small { width: 28px; height: 28px; font-size: 12.5px; }
+.so-quest { display: flex; align-items: center; gap: 12px; border: 1px dashed var(--edge); border-radius: 14px; padding: 10px 14px; margin-top: 12px; } .so-quest b { color: #f4c82a; }
+.so-badge { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 999px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); font-size: 13px; }
+.so-badge b { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(120deg, #ff4888, #f4c82a); color: #111; font-size: 11.5px; }
+/* friends and grants */
+.so-friend { display: flex; align-items: center; gap: 12px; }
+.so-grant { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); } .so-grant:first-child { border-top: 0; } .so-grant small { color: var(--mute); }
+.so-switch { width: 36px; height: 21px; border-radius: 999px; background: #2a2a2e; position: relative; cursor: pointer; flex: none; border: 0; padding: 0; }
+.so-switch i { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #777; transition: left .18s, background .18s; }
+.so-switch.on { background: var(--ok); } .so-switch.on i { left: 17px; background: #06240f; } .so-switch:disabled { opacity: .35; cursor: default; }
+.so-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.so-seg button { font: inherit; font-size: 12.5px; padding: 4px 11px; background: none; border: 0; color: var(--dim); cursor: pointer; } .so-seg button.on, .so-seg button:hover { background: var(--ink); color: #111; }
+/* requests */
+.so-told { padding: 10px 14px; } .so-told > small { margin: 0 0 4px; }
+.so-reqcard { display: flex; gap: 14px; align-items: flex-start; } .so-reqcard.done { opacity: .55; }
+.so-full { margin: 10px 0 0; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; font: 12.5px/1.5 var(--mono, ui-monospace, Menlo, monospace); color: var(--dim); }
+/* market, leaderboard, challenges */
+.so-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.so-build { background: rgba(255, 255, 255, .035); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.so-shot { height: 80px; background: linear-gradient(120deg, #1a1a1f, #26262c); } .so-shot.k-preset { background: linear-gradient(120deg, #111, color-mix(in srgb, var(--ok) 25%, transparent)); } .so-shot.k-rail { background: linear-gradient(90deg, #1a1a1f 30%, #f4c82a44 30% 34%, #1a1a1f 34%); } .so-shot.k-button { background: linear-gradient(120deg, #3ec6e044, #111); }
+.so-bb { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; } .so-bb small { font-size: 12px; }
+.so-foot { margin-top: auto; padding-top: 6px; } .so-price { color: #f4c82a; font-weight: 600; font-size: 13px; }
+.so-board { width: 100%; border-collapse: collapse; } .so-board td, .so-board th { text-align: left; padding: 9px 8px; border-top: 1px solid var(--line); } .so-board th { color: var(--mute); font-weight: 500; font-size: 12px; border-top: 0; } .so-board tr.me td { background: rgba(244, 200, 42, .06); }
+.so-champ { background: linear-gradient(120deg, rgba(244, 200, 42, .08), transparent); border-color: #4a3f1a; }
+.so-said { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #111; padding: 9px 16px; border-radius: 12px; font-weight: 500; z-index: 80; }
+@media (prefers-reduced-motion: reduce) { .so-jelly, .so-agent, .so-banner.premium, .so-banner.premium::after { animation: none; } }

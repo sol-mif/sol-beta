@@ -167,16 +167,7 @@ const FIELD = "input, textarea, select, [contenteditable=true], iframe";
 
 export function Home({ e, onMode }: { e: ReturnType<typeof useEngine>; onMode: (m: AppMode) => void }) {
   const w = useWork(e);
-  const framed = useFrameOn();
-  // the engine's half of the switch (#633): told once per turn of this window's switch when the engine says otherwise (an
-  // older engine drops the key, so never more than once), so the blocks' engine halves run only with the frame on
-  const engineFramed = e.settings ? e.settings.frame === true : null;
-  const toldFramed = useRef<boolean | null>(null);
-  useEffect(() => {
-    if (engineFramed === null || engineFramed === framed || toldFramed.current === framed) return;
-    toldFramed.current = framed;
-    e.setSettings({ frame: framed });
-  }, [framed, engineFramed]); // eslint-disable-line react-hooks/exhaustive-deps
+  const framed = useFrameOn();   // the engine is told in App.tsx (useTellFrame), whichever view shows (#1108)
   const [lay, setLay] = useState(readLay);
   const [wide, setWide] = useState(false);
   // #1090, screens.two: a window set to anchor is the side opened wide (sessions, what waits, the runs) and opens what is

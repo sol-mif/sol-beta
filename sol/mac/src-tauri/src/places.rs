@@ -119,7 +119,7 @@ fn copy_db(home: &Path, to: &Path, rel: &str) -> bool {
 
 /// Full Disk Access as macOS shows it to Sol: ~/Library/Safari can be listed. A home with no Safari folder at all
 /// asks macOS's own permissions folder, which only Full Disk Access opens.
-fn can_list(home: &Path) -> bool {
+pub(crate) fn can_list(home: &Path) -> bool {
     match std::fs::read_dir(home.join("Library/Safari")) {
         Ok(_) => true,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => std::fs::read_dir(home.join("Library/Application Support/com.apple.TCC")).is_ok(),

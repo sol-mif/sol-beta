@@ -43,7 +43,7 @@ case $(uname -s) in
   Linux) linux=1; grep -qi microsoft /proc/version 2>/dev/null && wsl=1 ;;
   *) echo "setup: Sol runs on macOS, Linux and Windows under WSL, not on $(uname -s)" >&2; exit 2 ;;
 esac
-check=""; nolaunchd=""; uselaunchd=""; noface=""; restart=""; dev=""
+check=""; nolaunchd=""; uselaunchd=""; noface=""; restart=""; dev=""; browser_later=""
 tty=""; [ -t 0 ] && tty=1   # a person at a terminal: only then are keys asked for (never into an agent's chat)
 needed=()
 for a in "$@"; do
@@ -398,8 +398,11 @@ else
   }
   packages "$ENG" engine || exit 1
   packages "$MAC" face
-  # the browser before the tests: the engine's browser tests launch it (browser-pins), and a fresh Mac has none (#300)
+  # the browser before the tests: the engine's browser tests launch it (browser-pins), and a fresh Mac has none (#300).
+  # A Sol from the public repo runs no tests here, so its browser (about 100 MB) is fetched after the engine is up, in
+  # the background (the end of this script): the first run is not held on it (#1637)
   if ls -d "$PWC"/chromium-* >/dev/null 2>&1; then ok "browser (playwright chromium) already installed"
+  elif [ -z "$devco" ]; then browser_later=1; skip "the browser Sol drives (about 100 MB) is fetched after the engine is up, in the background; its browser tool comes when it is done"
   else say "installing the browser Sol drives (playwright chromium)"; (cd "$ENG" && npx --yes playwright install chromium </dev/null) && ok "browser installed" || miss "npx playwright install chromium failed"; fi
   # built already, nothing changed since and the last tests passed: no build, no tests
   if [ -f "$ENG/dist/index.js" ] && [ ! -f "$ENG/.setup-test.log" ] && [ -z "$(find "$ENG/src" "$ENG/package-lock.json" "$ENG/tsconfig.json" -newer "$ENG/dist/index.js" 2>/dev/null | head -1)" ]; then
@@ -407,10 +410,15 @@ else
   else
     say "building the engine"
     (cd "$ENG" && npm run build --silent </dev/null) && ok "engine built" || { miss "npm run build in sol/engine failed (the lines above say why)"; exit 1; }
+    # the engine's tests are the team's: they read the team's repository (its workflows, its rhythm, its registry), so on
+    # a Sol from the public repo they fail by the hundred and prove nothing; a dev checkout runs them (#1637)
+    if [ -z "$devco" ]; then ok "the engine's tests are the team's: not run on a Sol from the public repo"
+    else
     say "running the engine's tests (about a minute)"
     # the tests start their own engines and keepers: a spare engine's settings must not leak into them
     if (cd "$ENG" && env -u SOL_PORT -u SOL_STATE -u SOL_NO_KEEP -u SOL_NO_RENEW npm test --silent </dev/null >"$ENG/.setup-test.log" 2>&1); then ok "engine tests pass"; rm -f "$ENG/.setup-test.log"
     else miss "some engine tests failed; the output is in sol/engine/.setup-test.log (setup goes on: Sol may still run)"; fi
+    fi
   fi
 fi
 skill_step
@@ -686,5 +694,12 @@ elif [ -z "$noface" ] && health; then
       cd "$MAC" && exec npm run dev ;;
     esac
   fi
+fi
+# ---- the browser, after the engine: a Sol from the public repo (#1637) ----
+# fetched now that the engine answers, in its own session so nothing waits on it; the browser tool says it is still
+# on its way until this is done (engine/src/browser.ts)
+if [ -n "$browser_later" ] && [ -z "$check" ]; then
+  say "fetching the browser Sol drives in the background (log: sol/engine/.setup-browser.log)"
+  (cd "$ENG" && perl -MPOSIX -e 'setsid; POSIX::close($_) for 3..255; exec @ARGV' npx --yes playwright install chromium </dev/null >"$ENG/.setup-browser.log" 2>&1 &) </dev/null >/dev/null 2>&1
 fi
 [ "$bad" -eq 0 ]

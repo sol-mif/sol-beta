@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sol · The sun is still rising (preview)</title>
+<!-- road.js on its own: a screen of night ground above and below, so the section scrolls into view and starts the
+     way it does on the home page. The section's words are a copy of index.html's #road; edit them there. -->
+<link rel="icon" href="media/jelly-mark.png">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="road.css">
+<style>
+  .filler { min-height:100vh; display:grid; place-items:center; text-align:center; padding:0 6%; color:var(--mute); }
+  .filler h2 { margin:0; color:var(--ink); font-size:clamp(28px,4vw,48px); letter-spacing:-.04em; font-weight:600; }
+  .filler p { margin:12px 0 0; }
+</style>
+</head>
+<body>
+<section class="filler"><div><h2>Bring your people</h2><p>(the section before)</p><p>scroll down</p></div></section>
+
+<section class="road" id="road" aria-labelledby="road-h">
+  <i class="road-sky" aria-hidden="true"></i><i class="road-band" aria-hidden="true"></i><i class="road-floor" aria-hidden="true"></i>
+  <svg class="road-path" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="roadWarm" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#ff2e4e"/><stop offset=".35" stop-color="#ff4888"/><stop offset=".7" stop-color="#fb7129"/><stop offset="1" stop-color="#f4c82a"/>
+      </linearGradient>
+      <filter id="roadGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter>
+    </defs>
+    <path class="ahead" d=""/><path class="glow" d="" stroke="url(#roadWarm)" filter="url(#roadGlow)"/><path class="done" d="" stroke="url(#roadWarm)"/>
+    <line class="hz" x1="0" x2="0" y1="0" y2="0"/>
+  </svg>
+  <header class="road-head">
+    <h2 id="road-h">The sun is still rising.</h2>
+    <p>Customizable and convenient are here today. Personalizable is what we are building next.</p>
+  </header>
+  <div class="road-stop" data-c="#ff4888"><i aria-hidden="true"></i><div><h3>Customizable</h3><em>Today, a first look</em><p>Your space, shaped your way.</p></div></div>
+  <div class="road-stop" data-c="#fb7129"><i aria-hidden="true"></i><div><h3>Convenient</h3><em>Today, a first look</em><p>Easy to use, smoother every day.</p></div></div>
+  <div class="road-stop next" data-c="#f4c82a"><i aria-hidden="true"></i><div><h3>Personalizable</h3><em>Next</em><p>Made to fit you. For everyone, at no extra cost.</p></div></div>
+  <div class="road-sun" aria-hidden="true"><span class="road-jelly"></span><b>now</b></div>
+  <div class="road-ground">
+    <i aria-hidden="true"></i>
+    <h3>Built for you, live.</h3>
+    <p>Under all three, one idea: Sol makes its own parts on the fly. Change something and you see it in an instant, without ever leaving.</p>
+  </div>
+</section>
+
+<section class="filler"><div><h2>Good morning.</h2><p>(the section after starts on this same night ground)</p></div></section>
+<script src="jelly.js"></script>
+<script src="road.js"></script>
+</body>
+</html>

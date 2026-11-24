@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { spans, firstFrom, step } from "./find";
+import { spans, firstFrom, step, focusBack } from "./find";
 import { CFG, enter } from "./motion";
 
 // ⌘F in a session (#1239): Sol.app's web view has no find of its own, so a long talk could only be scrolled. A small bar at
@@ -29,6 +29,7 @@ export function FindBar({ scroller, goTo }: { scroller: RefObject<HTMLDivElement
   const box = useRef<HTMLInputElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const found = useRef<Range[]>([]);
+  const was = useRef<HTMLElement | null>(null);   // where focus was when ⌘F opened the bar: it goes back there on close (#1241)
   const h = useRef({ open, at, count });
   h.current = { open, at, count };
 
@@ -42,7 +43,10 @@ export function FindBar({ scroller, goTo }: { scroller: RefObject<HTMLDivElement
     if (y < el.scrollTop + 24 || y > el.scrollTop + el.clientHeight - 48) goTo(y - el.clientHeight / 3);
   };
   const go = (by: 1 | -1) => { const c = h.current.count; if (!c) return; const i = step(h.current.at, by, c); setAt(i); show(i); };
-  const close = () => { setOpen(false); found.current = []; setCount(0); if (lit) { CSS.highlights.delete(ALL); CSS.highlights.delete(NOW); } };
+  const close = () => {
+    setOpen(false); found.current = []; setCount(0); if (lit) { CSS.highlights.delete(ALL); CSS.highlights.delete(NOW); }
+    focusBack(was.current, bar.current); was.current = null;
+  };
 
   // the words typed: search, then land on the first match from what is on screen down
   const search = (land: boolean) => {
@@ -73,6 +77,8 @@ export function FindBar({ scroller, goTo }: { scroller: RefObject<HTMLDivElement
       const k = ev.key.toLowerCase();
       if (k === "f" && !ev.shiftKey) {
         ev.preventDefault(); ev.stopPropagation();
+        const a = document.activeElement;
+        if (!h.current.open && a instanceof HTMLElement && a !== document.body) was.current = a;
         setOpen(true);
         requestAnimationFrame(() => { box.current?.focus(); box.current?.select(); });
       } else if (k === "g" && h.current.open) { ev.preventDefault(); ev.stopPropagation(); go(ev.shiftKey ? -1 : 1); }
@@ -85,16 +91,16 @@ export function FindBar({ scroller, goTo }: { scroller: RefObject<HTMLDivElement
 
   if (!open) return null;
   return (
-    <div ref={bar} className="findbar" role="search">
+    // esc anywhere in the bar closes it, so it never reaches the talk's own esc (stop the turn); a click on ↑ ↓ keeps
+    // focus in the box (#1241)
+    <div ref={bar} className="findbar" role="search"
+      onKeyDown={(ev) => { if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); close(); } }}>
       <input ref={box} value={q} placeholder="find in this session" spellCheck={false} aria-label="find in this session"
         onChange={(ev) => setQ(ev.target.value)}
-        onKeyDown={(ev) => {
-          if (ev.key === "Enter") { ev.preventDefault(); go(ev.shiftKey ? -1 : 1); }
-          else if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); close(); }
-        }} />
+        onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); go(ev.shiftKey ? -1 : 1); } }} />
       <span className="count">{q.trim() ? (count ? `${at + 1} of ${count}` : "none") : ""}</span>
-      <button onClick={() => go(-1)} disabled={!count} title="the one before (⇧⌘G)" aria-label="the one before">↑</button>
-      <button onClick={() => go(1)} disabled={!count} title="the next (⌘G)" aria-label="the next">↓</button>
+      <button onMouseDown={(ev) => ev.preventDefault()} onClick={() => go(-1)} disabled={!count} title="the one before (⇧⌘G)" aria-label="the one before">↑</button>
+      <button onMouseDown={(ev) => ev.preventDefault()} onClick={() => go(1)} disabled={!count} title="the next (⌘G)" aria-label="the next">↓</button>
       <button onClick={close} title="close (esc)" aria-label="close">×</button>
     </div>
   );

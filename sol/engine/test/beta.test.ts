@@ -13,13 +13,15 @@ Object.assign(process.env, {
   GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t",
   SOL_TEAM_FILE: join(mkdtempSync(join(tmpdir(), "sol-team-")), "team.json"),
 });
-const { passBeta, checkStable, passRule, verdictsOf, tagOf, MIN_AGE, signersOf, backupOf } = await import("../src/team/beta.ts");
-const { parseRhythm, betaComment } = await import("../src/team/tonight.ts");
+const { passBeta, checkStable, passRule, verdictsOf, tagOf, MIN_AGE, signersOf, backupOf, sameDayOnce } = await import("../src/team/beta.ts");
+const { parseRhythm, betaComment, rhythmOf, setRhythmSource } = await import("../src/team/tonight.ts");
 type BetaDeps = import("../src/team/beta.ts").BetaDeps;
 type Rhythm = import("../src/team/tonight.ts").Rhythm;
 
 const RHYTHM = parseRhythm(readFileSync(join(import.meta.dirname, "..", "..", "..", ".sol", "rhythm.json"), "utf8")) as Rhythm;
 const FRANK = RHYTHM.beta[0];
+/** the rhythm without the one-time exception (#1615), for what the rule is on every other day */
+const PLAIN = (({ betaSameDay: _, ...r }) => r)(RHYTHM) as Rhythm;
 const git = (cwd: string, ...a: string[]) => execFileSync("git", a, { cwd, encoding: "utf8" }).trim();
 const gitAt = (cwd: string, when: string, ...a: string[]) => execFileSync("git", a, { cwd, encoding: "utf8", env: { ...process.env, GIT_COMMITTER_DATE: when } }).trim();
 const c = (login: string, body: string, at: string) => ({ author: { login }, body, createdAt: at });
@@ -94,6 +96,63 @@ test("the rule: whole, signed after the release, a day old, nothing broke (pure)
   const spring = Date.parse("2027-03-13T14:00:30Z");
   assert.equal(passRule({ tag: "dev-20270313", made: spring, verdict: { ...verdict, at: spring + 3_600_000 }, broken: [], now: new Date("2027-03-14T13:00:05Z"), rhythm: RHYTHM }), null);
   assert.ok(MIN_AGE < 23 * 3_600_000);
+});
+
+test("the one-time exception to the day (#1615): only a release made on the named day, only on that day (pure)", () => {
+  const ONCE = { ...RHYTHM, betaSameDay: "2026-11-23" };
+  const made = Date.parse("2026-11-23T16:00:00Z");   // 11:00 New York, the named day
+  const verdict = { verdict: "pass" as const, release: "dev-20261123-1100", by: FRANK, at: made + 3_600_000 };
+  const at = (now: string, more: Partial<Parameters<typeof passRule>[0]> = {}) =>
+    passRule({ tag: "dev-20261123-1100", made, verdict, broken: [], now: new Date(now), rhythm: ONCE, ...more });
+  // the day: waived on the named day for a release made that day
+  assert.equal(at("2026-11-23T18:30:00Z"), null, "13:30 New York, two and a half hours old: it goes");
+  assert.equal(at("2026-11-24T04:59:00Z"), null, "23:59 New York, still the named day");
+  assert.match(at("2026-11-23T18:30:00Z", { rhythm: PLAIN })!, /not a day old yet/, "without the field: the day as always");
+  // not the next day: back to the rule as it is (an earlier day and 20 hours)
+  assert.match(at("2026-11-24T05:00:00Z")!, /not a day old yet/, "midnight in New York: the exception is over");
+  assert.match(at("2026-11-24T10:00:00Z")!, /not a day old yet/, "the next morning, 18 hours");
+  assert.equal(at("2026-11-24T16:00:00Z"), null, "the next day at 20 hours: the ordinary rule lets it through");
+  // not another release: one made the day before, or the day after, waits as always
+  const before = Date.parse("2026-11-22T21:09:00Z");   // 16:09 New York the day before, 17 hours old at 10:00
+  assert.match(passRule({ tag: "dev-20261122-1609", made: before, verdict: { ...verdict, at: before + 1000 }, broken: [], now: new Date("2026-11-23T15:00:00Z"), rhythm: ONCE })!, /not a day old yet/);
+  const after = Date.parse("2026-11-24T15:00:00Z");
+  assert.match(passRule({ tag: "dev-20261124-1000", made: after, verdict: { ...verdict, at: after + 1000 }, broken: [], now: new Date("2026-11-24T18:00:00Z"), rhythm: ONCE })!, /not a day old yet/);
+  // no zone: no exception (the day would be each machine's own); a date in the future or none: nothing
+  assert.equal(sameDayOnce(made, new Date("2026-11-23T18:30:00Z"), { ...ONCE, zone: "" }), false);
+  assert.equal(sameDayOnce(made + 3 * 3_600_000, new Date("2026-11-23T18:30:00Z"), ONCE), false, "made after now");
+  assert.equal(sameDayOnce(0, new Date("2026-11-23T18:30:00Z"), ONCE), false);
+  // the other four refuse exactly as they did
+  assert.match(at("2026-11-23T18:30:00Z", { tag: "main" })!, /^only a whole dev release goes to beta, and main is not one/);
+  assert.match(at("2026-11-23T18:30:00Z", { verdict: undefined })!, /has no pass from the beta reviewer/);
+  assert.match(at("2026-11-23T18:30:00Z", { verdict: { ...verdict, at: made - 1000 } })!, /written after it was made/);
+  assert.match(at("2026-11-23T18:30:00Z", { verdict: { ...verdict, verdict: "hold" } })!, /was held by franktsai2008-eng/);
+  assert.match(at("2026-11-23T18:30:00Z", { broken: [{ number: 451 }] })!, /holds #451, marked broke/);
+});
+
+test("the exception is read only as one real day from .sol/rhythm.json (#1615)", () => {
+  // the committed one: BR1's day, Frank's word (#1615; moved from 11-23 to 11-24 by Frank, 11/24 01:15 PST, when BR1
+  // slipped a day), or none once it is taken out; naming another day is a new decision, so it changes this line too
+  assert.ok(RHYTHM.betaSameDay === undefined || RHYTHM.betaSameDay === "2026-11-24", `.sol/rhythm.json names ${RHYTHM.betaSameDay}`);
+  const base = { dev: ["marcocyl04-ux"], beta: [FRANK], zone: "America/New_York" };
+  assert.equal(parseRhythm(JSON.stringify({ ...base, betaSameDay: "2026-11-23" }))!.betaSameDay, "2026-11-23");
+  for (const v of ["2026-02-30", "2026-13-01", "tomorrow", "2026-11-23T10:00", "", true, 20261123, ["2026-11-23"], { day: "2026-11-23" }]) {
+    assert.equal("betaSameDay" in parseRhythm(JSON.stringify({ ...base, betaSameDay: v }))!, false, `not a day: ${JSON.stringify(v)}`);
+  }
+  assert.equal("betaSameDay" in parseRhythm(JSON.stringify(base))!, false, "none: nothing waived");
+});
+
+test("the exception comes only from the committed file, never from the project's record (#1615)", async () => {
+  const own = { dev: ["marcocyl04-ux"], beta: [FRANK], zone: "America/New_York", betaSameDay: "2026-11-23" };
+  const gh = async (args: string[]) => { if (String(args[1]).endsWith("/contents/.sol/rhythm.json")) return JSON.stringify(own); throw new Error("HTTP 404"); };
+  try {
+    setRhythmSource(async () => own);
+    const rec = await rhythmOf({ gh, now: () => new Date() }, "sol-mif/sol-once-record", true);
+    assert.equal(rec?.from, ".sol/project.json");
+    assert.equal("betaSameDay" in rec!, false, "the record's rhythm waives nothing");
+  } finally { setRhythmSource(null); }
+  const file = await rhythmOf({ gh, now: () => new Date() }, "sol-mif/sol-once-file", true);
+  assert.equal(file?.from, ".sol/rhythm.json");
+  assert.equal(file?.betaSameDay, "2026-11-23", "the committed file's does");
 });
 
 // ---- against real git ----
@@ -264,6 +323,39 @@ test("the guard: a push to stable that is not a passed dev release goes red", as
   assert.match((await checkStable(deps(f.runner, now, ok).d, { ...O, sha: was, before: d30 }) as any).error, /stable only moves forward|no dev release/);
   assert.deepEqual(await checkStable(deps(f.runner, now, ok).d, { ...O, sha: d30, before: "0".repeat(40) }), { ok: true, tag: "dev-20261030", by: FRANK }, "a new branch has no before");
   assert.match((await checkStable(deps(f.runner, now, ok).d, { ...O, sha: "nope" }) as any).error, /not a commit/);
+});
+
+test("the one-time exception against real git (#1615): the pass moves stable the same day, the guard agrees, forward still holds", async () => {
+  const ONCE = { ...O, rhythm: { ...RHYTHM, betaSameDay: "2026-11-23" } };
+  const f = fixture();
+  const was = git(f.origin, "rev-parse", "refs/heads/stable");
+  const d22 = devRelease(f.repo, "2\n", "dev-20261122-1609", "2026-11-22T21:09:00Z");
+  const d23 = devRelease(f.repo, "3\n", "dev-20261123-1100", "2026-11-23T16:00:00Z");
+  const comments = [c(FRANK, pass("dev-20261122-1609"), "2026-11-22T22:00:00Z"), c(FRANK, pass("dev-20261123-1100"), "2026-11-23T17:00:00Z")];
+  const now = "2026-11-23T18:30:00Z";   // 13:30 New York
+
+  // without the field, today's release waits a day, as always
+  assert.match((await passBeta(deps(f.runner, now, { comments }).d, { ...O, rhythm: PLAIN, tag: "dev-20261123-1100" }) as any).error, /not a day old yet/);
+  // the guard refuses a push of it the same way; and with the field, yesterday's release, 17 hours old at 10:00, still waits
+  assert.match((await checkStable(deps(f.runner, now, { comments }).d, { ...O, rhythm: PLAIN, sha: d23, before: was }) as any).error, /not a day old yet/);
+  assert.match((await passBeta(deps(f.runner, "2026-11-23T15:00:00Z", { comments }).d, { ...ONCE, tag: "dev-20261122-1609" }) as any).error, /not a day old yet/);
+  // a held named-day release stays held, the exception or not
+  const held = [comments[0], c(FRANK, hold("dev-20261123-1100"), "2026-11-23T17:30:00Z")];
+  assert.match((await passBeta(deps(f.runner, now, { comments: held }).d, { ...ONCE, tag: "dev-20261123-1100" }) as any).error, /was held by/);
+  // a change marked broke still stops it
+  const oid = "a".repeat(40);
+  assert.match((await passBeta(deps(f.runner, now, { comments, broke: [{ number: 451, title: "x", url: "u", mergeCommit: { oid } }], compare: () => "ahead" }).d, { ...ONCE, tag: "dev-20261123-1100" }) as any).error, /marked broke/);
+  assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), was, "nothing moved");
+
+  // with it: the named day's release goes, and the guard says the same of the push
+  const x = deps(f.runner, now, { comments });
+  assert.deepEqual(await passBeta(x.d, { ...ONCE, tag: "dev-20261123-1100" }), { ok: true, tag: "dev-20261123-1100", sha: d23, by: FRANK, product: "v1", told: true, beta: "the beta repo runs it too" });
+  assert.equal(git(f.origin, "rev-parse", "refs/heads/stable"), d23);
+  assert.deepEqual(await checkStable(deps(f.runner, now, { comments }).d, { ...ONCE, sha: d23, before: was }), { ok: true, tag: "dev-20261123-1100", by: FRANK }, "the guard agrees");
+  assert.match((await checkStable(deps(f.runner, "2026-11-24T10:00:00Z", { comments }).d, { ...ONCE, sha: d23, before: was }) as any).error, /not a day old yet/, "asked again the next morning, the exception is over");
+  // forward: stable is past yesterday's release now, so it is refused whatever the day says
+  assert.match((await passBeta(deps(f.runner, "2026-11-23T22:00:00Z", { comments }).d, { ...ONCE, tag: "dev-20261122-1609" }) as any).error, /stable only moves forward/);
+  void d22;
 });
 
 test("a newer passed release not yet allowed leaves an older passed one free to go", async () => {

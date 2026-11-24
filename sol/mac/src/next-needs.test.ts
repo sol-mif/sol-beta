@@ -44,7 +44,7 @@ test("an ask says why it stands where it does and words its yes as what it does"
   assert.equal(yesWords(a.a1), "Revert a1b2c");
   assert.equal(reason(CV.D, a.a4).rung, "Spends money");
   assert.equal(yesWords(a.a4), "Raise to $20");
-  assert.equal(reason(CV.D, a.a5).rung, "Holds Rex up");
+  assert.equal(reason(CV.D, a.a5).rung, "Holds Migrate db up");
   assert.equal(yesWords(a.a5), "Allow");
   assert.equal(reason(CV.D, a.a3).rung, "Due today");
   assert.equal(reason(CV.D, a.a8).rung, "Waits to be kept");
@@ -185,7 +185,8 @@ test("live: withdraw and take back are held back; the wire makes asks of today's
     const subs = new Set<(m: unknown) => void>(), out: Record<string, unknown>[] = [];
     const e = { subscribe: (f: (m: unknown) => void) => { subs.add(f); return () => subs.delete(f); }, send: (m: Record<string, unknown>) => { out.push(m); return true; } };
     const off = wire(e as never);
-    assert.deepEqual(out[0], { type: "home.today" });
+    assert.deepEqual(out.splice(0, 2), [{ type: "home.today" }]);
+    out.unshift({ type: "home.today" });
     const feed = (m: unknown) => { for (const f of subs) f(m); };
     feed({ type: "home.today", today: { needs: ["it-1", "it-2"], moving: [], week: [], line: "" }, things: [
       { id: "it-1", read: "you", folder: "home", words: "Reply to the landlord", state: "asks", waitsOn: "you", due: 1, at: 0, links: [], made: [], card: { title: "Lease", answers: ["Reply now", "Not this"] } },
@@ -203,6 +204,24 @@ test("live: withdraw and take back are held back; the wire makes asks of today's
     assert.deepEqual(out.slice(1), [{ type: "home.answer", thingId: "it-1", answer: "Reply now" }, { type: "work.perm", sessionId: "s1", id: "perm:1", allow: true }]);
     feed({ type: "work.item", sessionId: "s1", item: { id: "perm:1", kind: "perm", state: "allow" } });
     assert.equal(CV.D.asks["p:s1:perm:1"], undefined, "answered by the engine: gone");
+    off();
+    await settle();
+  } finally { CV.setMode("fixture"); }
+});
+
+test("live: How Sol sees you's drift question is never a Need: no \"Add it as an aim?\" while aims are parked (BR1, #1615)", async () => {
+  CV.setMode("live");
+  try {
+    CV.setData({ regions: [], pieces: {}, asks: {}, ais: [] });
+    const subs = new Set<(m: unknown) => void>(), out: Record<string, unknown>[] = [];
+    const e = { subscribe: (f: (m: unknown) => void) => { subs.add(f); return () => subs.delete(f); }, send: (m: Record<string, unknown>) => { out.push(m); return true; } };
+    const off = wire(e as never);
+    const feed = (m: unknown) => { for (const f of subs) f(m); };
+    const q = "You said My business, but most of what you do looks like Collecting ideas. Add it as an aim?";
+    feed({ type: "next.you", you: { aims: [{ w: "My business", said: true }], questions: [{ q: "Is Ideas where most of your time goes now?", at: 0, kind: "check" }, { q, at: null, kind: "drift", aim: "Collecting ideas" }] } });
+    assert.deepEqual(CV.open(), [], "neither the drift nor a check becomes a Need");
+    assert.ok(!Object.values(CV.D.asks).some((a) => /as an aim/.test(a.text)), "the words are nowhere in the asks");
+    assert.ok(!out.some((m) => m.type === "next.you" || m.type === "next.you.answer"), "the Needs wire neither asks for the picture nor answers it");
     off();
     await settle();
   } finally { CV.setMode("fixture"); }

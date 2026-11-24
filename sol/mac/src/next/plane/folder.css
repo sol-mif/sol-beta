@@ -1,0 +1,132 @@
+/* The folder (#1615; Marco's decision 2026-11-21, mine/look/br1/bar-folder.html): at Far a back panel in the tint with a
+   tab, papers peeking out, a front panel with the name and at most two status lines; on hover or focus the front tips
+   forward, the papers rise and the contents card opens beside it. Opened at Middle (.pl-area) it is the folder's body in
+   a light tint, its tab carrying the name and the status chips. Every space, size, height and corner is the scale's,
+   every colour, shadow and curve the next set's (--tint from the folder's place, --card, --ink*, --line, --good, --bad,
+   --asks, --run, --shadow*, --d-*, --e-*). Signed: marcocyl04-ux's agent, the port's BR1 folder (#1615). */
+
+/* Far: the card is the folder's box; what draws it is inside */
+.pl-card.fo { display: block; padding: 0; background: none; box-shadow: none; border-radius: 0; overflow: visible; perspective: 700px; }
+.pl-card.fo.pl-sel { box-shadow: none; }
+.pl-card.fo.fo-on, .pl-card.fo:focus-within { z-index: var(--z-lift); }
+.pl-card.fo:focus-visible { outline: none; }
+.pl-card.fo:focus-visible .fo-front { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+.fo-back { position: absolute; left: 0; right: 0; top: var(--s4); bottom: 0; border-radius: 0 var(--r-card) var(--r-card) var(--r-card);
+  background: color-mix(in oklab, var(--tint), var(--ink) 14%); }
+.fo-back::before { content: ""; position: absolute; left: 0; top: calc(1px - var(--s4)); width: 42%; height: var(--s4); border-radius: var(--r-row) var(--r-card) 0 0; background: inherit; }
+
+.fo-sheets { position: absolute; left: var(--s3); right: var(--s3); top: calc(var(--s4) + var(--s3)); height: 44%; transition: transform var(--d-land) var(--e-reveal); }
+.fo-sheet { position: absolute; left: 0; right: 0; top: 0; height: 100%; border-radius: var(--r-chip); background: var(--card); box-shadow: 0 1px 1px var(--line), inset 0 0 0 1px var(--line); transition: transform var(--d-land) var(--e-reveal); }
+.fo-sheet:nth-child(1) { transform: translateY(var(--s2)) rotate(-1.5deg); }
+.fo-sheet:nth-child(2) { left: var(--s1); right: 0; transform: translateY(var(--s1)) rotate(1.2deg); }
+.fo-sheet:nth-child(3) { left: 1px; right: var(--s1); transform: rotate(-0.4deg); }
+
+.fo-front { position: absolute; left: 0; right: 0; bottom: 0; top: 34%; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s3) var(--s2);
+  border-radius: var(--r-row); box-sizing: border-box; overflow: hidden; color: var(--ink);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--tint) 70%, var(--card)), var(--tint));
+  box-shadow: var(--shadow); border-top: 1px solid color-mix(in oklab, var(--card) 60%, transparent);
+  transform-origin: 50% 100%; transition: transform var(--d-land) var(--e-reveal), box-shadow var(--d-land) var(--e-reveal); }
+.pl-card.fo.pl-sel .fo-front { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); }
+.fo .pl-ph { gap: var(--s2); }
+.fo .pl-pn { flex: 0 1 auto; min-width: 0; font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 700; }
+.fo .pl-dot { display: none; }
+/* the tab carries what is yours in it (slice 12's chip), so the name keeps the front's width */
+.fo-tab { position: absolute; left: var(--s2); top: 0; height: var(--s4); display: flex; align-items: center; z-index: var(--z-lift); }
+.fo-tab .yours { height: var(--s4); line-height: var(--s4); padding: 0 var(--s1); font-size: var(--t-label); white-space: nowrap; background: none; color: color-mix(in oklab, var(--ink), var(--tint) 20%); }
+.fo .ld-far { font-size: var(--t-head); line-height: var(--t-head-line); }
+.fo .ld-far .ld-t { overflow-wrap: break-word; }
+
+/* a session's mark: its folder's colour as a small tab, dashed when loose; its one label (automation or seat) as a pill
+   (a session is not an agent: no name, no face; mine/look/br1/frame.html parts 1, 2, 5) */
+.fo-mark { flex: none; display: inline-block; width: 12px; height: calc(var(--s2) + 1px + 1px); border-radius: 1px var(--s1) var(--s1) var(--s1); background: var(--tint); box-sizing: border-box; vertical-align: -1px; }
+.fo-mark.fo-loose { background: none; border: 1px dashed var(--ink3); }
+.fo-k .fo-mark { margin-right: var(--s1); }
+.ld-line .fo-mark { margin-right: calc(var(--s1) * 1.5); }
+.fo-lbl { flex: none; align-self: flex-start; padding: 0 calc(var(--s1) * 1.5); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); max-width: 100%; overflow-wrap: break-word; }
+
+/* the status lines: a dot and words, at the front's foot */
+.fo-sig { display: flex; align-items: center; gap: calc(var(--s1) * 1.5); min-width: 0; font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink); overflow-wrap: break-word; }
+.fo-sw { min-width: 0; overflow-wrap: break-word; }   /* the words wrap, never cut: a line that would not fit drops the folder a form (form.ts) */
+/* far, the shape alone: a dot for what needs the person, the name on the shape's title */
+.fo-badge.fo-dot { width: var(--s2); height: var(--s2); padding: 0; }
+.fo-far .pl-pn { font-size: var(--t-head); line-height: var(--t-head-line); }
+.fo-far .fo-sig { font-size: var(--t-label); line-height: var(--t-label-line); }.pl-ph + .fo-sig, .ld-fars + .fo-sig { margin-top: auto; }
+.fo-sig.fo-quiet { color: var(--ink2); }
+.fo-d { flex: none; width: 7px; height: calc(var(--s2) - 1px); border-radius: var(--r-pill); background: var(--ink4); }
+.fo-asks .fo-d { background: var(--asks); }
+.fo-bad .fo-d { background: var(--bad); }
+.fo-good .fo-d { background: var(--good); }
+.fo-run .fo-d { background: var(--run); animation: fo-pulse var(--d-cycle) var(--e-arrive) infinite; }
+.fo-quiet .fo-d { display: none; }
+@keyframes fo-pulse { 50% { opacity: 0.35; } }
+
+.fo-badge { position: absolute; right: var(--s2); top: calc(var(--s4) + var(--s2)); z-index: var(--z-lift); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--asks); color: var(--card);
+  font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 700; white-space: nowrap; }
+.fo-badge.fo-due { background: var(--bad); }
+
+/* where Sol put it (BR1 item 4, plane/placed.ts): unseen, a small ink dot on the tab's corner (the ⋯ holds the card's); pointed at or
+   focused, why under the card (F's because: its grey words and chevron, pressed open in place). The caption's top border
+   is the gap, so the pointer crosses into it without leaving the card. Its old place, a card here too, is outlined dashed */
+/* the dot shows only while the card is pointed at or focused, with its caption: at rest it read as a stray mark on the
+   card's top edge (#1773); at rest the card's name says it for a screen reader (aria-label) */
+.fo-pdot { display: none; }
+.fo.fo-on .fo-pdot, .fo:focus-within .fo-pdot { display: block; }
+.fo-pdot { position: absolute; left: calc(42% - var(--s1)); top: calc(var(--s1) * -1); z-index: var(--z-lift); width: var(--s2); height: var(--s2);
+  border-radius: var(--r-pill); background: var(--ink); box-shadow: 0 0 0 2px var(--paper); }
+.fo-pcap { display: none; position: absolute; left: 0; top: 100%; z-index: var(--z-lift); width: max-content; min-width: 100%; max-width: 320px; box-sizing: border-box;
+  padding: var(--s1) var(--s2); border-top: var(--s1) solid transparent; background-clip: padding-box; border-radius: var(--r-card);
+  background-color: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); }
+.fo.fo-on .fo-pcap, .fo:focus-within .fo-pcap, .fo-pcap:has(> .bc[aria-expanded="true"]) { display: block; }
+.pl-card.fo.fo-pwas { outline: 1.5px dashed var(--ink3); outline-offset: var(--s1); border-radius: var(--r-card); }
+
+/* hover and focus: the front tips forward, the papers rise */
+.fo.fo-on .fo-front, .fo:focus-within .fo-front { transform: rotateX(-24deg); box-shadow: var(--shadow-up); }
+.fo.fo-on .fo-sheets, .fo:focus-within .fo-sheets { transform: translateY(calc(var(--s4) * -1)); }
+.fo.fo-on .fo-sheet:nth-child(1) { transform: translateY(var(--s2)) rotate(-4deg); }
+.fo.fo-on .fo-sheet:nth-child(2) { transform: translateY(var(--s1)) rotate(3deg); }
+
+/* the contents card: a pop-up beside the folder (Overlay.tsx), right when it fits, else left, below or above; its padding
+   on the folder's side carries the pointer across */
+.fo-peek { width: 320px; box-sizing: border-box; cursor: pointer; }
+/* a folder being dragged (BR1 item 5) shows no peek: the folder it may go in, outlined, stays in sight */
+body.pl-dragging .fo-peek { display: none; }
+.fo-peek[data-side="right"] { padding-left: var(--s2); }
+.fo-peek[data-side="left"] { padding-right: var(--s2); }
+.fo-peek[data-side="below"] { padding-top: var(--s2); }
+.fo-peek[data-side="above"] { padding-bottom: var(--s2); }
+.fo-pk { padding: var(--s3); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); animation: fo-in var(--d-glass) var(--e-reveal) both; }
+.fo-peek[data-side="left"] .fo-pk { animation-name: fo-in-l; }
+@keyframes fo-in { from { opacity: 0; transform: translateX(calc(var(--s2) * -1)) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes fo-in-l { from { opacity: 0; transform: translateX(var(--s2)) scale(0.96); } to { opacity: 1; transform: none; } }
+.fo-pkh { display: flex; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.fo-pkh span:first-child { font-weight: 600; color: var(--ink2); overflow-wrap: break-word; }
+.fo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--s1) * 1.5); }
+.fo-tile { display: flex; flex-direction: column; gap: calc(var(--s1) / 2); min-height: calc(var(--s12) + var(--s2)); padding: calc(var(--s1) * 1.5); border-radius: var(--r-row); box-sizing: border-box;
+  background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); min-width: 0; }
+.fo-tile b { font-weight: 600; overflow-wrap: break-word; }
+.fo-k { color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--t-label); overflow-wrap: break-word; }
+.fo-st { color: var(--ink2); }
+.fo-tile.fo-bad { background: color-mix(in oklab, var(--bad) 8%, var(--card)); box-shadow: none; outline: 1px solid color-mix(in oklab, var(--bad) 30%, var(--card)); outline-offset: -1px; }
+.fo-tile.fo-bad .fo-st { color: var(--bad); }
+.fo-tile.fo-asks { background: color-mix(in oklab, var(--asks) 9%, var(--card)); box-shadow: none; outline: 1px solid color-mix(in oklab, var(--asks) 34%, var(--card)); outline-offset: -1px; }
+.fo-tile.fo-asks .fo-st { color: color-mix(in oklab, var(--asks), var(--ink) 30%); }
+.fo-tile.fo-good { background: color-mix(in oklab, var(--good) 7%, var(--card)); box-shadow: none; outline: 1px solid color-mix(in oklab, var(--good) 26%, var(--card)); outline-offset: -1px; }
+.fo-tile.fo-good .fo-st { color: var(--good); }
+/* a running session: its bar moves (no fake percent: the data has no progress) */
+.fo-bar { position: relative; display: block; height: calc(var(--s1) - 1px); margin-top: auto; border-radius: var(--r-pill); background: var(--hover); overflow: hidden; }
+.fo-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 40%; border-radius: var(--r-pill); background: var(--run); animation: fo-run var(--d-cycle) var(--e-reveal) infinite; }
+@keyframes fo-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.fo-empty, .fo-more { margin: 0; font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); }
+.fo-more { margin-top: var(--s2); }
+.fo-pkf { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); margin-top: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fo-front, .fo-sheets, .fo-sheet { transition: none; }
+  .fo.fo-on .fo-front, .fo:focus-within .fo-front { transform: none; }
+  .fo.fo-on .fo-sheets, .fo:focus-within .fo-sheets { transform: none; }
+  .fo.fo-on .fo-sheet:nth-child(1) { transform: translateY(var(--s2)) rotate(-1.5deg); }
+  .fo.fo-on .fo-sheet:nth-child(2) { transform: translateY(var(--s1)) rotate(1.2deg); }
+  .fo-pk, .fo-run .fo-d, .fo-bar i { animation: none; }
+}

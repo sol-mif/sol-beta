@@ -6,6 +6,10 @@
 // that opens it, with a review press. The box at the foot completes an @ over the members and can put a PR link or a
 // block of my stage on the line. Live: read again every 10 s while it is open (the engine reads the group's store
 // quicker for as long), and at once when a line comes.
+// Gate one (#1740): the room follows its switch, reach.room (roomSwitch.ts): off, nothing of it is drawn. With no table
+// yet, or no identity (no GitHub, not signed in to Sol's cloud), it is a room of me and my own AI: a local "me" when there
+// is no login, a line naming my AI opens a talk of mine with it (nothing goes to a group there is not), the empty page
+// says how to start, and while there is an identity, one press hands my AI the words to set up a table just for me.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { DEFAULT_SET, Press, litOf } from "../../kit";
 import { askedBy } from "../../stage/kinds/Frame";
@@ -17,11 +21,13 @@ import { ENGINE } from "../../useEngine";
 import { askEngine } from "../askEngine";
 import { openUrl } from "../util";
 import { Who } from "../bits";
-import { alone, answers, artifactOfUrl, askMine, atOptions, atQuery, colourIndex, nameOf, namesMyAgent, pickAt, reviewOf, type Artifact, type ChatLine, type Member } from "./room-chat";
+import { alone, answers, artifactOfUrl, askMine, askMineSolo, atOptions, atQuery, colourIndex, emptyWords, JUST_ME, nameOf, namesMyAgent, pickAt, reviewOf, withMe, type Artifact, type ChatLine, type Member } from "./room-chat";
+import { useRoomOn } from "./roomSwitch";
 import "./room-chat.css";
 
 type RoomBlock = Block & { project: string };
-export type ChatRead = { me: string; group?: string; members: Member[]; waiting: RoomBlock[]; lines: ChatLine[]; stage?: { id: string; title: string }[]; readAt: number };
+// table: whether this Sol sits at any table (the engine's team.chat; absent from an older engine, read as yes)
+export type ChatRead = { me: string; group?: string; table?: boolean; members: Member[]; waiting: RoomBlock[]; lines: ChatLine[]; stage?: { id: string; title: string }[]; readAt: number };
 /** how often the room reads again while it is open: the engine's quick read of the group's store is as often (#1417) */
 const EVERY = 10_000;
 const SIX = litOf(DEFAULT_SET).jelly.six;   // the pieces' set (rules.md 15), never the jelly's pure six
@@ -30,11 +36,16 @@ const time = (at: number) => new Date(at).toLocaleTimeString([], { hour: "2-digi
 
 /** the Room tab: reads team.chat while open, says plainly when the engine could not read */
 export function RoomChat() {
+  const on = useRoomOn();
   const [d, setD] = useState<ChatRead | null>(null);
+  // my lines to my own AI while the room has no table (solo): kept in this window only, the talk with my AI is the record
+  const [mine, setMine] = useState<ChatLine[]>([]);
+  const [setting, setSetting] = useState("");
   const [error, setError] = useState("");
   const [n, setN] = useState(0);
   const [pressing, setPressing] = useState("");
   useEffect(() => {
+    if (!on) return;
     let gone = false;
     const read = () => void askEngine("team.chat", { open: true }, 20_000).then((r: any) => {
       if (gone) return;
@@ -46,13 +57,26 @@ export function RoomChat() {
     // a line said anywhere in the group comes at once; the agents' answers with the next read
     const off = link(ENGINE).on((m: any) => { if (m?.type === "team.talk.line" && m.thread === "general") read(); });
     return () => { gone = true; window.clearInterval(t); off(); };
-  }, [n]);
+  }, [n, on]);
   const press = (b: RoomBlock, choice: string) => {
     setPressing(b.id);
     // the same press as on the stage (work.stage.press), in the session the artifact sits in: answered once by the engine
     void askEngine("work.stage.press", { sessionId: b.asks?.by ?? b.sessions[0], id: b.id, choice }, 20_000).then(() => { setPressing(""); setN((x) => x + 1); });
   };
+  const who = withMe(d?.me, d?.members ?? []);
+  const solo = who.local || d?.table === false;
+  // a talk of mine with my own AI on these words (#1677), its session opened by the engine as any new talk's
+  const toMyAi = (text: string) => { const sessionId = crypto.randomUUID(); return link(ENGINE).send({ type: "work.say", sessionId, text, fresh: true, mode: "default" }) ? sessionId : ""; };
   const say = async (text: string, artifact?: Artifact) => {
+    if (solo) {
+      // no table to say it at: only my own AI can read it, so a line without its @ goes nowhere and says so
+      if (!namesMyAgent(text, who.me)) return `there is no table yet, so a line reaches nobody: write @${who.me}'s agent for your own AI`;
+      const sessionId = toMyAi(askMineSolo(text));
+      if (!sessionId) return "your AI could not be reached: the engine is not answering";
+      setMine((m) => [...m, { id: `mine-${sessionId}`, at: Date.now(), from: who.me, agent: false, text, kind: "said", session: sessionId,
+        rule: { read: [who.me], pinged: [], refused: [], runs: 1 }, said: ["read by your agent in a talk of yours · your usage"] }]);
+      return "";
+    }
     const r: any = await askEngine("team.talk", { thread: "general", text, ...(artifact ? { artifact: { kind: artifact.kind, ref: artifact.ref, title: artifact.title } } : {}) }, 30_000);
     if (!r?.ok) return String(r?.error ?? "that did not go out");
     // a line naming my own agent (#1677): a talk of mine with my AI on those words, which answers in the room (the
@@ -64,12 +88,19 @@ export function RoomChat() {
     setN((x) => x + 1);
     return "";
   };
+  // the press "set up a table just for me" (gate one q2): my own words to my AI, which makes it on Sol's cloud
+  const justMe = () => { setSetting(toMyAi(JUST_ME) ? "your AI is setting up a table just for you; it shows here once made" : "your AI could not be reached: the engine is not answering"); setN((x) => x + 1); };
+  if (!on) return null;
   if (!d) return <div className="cw-pad">{error ? <p className="cw-dim">Could not read the room: {error}. <button className="cw-link" data-act="read again" onClick={() => setN((x) => x + 1)}>read again</button></p> : <p className="cw-dim">reading the room…</p>}</div>;
-  return <RoomChatView d={d} pressing={pressing} press={press} say={say} />;
+  return <RoomChatView d={{ ...d, me: who.me, members: who.members, lines: solo ? [...d.lines, ...mine] : d.lines }} local={who.local} solo={solo} pressing={pressing} press={press} say={say}
+    justMe={solo && !who.local ? justMe : undefined} setting={setting} />;
 }
 
 /** the room from one read (a picture of it takes a fixture) */
-export function RoomChatView({ d, pressing = "", press, say }: { d: ChatRead; pressing?: string; press?: (b: RoomBlock, choice: string) => void; say?: (text: string, a?: Artifact) => Promise<string> }) {
+export function RoomChatView({ d, pressing = "", press, say, local = false, solo = false, justMe, setting = "" }: {
+  d: ChatRead; pressing?: string; press?: (b: RoomBlock, choice: string) => void; say?: (text: string, a?: Artifact) => Promise<string>;
+  local?: boolean; solo?: boolean; justMe?: () => void; setting?: string;
+}) {
   const colour = (login: string): CSSProperties => ({ ["--ring" as string]: SIX[colourIndex(d.members, login) % SIX.length] });
   const scroller = useRef<HTMLDivElement>(null), inner = useRef<HTMLDivElement>(null), seen = useRef<Set<string> | null>(null);
   const [flw, setFlw] = useState<Follow | null>(null);
@@ -97,8 +128,14 @@ export function RoomChatView({ d, pressing = "", press, say }: { d: ChatRead; pr
             <span className="rc-member-name">{nameOf(m)}</span>
           </span>
         ))}
-        <span className="rc-count">{d.group ? `${d.group} · ` : ""}{d.members.length}{people ? ` · ${people} people and their agents` : ""}</span>
+        <span className="rc-count">{solo ? "just you and your AI" : <>{d.group ? `${d.group} · ` : ""}{d.members.length}{people ? ` · ${people} people and their agents` : ""}</>}</span>
       </header>
+      {(justMe || setting) && (
+        <div className="rc-start" data-room="start">
+          {setting ? <p className="cw-dim" role="status">{setting}</p>
+            : <button className="rc-go" data-act="set up a table just for me" onClick={justMe}>set up a table just for me</button>}
+        </div>
+      )}
       {d.waiting.length > 0 && (
         <div className="rc-strip" data-room="waiting" aria-label="waits on you">
           {d.waiting.map((b) => (
@@ -111,10 +148,12 @@ export function RoomChatView({ d, pressing = "", press, say }: { d: ChatRead; pr
       )}
       <div className="rc-scroll" ref={scroller}>
         <div className="rc-lines" ref={inner} data-room="thread">
-          {d.lines.length === 0 && (alone(d.members, d.me)
-            // alone at the table (#1677): my own AI is the one who can read a line, so the page says how to reach it
-            ? <p className="cw-dim rc-empty" data-room="alone">Just you here so far. Write @{d.me}'s agent and your own AI reads the line and answers here, on your usage. Without an @, nobody's agent reads it.</p>
-            : <p className="cw-dim rc-empty">Nobody has said anything yet. Write a line below: it is read by nobody's agent unless you @ it.</p>)}
+          {d.lines.length === 0 && (() => {
+            // alone at the table (#1677), no table, or no identity (#1740): my own AI is the one who can read a line, so
+            // the page says how to reach it, and how to start, in plain words
+            const lone = alone(d.members, d.me);
+            return <p className="cw-dim rc-empty" data-room={local ? "local" : solo ? "solo" : lone ? "alone" : "empty"}>{emptyWords({ me: d.me, local, solo, alone: lone })}</p>;
+          })()}
           {d.lines.map((l) => l.kind === "settled" ? (
             <p key={l.id} data-line={l.id} className="rc-settled"><span className="cw-dim">{time(l.at)}</span> {l.text}</p>
           ) : (
@@ -129,6 +168,7 @@ export function RoomChatView({ d, pressing = "", press, say }: { d: ChatRead; pr
                 {l.text && <p className="rc-text">{l.text}</p>}
                 {l.artifact && <Chip a={l.artifact} />}
                 <p className="rc-rule" data-runs={l.rule.runs}>{l.said.join(" · ")}</p>
+                {l.session && <button className="rc-open" data-layer="session" onClick={() => window.dispatchEvent(new CustomEvent("sol:open-work", { detail: l.session }))}>open the talk</button>}
               </div>
             </section>
           ))}

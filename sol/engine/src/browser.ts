@@ -151,6 +151,8 @@ async function context(dir = profileDir): Promise<BrowserContext> {
   if (!l) {
     l = chromium
       .launchPersistentContext(dir, { headless: true, viewport: VIEW, deviceScaleFactor: SCALE, ...(AGENT ? { userAgent: AGENT } : {}), args: ["--no-first-run", `--force-device-scale-factor=${SCALE}`] })
+      // a Sol from the public repo fetches its browser after the engine is up (sol/setup, #1637): until it lands, say so plainly
+      .catch((e: unknown) => { throw /Executable doesn't exist|playwright install/i.test(String(e)) ? new Error("the browser Sol drives is not on this Mac yet: sol/setup fetches it after the engine starts (about 100 MB); try again in a minute") : e; })
       .then((c) => {
         contexts.set(dir, c);
         c.on("page", (p) => register(p, undefined, dir)); // popups join their opener's conversation

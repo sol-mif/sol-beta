@@ -21,7 +21,8 @@ import { eventLine, sameAs, pollKey, pollEvents, myPolls, connectEvents, gitWith
 import { readPings } from "./pings.js";
 import { accounts, signinCommand, githubAccount, githubIn, noteGithub, onGithub } from "./control.js";
 import { startConnect, cancelConnect, onConnect } from "./gh.js";   // GitHub from a card (#174)
-import { update, offerNow, shipNow, answered, BRANCH, pinChanged, channelState } from "./ship.js";
+import { update, offerNow, offerShown, shipNow, answered, BRANCH, pinChanged, channelState } from "./ship.js";
+import { windowOld, lookAgain, OLD_WINDOW_UPDATE } from "./window.js";   // a Sol.app older than BR1 (ticket K, #1824)
 import { countMsg } from "./runs.js";   // who has the release (#1150)
 import { startCarry, carryNow, msgOf as carryMsg, check as carryCheck, useIt as carryUse, setAside, stay as carryStay, asides, bringBack, carryOver } from "./carry.js";   // carrying own changes over (#425)
 import { startPin, view as pinView, pinHere, unpin, plan as pinPlan, goBack as pinBack, wentBack } from "./pin.js";   // pin and go back (#426)
@@ -41,6 +42,8 @@ import { identity } from "../seams/identity.js";   // sign-in and the Sol ID (#1
 import { groupChat } from "../seams/chat.js";   // group chat (#1320)
 import { wakeUp } from "../seams/wake.js";   // waking a teammate's Sol (#1320)
 import { teamMembers, refreshMembers, strictMembers, onMembers } from "./members.js";   // #102: who is on the team
+import { onTeamCheck, onTeamNow } from "./onteam.js";   // #1541: on the team is GitHub's member list, never a typed org
+import { roomOfRepo, askableTable } from "./tablelevel.js";   // the table a hand belongs to (#1541)
 import { onCreature } from "../creature.js";
 import { mark, workState } from "../work/state.js";
 import { allRuns } from "../work/runs.js";
@@ -158,9 +161,12 @@ export function removeTeamFace(w: Wire) { faces.delete(w); shows.unwatchFace(w);
 
 const stateMsg = () => {
   const s = getTeam();
+  // on the team (#1541): GitHub says this machine's own sign-in is in the team's own org; null until asked, then the state again
+  const onTeam = onTeamNow();
+  if (onTeam === null) void onTeamCheck().then(() => sendState());
   // on a cloud I signed in to, "me" is my Sol name there, the name the roster and every line I send carry (#216): never my
   // GitHub login beside it, which showed one person twice
-  return { type: "team.state", me: onCloud(s) ? { ...s.me, login: hubLogin(s) } : s.me, settings: forFace(s), roster: relayRoster(), members: teamMembers(), agents: agentsOf(teamMembers(), relayRoster(), onCloud(s) ? hubLogin(s) : s.me.login), relay: { url: s.relay.url, up: relayUp() }, hub: sharedHub(), cloud: cloudNow(s), version: versionNow() };   // version (#417): mine, for the strip when the relay is down
+  return { type: "team.state", me: onCloud(s) ? { ...s.me, login: hubLogin(s) } : s.me, settings: forFace(s), roster: relayRoster(), members: teamMembers(), agents: agentsOf(teamMembers(), relayRoster(), onCloud(s) ? hubLogin(s) : s.me.login), relay: { url: s.relay.url, up: relayUp() }, hub: sharedHub(), cloud: cloudNow(s), version: versionNow(), onTeam };   // version (#417): mine, for the strip when the relay is down
 };
 /** my Sol account on the shared hub (S6b, #226): its name there, "" when this Sol is not signed in; `need` when the room
  *  in use meets on Sol's cloud, nobody is signed in and the hub is not letting me in, so the face asks me to sign in;
@@ -1474,6 +1480,14 @@ export async function handleTeam(w: Wire, m: any) {
       const c = cloudNow();
       return w.send({ type: "team.cloud.me", rid, login: c.login, hub: c.hub, cloud: hubHttp(sharedHub()).startsWith("https://") });
     }
+    case "team.cloud.signout": {   // BR1 (#1615): Settings' Account row signs this machine out of the shared hub (the same as
+      // POST /cloud/signout); false when the cloud did not answer, kept to be tried again
+      const hub = hubHttp(sharedHub());
+      if (!hub.startsWith("https://")) return w.send({ type: "team.cloud.signout", rid, ok: false, error: "no cloud to sign out of" });
+      const ok = await identity().signOut(hub);
+      if (ok) { restartRelay(); sendState(); }   // the next knock carries no ticket
+      return w.send({ type: "team.cloud.signout", rid, ok });
+    }
     // --- end Control
     // --- Google Drive for a Drive room (#152, round 48): connect (Google in the system browser, through my cloud),
     // let go, and who the room's folder is shared with. A face hears whether it is connected, the email and the scope,
@@ -1517,12 +1531,15 @@ export async function handleTeam(w: Wire, m: any) {
     case "team.update": {
       const d = shipNow();
       if (!d) return w.send({ type: "team.update", rid, error: "updates are not set up here" });
+      // ticket K (#1824): Update on the old Sol.app's line, no release waiting: nothing moves, its words are the download
+      if (windowOld() && !offerNow()?.behind) return w.send({ type: "team.update", rid, error: OLD_WINDOW_UPDATE });
       const r = await update(d);   // the Sol's own channel: dev or stable
       if (r.ok) { answered(r.sha); void refreshVersion(); }   // #417: the release I sit on moved; said on my presence and to the faces
       return w.send({ type: "team.update", rid, ...r });
     }
     case "team.stable.get":
-      return w.send({ type: "team.stable", ...(rid !== undefined ? { rid } : {}), ...(offerNow() ?? { sha: null }) });
+      await lookAgain().catch(() => false);   // a face that just opened: its Sol.app is looked at now (ticket K, window.ts)
+      return w.send({ type: "team.stable", ...(rid !== undefined ? { rid } : {}), ...(offerShown() ?? { sha: null }) });
     case "team.runs.get":   // #1150: who has the release, for the release word
       return w.send({ ...countMsg(), ...(rid !== undefined ? { rid } : {}) });
     // the switch in Settings › me (#1150): which channel, the release this Sol runs, and whether it stays on it (beta behind)
@@ -1594,7 +1611,9 @@ export async function handleTeam(w: Wire, m: any) {
         lines: history("general").filter((l) => l.source === "relay"), thread: threadNow(), repos: chatRepos(), blocks, me,
         settled: r.settled.flatMap((g) => g.blocks.filter((b) => b.asks?.answer).map((b) => ({ id: b.id, title: b.title, issue: g.issue, answer: b.asks!.answer! }))),
       });
-      return w.send({ type: "team.chat", rid, me, group: activeRoom(s).name, members: chat.membersOf(teamMembers(), me), waiting: r.waiting, lines: lines.map((l) => ({ ...l, said: chat.ruleWords(l.rule) })),
+      // table: whether this Sol sits at any table (a room, or the team's own relay or repositories, activeRoom's stand-in);
+      // with none the room is me and my own AI (gate one q2, #1740)
+      return w.send({ type: "team.chat", rid, me, group: activeRoom(s).name, table: s.rooms.length > 0 || !!s.relay.url || s.repos.length > 0, members: chat.membersOf(teamMembers(), me), waiting: r.waiting, lines: lines.map((l) => ({ ...l, said: chat.ruleWords(l.rule) })),
         // the blocks on my stage the composer can put on a line, the newest first
         stage: mine.sort((a, b) => b.at - a.at).slice(0, 12).map(({ id, title }) => ({ id, title })), readAt: Date.now() });
     }
@@ -1840,13 +1859,24 @@ startHand({
   folders: teamFolders,
   repos: () => getTeam().repos,
   cards: async () => (await getBoard()).cards,
-  start: async ({ cwd, issue, title, text }) => {
+  levelOf: (repo) => roomOfRepo(getTeam().rooms.map((x) => ({ ...x, repos: connectedRepos(x) })), repo)?.level,   // #1541
+  // #1654 review: a member of the table that keeps the repo, now. Only the table in use can be asked (its org's members,
+  // read fresh: strictMembers, null when GitHub did not answer), and only on a hub that knows people by GitHub (a
+  // key-gated hub stamps the login the hello claimed); another table, no org, a key gate: never trusted
+  trusted: async (login, repo) => {
+    const s = getTeam(), r = roomOfRepo(s.rooms.map((x) => ({ ...x, repos: connectedRepos(x) })), repo);
+    if (!askableTable(r, activeRoom(s), s.org)) return false;   // the table in use, its org, a hub that knows people by GitHub
+    const list = await strictMembers().catch(() => null);
+    return !!list?.some((x) => x.toLowerCase() === login.toLowerCase());
+  },
+  start: async ({ repo, cwd, issue, title, text, auto }) => {
     // the same session team.session.start makes: in the repo's folder, marked cowork, named after its card, its first
     // turn carrying the room's content and Sol's brief before the hand's words (#316)
     const id = randomUUID();
-    const r = activeRoom(getTeam()), rec = recordOf(r), mk = roomMark(r, rec);   // the room as asked under, before the await
+    // the table that keeps the hand's repository (#1541: its level is the session's mode), else the room in use
+    const s0 = getTeam(), r = roomOfRepo(s0.rooms.map((x) => ({ ...x, repos: connectedRepos(x) })), repo) ?? activeRoom(s0), rec = recordOf(r), mk = roomMark(r, rec);   // before the await
     const ctx = await roomContext(rec);
-    mark(id, { mode: "cowork", room: mk, roomId: r.id, ...(ctx.goalv ? { goalv: ctx.goalv } : {}), ...(ctx.memv ? { memv: ctx.memv } : {}) });
+    mark(id, { mode: "cowork", room: mk, roomId: r.id, ...(auto ? { handed: true, unread: true } : {}), ...(ctx.goalv ? { goalv: ctx.goalv } : {}), ...(ctx.memv ? { memv: ctx.memv } : {}) });
     void handleWork(quiet, { type: "work.say", sessionId: id, fresh: true, cwd, text: firstTurn(ctx.text, text) }).catch(() => {});
     void nameWhenWritten(id, `#${issue} ${title || basename(cwd)}`.slice(0, 80));
     return id;

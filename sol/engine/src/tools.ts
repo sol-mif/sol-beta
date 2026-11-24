@@ -16,8 +16,11 @@ import { OPEN_NAMES, openToolsNow, runOpenTool } from "./openfor.js";   // open 
 import { PLACE_NAMES, PLACE_TOOLS, runPlaceTool } from "./homeplaces.js";   // make a place inside another, or move one under another, on the person's word (#1662)
 import { READS_NAMES, readsToolsNow, runReadsTool } from "./reads.js";   // stop or resume reading a source on the person's word (#1656)
 import { HOME_RULE_NAMES, homeRuleToolsNow, runHomeRuleTool } from "./home/tool.js";   // Home's filing rules and folders, on the person's word, while Home runs (#1686)
+import { WORKSPACE_NAMES, workspaceToolsNow, runWorkspaceTool } from "./next/workspace-tool.js";   // suggest a setup the person reviews in Settings, while ui.next is on (#1615)
+import { SAID_NAMES, saidToolsNow, runSaidTool } from "./next/said.js";   // the person's folders set from their own words, while ui.next is on (#1816)
 import { TABLE_NAMES, tableToolsNow, runTableTool } from "./team/table-tools.js";   // open a Cowork table on the person's word (#1676)
 import { REACH_TOOLS, REACH_NAMES, reachToolsNow, runReachTool } from "./team/reach-tools.js";   // ask a teammate's agent, hand over (#1166)   // Sol's tools for blocks only (step 7): file it asks Settings here
+import { LOG_NAMES, logToolsNow, runLogTool } from "./log-tools.js";   // a person's words found and taken out of the log, on their word (#1789)
 import { byCards, offeredIn, toolsCards } from "./tools/fromcards.js";   // a tool a card offers only in a mode its card's station has reached (#1589)
 import { versionMode } from "./settings.js";
 
@@ -30,9 +33,9 @@ export const SOL_TOOLS = [...TOOLS, ...DESK_TOOLS, ...PING_TOOLS, ...TALK_TOOLS,
  *  step 0c). Asked at each turn's start */
 export const seatTools = () => [...solToolsNow(), ...wayTools(), ...(kernelNow() ? INSTALL_TOOLS : [])];
 /** Sol's tools less reach's whose switch is off (#1276, reach-tools.ts reachToolsNow), with the three that open a thing
- *  for the person while open.for is on (#1521), set_reading while reads.voice is on (#1656), less any a card offers whose station this mode has not reached (#1589,
+ *  for the person while open.for is on (#1521), set_reading while reads.voice is on (#1656), log_find and log_erase while the kernel is there (#1789), less any a card offers whose station this mode has not reached (#1589,
  *  tools/fromcards.ts; with tools.cards off, untouched): what a seat or the stdio server offers */
-export const solToolsNow = () => { const on = new Set(reachToolsNow().map((t) => t.name)); return byCards([...SOL_TOOLS.filter((t) => !REACH_NAMES.has(t.name) || on.has(t.name)), ...openToolsNow(), ...readsToolsNow(), ...homeRuleToolsNow(), ...tableToolsNow()]); };
+export const solToolsNow = () => { const on = new Set(reachToolsNow().map((t) => t.name)); return byCards([...SOL_TOOLS.filter((t) => !REACH_NAMES.has(t.name) || on.has(t.name)), ...openToolsNow(), ...readsToolsNow(), ...homeRuleToolsNow(), ...workspaceToolsNow(), ...saidToolsNow(), ...tableToolsNow(), ...logToolsNow(!!kernelNow())]); };
 
 export function runSolTool(name: string, args: unknown, turn: TurnCtx = {}): Promise<ToolResult> {
   return guardSolTool(name, args, turn, () => solTool(name, args, turn));   // Home's ceiling (home/ceiling.ts): only inside a Home Run, with home.whole on
@@ -51,7 +54,10 @@ function solTool(name: string, args: unknown, turn: TurnCtx): Promise<ToolResult
   if (PLACE_NAMES.has(name)) return runPlaceTool(name, args, turn);   // #1662: only on the person's words this turn
   if (READS_NAMES.has(name)) return runReadsTool(name, args, turn);   // #1656: refused while reads.voice is off
   if (HOME_RULE_NAMES.has(name)) return runHomeRuleTool(name, args, turn);   // #1686: only while Home runs, on the person's words
+  if (WORKSPACE_NAMES.has(name)) return runWorkspaceTool(name, args, undefined, turn.sessionId);   // #1615: refused while ui.next is off
+  if (SAID_NAMES.has(name)) return runSaidTool(name, args, turn);   // #1816: only on the person's words, while ui.next is on
   if (TABLE_NAMES.has(name)) return runTableTool(name, args, turn);   // #1676: refused while Cowork is off
+  if (LOG_NAMES.has(name)) return runLogTool(name, args, turn);   // #1789: refused with the frame off; the erase only on the person's words
   if (name === "arrange") return runArrangeTool(name, args, turn);
   if (name === "suggest_group") return runSuggestTool(name, args, turn);
   // the kernel's two names answer only while the kernel is there; with the frame off a name is routed as main routes it

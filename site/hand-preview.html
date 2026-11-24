@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sol · Bring your people (hand.js) preview</title>
+<link rel="icon" href="media/jelly-mark.png">
+<!-- The Cowork section alone, as it sits on the home page (index.html #together): two Macs, one hand-off (hand.js,
+     hand.css). The space above and below lets it scroll into view, as on the page. -->
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="hand.css">
+<style> .pad { height: 40vh; } </style>
+</head>
+<body>
+<div class="pad"></div>
+<section id="together" class="chapter">
+  <h2>Bring your people.<br><span>And their agents.</span></h2>
+  <p>Cowork is a group: you, your friends and each one's agent. Here Sam hands Jun the page he was working on. It lands in Jun's notch; he takes it, and his Sol starts from Sam's branch with a short brief, not the whole conversation.</p>
+  <div class="hand" id="hand"></div>
+</section>
+<div class="pad"></div>
+<script src="jelly.js"></script>
+<script type="module">import { mount } from './hand.js'; mount(document.getElementById('hand'));</script>
+</body>
+</html>

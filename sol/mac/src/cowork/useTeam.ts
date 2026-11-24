@@ -52,7 +52,7 @@ export const leadsOf = (b: Board | null, label: string, repo?: string): string[]
   return (r && b?.leads?.[r]?.[label]) || [];
 };
 // a room (#154): a group's record and its people. org, repos and relay above are always the active room's
-export type Room = { id: string; name: string; provider: string; org: string; repos: string[]; hub: string; key?: string; code?: string; gate?: "key" | "github"; folder?: string; mine?: boolean; joined?: boolean; quiet?: true };   // key: "set" or "", never the key; code: its share code (#157), "" until shared; gate: how its hub knows me; folder: where Sol cloned its repository (#162), "" until it did; mine: its repos are my own words (#162); joined: a code I typed brought it (#162)
+export type Room = { id: string; name: string; provider: string; org: string; repos: string[]; hub: string; key?: string; code?: string; gate?: "key" | "github"; folder?: string; mine?: boolean; joined?: boolean; quiet?: true; level?: "tells" | "does" };   // level (#1541): how far my AI goes at this table, absent = asks first; key: "set" or "", never the key; code: its share code (#157), "" until shared; gate: how its hub knows me; folder: where Sol cloned its repository (#162), "" until it did; mine: its repos are my own words (#162); joined: a code I typed brought it (#162)
 export type TeamSettings = {
   me: { login: string; name: string }; org: string; repos: string[]; relay: { url: string; key: string; host: boolean; open?: boolean };   // open (#157): the beta's hub, anyone signed in to GitHub
   speak: Record<string, unknown>; leaves: Record<string, unknown>; seats: Record<string, unknown>; machines: { name: string; url: string }[];

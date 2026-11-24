@@ -1,0 +1,66 @@
+/* A folder's one raise and the hand's focus (BR1 quiet canvas, #1615; mine/look/br1/quiet.html round 2): the slot under the
+   card that grows from a dot to a line, a question or a decision and shrinks again, and the rest of the canvas stepping
+   back while the hand is on one folder. Sizes and motion are the drawing's, on the scale (--s*, --r-*, --t-*) and the
+   next set's colours and curve (--card, --line, --asks, --run, --ink*, --shadow-up, --e-reveal, --d-land).
+   Signed: marcocyl04-ux's agent (builder Q), BR1 (#1615). */
+
+/* the hand: what it is on comes forward, the rest steps back, in one motion */
+#pl .pl-card, .pl-wrap > .pl-diary { transition: opacity var(--d-land) var(--e-reveal); }
+#pl:has(.fo-focus) .pl-card:not(.fo-focus), .pl-wrap:has(.fo-focus) > .pl-diary { opacity: 0.38; }
+.pl-card.fo.fo-focus { z-index: var(--z-lift); }
+.pl-card.fo.fo-focus .fo-front { outline: 2px solid var(--ink); outline-offset: -1px; }
+/* the raise's pip says what the count badge said: one signal on a folder, never two */
+.pl-card.fo:has(> .rz-slot .rz-pip) > .fo-badge:not(.fo-due) { display: none; }
+
+/* the slot: under the card, in the folder's gap (layout.ts RAISE_PX keeps the gap). Its buttons are read over the face's .nx button reset */
+.rz-slot { position: absolute; left: 0; top: calc(100% + var(--s2)); width: 100%; z-index: var(--z-lift); }
+.rz-pip { position: absolute; right: calc(var(--s1) * -1); top: calc(var(--s3) - var(--s2) - var(--fo-h, var(--s12))); width: calc(var(--s1) * 2.5); height: calc(var(--s1) * 2.5); border-radius: var(--r-pill);
+  background: var(--asks); outline: 2px solid var(--card); transition: opacity var(--d-land) var(--e-reveal); }
+.rz-run .rz-pip { background: var(--run); }
+.rz-slot[data-lv="0"] .rz-pip { opacity: 0; }
+
+.rz { width: 100%; box-sizing: border-box; overflow: hidden; max-height: 0; opacity: 0; padding: 0 var(--s2); border-radius: var(--r-row);
+  background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line), var(--shadow);
+  font-size: var(--t-label); line-height: var(--t-label-line);
+  transition: max-height var(--d-land) var(--e-reveal), opacity var(--d-land) var(--e-reveal), padding var(--d-land) var(--e-reveal), width var(--d-land) var(--e-reveal), box-shadow var(--d-land) var(--e-reveal); }
+.rz-slot[data-lv="2"] .rz, .rz-slot[data-lv="3"] .rz, .rz-slot[data-lv="4"] .rz { opacity: 1; }
+.rz-slot[data-lv="2"] .rz { max-height: calc(var(--s8) + var(--s2)); padding: var(--s2); }
+.rz-slot[data-lv="3"] .rz { max-height: calc(var(--s12) * 2); padding: var(--s2); }
+.rz-asks[data-lv="3"] .rz, .rz-asks[data-lv="4"] .rz { box-shadow: inset 0 0 0 1px var(--asks), var(--shadow-up); outline: 1px solid color-mix(in oklab, var(--asks) 50%, transparent); }
+.rz-slot[data-lv="4"] .rz { max-height: calc(var(--s12) * 6); padding: var(--s2) var(--s3); width: max(100%, 260px); }
+
+.rz-ln { display: flex; gap: calc(var(--s1) * 1.5); align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rz-ln b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; font-size: var(--t-head); }
+.rz-calm { color: var(--ink3); }
+.rz-d { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--asks); }
+.rz-run .rz-d { background: var(--run); }
+.rz-q, .rz-why, .rz-acts, .rz-more { display: none; }
+.rz-q { margin-top: var(--s1); color: var(--ink2); overflow-wrap: break-word; }
+.rz-slot[data-lv="3"] .rz-q, .rz-slot[data-lv="4"] .rz-q, .rz-slot[data-lv="4"] .rz-why { display: block; }
+.rz-slot[data-lv="3"] .rz-acts, .rz-slot[data-lv="4"] .rz-acts { display: flex; }
+.rz-slot[data-lv="4"] .rz-more { display: block; }
+.rz .rz-wb { margin-top: var(--s1); padding: 0; border: 0; background: none; font: inherit; font-size: var(--t-label); color: var(--ink3); cursor: pointer; }
+.rz-wx { margin-top: var(--s1); padding: var(--s1) var(--s2); border-radius: var(--r-chip); background: var(--paper); color: var(--ink2); }
+.rz-acts { gap: calc(var(--s1) * 1.5); margin-top: calc(var(--s1) * 1.5); flex-wrap: wrap; }
+.rz-slot .rz-acts button { font: inherit; font-size: var(--t-label); border: 0; border-radius: var(--r-chip); padding: calc(var(--s1) - 1px) var(--s2); background: var(--hover); color: var(--ink); cursor: pointer; }
+.rz-slot .rz-acts button.rz-y { background: var(--ink); color: var(--card); }
+.rz-more { margin-top: calc(var(--s1) * 1.5); padding-top: calc(var(--s1) * 1.5); border-top: 1px solid var(--line); color: var(--ink2); }
+
+/* at rest a decision is compressed to fit its folder's gap: the question in two lines, the choices one segmented pill
+   with short labels; Later and because… wait for the hand */
+.rz-slot[data-lv="3"] .rz-q { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rz-slot[data-lv="3"] .rz-acts { flex-wrap: nowrap; gap: 0; width: max-content; max-width: 100%; border-radius: var(--r-chip); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.rz-slot[data-lv="3"] .rz-acts .rz-later { display: none; }
+.rz-slot[data-lv="3"] .rz-acts button { border-radius: 0; white-space: nowrap; }
+.rz-slot[data-lv="3"] .rz-acts button + button { border-left: 1px solid var(--line); }
+.rz-slot[data-lv="3"] .rz-acts button[data-s] { font-size: 0; }
+.rz-slot[data-lv="3"] .rz-acts button[data-s]::after { content: attr(data-s); font-size: var(--t-label); }
+
+/* the bar's To: what the hand points at (Next.tsx Pill) */
+.nx-to { flex: none; display: inline-flex; align-items: center; gap: var(--s1); max-width: 40%; padding: var(--s1) var(--s2); border-radius: var(--r-pill); background: color-mix(in oklab, var(--run) 14%, var(--card));
+  color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nx-to b { overflow: hidden; text-overflow: ellipsis; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rz, .rz-pip, #pl .pl-card, .pl-wrap > .pl-diary { transition: none; }
+}

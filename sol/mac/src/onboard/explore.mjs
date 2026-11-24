@@ -4,7 +4,7 @@
 // nowhere, and never reads a token, a message's text or a file's body (a calendar's .ics is read for its event names and
 // times; a file is only its name and date). Run by the face through the engine's terminal wire, like the tour's finder:
 //   node explore.mjs --out <file.json> [--home <dir>] [--skip a,b] [--deny a,b] [--days 30] [--from <dir>]
-//                    [--connected <file.json>] [--reader <read.mjs>] [--stops-said]
+//                    [--connected <file.json>] [--reader <read.mjs>] [--stops-said] [--apps-max 24]
 // It is the one reader (#1217): nothing else in Sol finds what the computer holds (the tour's finder went with #1223).
 // It writes --out as it works, so the face draws the reading live (#1217, F13-F15): a stop's `open` is the source open now
 // (an account, a tool's session list, a folder, a calendar), `read` the rows looked at so far, each fact the moment it is
@@ -36,6 +36,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const HOME = arg("home", homedir());
+const APPS_MAX = Math.max(1, Math.min(500, Number(arg("apps-max", "24")) || 24));   // the machine stop's apps; a read that counts them asks for all
 // a --home that is not this account's own (a seeded person in a test) is read alone: no /Applications, no ps, no id -F,
 // no PATH, so nothing of the machine's real owner lands in a stranger's facts (morning round, 2026-11-13). The account's
 // home is its login record's, not $HOME: a test engine started with HOME set to a seeded person (people/try.sh) is a stranger too
@@ -151,10 +152,11 @@ await stop("machine", "the apps on this computer", (s) => {
   const seen = new Map();
   opening(s, "your Applications folder");
   for (const d of [join(HOME, "Applications"), ...(OWN ? ["/Applications"] : [])]) for (const e of ls(d) ?? []) if (e.name.endsWith(".app")) seen.set(pretty(e.name), "installed");
-  // running: a process whose path sits inside a .app (macOS); elsewhere none
+  // running: an installed app with a process running from inside it (macOS); elsewhere none. Only installed ones: the
+  // system's own agents (the Dock, Control Center, ...) also run from inside a .app, and are not the person's apps
   if (OWN) try {
     const ps = spawnSync("ps", ["-axo", "comm="], { encoding: "utf8", timeout: 4000 }).stdout ?? "";
-    for (const l of ps.split("\n")) { const m = l.match(/\/([^/]+)\.app\/Contents\/MacOS\//); if (m) seen.set(m[1], "open"); }
+    for (const l of ps.split("\n")) { const m = l.match(/\/([^/]+)\.app\/Contents\/MacOS\//); if (m && seen.has(m[1])) seen.set(m[1], "open"); }
   } catch { /* no ps */ }
   // the person's name: the Mac account's full name, else git's, else nothing (the face then greets without one)
   const full = (() => { try { return OWN && process.platform === "darwin" ? spawnSync("id", ["-F"], { encoding: "utf8", timeout: 2000 }).stdout.trim() : ""; } catch { return ""; } })();
@@ -163,7 +165,7 @@ await stop("machine", "the apps on this computer", (s) => {
   if (who) found(s, fact("name", who, full ? "this Mac's account" : "your git name", "machine"));
   const sys = /^(Safari|System Settings|App Store|Finder|Utilities|Preview|TextEdit|Calculator|Photo Booth|Automator)$/;
   const apps = [...seen].filter(([a]) => !sys.test(a)).sort((a, b) => (a[1] === b[1] ? a[0].localeCompare(b[0]) : a[1] === "open" ? -1 : 1));
-  for (const [a, st] of apps.slice(0, 24)) found(s, fact("app", a, st === "open" ? "running now" : "/Applications", "machine", { open: st === "open" }));
+  for (const [a, st] of apps.slice(0, APPS_MAX)) found(s, fact("app", a, st === "open" ? "running now" : "/Applications", "machine", { open: st === "open" }));
   const opened = apps.filter((a) => a[1] === "open").length;
   return apps.length ? `${opened ? `${opened} open · ` : ""}${apps.length} apps` : "no apps found";
 });

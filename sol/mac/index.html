@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sol</title>
+    <!-- the first frame (BR1, #1615): unless the new face was last read off (next/flag.ts keeps it), the window is its paper
+         (#fbfaf7, tokens.json next.colour.paper) from the first paint, never the old face's dark glass; last read off, nothing
+         changes. The new face's own set loads later with it, so the colour is said here once -->
+    <script>try { if (localStorage.getItem("sol.ui.next") !== "0") document.documentElement.dataset.nextFirst = ""; } catch (e) {}</script>
+    <style>:root[data-next-first], :root[data-next-first][data-face] body { background: #fbfaf7; }</style>
+    <!-- while the engine's settings have not come, App.tsx draws only [data-first-frame] (next/flag.ts waitsFirst): from the
+         frame's mount, quiet for 1 s (was 4 s: a first-timer read the blank as broken, BR1 lane G), then one quiet line, "Sol is
+         starting…" (scope's words), and at 12 s a second saying the first start can take a minute (and what to do if it never does: an engine that never answers must not be told "nothing is wrong"), until the settings come; an
+         engine that never answers leaves the lines, never the old face. Ink is tokens.json next.colour.ink2, the type next.font.sans -->
+    <style>
+      [data-first-frame] { position: fixed; inset: 0; display: grid; place-items: center; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #5e5a53; }
+      [data-first-frame] { grid-auto-flow: row; align-content: center; gap: 6px; }
+      [data-first-frame]::before { content: "Sol is starting…"; opacity: 0; animation: first-line 240ms 1s ease-out forwards; }
+      [data-first-frame]::after { content: "The first start can take a minute. If it never comes, quit Sol and open it again."; color: #8a857c; opacity: 0; animation: first-line 240ms 12s ease-out forwards; }
+      @keyframes first-line { to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { [data-first-frame]::before { animation-duration: 0s; } [data-first-frame]::after { animation-duration: 0s; } }
+    </style>
   </head>
 
   <body>

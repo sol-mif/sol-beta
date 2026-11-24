@@ -31,6 +31,7 @@ import { onScreen, pinged, askTitle, type Role } from "./creature.js";
 import { getSettings, type MomentKind } from "./settings.js";
 import { getTitles } from "./titles.js";
 import { banner as macBanner } from "./work/machine.js";
+import { OLD_WINDOW_SHA } from "./team/window.js";
 
 export { MOMENT_KINDS, type MomentKind } from "./settings.js";
 export type Dest = "window";
@@ -146,6 +147,7 @@ export function heard(m: any) {
   } else if (m.type === "team.stable") {
     if (!m.sha || !m.behind) return dropWhere((x) => x.kind === "stable");   // updated, pinned: nothing to tell
     if (m.channel === "dev") return;   // a dev release installs itself at a quiet moment (ship.ts): nothing to press
+    if (m.sha === OLD_WINDOW_SHA) return;   // the old Sol.app's line (ticket K, team/window.ts): said in the window, no banner
     dropWhere((x) => x.kind === "stable" && x.key !== `stable:${m.sha}`);
     moment("stable", `a new stable: ${m.tag || String(m.sha).slice(0, 7)}${m.by ? ` from ${m.by}` : ""}`, { seat: "team", key: `stable:${m.sha}` });
   }

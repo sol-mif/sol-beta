@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MODES, modeOf, onFor, stageOf, standsOn, WINDOW_SWITCHES, type Mode } from "./versions.js";
+import { windowOld } from "./team/window.js";   // a Sol.app older than BR1 keeps the old face (ticket K, #1824)
 
 export type Seat = "codex" | "claude";
 // what Claude may do without asking in a Work session, as Claude Code names it; the face's starting pick, and the pick of
@@ -34,7 +35,7 @@ export type Settings = {
   // Cowork v3 (fr-30): the switch, me layer, off unless set; written only once someone sets it, so a settings file
   // and the face's settings message are today's while it is off. coworkV3() is the one reading of it (env first)
   cowork?: { v3: boolean };
-  // the new face (#1604, docs/port/switch.md): the switch ui.next, per person, off unless set (its card stands at hand);
+  // the new face (#1604, docs/port/switch.md): the switch ui.next, per person, by its card's station unless set (product since the BR1 join, #1615);
   // written only once someone turns it, like cowork.v3. uiNext() is the one reading of it (env first)
   ui?: { next: boolean };
   // the frame (#630, #633): the face's switch sol.frame, told to the engine so the kernel (kernel.ts) runs only with it
@@ -320,6 +321,7 @@ export function noteChannel(c: "dev" | "beta" | null): void {
   noteStageWhole();
   noteFrame();
   noteHomeWhole();
+  noteUiNext();   // ui.next stands at product (#1615): the channel learned can turn the new face on
 }
 
 // Cowork v3's switch turned while the engine runs (fr-30): who must hear it (the agent's tools and the team's sync)
@@ -365,6 +367,7 @@ export function noteUiNext(): void {
  *  version (hand: off until set). Read on every message, so the setting needs no restart */
 export function uiNext(): boolean {
   const env = uiNextEnv();
+  if (!env && windowOld()) return false;   // ticket K (#1824): a Sol.app older than BR1 holds an old copy of the new face, with no line to say so
   return env ? env === "on" : onFor("ui.next", versionMode(), getSettings().ui?.next);
 }
 /** what SOL_UI_NEXT says, or "" when it says nothing (then the setting decides) */
@@ -451,6 +454,8 @@ export function readings(): Partial<Settings> & { window: Record<string, boolean
   if (uiNext() !== (s.ui?.next === true)) out.ui = { ...s.ui, next: uiNext() };
   if (stageWhole() !== (s.stage?.whole === true)) out.stage = { ...s.stage, whole: stageWhole() };
   if (homeWhole() !== (s.home?.whole === true)) out.home = { ...s.home, whole: homeWhole() };
+  // the Agents' room (gate one q6, #1740): the window draws its page, its ways in and the press by the engine's reading
+  if (reachRoom() !== (s.reach?.room === true)) out.reach = { ...s.reach, room: reachRoom() };
   const mode = versionMode(), set = s.switches ?? {};
   return { ...out, window: Object.fromEntries(WINDOW_SWITCHES.map((n) => [n, onFor(n, mode, set[n])])) };
 }

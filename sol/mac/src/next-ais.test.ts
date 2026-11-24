@@ -22,9 +22,9 @@ test("the AIs page: state in words from the work, one line for the page", () => 
   assert.equal(stateOf(CV.D, CV.open(), mo).say, "Has a question");
   const pia = CV.D.ais.find((a) => a.name === "Pia")!;
   assert.deepEqual([stateOf(CV.D, CV.open(), pia).cls, stateOf(CV.D, CV.open(), pia).say], ["st-work", "Working · tests: 1 failing"]);
-  assert.equal(sayLine(CV.D.ais.map((a) => stateOf(CV.D, CV.open(), a))), "8 AIs. 7 need you; 1 working.");
+  assert.equal(sayLine(CV.D.ais.map((a) => stateOf(CV.D, CV.open(), a))), "8 AIs. 7 of them need you; 1 working.");   // round 8 · H2 (slice R7): a part names itself
   assert.equal(sayLine([]), "No AIs yet. One appears when you hand a piece of work to it.");
-  assert.deepEqual(onWhat(CV.D, ada, (id) => CV.regionOf(id)?.name), { what: "fix-login", where: "api (repo)", tail: "40 files changed so far" });
+  assert.deepEqual(onWhat(CV.D, ada, (id) => CV.regionOf(id)?.name), { what: "fix-login", where: "api", tail: "40 files changed so far" });
   assert.equal(CV.D.routines?.filter((r) => r.ai === "Kai").length, 2, "an AI's routines are on its card");
 });
 

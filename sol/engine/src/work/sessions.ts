@@ -116,6 +116,7 @@ export function fileSessions(list: (SDKSessionInfo & { file?: string })[], gpt: 
   const both: (SDKSessionInfo & { file?: string; gpt?: true })[] = [...list, ...gpt.map((g) => ({ ...g, gpt: true as const }))];
   for (const s of both) {
     if (!s.cwd) continue;
+    if (st.marks[s.sessionId]?.canvas || st.marks[s.sessionId]?.help) continue;   // the canvas bar's own session is no folder's (#1615, next/canvas-agent.ts)
     const cwd = at(s.cwd);   // a folder that moved: the session is in its new place (its transcript still says the old one)
     const w = copyIn(cwd);
     const marked = st.marks[s.sessionId]?.folder;   // Marco put it under another folder
@@ -164,7 +165,7 @@ export function withRuns(filed: { sessions: WorkSession[]; projects: Project[] }
   const have = new Set(filed.sessions.map((s) => s.id));
   const sessions = [...filed.sessions], projects = [...filed.projects];
   for (const r of runs) {
-    if (have.has(r.sessionId) || !r.cwd) continue;
+    if (have.has(r.sessionId) || !r.cwd || st.marks[r.sessionId]?.canvas) continue;
     const w = copyIn(r.cwd);
     const project = st.marks[r.sessionId]?.folder || local(w ? w.repo : r.cwd);
     const at = r.since ?? Date.now();

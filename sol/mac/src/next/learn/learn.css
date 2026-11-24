@@ -1,0 +1,78 @@
+/* Tutorials and Help (learn/Learn.tsx, Help.tsx; mine/look/br1/learn.html draft 1). Tokens only: the scale, the kit's
+   colours, the layers. Signed: marcocyl04-ux's agent (builder T-face), BR1 (#1615). */
+
+/* part 1: the end card over the softened canvas, and the start-screen question after it */
+.lr-dim { position: fixed; inset: 0; z-index: var(--z-frame); display: grid; place-items: center; }
+.lr-dim::before { content: ""; position: absolute; inset: 0; background: var(--paper); opacity: .55; }
+.lr-card { position: relative; width: 420px; max-width: calc(100% - var(--s8)); box-sizing: border-box; padding: var(--s6); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up); animation: lr-in var(--d-land) var(--e-arrive); }
+.lr-h { margin: 0 0 var(--s1); font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 800; letter-spacing: var(--title-k); color: var(--ink); }
+.lr-say { margin: 0 0 var(--s4); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.lr-list { display: flex; flex-direction: column; gap: var(--s2); }
+.lr-card .lr-walk { display: flex; align-items: center; gap: var(--s3); min-height: var(--h-row); padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-row); background: var(--hover); color: var(--ink); font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); text-align: left; cursor: pointer; }
+.lr-card .lr-walk:hover { background: var(--press); }
+.lr-card .lr-walk:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lr-card .lr-walk.first { background: var(--ink); color: var(--card); }
+.lr-card .lr-walk.first .lr-ws, .lr-walk.first small { color: var(--ink4); }
+.lr-card .lr-walk.first .lr-num { background: var(--card); color: var(--ink); }
+.lr-card .lr-walk.done .lr-num { background: var(--good); }
+.lr-num { display: inline-grid; place-items: center; flex: none; width: var(--s6); height: var(--s6); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); }
+.lr-wn { min-width: 0; font-weight: 550; }
+.lr-ws { margin-left: auto; flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.lr-wt { display: flex; flex-direction: column; min-width: 0; }
+.lr-wt small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.lr-foot { display: flex; justify-content: space-between; gap: var(--s3); margin-top: var(--s3); }
+.lr-card .lr-link { padding: 0; border: 0; background: none; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); cursor: pointer; }
+.lr-link:hover { color: var(--ink); }
+@keyframes lr-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* part 2: a walk, one step lit, everything else quiet */
+.lr-walking { position: fixed; inset: 0; z-index: var(--z-frame); pointer-events: none; }
+.lr-soft { position: absolute; inset: 0; background: var(--paper); opacity: .55; }
+.lr-lit { position: fixed; box-sizing: border-box; border-radius: var(--r-row); outline: 3px solid var(--ink); outline-offset: 2px; transition: left var(--d-turn) var(--e-arrive), top var(--d-turn) var(--e-arrive), width var(--d-turn) var(--e-arrive), height var(--d-turn) var(--e-arrive); }
+.lr-tip { position: fixed; width: 300px; box-sizing: border-box; padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--ink); color: var(--card); box-shadow: var(--shadow-up); font-size: var(--t-body); line-height: var(--t-body-line); pointer-events: auto; animation: lr-in var(--d-turn) var(--e-arrive); }
+.lr-tip.lr-mid { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); }
+.lr-th { display: block; margin-bottom: var(--s1); font-weight: 650; }
+.lr-tl { margin: 0 0 var(--s3); color: var(--ink4); }
+.lr-tf { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.lr-tw { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr-pips { display: flex; gap: var(--s1); flex: none; }
+.lr-pips i { width: calc(var(--s1) * 1.5); height: calc(var(--s1) * 1.5); border-radius: var(--r-pill); background: var(--ink2); }
+.lr-pips i.was { background: var(--ink3); }
+.lr-pips i.on { background: var(--card); }
+.lr-tip .lr-skip { padding: 0 var(--s1); border: 0; background: none; font: inherit; color: var(--ink4); cursor: pointer; }
+.lr-skip:hover { color: var(--card); }
+.lr-tip .lr-next { height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-chip); background: var(--card); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.lr-next:focus-visible, .lr-skip:focus-visible { outline: 2px solid var(--card); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .lr-card, .lr-tip, .lr-lit { animation: none; transition: none; } }
+
+/* Help in the sidebar, above Settings */
+.nx-row.lr-helprow .lr-q { display: inline-grid; place-items: center; width: var(--s4); height: var(--s4); flex: none; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+
+/* part 3: the Help session, a tab in the session view */
+.lr-help { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: auto; background: var(--paper); }
+.lr-hh { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-head); padding: 0 var(--s4); flex: none; }
+.lr-ht { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 700; color: var(--ink); }
+.lr-hst { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.lr-col { display: flex; flex-direction: column; gap: var(--s3); width: 500px; max-width: calc(100% - var(--s8)); margin: 0 auto; padding: var(--s2) 0 var(--s8); }
+.lr-qs { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.lr-help .lr-chip { display: inline-flex; align-items: center; height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: var(--shadow); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink); }
+.lr-help .lr-chip:hover, .lr-help .lr-chip.on { background: var(--hover); }
+.lr-wlist { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow); }
+.lr-help .lr-wrow { display: flex; align-items: center; gap: var(--s3); min-height: var(--h-row); padding: var(--s1) var(--s2); border-radius: var(--r-row); text-align: left; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); }
+.lr-help .lr-wrow:hover { background: var(--hover); }
+.lr-said { display: flex; flex-direction: column; gap: var(--s3); }
+.lr-me { align-self: flex-end; max-width: 80%; padding: var(--s2) var(--s3); border-radius: var(--r-card) var(--r-card) var(--r-chip) var(--r-card); background: var(--card); box-shadow: var(--shadow); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); }
+.lr-ai { font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink); }
+.lr-wait { color: var(--ink3); }
+.lr-acts { display: inline-flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.lr-acts .lr-show, .lr-line .lr-show { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-chip); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; flex: none; }
+.lr-acts .lr-alt, .lr-line .lr-alt { display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-chip); background: var(--hover); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); flex: none; }
+.lr-acts .lr-show:hover, .lr-line .lr-show:hover { background: var(--ink2); }
+.lr-acts .lr-alt:hover, .lr-line .lr-alt:hover { background: var(--press); }
+
+/* part 3 note 9: the canvas bar's one line of help, above the bar */
+.lr-line { position: fixed; z-index: var(--z-frame); box-sizing: border-box; display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); animation: lr-in var(--d-turn) var(--e-arrive); }
+.lr-lq { display: inline-grid; place-items: center; width: var(--s4); height: var(--s4); flex: none; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.lr-lt { flex: 1; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .lr-line { animation: none; } }
+.lr-ai.lr-failed { color: var(--ink2); }

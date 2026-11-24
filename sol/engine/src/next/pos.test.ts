@@ -36,6 +36,49 @@ test("each set writes the whole file, and no temp file is left beside it", () =>
   assert.deepEqual(readdirSync(join(h, "next")), ["pos.json"]);
 });
 
+test("at is when the engine kept the place, a real time read back as it was written", () => {
+  const h = home("at");
+  const now = Date.UTC(2026, 10, 22, 1, 30);
+  assert.equal(setPos(h, DEV, now).ok, true);
+  assert.equal(readPos(h).pos[DEV.id].at, now);
+});
+
+test("folded is kept as true or false, and a place kept before it reads as open (BR1)", () => {
+  const h = home("folded");
+  assert.equal(setPos(h, { ...DEV, folded: true }).ok, true);
+  assert.equal(readPos(h).pos[DEV.id].folded, true);
+  setPos(h, { ...DEV, folded: "yes" });
+  assert.equal(readPos(h).pos[DEV.id].folded, false);
+  setPos(h, JAYDEN);
+  assert.equal(readPos(h).pos[JAYDEN.id].folded, false);
+  writeFileSync(posFile(h), JSON.stringify({ v: 1, pos: { old: { x: 1, y: 2, w: 3, h: 4, by: "person", touched: true, at: 5 } } }));
+  assert.equal(readPos(h).pos.old.folded, false);
+});
+
+test("in, the folder a folder sits in, is kept as an id or null, and anything else reads as unsaid (BR1, folders in folders)", () => {
+  const h = home("in");
+  assert.equal(setPos(h, { ...JAYDEN, id: "h:bio", in: "h:school" }).ok, true);
+  assert.equal(readPos(h).pos["h:bio"].in, "h:school");
+  setPos(h, { ...JAYDEN, id: "h:bio", in: null });
+  assert.equal(readPos(h).pos["h:bio"].in, null, "the person took it to the top");
+  for (const bad of [3, "", "a\nb", { id: "h:school" }]) {
+    setPos(h, { ...JAYDEN, id: "h:bio", in: bad });
+    assert.equal("in" in readPos(h).pos["h:bio"], false, `${JSON.stringify(bad)} is unsaid`);
+  }
+  setPos(h, DEV);
+  assert.equal("in" in readPos(h).pos[DEV.id], false, "a place kept without it says nothing");
+});
+
+test("hand \"fold\" is kept, a place folded where the rule put it; anything else reads as unsaid (BR1, #1615)", () => {
+  const h = home("hand");
+  assert.equal(setPos(h, { ...DEV, folded: true, hand: "fold" }).ok, true);
+  assert.equal(readPos(h).pos[DEV.id].hand, "fold");
+  setPos(h, { ...DEV, hand: "move" });
+  assert.equal("hand" in readPos(h).pos[DEV.id], false, "another word is unsaid");
+  setPos(h, { ...DEV });
+  assert.equal("hand" in readPos(h).pos[DEV.id], false, "a later set without it: the person's own place");
+});
+
 test("a place that is not one changes nothing", () => {
   const h = home("refused");
   setPos(h, DEV);

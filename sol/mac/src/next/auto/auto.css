@@ -1,0 +1,52 @@
+/* An automation's piece (auto/index.tsx, BR1 item 2 #1615). Every rule under .au; spaces, sizes and corners the scale's
+   (palette.css), colours and curves the next set's (kit/next.css), as the Diary (diary/diary.css) and Work for you
+   (work/work.css) use them. Words wrap, never cut. Signed: marcocyl04-ux's agent (builder F), BR1 item 2 (#1615). */
+
+.au { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); min-width: 0; overflow-wrap: break-word; }
+/* .au button: the new face's reset (.nx button) outweighs a lone class, so each button rule names .au too */
+.au button { font: inherit; color: inherit; border: 0; cursor: pointer; padding: 0; }
+.au p, .au h3, .au ol { margin: 0; }
+.au-h { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+.au-name { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+/* its mark: a clock face for a time, a tray for an event */
+.au-mark { flex: none; align-self: center; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1.5px var(--ink2); }
+.au-mark.au-ev { border-radius: 2px; box-shadow: inset 0 -1.5px 0 var(--ink2), inset 1.5px 0 0 var(--ink2), inset -1.5px 0 0 var(--ink2); }
+.au-st { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.au-st::before, .au-dot { content: ""; flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink4); }
+.au-st[data-k="waits"]::before { background: var(--ink); }
+.au-st[data-k="working"]::before, .au-dot[data-k="working"] { background: var(--a3); animation: au-beat 1.6s var(--ease) infinite; }
+.au-st[data-k="needs you"]::before, .au-dot[data-k="needs you"], .au-dot[data-k="failed"] { background: var(--a2); }
+.au-dot[data-k="done"] { background: var(--ink); }
+@keyframes au-beat { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .au-st::before, .au-dot { animation: none !important; } }
+.au-does { color: var(--ink2); white-space: pre-wrap; }
+.au-when { font-weight: 500; }
+.au-t2 { color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.au-t3 { color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 400; }
+.au-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.au-gap { flex: 1; }
+.au .au-btn { display: inline-flex; align-items: center; height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--side); transition: background var(--d-turn) var(--ease); }
+.au .au-btn:hover:not(:disabled) { background: var(--press); }
+.au .au-btn:disabled { opacity: .45; cursor: default; }
+.au .au-tx { background: none; text-decoration: underline; text-underline-offset: 2px; }
+/* the switch, as Settings draws one (settings/settings.css .st-switch): a knob that says on or off */
+.au .au-switch { position: relative; width: var(--s8); height: var(--h-chip); border-radius: var(--r-pill); background: var(--ink4); flex: none; }
+.au .au-switch[aria-checked="true"] { background: var(--ink); }
+.au .au-switch::after { content: ""; position: absolute; top: var(--s1); left: var(--s1); width: calc(var(--h-chip) - 2 * var(--s1)); height: calc(var(--h-chip) - 2 * var(--s1)); border-radius: var(--r-pill); background: var(--card); transition: transform .16s var(--ease); }
+.au .au-switch[aria-checked="true"]::after { transform: translateX(calc(var(--s8) - var(--h-chip))); }
+/* its runs, newest first */
+.au-runs { display: flex; flex-direction: column; gap: var(--s1); padding-top: var(--s2); border-top: 1px solid var(--line); }
+.au-runs ol { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.au-run { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.au-run .au-dot { align-self: flex-start; margin-top: calc((var(--t-body-line) - var(--s2)) / 2); }   /* on the first line, when the line wraps */
+.au-rt { flex: none; font-variant-numeric: tabular-nums; color: var(--ink2); }
+.au-rs { flex: 1 1 auto; min-width: 0; }
+/* at Far: its name and its state */
+.au.au-far { padding: var(--s2) var(--s3); }
+/* made paused, never run: one dark Turn on in place of the switch (birth.html row 5) */
+.au .au-btn[data-turn-on] { background: var(--ink); color: var(--card); }
+.au .au-btn[data-turn-on]:hover { background: var(--ink2); }
+/* its presses carry a small mark, as the because card's ways do */
+.au .au-btn:has(.au-ic) { gap: var(--s1); }
+.au .au-tx:has(.au-ic) { display: inline-flex; align-items: center; gap: var(--s1); }
+.au-ic { flex: none; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

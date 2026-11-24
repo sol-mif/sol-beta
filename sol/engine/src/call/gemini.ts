@@ -187,7 +187,8 @@ export class GeminiCall implements VoiceCall {
     let result = "";
     let ok = true;
     try {
-      result = await this.o.ask(`${request}\n\n(Marco asked this on the call; answer plainly, it will be read out loud.)`, abort.signal);
+      // the request is the voice model's own words for what Marco said, so none of it is his (#1794)
+      result = await this.o.ask(`${request}\n\n(Marco asked this on the call; answer plainly, it will be read out loud.)`, abort.signal, undefined, { said: "" });
     } catch (err) {
       ok = false;
       result = "Sol could not do that: " + (err instanceof Error ? err.message : String(err));
@@ -219,6 +220,8 @@ export class GeminiCall implements VoiceCall {
         `We just talked on a call. This is the transcript; it is already part of this conversation, so do not repeat it.\n\n${lines}\n\n` +
         "If anything in it is worth keeping (a fact about Marco, a plan, something for a class), write it down where it belongs. Then answer in one short line.",
         new AbortController().signal,
+        undefined,
+        { said: "" },   // the transcript holds the voice's lines too: none of it approves anything (#1794)
       ).then(() => { this.o.step({ id, kind: "note", text: "kept the call", done: true, ok: true }); },
         (err) => { this.o.step({ id, kind: "note", text: "could not keep the call", done: true, ok: false, detail: String(err) }); });
       return this.writeback;

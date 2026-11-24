@@ -46,15 +46,23 @@ export const PERSON_ONLY: Record<string, string> = {
 for (const n of CAMERA) PERSON_ONLY[n] = "camera";
 PERSON_ONLY.flip = "camera"; PERSON_ONLY.pause_diary = "setting"; PERSON_ONLY.to_sticky = "words";
 for (const n of ["see_groups", "see_social", "open_group", "open_friend", "first_time", "see_as_friend", "next_wait"]) PERSON_ONLY[n] = "camera";
+PERSON_ONLY.see_seats = "camera"; PERSON_ONLY.sign_in = PERSON_ONLY.remind_later = "setting";   // slice 6b (agent.js round 6; docs/port/requests/seats.md)
 PERSON_ONLY.answer_wait = PERSON_ONLY.answer_card = "answer"; PERSON_ONLY.pick_face = PERSON_ONLY.make_close = PERSON_ONLY.make_link = "setting"; PERSON_ONLY.leave_group = "project";
 /* the port's one addition: the shell's page over the canvas (S.page) moves what the person sees, as people.js's pages did */
 PERSON_ONLY.page = "camera";
 /* the join's (#1615): the other slices' own moves. Choosing, the diary chip, a zone chip, a split job's part and the
    Settings panel's looking move what the person sees; a touch makes a piece the person's; a Settings change and the way
    back to the old Sol are theirs */
-for (const n of ["choose", "toDiary", "toZone", "openPart", "closePart", "stOpen", "stClose", "stFind", "stSel", "stHover", "stPoint"]) PERSON_ONLY[n] = "camera";
+for (const n of ["choose", "toDiary", "toEdge", "openPart", "closePart", "stOpen", "stClose", "stFind", "stSel", "stHover", "stPoint", "stWorked"]) PERSON_ONLY[n] = "camera";
 PERSON_ONLY.touch = "placed";
 for (const n of ["stPick", "stTry", "stKeep", "stLeave", "stUndo", "stAsk", "stPreview", "stReplay", "stPlace", "stWay", "stAct", "oldSol"]) PERSON_ONLY[n] = "setting";
+/* slice 12 (agent.js round 6): opening Your own pieces moves what the person sees; using a piece or setting one aside is theirs (an AI may propose one) */
+PERSON_ONLY.see_pieces = "camera"; for (const n of ["use_piece", "piece_state", "set_pieces_aside"]) PERSON_ONLY[n] = "setting";
+/* BR1 pieces by hand (#1615): folding, resizing and taking a piece off the canvas arrange it the person's way (an AI places, or proposes a spot) */
+for (const n of ["fold", "resize", "offCanvas"]) PERSON_ONLY[n] = "placed";
+/* BR1 (#1615): keeping a suggested setup is the person's; the tab row's moves move what they see (an AI asks through the engine's three verbs) */
+for (const n of ["wsPreview", "wsSkip", "wsKeep", "wsDiscard", "wsUndo", "tabOffer", "tabUndo", "tabUndoGone"]) PERSON_ONLY[n] = "setting";
+for (const n of ["tabNew", "tabOpen", "tabFront", "tabClose", "tabDrop"]) PERSON_ONLY[n] = "camera";   // tabNew: the tab row's ＋ (Look 1 A3)
 export function refusal(name: string, args: Any): string | null {
   if (PERSON_ONLY[name]) return REFUSE[PERSON_ONLY[name]];
   if (name === "remove_line") { const l = seams().diary?.byId(args?.line); if (l && l.mine) return REFUSE.words; }
@@ -504,10 +512,15 @@ export const MOVE_FN: Record<string, string> = {
   /* the port's: the shell's page (as people.js's pages: the AI looks), and the AI's own two marks the store gives as moves */
   page: "look", headline: "headline", point: "point",
   /* the join's (#1615): the moves the other slices added under their own names */
-  answer: "check", ask: "ask", withdraw: "withdraw", tell: "tell", choose: "look", toDiary: "since", toZone: "point", land: "place", touch: "place",
+  answer: "check", ask: "ask", withdraw: "withdraw", tell: "tell", choose: "look", toDiary: "since", toEdge: "point", land: "place", touch: "place",
   newFolder: "make", openPart: "read", closePart: "point", closeStarter: "start",
-  stOpen: "look", stClose: "look", stFind: "look", stSel: "look", stHover: "look", stPoint: "point", stPick: "offer", stTry: "offer", stKeep: "offer",
+  stOpen: "look", stClose: "look", stFind: "look", stSel: "look", stHover: "look", stWorked: "look", stPoint: "point", stPick: "offer", stTry: "offer", stKeep: "offer",
   stLeave: "offer", stUndo: "offer", stAsk: "offer", stPreview: "offer", stReplay: "offer", stPlace: "offer", stWay: "offer", stAct: "offer", oldSol: "offer",
+  see_pieces: "look", propose_piece: "offer", use_piece: "offer", piece_state: "offer", set_pieces_aside: "offer",   /* slice 12 (agent.js round 6) */
+  see_seats: "look", sign_in: "offer", remind_later: "offer",   // slice 6b (agent.js round 6)
+  fold: "place", resize: "place", offCanvas: "place", nest: "place",   // BR1 pieces by hand; a folder in a folder (#1615)
+  wsPreview: "offer", wsSkip: "offer", wsKeep: "offer", wsDiscard: "offer", wsUndo: "offer",   // BR1 carry (#1615): a setup Sol suggests is the person's to keep
+  tabNew: "start", tabOpen: "read", tabFront: "point", tabClose: "point", tabDrop: "place", tabOffer: "offer", tabUndo: "offer", tabUndoGone: "offer",   // BR1 tabs (#1615): an AI has the engine's open_piece, take_to_tab, put_back
 };
 /** each function: the person's moves that do or meet the same */
 export const FN_MOVE: Record<string, string[]> = {

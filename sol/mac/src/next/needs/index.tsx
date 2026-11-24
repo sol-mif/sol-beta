@@ -10,13 +10,22 @@ import { TooMuch } from "./TooMuch.tsx";
 import { Arrivals } from "./Arrivals.tsx";
 import { Offer } from "./Offer.tsx";
 import "./needs.css";
+import { useLayoutEffect } from "react";
+import { hooks } from "../cv/index.ts";
 
 export default function Needs(p: SlotProps) {
   switch (p.part) {
-    case "line": return <Line />;
+    case "line": return <><Line /><LineFits /></>;
     case "toomuch": return <TooMuch />;
     case "arrivals": return <div className="nd-page"><Arrivals region={p.region} piece={typeof p.piece === "string" ? p.piece : undefined} /></div>;
     case "offer": return <Offer />;
     default: return <List />;
   }
+}
+
+/** the join (#1615): when the line's words change its height, the plane fits it in the same commit, before the paint
+ *  (count 23 "+line"; the plane's own observer hears it a frame later) */
+function LineFits() {
+  useLayoutEffect(() => { (hooks as { lineMoved?: () => void }).lineMoved?.(); });
+  return null;
 }

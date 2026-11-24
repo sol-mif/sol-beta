@@ -1,0 +1,682 @@
+{"fixture":"lucy-month","panel":11,"person":"Lucy","age":41,"setting":"branding consultant, her own business; dyslexia and ADHD","from":["panel.md #11 Lucy","S21 30 days under \"only what needs me today\": steady asks, runs likely to ask, one blocking ask a day","S16 weekly offers"],"start":"2026-10-01","days":30,"named":["say","fit.set","run.start","run.end","ask","answer","done","interrupt","back","pause","offer"]}
+{"id":"lucy-1","at":1790843400000,"day":1,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-2","at":1790845200000,"day":1,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-3","at":1790847000000,"day":1,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r1","part":"lucy/clients/gym#day-1","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-7","at":1790847060000,"day":1,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r2","part":"lucy/clients/cafe#day-1","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-11","at":1790847120000,"day":1,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r3","part":"lucy/clients/florist#day-1","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-15","at":1790847180000,"day":1,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r4","part":"lucy/clients/gym#day-1","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-4","at":1790848800000,"day":1,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a1","run":"lucy-r1","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 1-0","line":"did: draft: the invoice, note-1-0.md"}}
+{"id":"lucy-5","at":1790848860000,"day":1,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r1","part":"lucy/clients/gym#day-1","outcome":"done","changed":["note-1-0.md"]}
+{"id":"lucy-6","at":1790850600000,"day":1,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a1","yes":"Keep it"}
+{"id":"lucy-8","at":1790852400000,"day":1,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a2","run":"lucy-r2","need":{"src":"thing","id":"lucy-t1-1","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-9","at":1790852460000,"day":1,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r2","part":"lucy/clients/cafe#day-1","outcome":"done","changed":["note-1-1.md"]}
+{"id":"lucy-10","at":1790854200000,"day":1,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a2","yes":"Done"}
+{"id":"lucy-22","at":1790855400000,"day":1,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-12","at":1790856000000,"day":1,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a3","run":"lucy-r3","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 1-2","line":"did: draft: the invoice, note-1-2.md"}}
+{"id":"lucy-13","at":1790856060000,"day":1,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r3","part":"lucy/clients/florist#day-1","outcome":"done","changed":["note-1-2.md"]}
+{"id":"lucy-23","at":1790857200000,"day":1,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-14","at":1790857800000,"day":1,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a3","yes":"Keep it"}
+{"id":"lucy-16","at":1790859600000,"day":1,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a4","run":"lucy-r4","need":{"src":"thing","id":"lucy-t1-3","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-24","at":1790859600000,"day":1,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-17","at":1790859660000,"day":1,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r4","part":"lucy/clients/gym#day-1","outcome":"done","changed":["note-1-3.md"]}
+{"id":"lucy-18","at":1790861400000,"day":1,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a4","yes":"Done"}
+{"id":"lucy-19","at":1790870400000,"day":1,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p1"}
+{"id":"lucy-20","at":1790870700000,"day":1,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p2"}
+{"id":"lucy-21","at":1790871000000,"day":1,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p3"}
+{"id":"lucy-677","at":1790928000000,"day":2,"who":"sol","act":"fit.set","place":"lucy","knob":"life.density","scope":"lucy","take":"close","author":"sol","reason":"3 of the last 4 life days read this way","count":3}
+{"id":"lucy-25","at":1790931600000,"day":2,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"logo ideas for the florist","via":"pointer"}
+{"id":"lucy-26","at":1790933400000,"day":2,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r5","part":"lucy/clients/cafe#day-2","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-30","at":1790933460000,"day":2,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r6","part":"lucy/clients/florist#day-2","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-34","at":1790933520000,"day":2,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r7","part":"lucy/clients/gym#day-2","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-38","at":1790933580000,"day":2,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r8","part":"lucy/clients/cafe#day-2","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-27","at":1790935200000,"day":2,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a5","run":"lucy-r5","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 2-0","line":"did: draft: the invoice, note-2-0.md"}}
+{"id":"lucy-28","at":1790935260000,"day":2,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r5","part":"lucy/clients/cafe#day-2","outcome":"done","changed":["note-2-0.md"]}
+{"id":"lucy-29","at":1790937000000,"day":2,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a5","yes":"Keep it"}
+{"id":"lucy-31","at":1790938800000,"day":2,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a6","run":"lucy-r6","need":{"src":"thing","id":"lucy-t2-1","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-32","at":1790938860000,"day":2,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r6","part":"lucy/clients/florist#day-2","outcome":"done","changed":["note-2-1.md"]}
+{"id":"lucy-33","at":1790940600000,"day":2,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a6","yes":"Done"}
+{"id":"lucy-35","at":1790942400000,"day":2,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a7","run":"lucy-r7","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 2-2","line":"did: draft: the invoice, note-2-2.md"}}
+{"id":"lucy-36","at":1790942460000,"day":2,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r7","part":"lucy/clients/gym#day-2","outcome":"done","changed":["note-2-2.md"]}
+{"id":"lucy-37","at":1790944200000,"day":2,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a7","yes":"Keep it"}
+{"id":"lucy-39","at":1790946000000,"day":2,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a8","run":"lucy-r8","need":{"src":"thing","id":"lucy-t2-3","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-44","at":1790946000000,"day":2,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-40","at":1790946060000,"day":2,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r8","part":"lucy/clients/cafe#day-2","outcome":"done","changed":["note-2-3.md"]}
+{"id":"lucy-41","at":1790947800000,"day":2,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a8","yes":"Done"}
+{"id":"lucy-42","at":1790956800000,"day":2,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p4"}
+{"id":"lucy-43","at":1790957100000,"day":2,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p5"}
+{"id":"lucy-45","at":1791018000000,"day":3,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-46","at":1791019800000,"day":3,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r9","part":"lucy/clients/florist#day-3","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-50","at":1791019860000,"day":3,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r10","part":"lucy/clients/gym#day-3","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-54","at":1791019920000,"day":3,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r11","part":"lucy/clients/cafe#day-3","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-58","at":1791019980000,"day":3,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r12","part":"lucy/clients/florist#day-3","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-47","at":1791021600000,"day":3,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a9","run":"lucy-r9","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 3-0","line":"did: draft: a moodboard, note-3-0.md"}}
+{"id":"lucy-48","at":1791021660000,"day":3,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r9","part":"lucy/clients/florist#day-3","outcome":"done","changed":["note-3-0.md"]}
+{"id":"lucy-49","at":1791023400000,"day":3,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a9","yes":"Keep it"}
+{"id":"lucy-51","at":1791025200000,"day":3,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a10","run":"lucy-r10","need":{"src":"thing","id":"lucy-t3-1","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-52","at":1791025260000,"day":3,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r10","part":"lucy/clients/gym#day-3","outcome":"done","changed":["note-3-1.md"]}
+{"id":"lucy-53","at":1791027000000,"day":3,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a10","yes":"Done"}
+{"id":"lucy-65","at":1791028200000,"day":3,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-55","at":1791028800000,"day":3,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a11","run":"lucy-r11","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 3-2","line":"did: draft: a reply to the client, note-3-2.md"}}
+{"id":"lucy-56","at":1791028860000,"day":3,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r11","part":"lucy/clients/cafe#day-3","outcome":"done","changed":["note-3-2.md"]}
+{"id":"lucy-66","at":1791030000000,"day":3,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-57","at":1791030600000,"day":3,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a11","yes":"Keep it"}
+{"id":"lucy-59","at":1791032400000,"day":3,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a12","run":"lucy-r12","need":{"src":"thing","id":"lucy-t3-3","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-67","at":1791032400000,"day":3,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-60","at":1791032460000,"day":3,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r12","part":"lucy/clients/florist#day-3","outcome":"done","changed":["note-3-3.md"]}
+{"id":"lucy-61","at":1791034200000,"day":3,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a12","yes":"Done"}
+{"id":"lucy-68","at":1791036000000,"day":3,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-69","at":1791039600000,"day":3,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-62","at":1791043200000,"day":3,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p6"}
+{"id":"lucy-63","at":1791043500000,"day":3,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p7"}
+{"id":"lucy-64","at":1791043800000,"day":3,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p8"}
+{"id":"lucy-70","at":1791104400000,"day":4,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-71","at":1791106200000,"day":4,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r13","part":"lucy/clients/gym#day-4","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-75","at":1791106260000,"day":4,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r14","part":"lucy/clients/cafe#day-4","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-79","at":1791106320000,"day":4,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r15","part":"lucy/clients/florist#day-4","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-83","at":1791106380000,"day":4,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r16","part":"lucy/clients/gym#day-4","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-72","at":1791108000000,"day":4,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a13","run":"lucy-r13","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 4-0","line":"did: draft: the invoice, note-4-0.md"}}
+{"id":"lucy-73","at":1791108060000,"day":4,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r13","part":"lucy/clients/gym#day-4","outcome":"done","changed":["note-4-0.md"]}
+{"id":"lucy-74","at":1791109800000,"day":4,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a13","yes":"Keep it"}
+{"id":"lucy-76","at":1791111600000,"day":4,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a14","run":"lucy-r14","need":{"src":"thing","id":"lucy-t4-1","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-77","at":1791111660000,"day":4,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r14","part":"lucy/clients/cafe#day-4","outcome":"done","changed":["note-4-1.md"]}
+{"id":"lucy-78","at":1791113400000,"day":4,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a14","yes":"Done"}
+{"id":"lucy-89","at":1791114600000,"day":4,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-80","at":1791115200000,"day":4,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a15","run":"lucy-r15","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 4-2","line":"did: draft: a reply to the client, note-4-2.md"}}
+{"id":"lucy-81","at":1791115260000,"day":4,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r15","part":"lucy/clients/florist#day-4","outcome":"done","changed":["note-4-2.md"]}
+{"id":"lucy-90","at":1791116400000,"day":4,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-82","at":1791117000000,"day":4,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a15","yes":"Keep it"}
+{"id":"lucy-84","at":1791118800000,"day":4,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a16","run":"lucy-r16","need":{"src":"thing","id":"lucy-t4-3","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-91","at":1791118800000,"day":4,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-85","at":1791118860000,"day":4,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r16","part":"lucy/clients/gym#day-4","outcome":"done","changed":["note-4-3.md"]}
+{"id":"lucy-86","at":1791120600000,"day":4,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a16","yes":"Done"}
+{"id":"lucy-87","at":1791129600000,"day":4,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p9"}
+{"id":"lucy-88","at":1791129900000,"day":4,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p10"}
+{"id":"lucy-92","at":1791190800000,"day":5,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-93","at":1791192600000,"day":5,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r17","part":"lucy/clients/cafe#day-5","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-97","at":1791192660000,"day":5,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r18","part":"lucy/clients/florist#day-5","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-101","at":1791192720000,"day":5,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r19","part":"lucy/clients/gym#day-5","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-105","at":1791192780000,"day":5,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r20","part":"lucy/clients/cafe#day-5","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-94","at":1791194400000,"day":5,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a17","run":"lucy-r17","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 5-0","line":"did: draft: a moodboard, note-5-0.md"}}
+{"id":"lucy-95","at":1791194460000,"day":5,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r17","part":"lucy/clients/cafe#day-5","outcome":"done","changed":["note-5-0.md"]}
+{"id":"lucy-96","at":1791196200000,"day":5,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a17","yes":"Keep it"}
+{"id":"lucy-98","at":1791198000000,"day":5,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a18","run":"lucy-r18","need":{"src":"thing","id":"lucy-t5-1","read":"you","folder":"lucy/clients/florist","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-99","at":1791198060000,"day":5,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r18","part":"lucy/clients/florist#day-5","outcome":"done","changed":["note-5-1.md"]}
+{"id":"lucy-100","at":1791199800000,"day":5,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a18","yes":"Done"}
+{"id":"lucy-102","at":1791201600000,"day":5,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a19","run":"lucy-r19","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 5-2","line":"did: draft: a moodboard, note-5-2.md"}}
+{"id":"lucy-103","at":1791201660000,"day":5,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r19","part":"lucy/clients/gym#day-5","outcome":"done","changed":["note-5-2.md"]}
+{"id":"lucy-104","at":1791203400000,"day":5,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a19","yes":"Keep it"}
+{"id":"lucy-106","at":1791205200000,"day":5,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a20","run":"lucy-r20","need":{"src":"thing","id":"lucy-t5-3","read":"you","folder":"lucy/clients/cafe","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-112","at":1791205200000,"day":5,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-107","at":1791205260000,"day":5,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r20","part":"lucy/clients/cafe#day-5","outcome":"done","changed":["note-5-3.md"]}
+{"id":"lucy-108","at":1791207000000,"day":5,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a20","yes":"Done"}
+{"id":"lucy-109","at":1791216000000,"day":5,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p11"}
+{"id":"lucy-110","at":1791216300000,"day":5,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p12"}
+{"id":"lucy-111","at":1791216600000,"day":5,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p13"}
+{"id":"lucy-669","at":1791225660000,"day":5,"who":"sol","act":"offer","place":"lucy","offer":"lucy-o1-life","knob":"life.tools","scope":"lucy","take":"fewer tools at hand","mode":"life","structural":true}
+{"id":"lucy-670","at":1791229320000,"day":5,"who":"Lucy","act":"notnow","place":"lucy","offer":"lucy-o1-life"}
+{"id":"lucy-113","at":1791277200000,"day":6,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-114","at":1791279000000,"day":6,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r21","part":"lucy/clients/florist#day-6","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-118","at":1791279060000,"day":6,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r22","part":"lucy/clients/gym#day-6","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-122","at":1791279120000,"day":6,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r23","part":"lucy/clients/cafe#day-6","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-126","at":1791279180000,"day":6,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r24","part":"lucy/clients/florist#day-6","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-115","at":1791280800000,"day":6,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a21","run":"lucy-r21","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 6-0","line":"did: draft: a reply to the client, note-6-0.md"}}
+{"id":"lucy-116","at":1791280860000,"day":6,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r21","part":"lucy/clients/florist#day-6","outcome":"done","changed":["note-6-0.md"]}
+{"id":"lucy-117","at":1791282600000,"day":6,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a21","yes":"Keep it"}
+{"id":"lucy-119","at":1791284400000,"day":6,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a22","run":"lucy-r22","need":{"src":"thing","id":"lucy-t6-1","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-120","at":1791284460000,"day":6,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r22","part":"lucy/clients/gym#day-6","outcome":"done","changed":["note-6-1.md"]}
+{"id":"lucy-121","at":1791286200000,"day":6,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a22","yes":"Done"}
+{"id":"lucy-132","at":1791287400000,"day":6,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-123","at":1791288000000,"day":6,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a23","run":"lucy-r23","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 6-2","line":"did: draft: a moodboard, note-6-2.md"}}
+{"id":"lucy-124","at":1791288060000,"day":6,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r23","part":"lucy/clients/cafe#day-6","outcome":"done","changed":["note-6-2.md"]}
+{"id":"lucy-133","at":1791289200000,"day":6,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-125","at":1791289800000,"day":6,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a23","yes":"Keep it"}
+{"id":"lucy-127","at":1791291600000,"day":6,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a24","run":"lucy-r24","need":{"src":"thing","id":"lucy-t6-3","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-134","at":1791291600000,"day":6,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-128","at":1791291660000,"day":6,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r24","part":"lucy/clients/florist#day-6","outcome":"done","changed":["note-6-3.md"]}
+{"id":"lucy-129","at":1791293400000,"day":6,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a24","yes":"Done"}
+{"id":"lucy-135","at":1791295200000,"day":6,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-136","at":1791298800000,"day":6,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-130","at":1791302400000,"day":6,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p14"}
+{"id":"lucy-131","at":1791302700000,"day":6,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p15"}
+{"id":"lucy-137","at":1791363600000,"day":7,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-138","at":1791365400000,"day":7,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r25","part":"lucy/clients/gym#day-7","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-142","at":1791365460000,"day":7,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r26","part":"lucy/clients/cafe#day-7","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-146","at":1791365520000,"day":7,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r27","part":"lucy/clients/florist#day-7","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-150","at":1791365580000,"day":7,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r28","part":"lucy/clients/gym#day-7","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-139","at":1791367200000,"day":7,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a25","run":"lucy-r25","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 7-0","line":"did: draft: the invoice, note-7-0.md"}}
+{"id":"lucy-140","at":1791367260000,"day":7,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r25","part":"lucy/clients/gym#day-7","outcome":"done","changed":["note-7-0.md"]}
+{"id":"lucy-141","at":1791369000000,"day":7,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a25","yes":"Keep it"}
+{"id":"lucy-143","at":1791370800000,"day":7,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a26","run":"lucy-r26","need":{"src":"thing","id":"lucy-t7-1","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-144","at":1791370860000,"day":7,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r26","part":"lucy/clients/cafe#day-7","outcome":"done","changed":["note-7-1.md"]}
+{"id":"lucy-145","at":1791372600000,"day":7,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a26","yes":"Done"}
+{"id":"lucy-157","at":1791373800000,"day":7,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-147","at":1791374400000,"day":7,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a27","run":"lucy-r27","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 7-2","line":"did: draft: the invoice, note-7-2.md"}}
+{"id":"lucy-148","at":1791374460000,"day":7,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r27","part":"lucy/clients/florist#day-7","outcome":"done","changed":["note-7-2.md"]}
+{"id":"lucy-158","at":1791375600000,"day":7,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-149","at":1791376200000,"day":7,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a27","yes":"Keep it"}
+{"id":"lucy-151","at":1791378000000,"day":7,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a28","run":"lucy-r28","need":{"src":"thing","id":"lucy-t7-3","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-159","at":1791378000000,"day":7,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-152","at":1791378060000,"day":7,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r28","part":"lucy/clients/gym#day-7","outcome":"done","changed":["note-7-3.md"]}
+{"id":"lucy-153","at":1791379800000,"day":7,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a28","yes":"Done"}
+{"id":"lucy-154","at":1791388800000,"day":7,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p16"}
+{"id":"lucy-155","at":1791389100000,"day":7,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p17"}
+{"id":"lucy-156","at":1791389400000,"day":7,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p18"}
+{"id":"lucy-160","at":1791450000000,"day":8,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"call back about the brief","via":"pointer"}
+{"id":"lucy-161","at":1791451800000,"day":8,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r29","part":"lucy/clients/cafe#day-8","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-165","at":1791451860000,"day":8,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r30","part":"lucy/clients/florist#day-8","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-169","at":1791451920000,"day":8,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r31","part":"lucy/clients/gym#day-8","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-173","at":1791451980000,"day":8,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r32","part":"lucy/clients/cafe#day-8","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-162","at":1791453600000,"day":8,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a29","run":"lucy-r29","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 8-0","line":"did: draft: a moodboard, note-8-0.md"}}
+{"id":"lucy-163","at":1791453660000,"day":8,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r29","part":"lucy/clients/cafe#day-8","outcome":"done","changed":["note-8-0.md"]}
+{"id":"lucy-164","at":1791455400000,"day":8,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a29","yes":"Keep it"}
+{"id":"lucy-166","at":1791457200000,"day":8,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a30","run":"lucy-r30","need":{"src":"thing","id":"lucy-t8-1","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-167","at":1791457260000,"day":8,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r30","part":"lucy/clients/florist#day-8","outcome":"done","changed":["note-8-1.md"]}
+{"id":"lucy-168","at":1791459000000,"day":8,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a30","yes":"Done"}
+{"id":"lucy-170","at":1791460800000,"day":8,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a31","run":"lucy-r31","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 8-2","line":"did: draft: a reply to the client, note-8-2.md"}}
+{"id":"lucy-171","at":1791460860000,"day":8,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r31","part":"lucy/clients/gym#day-8","outcome":"done","changed":["note-8-2.md"]}
+{"id":"lucy-172","at":1791462600000,"day":8,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a31","yes":"Keep it"}
+{"id":"lucy-174","at":1791464400000,"day":8,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a32","run":"lucy-r32","need":{"src":"thing","id":"lucy-t8-3","read":"you","folder":"lucy/clients/cafe","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-179","at":1791464400000,"day":8,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-175","at":1791464460000,"day":8,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r32","part":"lucy/clients/cafe#day-8","outcome":"done","changed":["note-8-3.md"]}
+{"id":"lucy-176","at":1791466200000,"day":8,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a32","yes":"Done"}
+{"id":"lucy-177","at":1791475200000,"day":8,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p19"}
+{"id":"lucy-178","at":1791475500000,"day":8,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p20"}
+{"id":"lucy-678","at":1791532860000,"day":9,"who":"sol","act":"fit.set","place":"lucy","knob":"life.density","scope":"lucy","take":"roomy","author":"sol","reason":"4 of the last 5 life days read this way","count":4}
+{"id":"lucy-180","at":1791536400000,"day":9,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-181","at":1791538200000,"day":9,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r33","part":"lucy/clients/florist#day-9","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-185","at":1791538260000,"day":9,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r34","part":"lucy/clients/gym#day-9","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-189","at":1791538320000,"day":9,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r35","part":"lucy/clients/cafe#day-9","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-193","at":1791538380000,"day":9,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r36","part":"lucy/clients/florist#day-9","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-182","at":1791540000000,"day":9,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a33","run":"lucy-r33","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 9-0","line":"did: draft: the invoice, note-9-0.md"}}
+{"id":"lucy-183","at":1791540060000,"day":9,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r33","part":"lucy/clients/florist#day-9","outcome":"done","changed":["note-9-0.md"]}
+{"id":"lucy-184","at":1791541800000,"day":9,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a33","yes":"Keep it"}
+{"id":"lucy-186","at":1791543600000,"day":9,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a34","run":"lucy-r34","need":{"src":"thing","id":"lucy-t9-1","read":"you","folder":"lucy/clients/gym","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-187","at":1791543660000,"day":9,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r34","part":"lucy/clients/gym#day-9","outcome":"done","changed":["note-9-1.md"]}
+{"id":"lucy-188","at":1791545400000,"day":9,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a34","yes":"Done"}
+{"id":"lucy-200","at":1791546600000,"day":9,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-190","at":1791547200000,"day":9,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a35","run":"lucy-r35","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 9-2","line":"did: draft: the invoice, note-9-2.md"}}
+{"id":"lucy-191","at":1791547260000,"day":9,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r35","part":"lucy/clients/cafe#day-9","outcome":"done","changed":["note-9-2.md"]}
+{"id":"lucy-201","at":1791548400000,"day":9,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-192","at":1791549000000,"day":9,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a35","yes":"Keep it"}
+{"id":"lucy-194","at":1791550800000,"day":9,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a36","run":"lucy-r36","need":{"src":"thing","id":"lucy-t9-3","read":"you","folder":"lucy/clients/florist","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-202","at":1791550800000,"day":9,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-195","at":1791550860000,"day":9,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r36","part":"lucy/clients/florist#day-9","outcome":"done","changed":["note-9-3.md"]}
+{"id":"lucy-196","at":1791552600000,"day":9,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a36","yes":"Done"}
+{"id":"lucy-203","at":1791554400000,"day":9,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-204","at":1791558000000,"day":9,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-197","at":1791561600000,"day":9,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p21"}
+{"id":"lucy-198","at":1791561900000,"day":9,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p22"}
+{"id":"lucy-199","at":1791562200000,"day":9,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p23"}
+{"id":"lucy-205","at":1791622800000,"day":10,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-206","at":1791624600000,"day":10,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r37","part":"lucy/clients/gym#day-10","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-210","at":1791624660000,"day":10,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r38","part":"lucy/clients/cafe#day-10","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-214","at":1791624720000,"day":10,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r39","part":"lucy/clients/florist#day-10","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-218","at":1791624780000,"day":10,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r40","part":"lucy/clients/gym#day-10","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-207","at":1791626400000,"day":10,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a37","run":"lucy-r37","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 10-0","line":"did: draft: a reply to the client, note-10-0.md"}}
+{"id":"lucy-208","at":1791626460000,"day":10,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r37","part":"lucy/clients/gym#day-10","outcome":"done","changed":["note-10-0.md"]}
+{"id":"lucy-209","at":1791628200000,"day":10,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a37","yes":"Keep it"}
+{"id":"lucy-211","at":1791630000000,"day":10,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a38","run":"lucy-r38","need":{"src":"thing","id":"lucy-t10-1","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-212","at":1791630060000,"day":10,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r38","part":"lucy/clients/cafe#day-10","outcome":"done","changed":["note-10-1.md"]}
+{"id":"lucy-213","at":1791631800000,"day":10,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a38","yes":"Done"}
+{"id":"lucy-224","at":1791633000000,"day":10,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-215","at":1791633600000,"day":10,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a39","run":"lucy-r39","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 10-2","line":"did: draft: the invoice, note-10-2.md"}}
+{"id":"lucy-216","at":1791633660000,"day":10,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r39","part":"lucy/clients/florist#day-10","outcome":"done","changed":["note-10-2.md"]}
+{"id":"lucy-225","at":1791634800000,"day":10,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-217","at":1791635400000,"day":10,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a39","yes":"Keep it"}
+{"id":"lucy-219","at":1791637200000,"day":10,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a40","run":"lucy-r40","need":{"src":"thing","id":"lucy-t10-3","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-226","at":1791637200000,"day":10,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-220","at":1791637260000,"day":10,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r40","part":"lucy/clients/gym#day-10","outcome":"done","changed":["note-10-3.md"]}
+{"id":"lucy-221","at":1791639000000,"day":10,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a40","yes":"Done"}
+{"id":"lucy-222","at":1791648000000,"day":10,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p24"}
+{"id":"lucy-223","at":1791648300000,"day":10,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p25"}
+{"id":"lucy-227","at":1791709200000,"day":11,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-228","at":1791711000000,"day":11,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r41","part":"lucy/clients/cafe#day-11","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-232","at":1791711060000,"day":11,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r42","part":"lucy/clients/florist#day-11","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-236","at":1791711120000,"day":11,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r43","part":"lucy/clients/gym#day-11","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-240","at":1791711180000,"day":11,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r44","part":"lucy/clients/cafe#day-11","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-229","at":1791712800000,"day":11,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a41","run":"lucy-r41","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 11-0","line":"did: draft: the invoice, note-11-0.md"}}
+{"id":"lucy-230","at":1791712860000,"day":11,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r41","part":"lucy/clients/cafe#day-11","outcome":"done","changed":["note-11-0.md"]}
+{"id":"lucy-231","at":1791714600000,"day":11,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a41","yes":"Keep it"}
+{"id":"lucy-233","at":1791716400000,"day":11,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a42","run":"lucy-r42","need":{"src":"thing","id":"lucy-t11-1","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-234","at":1791716460000,"day":11,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r42","part":"lucy/clients/florist#day-11","outcome":"done","changed":["note-11-1.md"]}
+{"id":"lucy-235","at":1791718200000,"day":11,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a42","yes":"Done"}
+{"id":"lucy-237","at":1791720000000,"day":11,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a43","run":"lucy-r43","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 11-2","line":"did: draft: a moodboard, note-11-2.md"}}
+{"id":"lucy-238","at":1791720060000,"day":11,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r43","part":"lucy/clients/gym#day-11","outcome":"done","changed":["note-11-2.md"]}
+{"id":"lucy-239","at":1791721800000,"day":11,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a43","yes":"Keep it"}
+{"id":"lucy-241","at":1791723600000,"day":11,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a44","run":"lucy-r44","need":{"src":"thing","id":"lucy-t11-3","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-247","at":1791723600000,"day":11,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-242","at":1791723660000,"day":11,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r44","part":"lucy/clients/cafe#day-11","outcome":"done","changed":["note-11-3.md"]}
+{"id":"lucy-243","at":1791725400000,"day":11,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a44","yes":"Done"}
+{"id":"lucy-244","at":1791734400000,"day":11,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p26"}
+{"id":"lucy-245","at":1791734700000,"day":11,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p27"}
+{"id":"lucy-246","at":1791735000000,"day":11,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p28"}
+{"id":"lucy-248","at":1791795600000,"day":12,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-249","at":1791797400000,"day":12,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r45","part":"lucy/clients/florist#day-12","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-253","at":1791797460000,"day":12,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r46","part":"lucy/clients/gym#day-12","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-257","at":1791797520000,"day":12,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r47","part":"lucy/clients/cafe#day-12","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-261","at":1791797580000,"day":12,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r48","part":"lucy/clients/florist#day-12","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-250","at":1791799200000,"day":12,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a45","run":"lucy-r45","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 12-0","line":"did: draft: the invoice, note-12-0.md"}}
+{"id":"lucy-251","at":1791799260000,"day":12,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r45","part":"lucy/clients/florist#day-12","outcome":"done","changed":["note-12-0.md"]}
+{"id":"lucy-252","at":1791801000000,"day":12,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a45","yes":"Keep it"}
+{"id":"lucy-254","at":1791802800000,"day":12,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a46","run":"lucy-r46","need":{"src":"thing","id":"lucy-t12-1","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-255","at":1791802860000,"day":12,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r46","part":"lucy/clients/gym#day-12","outcome":"done","changed":["note-12-1.md"]}
+{"id":"lucy-256","at":1791804600000,"day":12,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a46","yes":"Done"}
+{"id":"lucy-267","at":1791805800000,"day":12,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-258","at":1791806400000,"day":12,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a47","run":"lucy-r47","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 12-2","line":"did: draft: a moodboard, note-12-2.md"}}
+{"id":"lucy-259","at":1791806460000,"day":12,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r47","part":"lucy/clients/cafe#day-12","outcome":"done","changed":["note-12-2.md"]}
+{"id":"lucy-268","at":1791807600000,"day":12,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-260","at":1791808200000,"day":12,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a47","yes":"Keep it"}
+{"id":"lucy-262","at":1791810000000,"day":12,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a48","run":"lucy-r48","need":{"src":"thing","id":"lucy-t12-3","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-269","at":1791810000000,"day":12,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-263","at":1791810060000,"day":12,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r48","part":"lucy/clients/florist#day-12","outcome":"done","changed":["note-12-3.md"]}
+{"id":"lucy-264","at":1791811800000,"day":12,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a48","yes":"Done"}
+{"id":"lucy-270","at":1791813600000,"day":12,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-271","at":1791817200000,"day":12,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-265","at":1791820800000,"day":12,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p29"}
+{"id":"lucy-266","at":1791821100000,"day":12,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p30"}
+{"id":"lucy-272","at":1791882000000,"day":13,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-273","at":1791883800000,"day":13,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r49","part":"lucy/clients/gym#day-13","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-277","at":1791883860000,"day":13,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r50","part":"lucy/clients/cafe#day-13","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-281","at":1791883920000,"day":13,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r51","part":"lucy/clients/florist#day-13","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-285","at":1791883980000,"day":13,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r52","part":"lucy/clients/gym#day-13","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-274","at":1791885600000,"day":13,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a49","run":"lucy-r49","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 13-0","line":"did: draft: the invoice, note-13-0.md"}}
+{"id":"lucy-275","at":1791885660000,"day":13,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r49","part":"lucy/clients/gym#day-13","outcome":"done","changed":["note-13-0.md"]}
+{"id":"lucy-276","at":1791887400000,"day":13,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a49","yes":"Keep it"}
+{"id":"lucy-278","at":1791889200000,"day":13,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a50","run":"lucy-r50","need":{"src":"thing","id":"lucy-t13-1","read":"you","folder":"lucy/clients/cafe","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-279","at":1791889260000,"day":13,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r50","part":"lucy/clients/cafe#day-13","outcome":"done","changed":["note-13-1.md"]}
+{"id":"lucy-280","at":1791891000000,"day":13,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a50","yes":"Done"}
+{"id":"lucy-282","at":1791892800000,"day":13,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a51","run":"lucy-r51","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 13-2","line":"did: draft: the invoice, note-13-2.md"}}
+{"id":"lucy-283","at":1791892860000,"day":13,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r51","part":"lucy/clients/florist#day-13","outcome":"done","changed":["note-13-2.md"]}
+{"id":"lucy-284","at":1791894600000,"day":13,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a51","yes":"Keep it"}
+{"id":"lucy-286","at":1791896400000,"day":13,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a52","run":"lucy-r52","need":{"src":"thing","id":"lucy-t13-3","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-292","at":1791896400000,"day":13,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-287","at":1791896460000,"day":13,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r52","part":"lucy/clients/gym#day-13","outcome":"done","changed":["note-13-3.md"]}
+{"id":"lucy-288","at":1791898200000,"day":13,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a52","yes":"Done"}
+{"id":"lucy-289","at":1791907200000,"day":13,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p31"}
+{"id":"lucy-290","at":1791907500000,"day":13,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p32"}
+{"id":"lucy-291","at":1791907800000,"day":13,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p33"}
+{"id":"lucy-293","at":1791968400000,"day":14,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"call back about the brief","via":"pointer"}
+{"id":"lucy-294","at":1791970200000,"day":14,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r53","part":"lucy/clients/cafe#day-14","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-298","at":1791970260000,"day":14,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r54","part":"lucy/clients/florist#day-14","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-302","at":1791970320000,"day":14,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r55","part":"lucy/clients/gym#day-14","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-306","at":1791970380000,"day":14,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r56","part":"lucy/clients/cafe#day-14","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-295","at":1791972000000,"day":14,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a53","run":"lucy-r53","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 14-0","line":"did: draft: the invoice, note-14-0.md"}}
+{"id":"lucy-296","at":1791972060000,"day":14,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r53","part":"lucy/clients/cafe#day-14","outcome":"done","changed":["note-14-0.md"]}
+{"id":"lucy-297","at":1791973800000,"day":14,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a53","yes":"Keep it"}
+{"id":"lucy-299","at":1791975600000,"day":14,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a54","run":"lucy-r54","need":{"src":"thing","id":"lucy-t14-1","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-300","at":1791975660000,"day":14,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r54","part":"lucy/clients/florist#day-14","outcome":"done","changed":["note-14-1.md"]}
+{"id":"lucy-301","at":1791977400000,"day":14,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a54","yes":"Done"}
+{"id":"lucy-312","at":1791978600000,"day":14,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-303","at":1791979200000,"day":14,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a55","run":"lucy-r55","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 14-2","line":"did: draft: a moodboard, note-14-2.md"}}
+{"id":"lucy-304","at":1791979260000,"day":14,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r55","part":"lucy/clients/gym#day-14","outcome":"done","changed":["note-14-2.md"]}
+{"id":"lucy-313","at":1791980400000,"day":14,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-305","at":1791981000000,"day":14,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a55","yes":"Keep it"}
+{"id":"lucy-307","at":1791982800000,"day":14,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a56","run":"lucy-r56","need":{"src":"thing","id":"lucy-t14-3","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-314","at":1791982800000,"day":14,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-308","at":1791982860000,"day":14,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r56","part":"lucy/clients/cafe#day-14","outcome":"done","changed":["note-14-3.md"]}
+{"id":"lucy-309","at":1791984600000,"day":14,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a56","yes":"Done"}
+{"id":"lucy-310","at":1791993600000,"day":14,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p34"}
+{"id":"lucy-311","at":1791993900000,"day":14,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p35"}
+{"id":"lucy-671","at":1792003260000,"day":14,"who":"sol","act":"offer","place":"lucy","offer":"lucy-o2-life","knob":"life.layout","scope":"lucy","take":"fewer tools at hand","mode":"life","structural":true}
+{"id":"lucy-672","at":1792006620000,"day":14,"who":"Lucy","act":"keep","place":"lucy","offer":"lucy-o2-life"}
+{"id":"lucy-315","at":1792054800000,"day":15,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-316","at":1792056600000,"day":15,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r57","part":"lucy/clients/florist#day-15","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-320","at":1792056660000,"day":15,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r58","part":"lucy/clients/gym#day-15","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-324","at":1792056720000,"day":15,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r59","part":"lucy/clients/cafe#day-15","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-328","at":1792056780000,"day":15,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r60","part":"lucy/clients/florist#day-15","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-317","at":1792058400000,"day":15,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a57","run":"lucy-r57","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 15-0","line":"did: draft: the invoice, note-15-0.md"}}
+{"id":"lucy-318","at":1792058460000,"day":15,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r57","part":"lucy/clients/florist#day-15","outcome":"done","changed":["note-15-0.md"]}
+{"id":"lucy-319","at":1792060200000,"day":15,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a57","yes":"Keep it"}
+{"id":"lucy-321","at":1792062000000,"day":15,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a58","run":"lucy-r58","need":{"src":"thing","id":"lucy-t15-1","read":"you","folder":"lucy/clients/gym","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-322","at":1792062060000,"day":15,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r58","part":"lucy/clients/gym#day-15","outcome":"done","changed":["note-15-1.md"]}
+{"id":"lucy-323","at":1792063800000,"day":15,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a58","yes":"Done"}
+{"id":"lucy-335","at":1792065000000,"day":15,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-325","at":1792065600000,"day":15,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a59","run":"lucy-r59","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 15-2","line":"did: draft: a moodboard, note-15-2.md"}}
+{"id":"lucy-326","at":1792065660000,"day":15,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r59","part":"lucy/clients/cafe#day-15","outcome":"done","changed":["note-15-2.md"]}
+{"id":"lucy-336","at":1792066800000,"day":15,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-327","at":1792067400000,"day":15,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a59","yes":"Keep it"}
+{"id":"lucy-329","at":1792069200000,"day":15,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a60","run":"lucy-r60","need":{"src":"thing","id":"lucy-t15-3","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-337","at":1792069200000,"day":15,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-330","at":1792069260000,"day":15,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r60","part":"lucy/clients/florist#day-15","outcome":"done","changed":["note-15-3.md"]}
+{"id":"lucy-331","at":1792071000000,"day":15,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a60","yes":"Done"}
+{"id":"lucy-338","at":1792072800000,"day":15,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-339","at":1792076400000,"day":15,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-332","at":1792080000000,"day":15,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p36"}
+{"id":"lucy-333","at":1792080300000,"day":15,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p37"}
+{"id":"lucy-334","at":1792080600000,"day":15,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p38"}
+{"id":"lucy-679","at":1792137720000,"day":16,"who":"sol","act":"fit.set","place":"lucy","knob":"life.density","scope":"lucy","take":"close","author":"sol","reason":"5 of the last 6 life days read this way","count":5}
+{"id":"lucy-340","at":1792141200000,"day":16,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"logo ideas for the florist","via":"pointer"}
+{"id":"lucy-341","at":1792143000000,"day":16,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r61","part":"lucy/clients/gym#day-16","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-345","at":1792143060000,"day":16,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r62","part":"lucy/clients/cafe#day-16","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-349","at":1792143120000,"day":16,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r63","part":"lucy/clients/florist#day-16","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-353","at":1792143180000,"day":16,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r64","part":"lucy/clients/gym#day-16","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-342","at":1792144800000,"day":16,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a61","run":"lucy-r61","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 16-0","line":"did: draft: a reply to the client, note-16-0.md"}}
+{"id":"lucy-343","at":1792144860000,"day":16,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r61","part":"lucy/clients/gym#day-16","outcome":"done","changed":["note-16-0.md"]}
+{"id":"lucy-344","at":1792146600000,"day":16,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a61","yes":"Keep it"}
+{"id":"lucy-346","at":1792148400000,"day":16,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a62","run":"lucy-r62","need":{"src":"thing","id":"lucy-t16-1","read":"you","folder":"lucy/clients/cafe","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-347","at":1792148460000,"day":16,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r62","part":"lucy/clients/cafe#day-16","outcome":"done","changed":["note-16-1.md"]}
+{"id":"lucy-348","at":1792150200000,"day":16,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a62","yes":"Done"}
+{"id":"lucy-359","at":1792151400000,"day":16,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-350","at":1792152000000,"day":16,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a63","run":"lucy-r63","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 16-2","line":"did: draft: the invoice, note-16-2.md"}}
+{"id":"lucy-351","at":1792152060000,"day":16,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r63","part":"lucy/clients/florist#day-16","outcome":"done","changed":["note-16-2.md"]}
+{"id":"lucy-360","at":1792153200000,"day":16,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-352","at":1792153800000,"day":16,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a63","yes":"Keep it"}
+{"id":"lucy-354","at":1792155600000,"day":16,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a64","run":"lucy-r64","need":{"src":"thing","id":"lucy-t16-3","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-361","at":1792155600000,"day":16,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-355","at":1792155660000,"day":16,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r64","part":"lucy/clients/gym#day-16","outcome":"done","changed":["note-16-3.md"]}
+{"id":"lucy-356","at":1792157400000,"day":16,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a64","yes":"Done"}
+{"id":"lucy-357","at":1792166400000,"day":16,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p39"}
+{"id":"lucy-358","at":1792166700000,"day":16,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p40"}
+{"id":"lucy-362","at":1792227600000,"day":17,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-363","at":1792229400000,"day":17,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r65","part":"lucy/clients/cafe#day-17","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-367","at":1792229460000,"day":17,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r66","part":"lucy/clients/florist#day-17","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-371","at":1792229520000,"day":17,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r67","part":"lucy/clients/gym#day-17","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-375","at":1792229580000,"day":17,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r68","part":"lucy/clients/cafe#day-17","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-364","at":1792231200000,"day":17,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a65","run":"lucy-r65","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 17-0","line":"did: draft: the invoice, note-17-0.md"}}
+{"id":"lucy-365","at":1792231260000,"day":17,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r65","part":"lucy/clients/cafe#day-17","outcome":"done","changed":["note-17-0.md"]}
+{"id":"lucy-366","at":1792233000000,"day":17,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a65","yes":"Keep it"}
+{"id":"lucy-368","at":1792234800000,"day":17,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a66","run":"lucy-r66","need":{"src":"thing","id":"lucy-t17-1","read":"you","folder":"lucy/clients/florist","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-369","at":1792234860000,"day":17,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r66","part":"lucy/clients/florist#day-17","outcome":"done","changed":["note-17-1.md"]}
+{"id":"lucy-370","at":1792236600000,"day":17,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a66","yes":"Done"}
+{"id":"lucy-372","at":1792238400000,"day":17,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a67","run":"lucy-r67","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 17-2","line":"did: draft: a moodboard, note-17-2.md"}}
+{"id":"lucy-373","at":1792238460000,"day":17,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r67","part":"lucy/clients/gym#day-17","outcome":"done","changed":["note-17-2.md"]}
+{"id":"lucy-374","at":1792240200000,"day":17,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a67","yes":"Keep it"}
+{"id":"lucy-376","at":1792242000000,"day":17,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a68","run":"lucy-r68","need":{"src":"thing","id":"lucy-t17-3","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-382","at":1792242000000,"day":17,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-377","at":1792242060000,"day":17,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r68","part":"lucy/clients/cafe#day-17","outcome":"done","changed":["note-17-3.md"]}
+{"id":"lucy-378","at":1792243800000,"day":17,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a68","yes":"Done"}
+{"id":"lucy-379","at":1792252800000,"day":17,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p41"}
+{"id":"lucy-380","at":1792253100000,"day":17,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p42"}
+{"id":"lucy-381","at":1792253400000,"day":17,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p43"}
+{"id":"lucy-383","at":1792314000000,"day":18,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-384","at":1792315800000,"day":18,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r69","part":"lucy/clients/florist#day-18","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-388","at":1792315860000,"day":18,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r70","part":"lucy/clients/gym#day-18","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-392","at":1792315920000,"day":18,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r71","part":"lucy/clients/cafe#day-18","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-396","at":1792315980000,"day":18,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r72","part":"lucy/clients/florist#day-18","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-385","at":1792317600000,"day":18,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a69","run":"lucy-r69","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 18-0","line":"did: draft: the invoice, note-18-0.md"}}
+{"id":"lucy-386","at":1792317660000,"day":18,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r69","part":"lucy/clients/florist#day-18","outcome":"done","changed":["note-18-0.md"]}
+{"id":"lucy-387","at":1792319400000,"day":18,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a69","yes":"Keep it"}
+{"id":"lucy-389","at":1792321200000,"day":18,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a70","run":"lucy-r70","need":{"src":"thing","id":"lucy-t18-1","read":"you","folder":"lucy/clients/gym","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-390","at":1792321260000,"day":18,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r70","part":"lucy/clients/gym#day-18","outcome":"done","changed":["note-18-1.md"]}
+{"id":"lucy-391","at":1792323000000,"day":18,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a70","yes":"Done"}
+{"id":"lucy-393","at":1792324800000,"day":18,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a71","run":"lucy-r71","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 18-2","line":"did: draft: the invoice, note-18-2.md"}}
+{"id":"lucy-394","at":1792324860000,"day":18,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r71","part":"lucy/clients/cafe#day-18","outcome":"done","changed":["note-18-2.md"]}
+{"id":"lucy-395","at":1792326600000,"day":18,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a71","yes":"Keep it"}
+{"id":"lucy-397","at":1792328400000,"day":18,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a72","run":"lucy-r72","need":{"src":"thing","id":"lucy-t18-3","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-402","at":1792328400000,"day":18,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-398","at":1792328460000,"day":18,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r72","part":"lucy/clients/florist#day-18","outcome":"done","changed":["note-18-3.md"]}
+{"id":"lucy-399","at":1792330200000,"day":18,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a72","yes":"Done"}
+{"id":"lucy-403","at":1792332000000,"day":18,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-404","at":1792335600000,"day":18,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-400","at":1792339200000,"day":18,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p44"}
+{"id":"lucy-401","at":1792339500000,"day":18,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p45"}
+{"id":"lucy-405","at":1792400400000,"day":19,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-406","at":1792402200000,"day":19,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r73","part":"lucy/clients/gym#day-19","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-410","at":1792402260000,"day":19,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r74","part":"lucy/clients/cafe#day-19","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-414","at":1792402320000,"day":19,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r75","part":"lucy/clients/florist#day-19","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-418","at":1792402380000,"day":19,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r76","part":"lucy/clients/gym#day-19","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-407","at":1792404000000,"day":19,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a73","run":"lucy-r73","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 19-0","line":"did: draft: a reply to the client, note-19-0.md"}}
+{"id":"lucy-408","at":1792404060000,"day":19,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r73","part":"lucy/clients/gym#day-19","outcome":"done","changed":["note-19-0.md"]}
+{"id":"lucy-409","at":1792405800000,"day":19,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a73","yes":"Keep it"}
+{"id":"lucy-411","at":1792407600000,"day":19,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a74","run":"lucy-r74","need":{"src":"thing","id":"lucy-t19-1","read":"you","folder":"lucy/clients/cafe","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-412","at":1792407660000,"day":19,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r74","part":"lucy/clients/cafe#day-19","outcome":"done","changed":["note-19-1.md"]}
+{"id":"lucy-413","at":1792409400000,"day":19,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a74","yes":"Done"}
+{"id":"lucy-425","at":1792410600000,"day":19,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-415","at":1792411200000,"day":19,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a75","run":"lucy-r75","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 19-2","line":"did: draft: the invoice, note-19-2.md"}}
+{"id":"lucy-416","at":1792411260000,"day":19,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r75","part":"lucy/clients/florist#day-19","outcome":"done","changed":["note-19-2.md"]}
+{"id":"lucy-426","at":1792412400000,"day":19,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-417","at":1792413000000,"day":19,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a75","yes":"Keep it"}
+{"id":"lucy-419","at":1792414800000,"day":19,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a76","run":"lucy-r76","need":{"src":"thing","id":"lucy-t19-3","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-427","at":1792414800000,"day":19,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-420","at":1792414860000,"day":19,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r76","part":"lucy/clients/gym#day-19","outcome":"done","changed":["note-19-3.md"]}
+{"id":"lucy-421","at":1792416600000,"day":19,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a76","yes":"Done"}
+{"id":"lucy-422","at":1792425600000,"day":19,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p46"}
+{"id":"lucy-423","at":1792425900000,"day":19,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p47"}
+{"id":"lucy-424","at":1792426200000,"day":19,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p48"}
+{"id":"lucy-673","at":1792433100000,"day":19,"who":"sol","act":"offer","place":"lucy","offer":"lucy-o3-life","knob":"life.order","scope":"lucy","take":"the last week's tools first","mode":"life","structural":true}
+{"id":"lucy-674","at":1792439100000,"day":19,"who":"Lucy","act":"keep","place":"lucy","offer":"lucy-o3-life"}
+{"id":"lucy-428","at":1792486800000,"day":20,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"call back about the brief","via":"pointer"}
+{"id":"lucy-429","at":1792488600000,"day":20,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r77","part":"lucy/clients/cafe#day-20","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-433","at":1792488660000,"day":20,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r78","part":"lucy/clients/florist#day-20","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-437","at":1792488720000,"day":20,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r79","part":"lucy/clients/gym#day-20","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-441","at":1792488780000,"day":20,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r80","part":"lucy/clients/cafe#day-20","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-430","at":1792490400000,"day":20,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a77","run":"lucy-r77","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 20-0","line":"did: draft: the invoice, note-20-0.md"}}
+{"id":"lucy-431","at":1792490460000,"day":20,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r77","part":"lucy/clients/cafe#day-20","outcome":"done","changed":["note-20-0.md"]}
+{"id":"lucy-432","at":1792492200000,"day":20,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a77","yes":"Keep it"}
+{"id":"lucy-434","at":1792494000000,"day":20,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a78","run":"lucy-r78","need":{"src":"thing","id":"lucy-t20-1","read":"you","folder":"lucy/clients/florist","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-435","at":1792494060000,"day":20,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r78","part":"lucy/clients/florist#day-20","outcome":"done","changed":["note-20-1.md"]}
+{"id":"lucy-436","at":1792495800000,"day":20,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a78","yes":"Done"}
+{"id":"lucy-447","at":1792497000000,"day":20,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-438","at":1792497600000,"day":20,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a79","run":"lucy-r79","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 20-2","line":"did: draft: the invoice, note-20-2.md"}}
+{"id":"lucy-439","at":1792497660000,"day":20,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r79","part":"lucy/clients/gym#day-20","outcome":"done","changed":["note-20-2.md"]}
+{"id":"lucy-448","at":1792498800000,"day":20,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-440","at":1792499400000,"day":20,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a79","yes":"Keep it"}
+{"id":"lucy-442","at":1792501200000,"day":20,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a80","run":"lucy-r80","need":{"src":"thing","id":"lucy-t20-3","read":"you","folder":"lucy/clients/cafe","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-449","at":1792501200000,"day":20,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-443","at":1792501260000,"day":20,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r80","part":"lucy/clients/cafe#day-20","outcome":"done","changed":["note-20-3.md"]}
+{"id":"lucy-444","at":1792503000000,"day":20,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a80","yes":"Done"}
+{"id":"lucy-445","at":1792512000000,"day":20,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p49"}
+{"id":"lucy-446","at":1792512300000,"day":20,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p50"}
+{"id":"lucy-450","at":1792573200000,"day":21,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-451","at":1792575000000,"day":21,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r81","part":"lucy/clients/florist#day-21","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-455","at":1792575060000,"day":21,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r82","part":"lucy/clients/gym#day-21","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-459","at":1792575120000,"day":21,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r83","part":"lucy/clients/cafe#day-21","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-463","at":1792575180000,"day":21,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r84","part":"lucy/clients/florist#day-21","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-452","at":1792576800000,"day":21,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a81","run":"lucy-r81","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 21-0","line":"did: draft: the invoice, note-21-0.md"}}
+{"id":"lucy-453","at":1792576860000,"day":21,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r81","part":"lucy/clients/florist#day-21","outcome":"done","changed":["note-21-0.md"]}
+{"id":"lucy-454","at":1792578600000,"day":21,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a81","yes":"Keep it"}
+{"id":"lucy-456","at":1792580400000,"day":21,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a82","run":"lucy-r82","need":{"src":"thing","id":"lucy-t21-1","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-457","at":1792580460000,"day":21,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r82","part":"lucy/clients/gym#day-21","outcome":"done","changed":["note-21-1.md"]}
+{"id":"lucy-458","at":1792582200000,"day":21,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a82","yes":"Done"}
+{"id":"lucy-470","at":1792583400000,"day":21,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-460","at":1792584000000,"day":21,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a83","run":"lucy-r83","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 21-2","line":"did: draft: a reply to the client, note-21-2.md"}}
+{"id":"lucy-461","at":1792584060000,"day":21,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r83","part":"lucy/clients/cafe#day-21","outcome":"done","changed":["note-21-2.md"]}
+{"id":"lucy-471","at":1792585200000,"day":21,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-462","at":1792585800000,"day":21,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a83","yes":"Keep it"}
+{"id":"lucy-464","at":1792587600000,"day":21,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a84","run":"lucy-r84","need":{"src":"thing","id":"lucy-t21-3","read":"you","folder":"lucy/clients/florist","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-472","at":1792587600000,"day":21,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-465","at":1792587660000,"day":21,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r84","part":"lucy/clients/florist#day-21","outcome":"done","changed":["note-21-3.md"]}
+{"id":"lucy-466","at":1792589400000,"day":21,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a84","yes":"Done"}
+{"id":"lucy-473","at":1792591200000,"day":21,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-474","at":1792594800000,"day":21,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-467","at":1792598400000,"day":21,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p51"}
+{"id":"lucy-468","at":1792598700000,"day":21,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p52"}
+{"id":"lucy-469","at":1792599000000,"day":21,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p53"}
+{"id":"lucy-475","at":1792659600000,"day":22,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"logo ideas for the florist","via":"pointer"}
+{"id":"lucy-476","at":1792661400000,"day":22,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r85","part":"lucy/clients/gym#day-22","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-480","at":1792661460000,"day":22,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r86","part":"lucy/clients/cafe#day-22","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-484","at":1792661520000,"day":22,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r87","part":"lucy/clients/florist#day-22","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-488","at":1792661580000,"day":22,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r88","part":"lucy/clients/gym#day-22","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-477","at":1792663200000,"day":22,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a85","run":"lucy-r85","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 22-0","line":"did: draft: the invoice, note-22-0.md"}}
+{"id":"lucy-478","at":1792663260000,"day":22,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r85","part":"lucy/clients/gym#day-22","outcome":"done","changed":["note-22-0.md"]}
+{"id":"lucy-479","at":1792665000000,"day":22,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a85","yes":"Keep it"}
+{"id":"lucy-481","at":1792666800000,"day":22,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a86","run":"lucy-r86","need":{"src":"thing","id":"lucy-t22-1","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-482","at":1792666860000,"day":22,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r86","part":"lucy/clients/cafe#day-22","outcome":"done","changed":["note-22-1.md"]}
+{"id":"lucy-483","at":1792668600000,"day":22,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a86","yes":"Done"}
+{"id":"lucy-485","at":1792670400000,"day":22,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a87","run":"lucy-r87","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 22-2","line":"did: draft: a reply to the client, note-22-2.md"}}
+{"id":"lucy-486","at":1792670460000,"day":22,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r87","part":"lucy/clients/florist#day-22","outcome":"done","changed":["note-22-2.md"]}
+{"id":"lucy-487","at":1792672200000,"day":22,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a87","yes":"Keep it"}
+{"id":"lucy-489","at":1792674000000,"day":22,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a88","run":"lucy-r88","need":{"src":"thing","id":"lucy-t22-3","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-494","at":1792674000000,"day":22,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-490","at":1792674060000,"day":22,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r88","part":"lucy/clients/gym#day-22","outcome":"done","changed":["note-22-3.md"]}
+{"id":"lucy-491","at":1792675800000,"day":22,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a88","yes":"Done"}
+{"id":"lucy-492","at":1792684800000,"day":22,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p54"}
+{"id":"lucy-493","at":1792685100000,"day":22,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p55"}
+{"id":"lucy-680","at":1792742580000,"day":23,"who":"sol","act":"fit.set","place":"lucy","knob":"life.density","scope":"lucy","take":"roomy","author":"sol","reason":"6 of the last 7 life days read this way","count":6}
+{"id":"lucy-495","at":1792746000000,"day":23,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"call back about the brief","via":"pointer"}
+{"id":"lucy-496","at":1792747800000,"day":23,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r89","part":"lucy/clients/cafe#day-23","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-500","at":1792747860000,"day":23,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r90","part":"lucy/clients/florist#day-23","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-504","at":1792747920000,"day":23,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r91","part":"lucy/clients/gym#day-23","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-508","at":1792747980000,"day":23,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r92","part":"lucy/clients/cafe#day-23","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-497","at":1792749600000,"day":23,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a89","run":"lucy-r89","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 23-0","line":"did: draft: a reply to the client, note-23-0.md"}}
+{"id":"lucy-498","at":1792749660000,"day":23,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r89","part":"lucy/clients/cafe#day-23","outcome":"done","changed":["note-23-0.md"]}
+{"id":"lucy-499","at":1792751400000,"day":23,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a89","yes":"Keep it"}
+{"id":"lucy-501","at":1792753200000,"day":23,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a90","run":"lucy-r90","need":{"src":"thing","id":"lucy-t23-1","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-502","at":1792753260000,"day":23,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r90","part":"lucy/clients/florist#day-23","outcome":"done","changed":["note-23-1.md"]}
+{"id":"lucy-503","at":1792755000000,"day":23,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a90","yes":"Done"}
+{"id":"lucy-505","at":1792756800000,"day":23,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a91","run":"lucy-r91","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 23-2","line":"did: draft: a moodboard, note-23-2.md"}}
+{"id":"lucy-506","at":1792756860000,"day":23,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r91","part":"lucy/clients/gym#day-23","outcome":"done","changed":["note-23-2.md"]}
+{"id":"lucy-507","at":1792758600000,"day":23,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a91","yes":"Keep it"}
+{"id":"lucy-509","at":1792760400000,"day":23,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a92","run":"lucy-r92","need":{"src":"thing","id":"lucy-t23-3","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-515","at":1792760400000,"day":23,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-510","at":1792760460000,"day":23,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r92","part":"lucy/clients/cafe#day-23","outcome":"done","changed":["note-23-3.md"]}
+{"id":"lucy-511","at":1792762200000,"day":23,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a92","yes":"Done"}
+{"id":"lucy-512","at":1792771200000,"day":23,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p56"}
+{"id":"lucy-513","at":1792771500000,"day":23,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p57"}
+{"id":"lucy-514","at":1792771800000,"day":23,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p58"}
+{"id":"lucy-516","at":1792832400000,"day":24,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-517","at":1792834200000,"day":24,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r93","part":"lucy/clients/florist#day-24","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-521","at":1792834260000,"day":24,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r94","part":"lucy/clients/gym#day-24","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-525","at":1792834320000,"day":24,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r95","part":"lucy/clients/cafe#day-24","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-529","at":1792834380000,"day":24,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r96","part":"lucy/clients/florist#day-24","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-518","at":1792836000000,"day":24,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a93","run":"lucy-r93","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 24-0","line":"did: draft: a reply to the client, note-24-0.md"}}
+{"id":"lucy-519","at":1792836060000,"day":24,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r93","part":"lucy/clients/florist#day-24","outcome":"done","changed":["note-24-0.md"]}
+{"id":"lucy-520","at":1792837800000,"day":24,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a93","yes":"Keep it"}
+{"id":"lucy-522","at":1792839600000,"day":24,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a94","run":"lucy-r94","need":{"src":"thing","id":"lucy-t24-1","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-523","at":1792839660000,"day":24,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r94","part":"lucy/clients/gym#day-24","outcome":"done","changed":["note-24-1.md"]}
+{"id":"lucy-524","at":1792841400000,"day":24,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a94","yes":"Done"}
+{"id":"lucy-526","at":1792843200000,"day":24,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a95","run":"lucy-r95","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 24-2","line":"did: draft: the invoice, note-24-2.md"}}
+{"id":"lucy-527","at":1792843260000,"day":24,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r95","part":"lucy/clients/cafe#day-24","outcome":"done","changed":["note-24-2.md"]}
+{"id":"lucy-528","at":1792845000000,"day":24,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a95","yes":"Keep it"}
+{"id":"lucy-530","at":1792846800000,"day":24,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a96","run":"lucy-r96","need":{"src":"thing","id":"lucy-t24-3","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-535","at":1792846800000,"day":24,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-531","at":1792846860000,"day":24,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r96","part":"lucy/clients/florist#day-24","outcome":"done","changed":["note-24-3.md"]}
+{"id":"lucy-532","at":1792848600000,"day":24,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a96","yes":"Done"}
+{"id":"lucy-536","at":1792850400000,"day":24,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-537","at":1792854000000,"day":24,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-533","at":1792857600000,"day":24,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p59"}
+{"id":"lucy-534","at":1792857900000,"day":24,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p60"}
+{"id":"lucy-538","at":1792918800000,"day":25,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"logo ideas for the florist","via":"pointer"}
+{"id":"lucy-539","at":1792920600000,"day":25,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r97","part":"lucy/clients/gym#day-25","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-543","at":1792920660000,"day":25,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r98","part":"lucy/clients/cafe#day-25","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-547","at":1792920720000,"day":25,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r99","part":"lucy/clients/florist#day-25","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-551","at":1792920780000,"day":25,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r100","part":"lucy/clients/gym#day-25","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-540","at":1792922400000,"day":25,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a97","run":"lucy-r97","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 25-0","line":"did: draft: a reply to the client, note-25-0.md"}}
+{"id":"lucy-541","at":1792922460000,"day":25,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r97","part":"lucy/clients/gym#day-25","outcome":"done","changed":["note-25-0.md"]}
+{"id":"lucy-542","at":1792924200000,"day":25,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a97","yes":"Keep it"}
+{"id":"lucy-544","at":1792926000000,"day":25,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a98","run":"lucy-r98","need":{"src":"thing","id":"lucy-t25-1","read":"you","folder":"lucy/clients/cafe","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-545","at":1792926060000,"day":25,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r98","part":"lucy/clients/cafe#day-25","outcome":"done","changed":["note-25-1.md"]}
+{"id":"lucy-546","at":1792927800000,"day":25,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a98","yes":"Done"}
+{"id":"lucy-548","at":1792929600000,"day":25,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a99","run":"lucy-r99","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 25-2","line":"did: draft: the invoice, note-25-2.md"}}
+{"id":"lucy-549","at":1792929660000,"day":25,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r99","part":"lucy/clients/florist#day-25","outcome":"done","changed":["note-25-2.md"]}
+{"id":"lucy-550","at":1792931400000,"day":25,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a99","yes":"Keep it"}
+{"id":"lucy-552","at":1792933200000,"day":25,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a100","run":"lucy-r100","need":{"src":"thing","id":"lucy-t25-3","read":"you","folder":"lucy/clients/gym","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-558","at":1792933200000,"day":25,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-553","at":1792933260000,"day":25,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r100","part":"lucy/clients/gym#day-25","outcome":"done","changed":["note-25-3.md"]}
+{"id":"lucy-554","at":1792935000000,"day":25,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a100","yes":"Done"}
+{"id":"lucy-555","at":1792944000000,"day":25,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p61"}
+{"id":"lucy-556","at":1792944300000,"day":25,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p62"}
+{"id":"lucy-557","at":1792944600000,"day":25,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p63"}
+{"id":"lucy-559","at":1793005200000,"day":26,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"call back about the brief","via":"pointer"}
+{"id":"lucy-560","at":1793007000000,"day":26,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r101","part":"lucy/clients/cafe#day-26","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-564","at":1793007060000,"day":26,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r102","part":"lucy/clients/florist#day-26","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-568","at":1793007120000,"day":26,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r103","part":"lucy/clients/gym#day-26","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-572","at":1793007180000,"day":26,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r104","part":"lucy/clients/cafe#day-26","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-561","at":1793008800000,"day":26,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a101","run":"lucy-r101","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 26-0","line":"did: draft: a moodboard, note-26-0.md"}}
+{"id":"lucy-562","at":1793008860000,"day":26,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r101","part":"lucy/clients/cafe#day-26","outcome":"done","changed":["note-26-0.md"]}
+{"id":"lucy-563","at":1793010600000,"day":26,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a101","yes":"Keep it"}
+{"id":"lucy-565","at":1793012400000,"day":26,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a102","run":"lucy-r102","need":{"src":"thing","id":"lucy-t26-1","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-566","at":1793012460000,"day":26,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r102","part":"lucy/clients/florist#day-26","outcome":"done","changed":["note-26-1.md"]}
+{"id":"lucy-567","at":1793014200000,"day":26,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a102","yes":"Done"}
+{"id":"lucy-578","at":1793015400000,"day":26,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-569","at":1793016000000,"day":26,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a103","run":"lucy-r103","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 26-2","line":"did: draft: a reply to the client, note-26-2.md"}}
+{"id":"lucy-570","at":1793016060000,"day":26,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r103","part":"lucy/clients/gym#day-26","outcome":"done","changed":["note-26-2.md"]}
+{"id":"lucy-579","at":1793017200000,"day":26,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-571","at":1793017800000,"day":26,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a103","yes":"Keep it"}
+{"id":"lucy-573","at":1793019600000,"day":26,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a104","run":"lucy-r104","need":{"src":"thing","id":"lucy-t26-3","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-580","at":1793019600000,"day":26,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-574","at":1793019660000,"day":26,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r104","part":"lucy/clients/cafe#day-26","outcome":"done","changed":["note-26-3.md"]}
+{"id":"lucy-575","at":1793021400000,"day":26,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a104","yes":"Done"}
+{"id":"lucy-576","at":1793030400000,"day":26,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p64"}
+{"id":"lucy-577","at":1793030700000,"day":26,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p65"}
+{"id":"lucy-581","at":1793091600000,"day":27,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-582","at":1793093400000,"day":27,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r105","part":"lucy/clients/florist#day-27","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-586","at":1793093460000,"day":27,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r106","part":"lucy/clients/gym#day-27","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-590","at":1793093520000,"day":27,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r107","part":"lucy/clients/cafe#day-27","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-594","at":1793093580000,"day":27,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r108","part":"lucy/clients/florist#day-27","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-583","at":1793095200000,"day":27,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a105","run":"lucy-r105","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 27-0","line":"did: draft: the invoice, note-27-0.md"}}
+{"id":"lucy-584","at":1793095260000,"day":27,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r105","part":"lucy/clients/florist#day-27","outcome":"done","changed":["note-27-0.md"]}
+{"id":"lucy-585","at":1793097000000,"day":27,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a105","yes":"Keep it"}
+{"id":"lucy-587","at":1793098800000,"day":27,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a106","run":"lucy-r106","need":{"src":"thing","id":"lucy-t27-1","read":"you","folder":"lucy/clients/gym","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-588","at":1793098860000,"day":27,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r106","part":"lucy/clients/gym#day-27","outcome":"done","changed":["note-27-1.md"]}
+{"id":"lucy-589","at":1793100600000,"day":27,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a106","yes":"Done"}
+{"id":"lucy-601","at":1793101800000,"day":27,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-591","at":1793102400000,"day":27,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a107","run":"lucy-r107","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 27-2","line":"did: draft: a reply to the client, note-27-2.md"}}
+{"id":"lucy-592","at":1793102460000,"day":27,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r107","part":"lucy/clients/cafe#day-27","outcome":"done","changed":["note-27-2.md"]}
+{"id":"lucy-602","at":1793103600000,"day":27,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-593","at":1793104200000,"day":27,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a107","yes":"Keep it"}
+{"id":"lucy-595","at":1793106000000,"day":27,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a108","run":"lucy-r108","need":{"src":"thing","id":"lucy-t27-3","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-603","at":1793106000000,"day":27,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-596","at":1793106060000,"day":27,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r108","part":"lucy/clients/florist#day-27","outcome":"done","changed":["note-27-3.md"]}
+{"id":"lucy-597","at":1793107800000,"day":27,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a108","yes":"Done"}
+{"id":"lucy-604","at":1793109600000,"day":27,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-605","at":1793113200000,"day":27,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-598","at":1793116800000,"day":27,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p66"}
+{"id":"lucy-599","at":1793117100000,"day":27,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p67"}
+{"id":"lucy-600","at":1793117400000,"day":27,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p68"}
+{"id":"lucy-675","at":1793126160000,"day":27,"who":"sol","act":"offer","place":"lucy","offer":"lucy-o4-life","knob":"life.start","scope":"lucy","take":"the last week's tools first","mode":"life","structural":true}
+{"id":"lucy-676","at":1793129760000,"day":27,"who":"Lucy","act":"notnow","place":"lucy","offer":"lucy-o4-life"}
+{"id":"lucy-606","at":1793178000000,"day":28,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"invoice the gym","via":"pointer"}
+{"id":"lucy-607","at":1793179800000,"day":28,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r109","part":"lucy/clients/gym#day-28","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-611","at":1793179860000,"day":28,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r110","part":"lucy/clients/cafe#day-28","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-615","at":1793179920000,"day":28,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r111","part":"lucy/clients/florist#day-28","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-619","at":1793179980000,"day":28,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r112","part":"lucy/clients/gym#day-28","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-608","at":1793181600000,"day":28,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a109","run":"lucy-r109","blocking":true,"need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 28-0","line":"did: draft: a moodboard, note-28-0.md"}}
+{"id":"lucy-609","at":1793181660000,"day":28,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r109","part":"lucy/clients/gym#day-28","outcome":"done","changed":["note-28-0.md"]}
+{"id":"lucy-610","at":1793183400000,"day":28,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a109","yes":"Keep it"}
+{"id":"lucy-612","at":1793185200000,"day":28,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a110","run":"lucy-r110","need":{"src":"thing","id":"lucy-t28-1","read":"you","folder":"lucy/clients/cafe","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-613","at":1793185260000,"day":28,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r110","part":"lucy/clients/cafe#day-28","outcome":"done","changed":["note-28-1.md"]}
+{"id":"lucy-614","at":1793187000000,"day":28,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a110","yes":"Done"}
+{"id":"lucy-625","at":1793188200000,"day":28,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-616","at":1793188800000,"day":28,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a111","run":"lucy-r111","need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 28-2","line":"did: draft: the invoice, note-28-2.md"}}
+{"id":"lucy-617","at":1793188860000,"day":28,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r111","part":"lucy/clients/florist#day-28","outcome":"done","changed":["note-28-2.md"]}
+{"id":"lucy-626","at":1793190000000,"day":28,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-618","at":1793190600000,"day":28,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a111","yes":"Keep it"}
+{"id":"lucy-620","at":1793192400000,"day":28,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a112","run":"lucy-r112","need":{"src":"thing","id":"lucy-t28-3","read":"you","folder":"lucy/clients/gym","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-627","at":1793192400000,"day":28,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-621","at":1793192460000,"day":28,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r112","part":"lucy/clients/gym#day-28","outcome":"done","changed":["note-28-3.md"]}
+{"id":"lucy-622","at":1793194200000,"day":28,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a112","yes":"Done"}
+{"id":"lucy-623","at":1793203200000,"day":28,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p69"}
+{"id":"lucy-624","at":1793203500000,"day":28,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p70"}
+{"id":"lucy-628","at":1793264400000,"day":29,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"call back about the brief","via":"pointer"}
+{"id":"lucy-629","at":1793266200000,"day":29,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r113","part":"lucy/clients/cafe#day-29","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-633","at":1793266260000,"day":29,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r114","part":"lucy/clients/florist#day-29","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-637","at":1793266320000,"day":29,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r115","part":"lucy/clients/gym#day-29","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-641","at":1793266380000,"day":29,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r116","part":"lucy/clients/cafe#day-29","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-630","at":1793268000000,"day":29,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a113","run":"lucy-r113","blocking":true,"need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 29-0","line":"did: draft: a reply to the client, note-29-0.md"}}
+{"id":"lucy-631","at":1793268060000,"day":29,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r113","part":"lucy/clients/cafe#day-29","outcome":"done","changed":["note-29-0.md"]}
+{"id":"lucy-632","at":1793269800000,"day":29,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a113","yes":"Keep it"}
+{"id":"lucy-634","at":1793271600000,"day":29,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a114","run":"lucy-r114","need":{"src":"thing","id":"lucy-t29-1","read":"you","folder":"lucy/clients/florist","words":"Say yes to the brief","state":"asks","waitsOn":"you"}}
+{"id":"lucy-635","at":1793271660000,"day":29,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r114","part":"lucy/clients/florist#day-29","outcome":"done","changed":["note-29-1.md"]}
+{"id":"lucy-636","at":1793273400000,"day":29,"who":"Lucy","act":"answer","place":"lucy/clients/florist","ask":"lucy-a114","yes":"Done"}
+{"id":"lucy-648","at":1793274600000,"day":29,"who":"Lucy","act":"interrupt","place":"lucy"}
+{"id":"lucy-638","at":1793275200000,"day":29,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a115","run":"lucy-r115","need":{"src":"draft","folder":"lucy/clients/gym","sticky":"Note 29-2","line":"did: draft: a reply to the client, note-29-2.md"}}
+{"id":"lucy-639","at":1793275260000,"day":29,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r115","part":"lucy/clients/gym#day-29","outcome":"done","changed":["note-29-2.md"]}
+{"id":"lucy-649","at":1793276400000,"day":29,"who":"Lucy","act":"back","place":"lucy"}
+{"id":"lucy-640","at":1793277000000,"day":29,"who":"Lucy","act":"answer","place":"lucy/clients/gym","ask":"lucy-a115","yes":"Keep it"}
+{"id":"lucy-642","at":1793278800000,"day":29,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a116","run":"lucy-r116","need":{"src":"thing","id":"lucy-t29-3","read":"you","folder":"lucy/clients/cafe","words":"Choose the cafe's colours","state":"asks","waitsOn":"you"}}
+{"id":"lucy-650","at":1793278800000,"day":29,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-643","at":1793278860000,"day":29,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r116","part":"lucy/clients/cafe#day-29","outcome":"done","changed":["note-29-3.md"]}
+{"id":"lucy-644","at":1793280600000,"day":29,"who":"Lucy","act":"answer","place":"lucy/clients/cafe","ask":"lucy-a116","yes":"Done"}
+{"id":"lucy-645","at":1793289600000,"day":29,"who":"Lucy","act":"done","place":"lucy/clients/cafe","piece":"lucy-p71"}
+{"id":"lucy-646","at":1793289900000,"day":29,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p72"}
+{"id":"lucy-647","at":1793290200000,"day":29,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p73"}
+{"id":"lucy-651","at":1793350800000,"day":30,"who":"Lucy","act":"say","place":"lucy/thoughts","words":"colours for the cafe","via":"pointer"}
+{"id":"lucy-652","at":1793352600000,"day":30,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r117","part":"lucy/clients/florist#day-30","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-655","at":1793352660000,"day":30,"who":"ai:claude","act":"run.start","place":"lucy/clients/gym","run":"lucy-r118","part":"lucy/clients/gym#day-30","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-658","at":1793352720000,"day":30,"who":"ai:claude","act":"run.start","place":"lucy/clients/cafe","run":"lucy-r119","part":"lucy/clients/cafe#day-30","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":true}
+{"id":"lucy-661","at":1793352780000,"day":30,"who":"ai:claude","act":"run.start","place":"lucy/clients/florist","run":"lucy-r120","part":"lucy/clients/florist#day-30","seat":"claude","model":"sonnet","machine":"here","likelyToAsk":false}
+{"id":"lucy-653","at":1793354400000,"day":30,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a117","run":"lucy-r117","blocking":true,"need":{"src":"draft","folder":"lucy/clients/florist","sticky":"Note 30-0","line":"did: draft: the invoice, note-30-0.md"}}
+{"id":"lucy-654","at":1793354460000,"day":30,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r117","part":"lucy/clients/florist#day-30","outcome":"done","changed":["note-30-0.md"]}
+{"id":"lucy-656","at":1793358000000,"day":30,"who":"ai:claude","act":"ask","place":"lucy/clients/gym","ask":"lucy-a118","run":"lucy-r118","need":{"src":"thing","id":"lucy-t30-1","read":"you","folder":"lucy/clients/gym","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-657","at":1793358060000,"day":30,"who":"ai:claude","act":"run.end","place":"lucy/clients/gym","run":"lucy-r118","part":"lucy/clients/gym#day-30","outcome":"done","changed":["note-30-1.md"]}
+{"id":"lucy-659","at":1793361600000,"day":30,"who":"ai:claude","act":"ask","place":"lucy/clients/cafe","ask":"lucy-a119","run":"lucy-r119","need":{"src":"draft","folder":"lucy/clients/cafe","sticky":"Note 30-2","line":"did: draft: a reply to the client, note-30-2.md"}}
+{"id":"lucy-660","at":1793361660000,"day":30,"who":"ai:claude","act":"run.end","place":"lucy/clients/cafe","run":"lucy-r119","part":"lucy/clients/cafe#day-30","outcome":"done","changed":["note-30-2.md"]}
+{"id":"lucy-662","at":1793365200000,"day":30,"who":"ai:claude","act":"ask","place":"lucy/clients/florist","ask":"lucy-a120","run":"lucy-r120","need":{"src":"thing","id":"lucy-t30-3","read":"you","folder":"lucy/clients/florist","words":"Pick one of three logo sketches","state":"asks","waitsOn":"you"}}
+{"id":"lucy-666","at":1793365200000,"day":30,"who":"Lucy","act":"pause","place":"lucy"}
+{"id":"lucy-663","at":1793365260000,"day":30,"who":"ai:claude","act":"run.end","place":"lucy/clients/florist","run":"lucy-r120","part":"lucy/clients/florist#day-30","outcome":"done","changed":["note-30-3.md"]}
+{"id":"lucy-667","at":1793368800000,"day":30,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"everything","author":"person","via":"pointer"}
+{"id":"lucy-668","at":1793372400000,"day":30,"who":"Lucy","act":"fit.set","place":"lucy","knob":"attention","scope":"lucy","take":"only what needs me today","author":"person","via":"pointer"}
+{"id":"lucy-664","at":1793376000000,"day":30,"who":"Lucy","act":"done","place":"lucy/clients/florist","piece":"lucy-p74"}
+{"id":"lucy-665","at":1793376300000,"day":30,"who":"Lucy","act":"done","place":"lucy/clients/gym","piece":"lucy-p75"}
+{"end":"month","acts":680,"open":["lucy-a117","lucy-a118","lucy-a119","lucy-a120"],"order":["lucy/clients/gym","lucy/clients/florist","lucy/clients/cafe","lucy","lucy/thoughts"]}

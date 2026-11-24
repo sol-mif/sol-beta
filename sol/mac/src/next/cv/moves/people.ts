@@ -1,13 +1,13 @@
 // owned by slices 8+9 (Cowork v2 and Social v2, the people), docs/port/slices.md "Night 2, outlined"
 // The people's 13 moves (merge/people.js, P5), each named after its function (FN in people/queue.ts), merged into M by
-// moves/index.ts. Live, Social's moves answer { ok: false, why: "not yet" }: its friends, shares, grants and links are
-// not in the engine yet. ⌘J walks the canvas's asks first, then the people's (P3): M.next is slice 2's, so the walk wraps
+// moves/index.ts. Live, Social's moves run on Isaac's Social (#1072's model, cv/wire/social.ts, BR1) and answer
+// { ok: false, why: "not yet" } only before that wire is attached. ⌘J walks the canvas's asks first, then the people's (P3): M.next is slice 2's, so the walk wraps
 // it once the store is filled (ensureWalk; docs/port/requests/people.md asks the join for a proper seam).
 // Signed: marcocyl04-ux's agent, port slice 8+9 (#1615).
 import { M, MODE, S, above, done, hooks, notYet, open, render, type Done, type Moves } from "../core.ts";
 import { EXTRA, extOpen, register } from "../../people/extra.ts";
 import { COWORK, SOCIAL } from "../../people/data.ts";
-import { FN, SOCIAL_MOVES, answer, cardsAll, circle, count, diaryLines, find, isMaker, items, pagesOf, sortedGroups, st, team, use, waitsAll, PEOPLE, pk, parg, onPeople, needsCount } from "../../people/queue.ts";
+import { FN, SOCIAL_MOVES, live, answer, cardsAll, circle, count, diaryLines, find, isMaker, items, pagesOf, sortedGroups, st, team, use, waitsAll, PEOPLE, pk, parg, onPeople, needsCount, notHere } from "../../people/queue.ts";
 
 const page = (p: string, arg?: string | null): Done => M.page(arg != null ? `${p}:${arg}` : p);
 const groupOf = (gid?: string) => team().groups.find((g) => g.id === gid);
@@ -17,19 +17,21 @@ const own: Moves = {
   open_group(gid?: string) { const g = groupOf(gid) || sortedGroups(team())[0]; return g ? page("group", g.id) : done(false); },
   answer_wait: (id: string, said?: string) => done(answer(id, said), id),
   first_time(gid?: string) { const g = groupOf(gid) || team().groups[0]; return g ? page("first", g.id) : done(false); },
-  /** drawn as people.html draws it: no engine behind it, it leaves nothing (a known gap, carried) */
-  leave_group(gid?: string) { const g = groupOf(gid); if (g) hooks.flash?.("You left. Your place stays empty; the link brings you back."); return done(false, g?.id); },
+  /** drawn as people.html draws it: no engine behind it, it leaves nothing (a known gap, carried); live it says so */
+  leave_group(gid?: string) { const g = groupOf(gid); if (g) hooks.flash?.(MODE === "live" ? notHere("Leave") : "You left. Your place stays empty; the link brings you back."); return done(false, g?.id); },
   see_social: () => page("social"),
   open_friend(name?: string) { const fs = circle().friends, f = fs.find((x) => x.n === name) || fs.find((x) => !x.waiting); return f ? page("friend", f.n) : done(false); },
   see_as_friend: (name?: string) => page("asfriend", name || ""),
   make_link: () => page("link"),
   pick_face(n?: number | string) {
     const b = st(), was = { face: b.face, faced: b.faced };
-    b.face = +(n ?? 0) || 0; b.faced = true; render();
-    return done(true, String(b.face), () => { Object.assign(b, was); render(); });
+    b.face = +(n ?? 0) || 0; b.faced = true; live.social?.face(b.face); render();   // live: kept as #1072's jelly
+    return done(true, String(b.face), () => { Object.assign(b, was); live.social?.face(was.face); render(); });
   },
   answer_card: (id: string, said?: string) => done(answer(id, said), id),
   make_close(name: string) {
+    // live, #1072's own circle holds it (close or friend); the fixture keeps it in the book
+    if (live.social) { const flip = () => { live.social?.close(name); render(); }; flip(); return done(true, name, flip); }
     const b = st(), flip = () => { if (b.close.has(name)) b.close.delete(name); else b.close.add(name); render(); };
     flip(); return done(true, name, flip);
   },
@@ -48,9 +50,9 @@ const own: Moves = {
   },
 };
 
-/** live, Social's moves answer "not yet"; the fixture runs them all */
+/** live, Social's moves answer "not yet" until its wire is attached (cv/wire/social.ts, #1072's model); the fixture runs them all */
 const moves: Moves = {};
-for (const [name, f] of Object.entries(own)) moves[name] = (...a: unknown[]) => (MODE === "live" && SOCIAL_MOVES.has(name) ? notYet() : f(...a));
+for (const [name, f] of Object.entries(own)) moves[name] = (...a: unknown[]) => (MODE === "live" && SOCIAL_MOVES.has(name) && !live.social ? notYet() : f(...a));
 export default moves;
 
 // ---------------------------------------------------------------- ⌘J: one order (P3)

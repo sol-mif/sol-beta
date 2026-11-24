@@ -218,7 +218,7 @@ sol_install() {
   # ---- 8. setup: packages, the skill, your keys, the engine ----
   if [ -n "$check" ]; then miss "would run bash sol/setup in $(tilde "$DIR") (packages, the sol skill, your keys, the engine's job)"
   else
-    say "bash sol/setup (a few minutes: packages, the engine built and tested, its job)"
+    say "bash sol/setup (a few minutes: packages, the engine built, its job)"
     noface=""; [ -n "$mac" ] && noface="--no-face"   # the Mac's face is the app; on Linux the face is Vite in the browser
     job="--launchd"; [ -n "${SOL_PORT:-}" ] && job=""    # a spare engine for a test: no job (setup's own rule)
     SOL_OWNER="$name" GEMINI_API_KEY="$gemini" ELEVENLABS_API_KEY="$eleven" bash "$DIR/sol/setup" $noface $job </dev/null

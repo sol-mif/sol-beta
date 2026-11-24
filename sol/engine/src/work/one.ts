@@ -50,7 +50,7 @@ export type RunLike = { /** the folder it runs in (a side copy when the engine m
   /** promoted or demoted mid-turn: closed and told when the turn ends (one.ts reopen) */ reopenAfter?: boolean };
 export type SessionLike = { id: string; title: string; cwd: string; project?: string; updatedAt: number; archived?: boolean; done?: boolean; parent?: string; under?: string; failed?: boolean; machine?: unknown; gone?: boolean; branch?: string };
 export type OneDeps = {
-  say: (sessionId: string, text: string, fresh?: { cwd: string }, how?: { free?: Free }) => Promise<void>;
+  say: (sessionId: string, text: string, fresh?: { cwd: string }, how?: { free?: Free; model?: string; mode?: "bypassPermissions"; effort?: string }) => Promise<void>;   // mode, model, effort: the canvas bar's session (#1615), opus-5-5 low, nothing refused
   run: (id: string) => RunLike | undefined;
   sessions: () => Promise<SessionLike[]>;
   lastWords: (id: string) => Promise<string>;
@@ -70,6 +70,8 @@ export type OneDeps = {
 };
 let deps: OneDeps | null = null;
 export const setOneDeps = (d: OneDeps) => { deps = d; };
+/** the sessions' hands as wired, for another part that runs sessions the same way (parts/next-work.ts); null before */
+export const sessionHands = (): OneDeps | null => deps;
 const need = () => { if (!deps) throw new Error("orchestration is not wired yet"); return deps; };
 
 /** a session an orchestration session started, working on its own ("changes files on its own"), may change its own

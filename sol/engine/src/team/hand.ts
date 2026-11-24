@@ -16,6 +16,7 @@
 // starts a Work session there with the brief, marked cowork; Pass writes **passed** with the line, gives the issue back
 // to the sender and tells them; Later writes nothing and the hand stays "handed to you" under its repo. What is
 // "handed to you" is read from the record (the issue's last hand line names me), plus what the relay said since.
+import { takesItself } from "./tablelevel.js";   // a table's level takes a hand on its own (#1541)
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Item } from "../work/items.js";
@@ -169,8 +170,23 @@ export type Hand = {
   folders: () => Promise<Record<string, string>>;                 // which folder on this machine holds each team repo
   repos: () => string[];
   cards: () => Promise<{ repo: string; number: number; title: string }[]>;   // the board's cards, for the titles
-  start: (a: { repo: string; cwd: string; issue: number; title: string; text: string }) => Promise<string>;   // a cowork session; its id
+  start: (a: { repo: string; cwd: string; issue: number; title: string; text: string; auto?: true }) => Promise<string>;   // a cowork session; its id. auto: taken with nobody pressing (#1541)
+  /** the level of the table that keeps `repo` (#1541, tablelevel.ts): at "tells" or "does" a hand to me there is taken by
+   *  my AI on its own. Absent: every hand waits for the person, as before */
+  levelOf?: (repo: string) => string | undefined;
+  /** whether `login` is, right now, a member of the table that keeps `repo` (#1654 review): the table's own list read
+   *  fresh, false on any doubt (another table, no list, a read that failed). Absent: nobody is, and no hand is taken */
+  trusted?: (login: string, repo: string) => Promise<boolean>;
 };
+
+/** a hand my AI may take with nobody pressing (#1654 review): the login the hub stamped (never `by`, never a word with
+ *  none), the same one the word is read as from, not one that says it is an AI, and a member of the table now */
+export async function sentByMember(d: Pick<Hand, "trusted">, m: Record<string, unknown>, w: { from: string; repo: string }): Promise<boolean> {
+  const f = m.from as { login?: unknown; agent?: unknown } | undefined;
+  const login = typeof f?.login === "string" ? f.login : "";
+  if (!LOGIN.test(login) || login.toLowerCase() !== w.from.toLowerCase() || f?.agent === true || !d.trusted) return false;
+  try { return (await d.trusted(login, w.repo)) === true; } catch { return false; }
+}
 
 export type HandAsk = { repo?: unknown; issue?: unknown; pr?: unknown; sessionId?: unknown; to?: unknown; brief?: unknown; branch?: unknown; review?: unknown };
 export type Handing = { ok: true; issue: number; recorded: string; relayed: boolean; note?: string } | { ok?: false; error: string };
@@ -243,7 +259,7 @@ export async function hand(d: Hand, a: HandAsk): Promise<Handing> {
 export type Answered = { ok: true; sessionId?: string; note?: string } | { ok?: false; error: string; taken?: true };
 
 /** team.hand.answer: take, pass with a line, or later (nothing written) */
-export async function answer(d: Hand, h: Handed, how: unknown, line?: unknown, start = true): Promise<Answered> {
+export async function answer(d: Hand, h: Handed, how: unknown, line?: unknown, start = true, auto = false): Promise<Answered> {
   if (how === "later") return { ok: true };
   const me = await d.me();
   if (!me) return { error: "who you are on GitHub is not known yet" };
@@ -270,7 +286,7 @@ export async function answer(d: Hand, h: Handed, how: unknown, line?: unknown, s
     if (!start || !cwd) return { ok: true, note: note ?? `taken #${h.issue}; no session started` };
     // the take is written: a session that does not start is said, never thrown, and nothing more is written
     try {
-      const sessionId = await d.start({ repo: h.repo, cwd, issue: h.issue, title: h.title, text });
+      const sessionId = await d.start({ repo: h.repo, cwd, issue: h.issue, title: h.title, text, ...(auto ? { auto: true as const } : {}) });
       return { ok: true, sessionId, ...(note ? { note } : {}) };
     } catch (e) {
       return { error: `taken on #${h.issue}, but the session did not start: ${firstLine(e)}; open #${h.issue} in Work by hand`, taken: true };
@@ -384,6 +400,18 @@ export function heard(m: Record<string, unknown>) {
     const { at: _at, ...card } = h;
     l.tell({ type: "team.handed", ...card });
     await push(true);
+    // the table's level (#1541): at "tells" or "does" my AI takes it with nobody pressing; said to every face as taken,
+    // so the card goes. The brief is another person's words, so its session is marked handed and goes no further than
+    // does-then-tells (runs.ts startMode), never past a command's card. A review is never taken this way: it is a read.
+    // Who sent it is never the word's own say (the #1654 review): `by`, and `from.agent`, are what the sender's Sol wrote,
+    // and a person's Sol and its AI share one connection, so nothing can prove a person from an AI. What the hub proves
+    // is the login (relay-hub.ts stamps `from.login` from the connection, over anything the word said), so that is the
+    // one name that counts, and it must be a member of the table now (`trusted`: the table's org, read fresh). No stamped
+    // login, not a member, or no answer: the card waits for the person. One that says it is an AI stays a card too
+    if (!w.review && takesItself(l.d.levelOf?.(w.repo)) && await sentByMember(l.d, m, w)) {
+      const r = await answerNow(id, "take", undefined, true, true);
+      l.tell({ type: "team.hand.self", id, repo: w.repo, issue: w.issue, ...("sessionId" in r && r.sessionId ? { sessionId: r.sessionId } : {}), ...("error" in r && r.error ? { error: r.error } : {}) });
+    }
   });
 }
 
@@ -400,7 +428,7 @@ export async function backNow(repo: unknown, issue: unknown): Promise<{ ok: true
   if (r.ok) void push(true);
   return r;
 }
-export async function answerNow(id: unknown, how: unknown, line?: unknown, start = true): Promise<Answered> {
+export async function answerNow(id: unknown, how: unknown, line?: unknown, start = true, auto = false): Promise<Answered> {
   if (!L) return { error: "the team is not set up here" };
   if (how === "later") return { ok: true };   // nothing is written; the face keeps it under its repo
   const l = L, key = String(id);
@@ -413,7 +441,7 @@ export async function answerNow(id: unknown, how: unknown, line?: unknown, start
     const heardOne = l.heard.get(key);
     const h = pending.find((p) => p.id === key) ?? (heardOne && unanswered(l, heardOne) ? heardOne : undefined);
     if (!h) return { error: "that hand is not yours now" };
-    const r = await answer(l.d, h, how, line, start);
+    const r = await answer(l.d, h, how, line, start, auto);
     if (r.ok || ("taken" in r && r.taken)) { l.done.set(h.id, h.at ?? new Date().toISOString()); l.heard.delete(h.id); void push(true); }
     return r;
   } catch (e) {

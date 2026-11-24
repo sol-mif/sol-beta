@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useNow } from "./Elapsed";
 import type { Item, Work } from "./useWork";
+import { splitContext } from "./folderContext";
 
 const HOUR = 3600_000;
 export const when = (at: number, now: number) => {
@@ -27,7 +28,7 @@ export function MeRow({ it, w, busy }: { it: Item; w: Work; busy: boolean }) {
   const [copied, setCopied] = useState(false);
   const queued = !!it.queued;
   const copy = async () => {
-    try { await navigator.clipboard.writeText(String(it.text ?? "")); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* no clipboard here */ }
+    try { await navigator.clipboard.writeText(splitContext(String(it.text ?? "")).rest); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* no clipboard here */ }
   };
   return (
     <div className="merow" role="toolbar" aria-label="this message">

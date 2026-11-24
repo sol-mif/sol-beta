@@ -1,8 +1,13 @@
 # The Mac app, built by GitHub (#169): only in the public beta repo (the guard below), on every push to its main (each
 # push there is one export of a stable). A macOS runner builds Sol.app for both Mac chips, zips it with ditto, writes
 # its SHA-256, and publishes a release named after the export, marked latest, so sol/install and the site's download
-# button find it at releases/latest/download/Sol-mac.zip. Actions pinned by commit; no secrets; contents: write on
-# the release job only. In the development repository this file is carried but never runs.
+# button find it at releases/latest/download/Sol-mac.zip. Actions pinned by commit; contents: write on the two jobs
+# only. In the development repository this file is carried but never runs.
+# The app's own update: Sol.app is built with the version a dev release's tag means, 0.<YYYYMMDD>.<HHMM> (the time
+# without leading zeros; the repo keeps 0.1.0), and the job `feed` adds Sol-mac.app.tar.gz, its signature and
+# latest.json to the release (sol/mac/release/feed.sh), so releases/latest/download/latest.json is the feed every
+# Sol.app reads. Its one secret, the signing key TAURI_SIGNING_PRIVATE_KEY (and _PASSWORD), is set by hand in the
+# environment `release`; without it the release is the zip alone, as before.
 name: release
 on:
   push:
@@ -15,11 +20,24 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      feed: ${{ steps.tag.outputs.feed }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24.22.1
+      - name: the release's name, and the app's version from it
+        id: tag
+        run: |
+          set -eu
+          tag=$(git log -1 --format=%s | sed -nE 's/^Sol ((stable|dev)-[0-9]+(-[0-9]+)?)$/\1/p')   # a stamp's export, or a dev release's since #418
+          [ -n "$tag" ] || tag="build-$(date -u +%Y%m%d-%H%M)"
+          feed=yes
+          version=$(node sol/mac/release/feed.mjs version "$tag") || { echo "::warning::$tag is no dev release: Sol.app stays 0.1.0 and gets no update feed"; version=0.1.0; feed=; }
+          { echo "tag=$tag"; echo "version=$version"; echo "feed=$feed"; } >> "$GITHUB_OUTPUT"
+          echo "$tag: Sol.app $version"
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
@@ -28,7 +46,9 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Sol.app, both chips
         working-directory: sol/mac
-        run: npm run tauri build -- --target universal-apple-darwin --bundles app
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: npm run tauri build -- --target universal-apple-darwin --bundles app --config "{\"version\":\"$VERSION\"}"
       - name: the zip and its checksum
         run: |
           set -eu
@@ -39,10 +59,72 @@ jobs:
       - name: the release, named after the export
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -eu
-          tag=$(git log -1 --format=%s | sed -nE 's/^Sol ((stable|dev)-[0-9]+(-[0-9]+)?)$/\1/p')   # a stamp's export, or a dev release's since #418
-          [ -n "$tag" ] || tag="build-$(date -u +%Y%m%d-%H%M)"
-          gh release create "$tag" Sol-mac.zip Sol-mac.zip.sha256 --latest --title "Sol $tag" \
+          gh release create "$TAG" Sol-mac.zip Sol-mac.zip.sha256 --latest --title "Sol $TAG" \
             --notes "Sol.app for the Mac, built by GitHub from this export. Not yet signed with Apple: the first time, Open Anyway once (System Settings, Privacy & Security). The one line, curl -fsSL https://sol.matterfold.tech/install | sh, needs no click." \
-            || gh release upload "$tag" Sol-mac.zip Sol-mac.zip.sha256 --clobber
+            || {
+              # the export again: its zip replaced, unless the release already has a feed (a Sol may have read it)
+              names=$(gh release view "$TAG" --json assets -q '.assets[].name')
+              if printf '%s\n' "$names" | grep -qx latest.json; then echo "::error::$TAG already has latest.json: its files are not replaced"; exit 1; fi
+              gh release upload "$TAG" Sol-mac.zip Sol-mac.zip.sha256 --clobber
+            }
+  # The app's own update, apart from the build, after it: a fresh runner, the export's files, the face's packages
+  # installed with no package's scripts run (the signer is the tauri CLI of the lock file), and the signing key, in the
+  # environment `release` (main only), in the one step that signs. The build's dependency code never sees the key. A
+  # failure here leaves the release a tester downloads as it was, with no latest.json; the run ends red. One run of a
+  # tag at a time: a second push of the same export waits for the first, then finds its latest.json and stops, so the
+  # archive and the signature on the release are always the ones latest.json names.
+  feed:
+    needs: app
+    if: github.event.repository.name == 'sol-beta' && needs.app.outputs.feed == 'yes'   # kept to sol-beta by name too, as app is (#975)
+    concurrency:
+      group: release-${{ needs.app.outputs.tag }}
+      cancel-in-progress: false
+    runs-on: macos-latest
+    environment: release
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.app.outputs.tag }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24.22.1
+      - name: the feed's own tests
+        run: node --test sol/mac/release/
+      - name: the signer, no package's scripts run
+        working-directory: sol/mac
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Sol.app as the release holds it, checked
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          # a release's feed is written once: a run again never replaces the latest.json Sols may already have read
+          names=$(gh release view "$TAG" --json assets -q '.assets[].name')
+          if printf '%s\n' "$names" | grep -qx latest.json; then echo "::error::$TAG already has latest.json: not replaced"; exit 1; fi
+          mkdir "$RUNNER_TEMP/zip" && cd "$RUNNER_TEMP/zip"
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p Sol-mac.zip -p Sol-mac.zip.sha256
+          shasum -a 256 -c Sol-mac.zip.sha256
+          ditto -x -k Sol-mac.zip .
+      - name: the update, signed
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bash sol/mac/release/feed.sh "$RUNNER_TEMP/zip/Sol.app" "$TAG" "$GITHUB_REPOSITORY"
+      - name: the update and latest.json on the release, latest.json last
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          [ -f latest.json ] || exit 0
+          # asked again right before: nothing replaces the files of a release that has a feed
+          names=$(gh release view "$TAG" --json assets -q '.assets[].name')
+          if printf '%s\n' "$names" | grep -qx latest.json; then echo "::error::$TAG already has latest.json: not replaced"; exit 1; fi
+          cat latest.json
+          # no feed names these yet (checked above, and the tag's lock holds any other run): a failed run's are replaced
+          gh release upload "$TAG" Sol-mac.app.tar.gz Sol-mac.app.tar.gz.sig --clobber
+          gh release upload "$TAG" latest.json   # never --clobber: one already there fails the run

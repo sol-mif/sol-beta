@@ -1,0 +1,139 @@
+{"fixture":"tomas-month","panel":10,"person":"Tomás","age":45,"setting":"blind accessibility consultant; VoiceOver, keyboard, broken by updates before","from":["panel.md #10 Tomás","S15 a Sol fit backed, so held","S24 upkeep: four kinds, an update carries held fits, a sign-in a week ahead","S16 weekly offers"],"start":"2026-10-01","days":30,"named":["say","fit.set","fit.back","update","upkeep","ask","answer","run.start","run.end","fact","done","offer"]}
+{"id":"tomas-1","at":1790845200000,"day":1,"who":"Tomás","act":"fit.set","place":"tomas","knob":"live.output","scope":"tomas","take":"read on request, never over what I navigate","author":"person","via":"keys"}
+{"id":"tomas-14","at":1790848800000,"day":1,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"write up the form findings","via":"voice"}
+{"id":"tomas-15","at":1790848860000,"day":1,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r1","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-16","at":1790850600000,"day":1,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r1","part":"tomas/clients/clinic#audit","outcome":"done","changed":["audits/1.md"]}
+{"id":"tomas-17","at":1790850660000,"day":1,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-134","at":1790928000000,"day":2,"who":"sol","act":"fit.set","place":"tomas","knob":"build.density","scope":"tomas","take":"close","author":"sol","reason":"3 of the last 4 build days read this way","count":3}
+{"id":"tomas-2","at":1790931600000,"day":2,"who":"sol","act":"fit.set","place":"tomas","knob":"motion","scope":"tomas","take":"a small flash when a run lands","author":"sol","reason":"4 of his last 5 runs landed while he was elsewhere","count":4}
+{"id":"tomas-3","at":1790931720000,"day":2,"who":"Tomás","act":"fit.back","place":"tomas","knob":"motion","scope":"tomas","via":"keys"}
+{"id":"tomas-18","at":1790935200000,"day":2,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"write up the form findings","via":"keys"}
+{"id":"tomas-19","at":1790935260000,"day":2,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r2","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-20","at":1790937000000,"day":2,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r2","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/2.md"]}
+{"id":"tomas-21","at":1790937060000,"day":2,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-22","at":1790938800000,"day":2,"who":"ai:claude","act":"ask","place":"tomas/clients/library","ask":"tomas-a3","need":{"src":"draft","folder":"tomas/clients/library","sticky":"Report 2","line":"did: draft: the client report, report-2.md"}}
+{"id":"tomas-23","at":1790940600000,"day":2,"who":"Tomás","act":"answer","place":"tomas/clients/library","ask":"tomas-a3","yes":"Keep it"}
+{"id":"tomas-4","at":1791021600000,"day":3,"who":"Tomás","act":"fact","place":"tomas","fact":"uses VoiceOver on macOS, keyboard only","source":"Tomás said it, day 3"}
+{"id":"tomas-24","at":1791194400000,"day":5,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"audit the checkout page","via":"voice"}
+{"id":"tomas-25","at":1791194460000,"day":5,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r3","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-26","at":1791196200000,"day":5,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r3","part":"tomas/clients/library#audit","outcome":"failed","changed":["audits/5.md"]}
+{"id":"tomas-27","at":1791196260000,"day":5,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-28","at":1791198000000,"day":5,"who":"ai:claude","act":"ask","place":"tomas/clients/library","ask":"tomas-a4","need":{"src":"draft","folder":"tomas/clients/library","sticky":"Report 5","line":"did: draft: the client report, report-5.md"}}
+{"id":"tomas-29","at":1791199800000,"day":5,"who":"Tomás","act":"answer","place":"tomas/clients/library","ask":"tomas-a4","yes":"Keep it"}
+{"id":"tomas-30","at":1791216000000,"day":5,"who":"Tomás","act":"done","place":"tomas/clients/library","piece":"tomas/clients/library#audit"}
+{"id":"tomas-31","at":1791280800000,"day":6,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"write up the form findings","via":"keys"}
+{"id":"tomas-32","at":1791280860000,"day":6,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r4","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-33","at":1791282600000,"day":6,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r4","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/6.md"]}
+{"id":"tomas-34","at":1791282660000,"day":6,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-35","at":1791367200000,"day":7,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"audit the checkout page","via":"voice"}
+{"id":"tomas-36","at":1791367260000,"day":7,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r5","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-37","at":1791369000000,"day":7,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r5","part":"tomas/clients/clinic#audit","outcome":"failed","changed":["audits/7.md"]}
+{"id":"tomas-38","at":1791369060000,"day":7,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-39","at":1791370800000,"day":7,"who":"ai:claude","act":"ask","place":"tomas/clients/clinic","ask":"tomas-a5","need":{"src":"draft","folder":"tomas/clients/clinic","sticky":"Report 7","line":"did: draft: the client report, report-7.md"}}
+{"id":"tomas-40","at":1791372600000,"day":7,"who":"Tomás","act":"answer","place":"tomas/clients/clinic","ask":"tomas-a5","yes":"Keep it"}
+{"id":"tomas-126","at":1791398760000,"day":7,"who":"sol","act":"offer","place":"tomas","offer":"tomas-o1-build","knob":"build.tools","scope":"tomas","take":"one tool per part","mode":"build","structural":true}
+{"id":"tomas-127","at":1791401100000,"day":7,"who":"Tomás","act":"notnow","place":"tomas","offer":"tomas-o1-build"}
+{"id":"tomas-5","at":1791446400000,"day":8,"who":"sol","act":"update","place":"tomas","from":"0.31.0","to":"0.32.0"}
+{"id":"tomas-6","at":1791446460000,"day":8,"who":"sol","act":"upkeep","place":"tomas","kind":"adaptive","finding":"0.32.0 moves the Needs shortcut; his held fits carried over","blocked":false}
+{"id":"tomas-41","at":1791453600000,"day":8,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"write up the form findings","via":"voice"}
+{"id":"tomas-42","at":1791453660000,"day":8,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r6","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-43","at":1791455400000,"day":8,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r6","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/8.md"]}
+{"id":"tomas-44","at":1791455460000,"day":8,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-135","at":1791532860000,"day":9,"who":"sol","act":"fit.set","place":"tomas","knob":"build.density","scope":"tomas","take":"roomy","author":"sol","reason":"4 of the last 5 build days read this way","count":4}
+{"id":"tomas-45","at":1791540000000,"day":9,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"audit the checkout page","via":"keys"}
+{"id":"tomas-46","at":1791540060000,"day":9,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r7","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-47","at":1791541800000,"day":9,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r7","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/9.md"]}
+{"id":"tomas-48","at":1791541860000,"day":9,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-49","at":1791799200000,"day":12,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"audit the checkout page","via":"voice"}
+{"id":"tomas-50","at":1791799260000,"day":12,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r8","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-51","at":1791801000000,"day":12,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r8","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/12.md"]}
+{"id":"tomas-52","at":1791801060000,"day":12,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-53","at":1791802800000,"day":12,"who":"ai:claude","act":"ask","place":"tomas/clients/bakery","ask":"tomas-a6","need":{"src":"draft","folder":"tomas/clients/bakery","sticky":"Report 12","line":"did: draft: the client report, report-12.md"}}
+{"id":"tomas-54","at":1791804600000,"day":12,"who":"Tomás","act":"answer","place":"tomas/clients/bakery","ask":"tomas-a6","yes":"Keep it"}
+{"id":"tomas-55","at":1791885600000,"day":13,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"audit the checkout page","via":"keys"}
+{"id":"tomas-56","at":1791885660000,"day":13,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r9","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-57","at":1791887400000,"day":13,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r9","part":"tomas/clients/clinic#audit","outcome":"done","changed":["audits/13.md"]}
+{"id":"tomas-58","at":1791887460000,"day":13,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-59","at":1791889200000,"day":13,"who":"ai:claude","act":"ask","place":"tomas/clients/clinic","ask":"tomas-a7","need":{"src":"draft","folder":"tomas/clients/clinic","sticky":"Report 13","line":"did: draft: the client report, report-13.md"}}
+{"id":"tomas-60","at":1791891000000,"day":13,"who":"Tomás","act":"answer","place":"tomas/clients/clinic","ask":"tomas-a7","yes":"Keep it"}
+{"id":"tomas-128","at":1791915060000,"day":13,"who":"sol","act":"offer","place":"tomas","offer":"tomas-o2-build","knob":"build.layout","scope":"tomas","take":"fewer tools at hand","mode":"build","structural":true}
+{"id":"tomas-129","at":1791919020000,"day":13,"who":"Tomás","act":"notnow","place":"tomas","offer":"tomas-o2-build"}
+{"id":"tomas-61","at":1791972000000,"day":14,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"check the new menu against the last audit","via":"keys"}
+{"id":"tomas-62","at":1791972060000,"day":14,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r10","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-63","at":1791973800000,"day":14,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r10","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/14.md"]}
+{"id":"tomas-64","at":1791973860000,"day":14,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-7","at":1792051200000,"day":15,"who":"sol","act":"update","place":"tomas","from":"0.32.0","to":"0.33.0"}
+{"id":"tomas-8","at":1792051260000,"day":15,"who":"sol","act":"upkeep","place":"tomas","kind":"corrective","finding":"after 0.33.0 the Needs list reads as \"button\"","blocked":true}
+{"id":"tomas-9","at":1792051320000,"day":15,"who":"sol","act":"ask","place":"tomas","ask":"tomas-a1","cause":"update:0.33.0","need":{"src":"stage","project":"tomas","id":"upkeep-label","title":"a label lost","q":"The Needs list lost its label after the update. Go back to 0.32.0?","choices":["Go back","Wait for a fix"],"serious":true}}
+{"id":"tomas-10","at":1792052400000,"day":15,"who":"Tomás","act":"answer","place":"tomas","ask":"tomas-a1","yes":"Go back"}
+{"id":"tomas-65","at":1792058400000,"day":15,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"check the new menu against the last audit","via":"keys"}
+{"id":"tomas-66","at":1792058460000,"day":15,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r11","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-67","at":1792060200000,"day":15,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r11","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/15.md"]}
+{"id":"tomas-68","at":1792060260000,"day":15,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-69","at":1792080000000,"day":15,"who":"Tomás","act":"done","place":"tomas/clients/bakery","piece":"tomas/clients/bakery#audit"}
+{"id":"tomas-136","at":1792137720000,"day":16,"who":"sol","act":"fit.set","place":"tomas","knob":"build.density","scope":"tomas","take":"close","author":"sol","reason":"5 of the last 6 build days read this way","count":5}
+{"id":"tomas-70","at":1792144800000,"day":16,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"audit the checkout page","via":"voice"}
+{"id":"tomas-71","at":1792144860000,"day":16,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r12","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-72","at":1792146600000,"day":16,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r12","part":"tomas/clients/clinic#audit","outcome":"done","changed":["audits/16.md"]}
+{"id":"tomas-73","at":1792146660000,"day":16,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-74","at":1792148400000,"day":16,"who":"ai:claude","act":"ask","place":"tomas/clients/clinic","ask":"tomas-a8","need":{"src":"draft","folder":"tomas/clients/clinic","sticky":"Report 16","line":"did: draft: the client report, report-16.md"}}
+{"id":"tomas-75","at":1792150200000,"day":16,"who":"Tomás","act":"answer","place":"tomas/clients/clinic","ask":"tomas-a8","yes":"Keep it"}
+{"id":"tomas-76","at":1792404000000,"day":19,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"write up the form findings","via":"voice"}
+{"id":"tomas-77","at":1792404060000,"day":19,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r13","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-78","at":1792405800000,"day":19,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r13","part":"tomas/clients/clinic#audit","outcome":"done","changed":["audits/19.md"]}
+{"id":"tomas-79","at":1792405860000,"day":19,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-80","at":1792407600000,"day":19,"who":"ai:claude","act":"ask","place":"tomas/clients/clinic","ask":"tomas-a9","need":{"src":"draft","folder":"tomas/clients/clinic","sticky":"Report 19","line":"did: draft: the client report, report-19.md"}}
+{"id":"tomas-81","at":1792409400000,"day":19,"who":"Tomás","act":"answer","place":"tomas/clients/clinic","ask":"tomas-a9","yes":"Keep it"}
+{"id":"tomas-11","at":1792486800000,"day":20,"who":"sol","act":"upkeep","place":"tomas","kind":"preventive","finding":"the Claude sign-in ends on day 27","blocked":false}
+{"id":"tomas-82","at":1792490400000,"day":20,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"check the new menu against the last audit","via":"voice"}
+{"id":"tomas-83","at":1792490460000,"day":20,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r14","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-84","at":1792492200000,"day":20,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r14","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/20.md"]}
+{"id":"tomas-85","at":1792492260000,"day":20,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-86","at":1792512000000,"day":20,"who":"Tomás","act":"done","place":"tomas/clients/library","piece":"tomas/clients/library#audit"}
+{"id":"tomas-87","at":1792576800000,"day":21,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"write up the form findings","via":"keys"}
+{"id":"tomas-88","at":1792576860000,"day":21,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r15","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-89","at":1792578600000,"day":21,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r15","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/21.md"]}
+{"id":"tomas-90","at":1792578660000,"day":21,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-130","at":1792605660000,"day":21,"who":"sol","act":"offer","place":"tomas","offer":"tomas-o3-build","knob":"build.order","scope":"tomas","take":"the last week's tools first","mode":"build","structural":true}
+{"id":"tomas-131","at":1792611600000,"day":21,"who":"Tomás","act":"notnow","place":"tomas","offer":"tomas-o3-build"}
+{"id":"tomas-12","at":1792659600000,"day":22,"who":"sol","act":"upkeep","place":"tomas","kind":"perfective","finding":"the audit report is asked for the same way each week: a routine?","blocked":false}
+{"id":"tomas-91","at":1792663200000,"day":22,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"audit the checkout page","via":"keys"}
+{"id":"tomas-92","at":1792663260000,"day":22,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r16","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-93","at":1792665000000,"day":22,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r16","part":"tomas/clients/clinic#audit","outcome":"done","changed":["audits/22.md"]}
+{"id":"tomas-94","at":1792665060000,"day":22,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-95","at":1792666800000,"day":22,"who":"ai:claude","act":"ask","place":"tomas/clients/clinic","ask":"tomas-a10","need":{"src":"draft","folder":"tomas/clients/clinic","sticky":"Report 22","line":"did: draft: the client report, report-22.md"}}
+{"id":"tomas-96","at":1792668600000,"day":22,"who":"Tomás","act":"answer","place":"tomas/clients/clinic","ask":"tomas-a10","yes":"Keep it"}
+{"id":"tomas-137","at":1792742580000,"day":23,"who":"sol","act":"fit.set","place":"tomas","knob":"build.density","scope":"tomas","take":"roomy","author":"sol","reason":"6 of the last 7 build days read this way","count":6}
+{"id":"tomas-97","at":1792749600000,"day":23,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"check the new menu against the last audit","via":"keys"}
+{"id":"tomas-98","at":1792749660000,"day":23,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r17","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-99","at":1792751400000,"day":23,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r17","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/23.md"]}
+{"id":"tomas-100","at":1792751460000,"day":23,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-101","at":1792753200000,"day":23,"who":"ai:claude","act":"ask","place":"tomas/clients/library","ask":"tomas-a11","need":{"src":"draft","folder":"tomas/clients/library","sticky":"Report 23","line":"did: draft: the client report, report-23.md"}}
+{"id":"tomas-102","at":1792755000000,"day":23,"who":"Tomás","act":"answer","place":"tomas/clients/library","ask":"tomas-a11","yes":"Keep it"}
+{"id":"tomas-13","at":1793005200000,"day":26,"who":"sol","act":"ask","place":"tomas","ask":"tomas-a2","cause":"signin:claude","need":{"src":"thing","id":"tomas-t-signin","read":"you","folder":"tomas","words":"Sign in to Claude again before it ends","state":"asks","waitsOn":"you","due":1793091600000}}
+{"id":"tomas-103","at":1793008800000,"day":26,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"check the new menu against the last audit","via":"keys"}
+{"id":"tomas-104","at":1793008860000,"day":26,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r18","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-105","at":1793010600000,"day":26,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r18","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/26.md"]}
+{"id":"tomas-106","at":1793010660000,"day":26,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-107","at":1793095200000,"day":27,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"audit the checkout page","via":"keys"}
+{"id":"tomas-108","at":1793095260000,"day":27,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r19","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-109","at":1793097000000,"day":27,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r19","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/27.md"]}
+{"id":"tomas-110","at":1793097060000,"day":27,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-132","at":1793125260000,"day":27,"who":"sol","act":"offer","place":"tomas","offer":"tomas-o4-build","knob":"build.start","scope":"tomas","take":"one tool per part","mode":"build","structural":true}
+{"id":"tomas-133","at":1793129040000,"day":27,"who":"Tomás","act":"notnow","place":"tomas","offer":"tomas-o4-build"}
+{"id":"tomas-111","at":1793181600000,"day":28,"who":"Tomás","act":"say","place":"tomas/clients/clinic","words":"check the new menu against the last audit","via":"voice"}
+{"id":"tomas-112","at":1793181660000,"day":28,"who":"ai:claude","act":"run.start","place":"tomas/clients/clinic","run":"tomas-r20","part":"tomas/clients/clinic#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-113","at":1793183400000,"day":28,"who":"ai:claude","act":"run.end","place":"tomas/clients/clinic","run":"tomas-r20","part":"tomas/clients/clinic#audit","outcome":"done","changed":["audits/28.md"]}
+{"id":"tomas-114","at":1793183460000,"day":28,"who":"sol","act":"say","place":"tomas/clients/clinic","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-115","at":1793185200000,"day":28,"who":"ai:claude","act":"ask","place":"tomas/clients/clinic","ask":"tomas-a12","need":{"src":"draft","folder":"tomas/clients/clinic","sticky":"Report 28","line":"did: draft: the client report, report-28.md"}}
+{"id":"tomas-116","at":1793268000000,"day":29,"who":"Tomás","act":"say","place":"tomas/clients/library","words":"audit the checkout page","via":"voice"}
+{"id":"tomas-117","at":1793268060000,"day":29,"who":"ai:claude","act":"run.start","place":"tomas/clients/library","run":"tomas-r21","part":"tomas/clients/library#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-118","at":1793269800000,"day":29,"who":"ai:claude","act":"run.end","place":"tomas/clients/library","run":"tomas-r21","part":"tomas/clients/library#audit","outcome":"done","changed":["audits/29.md"]}
+{"id":"tomas-119","at":1793269860000,"day":29,"who":"sol","act":"say","place":"tomas/clients/library","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-120","at":1793354400000,"day":30,"who":"Tomás","act":"say","place":"tomas/clients/bakery","words":"check the new menu against the last audit","via":"keys"}
+{"id":"tomas-121","at":1793354460000,"day":30,"who":"ai:claude","act":"run.start","place":"tomas/clients/bakery","run":"tomas-r22","part":"tomas/clients/bakery#audit","seat":"claude","model":"opus","machine":"here"}
+{"id":"tomas-122","at":1793356200000,"day":30,"who":"ai:claude","act":"run.end","place":"tomas/clients/bakery","run":"tomas-r22","part":"tomas/clients/bakery#audit","outcome":"done","changed":["audits/30.md"]}
+{"id":"tomas-123","at":1793356260000,"day":30,"who":"sol","act":"say","place":"tomas/clients/bakery","words":"The audit is back: 4 findings, 1 serious.","via":"announce"}
+{"id":"tomas-124","at":1793358000000,"day":30,"who":"ai:claude","act":"ask","place":"tomas/clients/bakery","ask":"tomas-a13","need":{"src":"draft","folder":"tomas/clients/bakery","sticky":"Report 30","line":"did: draft: the client report, report-30.md"}}
+{"id":"tomas-125","at":1793376000000,"day":30,"who":"Tomás","act":"done","place":"tomas/clients/bakery","piece":"tomas/clients/bakery#audit"}
+{"end":"month","acts":137,"open":["tomas-a2","tomas-a12","tomas-a13"],"order":["tomas","tomas/clients/clinic","tomas/clients/bakery","tomas/clients/library"]}

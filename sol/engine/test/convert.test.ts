@@ -152,6 +152,12 @@ test("convert: steps.ts lists every NNNN-name.ts in the folder, in order, named 
     assert.ok(existsSync(join(ROOT, p)), `SHAPES names ${p}, which is not there`);
 });
 
+test("convert: SHAPES.next names files that are there (#1615)", () => {
+  // only the names: a new-face file that writes and is on neither list is never a failure here (report only, #1615)
+  for (const p of readFileSync(join(ENGINE, "src", "convert", "SHAPES.next"), "utf8").split("\n").filter((l) => l.trim() && !l.startsWith("#")))
+    assert.ok(existsSync(join(ROOT, p)), `SHAPES.next names ${p}, which is not there`);
+});
+
 test("convert: the engine comes up on a temp home, /health says the data's version, and a broken version file does not stop it", { timeout: 90_000 }, async () => {
   const engines: ChildProcess[] = [];
   try {

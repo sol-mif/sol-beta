@@ -7,11 +7,23 @@
 //   write · remove_line · pause_diary · flip · to_sticky: the moves (cv/moves/life.ts makes them M's)
 // The AI's side (the agent's clock, its ledger H, its rows) is slice 5's: read through hooks.agent when it is there.
 // Signed: marcocyl04-ux's agent, slice 4 (#1615).
-import { D, S, SCEN, SCN, asksInRegion, hooks, open, regionOf, type Data, type Piece } from "../cv/core.ts";
+import { D, S, SCEN, SCN, asksInRegion, dataVer, hooks, open, regionOf, type Data, type Piece } from "../cv/core.ts";
+import { changedWords } from "../lead/rules.ts";
 
 export const MIN = 6e4, HOUR = 36e5, DAY = 864e5;
-/** the canvas's today: Wednesday, 18 November (the agent's clock agrees) */
-export const TODAY0 = Date.UTC(2026, 10, 18);
+/** the canvas's today: Wednesday, 18 November (the agent's clock agrees); a real Sol's own today once goLive() runs */
+export let TODAY0 = Date.UTC(2026, 10, 18);
+/** a real Sol (cv/wire/diary.ts): the person's clock. The book reads every time with the UTC getters, so a moment is
+ *  kept shifted by the local offset (loc) and prints as the person's own hour */
+export let LIVE = false;
+export const loc = (at: number) => at - new Date(at).getTimezoneOffset() * 6e4;
+export function goLive(): void {
+  const d = new Date();
+  TODAY0 = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); LIVE = true;
+  const b = book(); b.start = loc(Date.now()); b.loadedAt = Date.now();
+}
+/** where a line of the person's goes in a real Sol (the wire sets these): the engine keeps it (next.diary.write/remove) */
+export const out: { write?: (l: Line) => void; remove?: (l: Line, back: boolean) => void } = {};
 /** a line after 21:00 belongs to the next morning's page */
 const NIGHT = 3 * HOUR;
 export const pageOf = (t: number) => Math.floor((t + NIGHT - TODAY0) / DAY);
@@ -30,6 +42,10 @@ export type Line = {
   id: string; t: number; day: number; who: string; what: string; region: string | null; embed: Embed; why: string | null; mine: boolean;
   kind: string; key: string | null; row: string | null; ask: string | null; fn: string | null; gate: string | null; small: boolean;
   proof: { rows?: string[]; piece?: string } | null; removed: boolean; sticky: string | null; via: string | null; asked?: string;
+  /** the keys of the facts Sol acted on (the engine's; a session's line or answer): its because… (because/Because.tsx) */
+  because?: string[];
+  /** the folder agent's sort this line says (the engine's run id): its Undo puts the moves back (cv/moves/setup.ts fsSortBack) */
+  sort?: string;
 };
 export type Page = { k: number; lines: Line[]; closing: { t: number; what: string } | null };
 export type Take = { length: string; keeps: string; notes: string; tone: string; first: string | null };
@@ -62,7 +78,7 @@ function fresh(name: string): Book {
 export function book(d: Data = D): Book { let b = books.get(d); if (!b) { b = fresh(SCN); books.set(d, b); } return b; }
 export function page(k: number, b: Book = book()): Page { return b.pages[k] || (b.pages[k] = { k, lines: [], closing: null }); }
 /** the time a line is written: the scripted clock when one is set, else the person's morning plus the time since load */
-export function now(b: Book = book()): number { const c = agent()?.clock; if (c != null) return c; return b.start + Math.max(0, Date.now() - b.loadedAt); }
+export function now(b: Book = book()): number { const c = agent()?.clock; if (c != null) return c; if (LIVE) return loc(Date.now()); return b.start + Math.max(0, Date.now() - b.loadedAt); }
 export const dayNow = () => { const c = agent()?.clock; return c != null ? pageOf(c) : 0; };
 export const allLines = (b: Book = book()) => Object.values(b.pages).flatMap((p) => p.lines);
 export const byKey = (key: string, b: Book = book()) => allLines(b).find((l) => l.key === key) || null;
@@ -73,7 +89,7 @@ export const personName = () => (SCEN[SCN]?.label || "You").split(" · ")[0];
 
 export type NoteIn = {
   who?: string; what?: string; region?: string | null; embed?: Embed | string; why?: string | null; key?: string; row?: string; ask?: string; kind?: string; mine?: boolean;
-  force?: boolean; t?: number; day?: number; fn?: string; gate?: string; small?: boolean; proof?: Line["proof"]; via?: string;
+  force?: boolean; t?: number; day?: number; fn?: string; gate?: string; small?: boolean; proof?: Line["proof"]; via?: string; because?: string[]; sort?: string;
 };
 export function note(o: NoteIn = {}): string | null {
   const b = book();
@@ -89,11 +105,17 @@ export function note(o: NoteIn = {}): string | null {
   const l: Line = {
     id: "dl" + ++b.seq, t, day, who: mine ? "person" : String(o.who || VOICE), what: String(o.what).trim(), region: o.region || regionOfThing(embed?.id) || null,
     embed, why: o.why || null, mine, kind: o.kind || (mine ? "mine" : o.ask ? "decided" : "ai"), key, row: o.row || null, ask: o.ask || null, fn: o.fn || null, gate: o.gate || null,
-    small: !!o.small, proof: o.proof ? clone(o.proof) : null, removed: false, sticky: null, via: o.via || null,
+    small: !!o.small, proof: o.proof ? clone(o.proof) : null, removed: false, sticky: null, via: o.via || null, ...(o.because?.length ? { because: [...o.because] } : {}),
+    ...(o.sort ? { sort: o.sort } : {}),
   };
   page(day, b).lines.push(l);
+  if (mine && !key?.startsWith("eng:")) out.write?.(l);   // a line the engine sent is never sent back
   return l.id;
 }
+/** a thing's folder is in a scoped Diary (BR1 item 1): the scope itself, or (once folders hold folders) one inside it;
+ *  the canvas's Diary (scope null) holds everything, a thing in no folder only that. E's within(id, scope) (cv/core.ts)
+ *  takes this one's place when it lands */
+export const within = (id: string | null | undefined, scope: string | null) => scope == null || (!!id && id === scope);
 export function regionOfThing(id: string | null | undefined): string | null {
   if (!id) return null;
   const p = D.pieces[id];
@@ -112,10 +134,26 @@ export function blockOf(id: string): ({ id: string; title?: string; placed?: boo
 
 // ---------------------------------------------------------------- what an AI call says in the diary: one fact, past tense
 
+/** a session is said by its task, never by an AI's name (a session is not an agent: Marco, 2026-11-21): "fix-login" is
+ *  "Fix login"; one an automation started or a seat holds says so */
+export function taskOf(p: Piece | null | undefined): string {
+  if (!p) return "a session";
+  const named = p.name && !(p.copy && p.name.endsWith(" in " + p.copy)) ? p.name : "";
+  const raw = String(p.words || named || p.copy || "a session"), t = /\s/.test(raw) ? raw : raw.replace(/[-_]+/g, " ");
+  const of = p.of as { automation?: string } | undefined, seat = typeof p.seat === "string" ? p.seat : "";
+  return (t[0].toUpperCase() + t.slice(1)) + (of?.automation ? " (automation)" : seat ? ` (seat · ${seat})` : "");
+}
+/** who wrote a line, said for the page: an AI's name that is a session's is that session's task */
+export function sayWho(who: string, region?: string | null): string {
+  const ss = Object.values(D.pieces).filter((p) => p.kind === "session" && p.ai === who);
+  const s = ss.find((p) => p.region === region) || ss[0];
+  return s ? taskOf(s) : who;
+}
+
 export function nameOf(id: string | null | undefined): string {
   if (!id) return "it";
   const p = D.pieces[id];
-  if (p) return p.kind === "session" ? `${p.ai}'s ${p.copy || p.name}` : `“${p.name}”`;
+  if (p) return p.kind === "session" ? taskOf(p) : `“${p.name}”`;
   const r = regionOf(id);
   return r ? r.name.replace(/ \(.*\)$/, "") : id;
 }
@@ -140,7 +178,7 @@ export function fromRow(r: Row | null | undefined): string | null {
     case "attach": what = `Wrote a page, “${a.block?.title || "a page"}”, for ${nameOf(a.session)}.`;
       embed = { kind: "page", id: typeof v === "string" ? v : null, open: a.session, title: a.block?.title }; kind = "arrived"; break;
     case "start": what = `Started “${a.words || ""}”${a.region ? " in " + nameOf(a.region) : ""}.`; embed = typeof v === "string" && D.pieces[v] ? { id: v } : null; region = a.region; break;
-    case "split_run": { const ps = (a.parts || []).map((p: { ai: string }) => p.ai); what = `Split it ${NUM[ps.length] || ps.length} ways: ${list(ps)}.`; embed = { kind: "split", id: a.parent }; break; }
+    case "split_run": { const ps = (a.parts || []).map((p: Piece) => taskOf(p)); what = `Split it ${NUM[ps.length] || ps.length} ways: ${list(ps)}.`; embed = { kind: "split", id: a.parent }; break; }
     case "pass": what = `Passed ${nameOf(a.run)} to ${a.to}.`; embed = { id: a.run }; break;
     case "redirect": what = `Told ${nameOf(a.run)}: “${a.words || ""}”.`; embed = { id: a.run }; break;
     case "pause": case "resume": case "stop": what = `${({ pause: "Paused", resume: "Resumed", stop: "Stopped" } as Record<string, string>)[f]} ${nameOf(a.run)}.`; embed = { id: a.run }; break;
@@ -217,7 +255,7 @@ export function headline(): { text: string; proof: NonNullable<Line["proof"]>; a
   }
   return null;
 }
-/** a question to the diary: "which AI changed what in the last hour", "what did Ada do yesterday", "what did I decide today" */
+/** a question to the diary: "which AI changed what in the last hour", "what did fix login do yesterday", "what did I decide today" */
 const CHANGING = new Set(["make", "place", "group", "split", "attach", "start", "split_run", "pass", "redirect", "pause", "resume", "stop", "check", "take_back", "sticky", "run_sticky", "finish", "drop", "due", "write", "tell"]);
 export function query(words: string): Query {
   const w = String(words || "").toLowerCase(), b = book(), n = now(b);
@@ -228,8 +266,9 @@ export function query(words: string): Query {
   } else if (/yesterday/.test(w)) { from = TODAY0 - DAY - NIGHT; to = TODAY0 - NIGHT; span = "yesterday"; }
   else if (/night|overnight|while i was away/.test(w)) { from = TODAY0 - NIGHT; to = b.start; span = "overnight"; }
   else { from = TODAY0 - NIGHT; span = "today"; }
-  const ais = new Set([VOICE, ...(D.ais || []).map((a) => a.name), ...((D.crew as { name: string }[] | undefined) || []).map((c) => c.name)]);
-  const named = [...ais].find((a) => new RegExp("\\b" + a.toLowerCase() + "\\b").test(w));
+  const ais = new Set([VOICE, ...(D.ais || []).map((a) => a.name), ...((D.crew as { name: string }[] | undefined) || []).map((c) => c.name),
+    ...Object.values(D.pieces).filter((p) => p.kind === "session").map(taskOf)]);
+  const named = [...ais].find((a) => new RegExp("\\b" + a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(w));
   const mineQ = /\b(i|me|my)\b/.test(w) && !/which ai/.test(w);
   const ls = allLines().filter((l) => !l.removed && l.t >= from && l.t < to && (mineQ ? l.mine || l.kind === "decided" : !l.mine && l.kind !== "decided" && l.kind !== "opened") && (!named || l.who === named || l.what.includes(named))
     && (/changed|did|made/.test(w) && !mineQ ? CHANGING.has(l.fn as string) || (!l.fn && !l.small) : true)).sort((a, b) => a.t - b.t);
@@ -243,7 +282,7 @@ export function query(words: string): Query {
 
 /** the person's own lines are the panel's people's (sample data); the AI's lines are read from the canvas itself */
 const OWN: Record<string, [string | null, string][]> = {
-  dev: [["api", "Rex’s migration waits until Ada’s login fix is in."], [null, "Ask Kai for a test database that isn’t staging."]],
+  dev: [["api", "The migration waits until the login fix is in."], [null, "Ask for a test database that isn’t staging."]],
   jayden: [["cs", "Start HW3 with the linked-list tests, then the essay."], [null, "Chapter 4 on the bus tomorrow."]],
   denise: [["kids", "Mia’s school form is in the blue folder."], [null, "Call mum on Sunday."]],
   minji: [["studio", "The client likes the second hero best."]], sam: [],
@@ -264,16 +303,16 @@ export function seed(d: Data, name: string): void {
   let h = 8, m = 40;
   const tick = (k: number): [number, number] => { m += k; while (m >= 60) { m -= 60; h++; } return [h, m]; };
   // the morning's story, folded: yesterday's page was read
-  L(7, 30, { kind: "headline", what: sess.length ? `${sess.length === 1 ? sess[0].ai + " kept working" : sess.length + " AIs kept working"} overnight; nothing needed you before nine.` : `Your ${regs.length} folders stayed as you left them.` });
+  L(7, 30, { kind: "headline", what: sess.length ? `${sess.length === 1 ? taskOf(sess[0]) + " kept working" : sess.length + " sessions kept working"} overnight; nothing needed you before nine.` : `Your ${regs.length} folders stayed as you left them.` });
   for (const [i, s] of sess.slice(0, 6).entries()) {
     const [hh, mm] = tick(37 + i * 23);
-    L(hh, mm, { who: s.ai, region: s.region, what: i % 3 === 2 ? `Ran the tests on ${s.copy}: all passing.` : `Changed ${Math.max(2, Math.round((s.files ?? 0) * 0.6))} files on ${s.copy}.`, fn: i % 3 === 2 ? "check" : "start", embed: { id: s.id } });
+    L(hh, mm, { who: taskOf(s), region: s.region, what: i % 3 === 2 ? "Ran its tests: all passing." : `Changed ${Math.max(2, Math.round((s.files ?? 0) * 0.6))} files.`, fn: i % 3 === 2 ? "check" : "start", embed: { id: s.id } });
   }
   for (const [i, p] of life.slice(0, 2).entries()) { const [hh, mm] = tick(29 + i * 41); L(hh, mm, { who: "person", mine: false, kind: "opened", region: p.region, what: `You opened “${p.name}”.`, small: true, embed: { id: p.id } }); }
   const [dh, dm] = tick(18);
-  if (sess[1]) L(dh, dm, { who: "person", kind: "decided", region: sess[1].region, what: `You let ${sess[1].ai} run the tests on ${sess[1].copy}.`, embed: { id: sess[1].id } });
+  if (sess[1]) L(dh, dm, { who: "person", kind: "decided", region: sess[1].region, what: `You let ${taskOf(sess[1])} run its tests.`, embed: { id: sess[1].id } });
   for (const [i, [rid, w]] of (OWN[who] || []).entries()) { const [hh, mm] = tick(53 + i * 71); L(hh, mm, { who: "person", mine: true, kind: "mine", region: rid && d.regions.some((r) => r.id === rid) ? rid : null, what: w }); }
-  if (sess[0]) { const [hh, mm] = tick(46); L(hh, mm, { who: VOICE, region: sess[0].region, what: `Made a note of what ${sess[0].ai} changed, for the morning.`, kind: "arrived", fn: "make" }); }
+  if (sess[0]) { const [hh, mm] = tick(46); L(hh, mm, { who: VOICE, region: sess[0].region, what: `Made a note of what ${taskOf(sess[0])} changed, for the morning.`, kind: "arrived", fn: "make" }); }
   // the opens that teach a take: the folder you went to first most days
   const top = sess[0] ? sess[0].region : regs[0]?.id;
   page(-1, b).closing = { t: at(21, 10), what: closingOf(page(-1, b).lines) };
@@ -292,8 +331,8 @@ function seedNight(d: Data, b: Book, sess: Piece[]): void {
   const ev = [...ss.map((s) => ({ s })), ...asks.map((a) => ({ a }))].sort((x, y) => (regionOfEv(x) < regionOfEv(y) ? -1 : 1));
   for (const e of ev) {
     const t = at();
-    if ("s" in e) L({ t, who: e.s.ai, region: e.s.region, what: `Changed ${e.s.files} files on ${e.s.copy}${e.s.tests ? `; tests: ${e.s.tests}` : ""}.`, embed: { id: e.s.id } });
-    else { const p = d.pieces[e.a.piece]; L({ t, who: p.ai || VOICE, region: p.region, kind: "ask", asked: e.a.id, key: "asked:" + e.a.id, fn: "ask", gate: "ask", what: `Asked you: ${String(e.a.text).replace(/^[a-z][\w-]*: /i, "")}`, embed: { id: e.a.part || e.a.piece } }); }
+    if ("s" in e) L({ t, who: taskOf(e.s), region: e.s.region, what: `${changedWords(e.s.files).replace(/^./, (c) => c.toUpperCase())}${e.s.tests ? `; tests: ${e.s.tests}` : ""}.`, embed: { id: e.s.id } });
+    else { const p = d.pieces[e.a.piece]; L({ t, who: p.kind === "session" ? taskOf(p) : p.ai || VOICE, region: p.region, kind: "ask", asked: e.a.id, key: "asked:" + e.a.id, fn: "ask", gate: "ask", what: `Asked you: ${String(e.a.text).replace(/^[a-z][\w-]*: /i, "")}`, embed: { id: e.a.part || e.a.piece } }); }
   }
   page(0, b).lines.sort((x, y) => x.t - y.t);
 }
@@ -337,6 +376,15 @@ export function offerOf(): { k: keyof Take; v: string; words: string } | null {
 
 /** the folders the page groups its lines by, most relevant first (asks, waiting things, lines, then newest) */
 export function groups(ls: Line[], take: Take): { k: string; lines: Line[] }[] {
+  // kept per version of the data (#1615 S32): a pan draws the page again, it does not score it again
+  const key = `${dataVer()} ${take.notes} ${take.first} ${ls.map((l) => l.id).join(",")}`;
+  if (kept && kept.d === D && kept.key === key) return kept.gs;
+  const gs = groupsNow(ls, take);
+  kept = { d: D, key, gs };
+  return gs;
+}
+let kept: { d: Data; key: string; gs: { k: string; lines: Line[] }[] } | null = null;
+function groupsNow(ls: Line[], take: Take): { k: string; lines: Line[] }[] {
   const by = new Map<string, Line[]>();
   for (const l of ls) { const k = l.mine && !l.region ? "~mine" : l.region && regionOf(l.region) ? l.region : "~all"; if (!by.has(k)) by.set(k, []); by.get(k)!.push(l); }
   const drafts = (D.drafts as Record<string, { pressed?: boolean; region?: string }> | undefined) || {};

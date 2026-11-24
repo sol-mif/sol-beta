@@ -6,7 +6,7 @@
    Signed: marcocyl04-ux's agent, slice 2 of the port (#1615). */
 
 [data-face="next"] .nd-page { max-width: calc(var(--s12) * 16); margin: 0 auto; padding: var(--s12) var(--s8) calc(var(--s12) * 4); }
-[data-face="next"] .nd-h1 { font-family: var(--serif); font-weight: 600; font-size: var(--t-display); line-height: var(--t-display-line); margin: var(--s2) 0 0; color: var(--ink); }
+[data-face="next"] .nd-h1 { font-family: var(--serif); font-weight: var(--display-w); letter-spacing: var(--display-k); font-size: var(--t-display); line-height: var(--t-display-line); margin: var(--s2) 0 0; color: var(--ink); }
 [data-face="next"] .nd-say { font-size: var(--t-big); line-height: var(--t-big-line); color: var(--ink2); margin-top: var(--s3); max-width: calc(var(--s12) * 12); }
 [data-face="next"] .nd-hint { margin-top: var(--s2); font-size: var(--t-head); line-height: var(--t-body-line); color: var(--ink3); }
 [data-face="next"] .nd-kbd { font-size: var(--t-pill); line-height: var(--t-pill-line); padding: 0 var(--s1); margin-left: var(--s1); border-radius: var(--r-chip); background: var(--side); color: var(--ink2); white-space: nowrap; }
@@ -68,7 +68,7 @@
 [data-face="next"] .tm { max-width: calc(var(--s12) * 15); margin: 0 auto; padding: calc(var(--s12) + var(--s4)) var(--s8) calc(var(--s12) * 4); }
 [data-face="next"] .tm-card { padding: var(--s6) var(--s8) var(--s4); }
 [data-face="next"] .tm-who { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink3); }
-[data-face="next"] .tm-h { font-family: var(--serif); font-weight: 600; font-size: var(--t-display); line-height: var(--t-display-line); margin: var(--s3) 0 var(--s1); color: var(--ink); }
+[data-face="next"] .tm-h { font-family: var(--serif); font-weight: var(--display-w); letter-spacing: var(--display-k); font-size: var(--t-display); line-height: var(--t-display-line); margin: var(--s3) 0 var(--s1); color: var(--ink); }
 [data-face="next"] .tm-steps { list-style: none; margin: var(--s3) 0 0; padding: 0; }
 [data-face="next"] .tm-steps > li { display: grid; grid-template-columns: calc(var(--s12) + var(--s8)) minmax(0, 1fr); gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--line); }
 [data-face="next"] .tm-k { font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 550; color: var(--ink3); padding-top: var(--s2); }

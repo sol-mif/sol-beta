@@ -31,6 +31,7 @@ quiet_dist() {
 }
 
 quiet_dist
+bash prune-dist dist   # a built file whose source is gone is never loaded (#1837); dist.good/ put back is pruned here too
 node dist/index.js &
 pid=$!
 up=""
@@ -83,6 +84,7 @@ if [ -n "$up" ]; then
   swap_done   # the release that moved in has stayed up: no way back is needed any more
   if [ -n "$code" ]; then echo "keep: engine ended ($code) by its own choice; this build stays the good one"; fi
   quiet_dist   # nor the build that is running
+  bash prune-dist dist   # nor a file the watcher left whose source went since the start (#1837)
   if rsync -a --delete dist/ dist.good.new/ 2>/dev/null && rm -rf dist.good && mv dist.good.new dist.good; then
     # the commit this good build is, when nothing under the engine differs from it (Ship #33: a stamp of stable reads
     # it instead of building again; engine/src/team/ship.ts)

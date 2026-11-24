@@ -1,0 +1,136 @@
+/* The move-in (round 6 · M1, #1615; merge/views/movein.css, its structure kept): one "Keep, fix or drop" screen over the
+   window before the canvas is drawn (#mvi, its own root), the Moved-in card under the Diary's headline, and its ask on
+   Needs you. The screen's page scrolls in an area that ends above the talk pill (the pill's foot, its height and a gap),
+   so nothing rests under the pill. Every space, size and corner is the scale's, every colour the next set's roles.
+   Signed: marcocyl04-ux's agent, port slice 11 (#1615). */
+
+body.moving .nx { visibility: hidden; }
+.mvi { position: fixed; inset: 0; z-index: var(--z-frame); background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: var(--t-body); line-height: var(--t-body-line); }
+.mvi[hidden] { display: none; }
+.mvi-scroll { position: absolute; left: 0; right: 0; top: 0; bottom: calc(var(--s6) + var(--s12) + var(--s3)); overflow: auto; }
+.mv-page { box-sizing: border-box; max-width: 720px; margin: 0 auto; padding: var(--s12) var(--s8) var(--s8); }
+.mv-date { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); text-transform: uppercase; letter-spacing: 0.06em; }
+.mvi-h { margin: var(--s2) 0 0; font: var(--display-w) var(--t-display)/var(--t-display-line) var(--serif); letter-spacing: var(--display-k); }
+.mv-say { margin: var(--s3) 0 0; font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); }
+
+/* the unsure rows, first */
+.mv-unsure { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s6); color: var(--ink2); }
+.mv-cnt { display: inline-grid; place-items: center; min-width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-weight: 600; font-size: var(--t-label); }
+.mv-q { margin-top: var(--s3); padding: var(--s4) var(--s6); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--a2); }
+.mv-q .q { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 550; }
+.mv-q .w { margin-top: var(--s1); color: var(--ink3); }
+.mv-qacts { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+.mv-q.done, .mv-q.later { box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.mv-q.done .mv-qacts, .mv-q.later .mv-qacts { display: none; }
+.mv-q .said { display: none; color: var(--ink2); }
+.mv-q.done .said, .mv-q.later .said { display: block; margin-top: var(--s2); }
+.mv-q.done .q, .mv-q.later .q { color: var(--ink2); }
+
+/* places, sessions, AIs */
+.mv-sec { margin-top: var(--s4); padding: var(--s4) var(--s6); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.mv-ph { display: flex; align-items: baseline; gap: var(--s3); margin-bottom: var(--s1); }
+.mv-ph b { font: var(--display-w) var(--t-title)/var(--t-title-line) var(--serif); letter-spacing: var(--title-k); }
+.mv-ph .mv-hint { margin-left: auto; color: var(--ink3); }   /* plain words: the old face's global .why is a boxed note (#1757) */
+.mv-sub { margin: var(--s3) 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 550; color: var(--ink3); }
+.mv-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s2); margin: 0 calc(-1 * var(--s2)); border-radius: var(--r-row); outline: none; }
+.mv-row:focus-within, .mv-row:focus { background: var(--hover); }
+.mv-gl { display: grid; place-items: center; width: var(--s6); height: var(--s6); flex: none; }
+.mv-ic { width: 16px; aspect-ratio: 1; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; color: var(--ink2); }
+/* a folder: a small folder shape in the colour the canvas draws it (movein.html .fold; tabs.css .fmark's four, in order) */
+.mv-fold { position: relative; display: block; width: 20px; height: var(--s4); margin-top: var(--s1); border-radius: 1px var(--r-chip) var(--r-chip) var(--r-chip); background: var(--tint, var(--ink4)); }
+.mv-fold::before { content: ""; position: absolute; left: 0; top: calc(-1 * var(--s1)); width: var(--s2); height: var(--s1); border-radius: var(--r-chip) var(--r-chip) 0 0; background: inherit; }
+.mv-fold.t0 { --tint: var(--a1); }
+.mv-fold.t1 { --tint: var(--a2); }
+.mv-fold.t2 { --tint: var(--a3); }
+.mv-fold.t3 { --tint: var(--ink4); }
+.mv-aura { display: inline-block; flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); }
+.mv-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* BR1 (#1615): a name is never cut; a long one wraps, anywhere when it has no spaces, and the row grows */
+.mv-t small { min-width: 0; overflow-wrap: anywhere; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+/* calm at rest (card check scoped to #mvi): Rename and Remove keep their place but show on the row under the pointer or
+   focused; a folder's facts are one line of words, its chips (each pressed for its source) only on the focused row */
+.mv-row:not(.tb):not(:hover):not(:focus-within) .mv-acts > .mv-lk { visibility: hidden; }
+.mv-knw { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); overflow-wrap: anywhere; }
+.mv-kn .kn-chips { display: none; }
+.mv-row:focus-within .mv-kn .kn-chips { display: block; }
+.mv-row:focus-within .mv-knw { display: none; }
+.mv-nm { all: unset; box-sizing: border-box; display: block; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; resize: none; field-sizing: content; min-height: var(--t-read-line); font-size: var(--t-read); line-height: var(--t-read-line); border-radius: var(--r-chip); padding: 0 var(--s1); margin: 0 calc(-1 * var(--s1)); color: var(--ink); }
+.mv-nm:focus { box-shadow: inset 0 0 0 1px var(--ink3); background: var(--card); }
+.mv-row.tb .mv-nm { color: var(--ink3); text-decoration: line-through; text-decoration-color: var(--ink4); }
+.mv-acts { display: flex; gap: var(--s3); align-items: center; flex: none; }
+.mv-lk { color: var(--ink2); text-decoration: underline; text-decoration-color: var(--ink4); text-underline-offset: 0.2em; cursor: pointer; }
+.mv-lk:hover { color: var(--ink); }
+.mv-more { margin: var(--s2) 0 0; color: var(--ink3); }
+
+/* the end: the tally and "These are mine" */
+.mv-end { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s6); }
+.mv-end .mv-btn { margin-left: auto; }
+.mv-keys { margin: var(--s3) 0 0; color: var(--ink3); }
+.mv-keys kbd { display: inline-block; min-width: var(--s4); padding: 0 var(--s1); border-radius: var(--r-chip); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font: inherit; font-size: var(--t-label); text-align: center; }
+.mv-btn { display: inline-flex; align-items: center; height: var(--h-row); padding: 0 var(--s4); border: 0; border-radius: var(--r-pill); font: inherit; font-weight: 550; cursor: pointer; white-space: nowrap; }
+.mv-btn.pri { background: var(--ink); color: var(--card); }
+.mv-btn.ghost { background: var(--card); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line); }
+/* the way out that keeps nothing (BR1 first-timer P 1), above the title */
+.mv-back { margin-bottom: var(--s3); }
+
+/* on the canvas, after: the Moved-in card under the headline */
+.mv-seen { display: flex; align-items: center; gap: var(--s3); max-width: 640px; margin-top: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); color: var(--ink2); }
+.mv-seen b { color: var(--ink); }
+.mv-seen .mv-btn { margin-left: auto; flex: none; }
+/* a narrow Diary (zoomed out): the button goes under the words, never past the card (BR1 root part 3, #1615) */
+.mv-seen { flex-wrap: wrap; }
+.mv-seen > span:not(.mv-aura) { flex: 1 1 calc(var(--s12) * 4); min-width: 0; }
+
+/* on Needs you: its ask's glyph */
+.mv-askg { display: grid; place-items: center; width: var(--s6); height: var(--s6); flex: none; border-radius: var(--r-pill); color: var(--ink); background: var(--a2); }
+
+/* BR1 (#1615; mine/look/br1/movein.html): "Here's what you already have", when Claude Code or Codex was read. The apps as
+   chips, the folders in one list, an app's row kept as it is (no fix, no drop), a line of what Sol adds, and the dashed
+   privacy note under the tally. */
+.mv-found .mvi-h { font-weight: var(--display-w); letter-spacing: var(--display-k); }
+.mv-from { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
+.mv-src { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3) 0 var(--s1); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); white-space: nowrap; }
+.mv-appm { display: grid; place-items: center; width: var(--s6); height: var(--s6); border-radius: var(--r-chip); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); }
+.mv-appm.claude { background: var(--a2); color: var(--ink); }
+.mv-plus { min-width: 0; overflow-wrap: anywhere; color: var(--good); }   /* what Sol adds, in the face's green (movein.html .plus) */
+.mv-keep { padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--hover); color: var(--ink2); }
+.mv-found .mv-end { flex-wrap: wrap; }
+.mv-found .mv-end .mv-btn { margin-left: 0; }
+.mv-found .mv-end span { color: var(--ink3); }
+.mv-priv { margin: var(--s3) 0 0; padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--card); border: 1px dashed var(--ink4); color: var(--ink2); }
+.mv-priv code { font-family: var(--mono, ui-monospace, "SF Mono", Menlo, monospace); font-size: var(--t-label); }
+
+/* the Start screen row in Settings (Lead.tsx LeadRow): what the person sees first, asked only there */
+.ld-row { cursor: default; flex-wrap: wrap; }
+.ld-said { margin: var(--s1) 0 0; color: var(--ink2); }
+.ld-said .mv-lk { white-space: nowrap; }   /* the Start screen row says what a press did (BR1 first-timer 5) */
+.ld-row:hover { background: none; }
+.ld-row .st-seg button { display: inline-flex; align-items: center; gap: var(--s1); }
+.ld-ic { flex: none; width: var(--s3); height: var(--s3); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* the welcome card (movein.html "Has nothing yet", conform row 13): alone over the empty dotted canvas, centred on it,
+   ending above the talk pill; the canvas's Diary steps out of view while it is up. Its sizes are the drawing's times
+   --k, the start-up's scale (Welcome.tsx, Day.tsx), so it reads as large as the screens before it */
+[data-face="next"]:has([data-welcome]) .pl-diary { visibility: hidden; }
+.wl-wrap { --k: 1; --wl-w: calc(380px * var(--k)); position: absolute; left: 50%; top: calc(var(--s12) + var(--s6)); transform: translateX(-50%); z-index: var(--z-pieces); width: min(var(--wl-w), calc(100% - var(--s8))); max-height: calc(100% - var(--s12) - var(--s6) - var(--s6) - var(--s12) - var(--s3)); overflow: auto; border-radius: calc(18px * var(--k)); line-height: 1.4; }
+.wl { box-sizing: border-box; padding: calc(18px * var(--k)); border-radius: calc(18px * var(--k)); background: var(--card); box-shadow: 0 22px 48px -20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px var(--line); font-size: calc(13px * var(--k)); }
+.wl-h { margin: 0 0 calc(4px * var(--k)); font: 800 calc(19px * var(--k))/1.2 var(--sans); letter-spacing: -0.01em; }
+.wl-say { margin: 0 0 calc(12px * var(--k)); font-size: calc(12.5px * var(--k)); color: var(--ink3); }
+.wl-wrap .wl-start { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: calc(10px * var(--k)); width: 100%; margin: 0 0 calc(8px * var(--k)); padding: calc(10px * var(--k)); border-radius: calc(12px * var(--k)); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.wl-start:hover, .wl-start.on { background: var(--hover); }
+.wl-start:focus-visible { box-shadow: inset 0 0 0 1px var(--ink3), 0 0 0 1px var(--ink3); }
+.wl-start[disabled] { cursor: progress; }
+.wl-ic { display: grid; place-items: center; width: calc(36px * var(--k)); height: calc(30px * var(--k)); flex: none; }
+.wl-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wl-t b { font-weight: 600; font-size: calc(13px * var(--k)); }
+.wl-t small { font-size: calc(11.5px * var(--k)); color: var(--ink3); }
+.wl-in { all: unset; box-sizing: border-box; width: 100%; height: calc(26px * var(--k)); margin-top: calc(4px * var(--k)); padding: 0 calc(8px * var(--k)); border-radius: calc(7px * var(--k)); background: var(--card); box-shadow: inset 0 0 0 1px var(--ink3); color: var(--ink); font-size: calc(12.5px * var(--k)); }
+.wl-fold { position: relative; display: block; width: calc(28px * var(--k)); height: calc(21px * var(--k)); border-radius: calc(2px * var(--k)) calc(5px * var(--k)) calc(5px * var(--k)) calc(5px * var(--k)); background: var(--a1); }
+.wl-fold::before { content: ""; position: absolute; left: 0; top: calc(-4px * var(--k)); width: calc(11px * var(--k)); height: calc(5px * var(--k)); border-radius: calc(3px * var(--k)) calc(3px * var(--k)) 0 0; background: inherit; }
+.wl-fold.a2 { background: var(--a2); }
+.wl-orb { display: block; width: calc(26px * var(--k)); aspect-ratio: 1; border-radius: var(--r-pill); background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); }
+.wl-ai { display: flex; flex-wrap: wrap; align-items: center; gap: calc(6px * var(--k)); margin-top: calc(10px * var(--k)); color: var(--ink3); font-size: calc(11.5px * var(--k)); }
+.wl-wrap .wl-chip { all: unset; display: inline-flex; align-items: center; padding: calc(3px * var(--k)) calc(9px * var(--k)); border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); }
+button.wl-chip { cursor: pointer; }
+button.wl-chip:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.wl-chip.in { background: var(--a2); color: var(--ink); }

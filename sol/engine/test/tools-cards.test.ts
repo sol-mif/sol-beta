@@ -18,6 +18,7 @@ after(() => { clear(); rmSync(DIR, { recursive: true, force: true }); });
 const C = await import("../src/tools/fromcards.ts");
 const T = await import("../src/tools.ts");
 const { OPEN_TOOLS } = await import("../src/openfor.ts");
+const { LOG_TOOLS } = await import("../src/log-tools.ts");
 const { MODES, standsOn } = await import("../src/versions.ts");
 const cards = (await import("../src/stations.json", { with: { type: "json" } })).default as Record<string, { station: string; offers?: string[] }>;
 
@@ -26,11 +27,11 @@ const allOn = (mode: string) => { process.env.SOL_VERSION = mode; process.env.SO
 const names = () => T.solToolsNow().map((t) => t.name);
 const txt = (r: { content: { type: string; text?: string }[] }) => String(r.content[0]?.text ?? "");
 
-test("each tool a card offers is one of Sol's tools, and the cards that offer some today are these three", () => {
-  const real = new Set([...T.SOL_TOOLS, ...OPEN_TOOLS].map((t) => t.name));
+test("each tool a card offers is one of Sol's tools, and the cards that offer some today are these four", () => {
+  const real = new Set([...T.SOL_TOOLS, ...OPEN_TOOLS, ...LOG_TOOLS].map((t) => t.name));
   assert.ok(C.OFFERS.size > 0);
   for (const [t, o] of C.OFFERS) assert.ok(real.has(t), `${t} (offered by ${o.id}) is no tool of Sol's`);
-  assert.deepEqual([...new Set([...C.OFFERS.values()].map((o) => o.id))].sort(), ["engine/team/reach", "product/cowork/room", "product/settings/open-for"]);
+  assert.deepEqual([...new Set([...C.OFFERS.values()].map((o) => o.id))].sort(), ["engine/log", "engine/team/reach", "product/cowork/room", "product/settings/open-for"]);
 });
 
 test("the ladder: a tool is offered in a mode when its card's station is at or past it; one no card offers, always", () => {

@@ -23,6 +23,8 @@ import { answerHook } from "./hooks.js";
 import { changeThing, toFace, type Thing } from "./items.js";
 import { YOU, type HomeEv } from "./log.js";
 import type { Ctx, Handler } from "./unit.js";
+import { placesMsg } from "./places.js";
+import { EVERYWHERE, noteFixIn } from "../next/you-known.js";
 
 const startOfDay = (ms: number, plus = 0): number => { const d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + plus).getTime(); };
 /** a Thing for you on a later day has joined the list once its day has come (pure) */
@@ -139,6 +141,19 @@ function onList(ctx: Ctx, id: string): Thing | null {
   return t && !t.gone && waits(seen(t, ctx.now())) ? t : null;
 }
 
+/** a Thing's folder as a fix's place: the folder on the disk its crumb names (w:<path>), else the crumb as Home says it;
+ *  in no folder, everywhere */
+export function placeOfThing(ctx: Ctx, t: Thing): string {
+  if (!t.folder) return EVERYWHERE;
+  let ref: string | undefined;
+  try { ref = placesMsg(ctx).places.find((p) => p.path === t.folder && p.from.source === "files")?.from.ref; } catch { ref = undefined; }
+  return ref && ref.startsWith("/") ? `w:${ref}` : t.folder;
+}
+/** one store (#1615): the person's Later, answer or Undo on a need is one fix line in what Sol knows, at the Thing's
+ *  folder, because of the Thing (thing:<id>) */
+export const noteNeed = (ctx: Ctx, t: Thing, how: "later" | "answer" | "undo", now?: string): void =>
+  void noteFixIn(ctx.home, { how, what: `“${t.words}”`, place: placeOfThing(ctx, t), reason: `thing:${t.id}`, ...(now ? { now } : {}) }, ctx.now());
+
 /** home.answer {thingId, answer}: today.answer first (the receipt's ledgerId), then the Thing's change. A link with a
  *  hook (hooks.ts) goes to it first; else the face's own rule (MR today.ts l.192-193): a question from a job, or the
  *  warm answer on what is not "for you", sets it moving (a job goes on it); anything else is done */
@@ -150,6 +165,7 @@ const answer: Handler = async (ctx, face, msg) => {
   const said = m.data.answer, which = t.card?.answers[0] === said ? 0 : t.card?.answers[1] === said ? 1 : -1;
   const shown = lastShown(ctx);
   const act = ctx.log.write({ kind: "today.answer", item: t.id, value: { which }, ...(which === -1 ? { words: said } : {}), ...(shown ? { cause: shown.id } : {}), by: YOU });
+  noteNeed(ctx, t, "answer", said);
   const hook = answerHook(t);
   if (!hook || !(await hook(ctx, t, said, { opened: m.data.opened === true }))) {
     const goes = t.state === "asks" || (which === 0 && t.read !== "you");
@@ -166,6 +182,7 @@ const later: Handler = (ctx, face, msg) => {
   const t = onList(ctx, m.data.thingId);
   if (!t) return sendToday(ctx, face);
   const act = ctx.log.write({ kind: "today.later", item: t.id, by: YOU });
+  noteNeed(ctx, t, "later");
   face.send({ type: "home.done", ledgerId: act.id, thingId: t.id, did: "later" });
   ctx.pushToday();
 };

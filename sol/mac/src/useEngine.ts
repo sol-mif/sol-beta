@@ -11,7 +11,7 @@ import { markMine } from "./flag";
 import { tellAgents, agentsSwitchMsg } from "./agents/tell";   // #1702: the window's agents.mode reaches the engine
 import { tellSnap, snapSwitchMsg } from "./snap/tell";   // #1701: the window's build.snap reaches the engine
 import { buildSnap, subBuildSnap } from "./snap/fit";
-import { agentsOn, subAgents } from "./agents/flag";   // #1224: Marco's own window, marked once by the engine's login
+import { agentsOn, noteAgentsSaid, subAgents } from "./agents/flag";   // #1224: Marco's own window, marked once by the engine's login
 import { tooLarge } from "./socket";
 
 // The wire to the engine, as written in sol/PROTOCOL.md.
@@ -361,7 +361,9 @@ export function useEngine() {
       // A team.* answer with a rid goes too (#579): Work's card presses ask for a key and press by rid (work/useWork.ts),
       // and without it every keyed press in Work (hand-in, tonight, checkpoint, the box's merge) waited out its timeout.
       // An onboard.* answer is by rid as well (#1195: whether the engine reads their sentences, and the reading)
-      if (typeof m.type === "string" && (m.type.startsWith("work.") || m.type.startsWith("browser.") || m.type.startsWith("sticky") || m.type === "ran" || m.type.startsWith("agent.") || m.type.startsWith("agents.") || m.type.startsWith("onboard.") || (m.type.startsWith("home.") && m.type !== "home.suggest") || (m.type.startsWith("team.") && typeof m.rid === "string"))) { rawSubs.current.forEach((f) => f(m)); return; }
+      // A next.* answer goes too (#1615 BR1): the new face's wires (next/cv/wire) read every one of them, and without it a
+      // fresh Sol on ui.next never heard the move-in read, the Diary, its places or its state, so its canvas stayed blank
+      if (typeof m.type === "string" && (m.type.startsWith("next.") || m.type.startsWith("work.") || m.type.startsWith("browser.") || m.type.startsWith("sticky") || m.type === "ran" || m.type.startsWith("agent.") || m.type.startsWith("agents.") || m.type.startsWith("onboard.") || (m.type.startsWith("home.") && m.type !== "home.suggest") || (m.type.startsWith("team.") && typeof m.rid === "string"))) { rawSubs.current.forEach((f) => f(m)); return; }
       if (m.type === "engine.renewing") { setNotice("engine renewing"); return; }   // a new build going live; back in a few seconds
       if (m.type === "engine.reverted") { setNotice("engine went back to its last good build"); window.clearTimeout(noticeTimer.current); noticeTimer.current = window.setTimeout(() => setNotice(""), 60_000); return; }   // the keeper put the last good build back after a bad one
       if (m.type === "face.reverted") { flash(`face went back: ${m.line}`); return; }   // an edit that did not compile was taken back (engine/src/changing.ts)
@@ -384,9 +386,11 @@ export function useEngine() {
         const st = m.settings as Settings;
         settingsRef.current = st;
         setSettingsState(st);
+        rawSubs.current.forEach((f) => f(m));   // the new face's settings wire reads it too (next/cv/wire/settings.ts, #1615)
         setEngineInfo({ haveVoiceKey: !!m.haveVoiceKey, dictationModel: String(m.dictationModel ?? ""), since: m.up?.since, port: m.up?.port });
         if (m.up?.health) setHealth(m.up.health as Health);
         seed(st);
+        noteAgentsSaid(st);   // agents.mode reads the engine's reading of its card (#18); a turn is told back below, once
         // whose Sol this is (#1224): Marco's own window marked once; what is drawn for him alone was read before, so read again
         if (markMine(m.login)) location.reload();
       } else if (m.type === "arrange.changed") {

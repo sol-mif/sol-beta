@@ -38,6 +38,10 @@ export type Marks = {
   role?: Role;        // its part in the dev cycle (#484): given to the guard as SOL_ROLE on every run, set once, at its start
   woken?: "mine" | "others";   // started by a comment on GitHub (#1151, team/wake.ts): every run of it, a resume after a restart
                                // too, is held bare (runs.ts). Set once, at its start, never taken off
+  handed?: true;      // started from another person's hand-over my AI took with nobody pressing (#1541): their words, so
+                      // its runs go no further than does-then-tells whatever the table's level (runs.ts). Set once, never taken off
+  canvas?: true;      // the canvas bar's standing session (#1615, next/canvas-agent.ts): no list draws it as a folder's session
+  help?: true;        // the Help session (#1615, next/help/help.ts): read-only, no list draws it as a folder's session
 };
 // the parts a session plays in the dev cycle (#484, sol/locks/team.mjs ROLES, the same list): the guard holds each to its
 // locks. Kept on the session, so every run of it (a resume, a restart) is held the same
@@ -155,7 +159,7 @@ function write() {
   }
 }
 
-const KEYS = ["pinned", "done", "unread", "archived", "group", "parent", "seen", "failed", "mode", "card", "moved", "folder", "room", "roomId", "goalv", "memv", "role", "woken", "under", "kind", "grouped"] as const;
+const KEYS = ["pinned", "done", "unread", "archived", "group", "parent", "seen", "failed", "mode", "card", "moved", "folder", "room", "roomId", "goalv", "memv", "role", "woken", "under", "kind", "grouped", "handed", "canvas", "help"] as const;
 export function mark(sessionId: string, patch: Partial<Record<keyof Marks, unknown>>) {
   const s = workState();
   const m = { ...(s.marks[sessionId] ?? {}) } as Record<string, unknown>;
@@ -164,6 +168,7 @@ export function mark(sessionId: string, patch: Partial<Record<keyof Marks, unkno
     const v = patch[k];
     if (k === "role") { if (m.role === undefined && roleIn(v)) m.role = roleIn(v); continue; }   // set once: never changed or taken off
     if (k === "woken") { if (m.woken === undefined && (v === "mine" || v === "others")) m.woken = v; continue; }   // the same (#1151)
+    if (k === "handed") { if (m.handed === undefined && v === true) m.handed = true; continue; }   // the same (#1541)
     // 2026-11-14: only "orchestration" is a kind; anything else is a normal session, which carries no kind at all
     if (k === "kind") { if (v === "orchestration") m.kind = v; else delete m.kind; continue; }
     if (v === null || v === false || v === "" || v === undefined) delete m[k];

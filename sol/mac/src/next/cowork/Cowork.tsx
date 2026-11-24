@@ -7,6 +7,15 @@
 import { Face, Faces } from "../people/Face.tsx";
 import { isMaker, items, me, sortedGroups, st, team, waitsAll, type WaitItem } from "../people/queue.ts";
 import type { Group, Wait } from "../people/data.ts";
+import { FromYou, Others } from "../lead/views.tsx";   // slice R7: render points (requests/lead.md)
+
+/** live, the three doors say what is true (BR1, #1615): an invite is made on a group's own page (team.v3.join.link), a
+ *  group is joined by opening the link it sent (team.v3.join.open), and making a group comes later */
+const LIVE = {
+  invite: "Open the group and press Invite there: Sol copies a link for one person to ask in",
+  join: "Open the link they sent you, or paste it in Social: Sol asks to join for you",
+  make: "Not here yet: making a group comes in a later Sol",
+};
 
 /** the open waits a group has, in its own order (answered ones leave; "later" ones stay) */
 const openIn = (g: Group) => { const b = st(); return waitsAll().filter((x) => x.g === g && !b.done.has(x.id)); };
@@ -26,7 +35,7 @@ function Btns({ g, w, id, cls }: { g: Group; w: Wait; id: string | null; cls: st
 export function Home() {
   const s = team(), ws = items().filter((x): x is WaitItem => x.type === "wait"), active = s.groups.filter((g) => !g.quiet), quiet = s.groups.filter((g) => g.quiet);
   const sorted = sortedGroups(s), top = ws[0], t = top?.w;
-  const say = ws.length ? `${ws.length === 1 ? "One thing waits" : (NUM[ws.length] ?? ws.length) + " things wait"} on you${t?.sub && /Due|By/.test(t.sub) ? "; the first is " + t.sub.toLowerCase() : ""}.` : "Nothing waits on you. Here’s what moved.";
+  const say = ws.length ? `${ws.length === 1 ? "One thing waits" : (NUM[ws.length] ?? ws.length) + " things wait"} on you${t?.sub && /Due|By/.test(t.sub) ? "; the first is " + t.sub.toLowerCase() : ""}.` : !s.groups.length ? "No groups yet." : "Nothing waits on you. Here’s what moved.";
   const present = new Set(s.groups.flatMap((g) => g.people.map((p) => (p.reach === "link" ? "link" : p.ai ? p.st : "none"))));
   const L: Record<string, string> = { work: "working", wait: "waiting on you", done: "done", rest: "resting", unk: "not checked in", link: "by link, no app", none: "no AI" };
   return (
@@ -41,7 +50,7 @@ export function Home() {
             : <button key={b} className={`btn ${i ? "ghost" : "pri"}`} data-said={b}>{b}</button>)}
             {(t.btns ?? []).length < 3 ? <button className="btn ghost" data-act={`page:group:${top.g.id}`}>Open the group</button> : null}</div>
         </div></div> : null}
-      <h2>{s.groups.length > 1 ? "Your groups" : "Your group"}</h2>
+      {s.groups.length ? <h2>{s.groups.length > 1 ? "Your groups" : "Your group"}</h2> : null}
       <div className={`groups${active.length === 1 ? " one" : ""}`}>
         {sorted.map((g) => {
           const n = openIn(g).length, d = g.lines.filter((l) => l.kind === "done").length;
@@ -55,9 +64,9 @@ export function Home() {
         <div className="groups more">{quiet.map((g) => <div key={g.id} className="card grp still"><div className="top2"><span className="dotf" style={{ background: g.color }} /><b>{g.name}</b></div><div className="one">{g.last}</div>
           <div><button className="mini" data-t="Paused: hidden and silent, still yours">Pause</button> <button className="mini" data-t={`You left ${g.name}`}>Leave</button></div></div>)}</div></details> : null}
       {isMaker(s) ? <div className="joinrow" data-f="C1 · C2 · roles">
-        <button className="btn ghost" data-t="Invite: a name, number or email, and a role (makes · approves · reads). They get a link; the app is offered, never needed.">Invite someone</button>
-        <button className="btn ghost" data-t="Joined. You read until someone who makes lets you in.">Join with a code</button>
-        <button className="btn ghost" data-t="Named it. Invite people next.">New group</button></div> : null}
+        <button className="btn ghost" data-real="" data-t={s.live ? LIVE.invite : "Invite: a name, number or email, and a role (makes · approves · reads). They get a link; the app is offered, never needed."}>Invite someone</button>
+        <button className="btn ghost" data-real="" data-t={s.live ? LIVE.join : "Joined. You read until someone who makes lets you in."}>Join with a code</button>
+        <button className="btn ghost" data-real="" data-t={s.live ? LIVE.make : "Named it. Invite people next."}>New group</button></div> : null}
       <div className="legend">{Object.keys(L).filter((k) => present.has(k)).map((k) => <span key={k}><i className={`st s-${k}`} />{L[k]}</span>)}</div>
     </div></div>
   );
@@ -73,13 +82,14 @@ export function GroupPage({ gid }: { gid: string }) {
   const sh = (g.shared || []).filter((x) => mk || !x.makers);
   return (
     <div className="ppl" data-people="group"><div className="gpage">
-      <div className="ghead"><h1>{g.name}</h1><Faces ps={g.people} cls="l" />{mk ? <button className="btn ghost" data-t="Invite: a name or email, and a role. The code is in the small print.">Invite</button> : null}</div>
+      <div className="ghead"><h1>{g.name}</h1><Faces ps={g.people} cls="l" />{mk ? <button className="btn ghost" data-invite={g.id} data-t="Invite: a name or email, and a role. The code is in the small print.">Invite</button> : null}</div>
       <p className="say">{!mk && mine.length ? "One thing needs your yes." : mine.length ? (mine.length === 1 ? "One thing waits on you" : `${mine.length} things wait on you`) + (g.due ? `. Due ${g.due}.` : ".") : g.last}</p>
       {g.main ? <div className="card mainthing" data-f="the work itself, on top"><span className="ico bigx" style={{ background: g.main.c }} /><div><b>{g.main.n}</b><small>{g.main.k} · {g.main.s}</small></div><button className="btn ghost end" data-t="Opens beside your work">Open</button></div> : null}
       {shown.length ? <div className="waits" data-f="C14 · C20 · one ranking">
         {shown.map(({ w, id }, i) => <div key={i} className={`wrow ${w.kind}${focus(id)}`} data-pid={id ?? undefined}><Face p={{ h: w.h, n: w.from }} cls="xs" />
           <div className="t">{me(w.text)}<small>{w.sub}{id && b.later.has(id) ? " · you said later" : ""}</small></div><Btns g={g} w={w} id={id} cls="mini" /></div>)}
         {more && mk ? <div className="morew">+{more.more} more · raised by AIs or older</div> : null}</div> : null}
+      <Others />{/* slice R7 (F2): what you handed out, its own line below the waits (requests/lead.md) */}
       <div className="cols">
         <div className="room" data-f="C6 · C14 · folds by kind"><div className="rh"><b>The room</b>{mk ? "people’s lines open · AI and build updates fold" : "what the team shares with you"}</div>
           {many ? <div className="facefilter" data-f="many people: filter by face"><span>Today</span>{g.people.slice(0, 9).map((x, i) => <Face key={i} p={x} />)}<span className="more">+{g.people.length - 9}</span></div> : null}
@@ -94,7 +104,7 @@ export function GroupPage({ gid }: { gid: string }) {
         <div className="side2">
           <h3 data-f="C16 · roles · reach">People <span className="hn">{g.people.length}</span></h3>
           {g.people.slice(0, 6).map((x, i) => <div key={i} className="pp"><Face p={x} cls="l" /><div><b>{x.n}</b>{x.role !== "makes" ? <> <span className="role">{x.role}</span></> : null}
-            <div className="r">{x.reach === "link" ? "by link, no app" : x.ai ? `AI: ${x.ai}${x.st === "unk" ? " · not checked in" : ""}` : "no AI"}</div></div></div>)}
+            <div className="r">{x.reach === "link" ? "by link, no app" : x.ai ? `AI: ${x.ai}${x.st === "unk" ? " · not checked in" : ""}` : "no AI"}<FromYou who={x.n} /></div></div></div>)}
           {g.people.length > 6 ? <div className="allp" data-t={`Searchable list of all ${g.people.length}`}>All {g.people.length} · search</div> : null}
           {sh.length ? <><h3 data-f="C8 · C9 · only once something is connected">Shared</h3>{sh.map((x) => <div key={x.n} className="thing"><span className="ico" style={{ background: x.c }} />{x.n}<span className="k">{x.k}</span></div>)}</>
             : mk && !g.main ? <><h3>Shared</h3><div className="hintx">Add what you work in: a document, a sheet, a design file, a calendar, a repository.</div></> : null}

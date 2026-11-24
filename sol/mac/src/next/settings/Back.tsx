@@ -9,11 +9,11 @@ import { M, useNext } from "../cv/index.ts";
 export function Back() {
   const on = useNext((d) => (d.settings as { ui?: { next?: boolean } } | undefined)?.ui?.next !== false);
   return (
-    <section className="st-back-old" aria-label="The new Sol">
-      <h2 className="st-gh">The new Sol</h2>
+    <section className="st-back-old" aria-label="Previous version">
+      <h2 className="st-gh">Previous version</h2>
       <div className="st-row" data-st="back-old">
-        <span className="st-t"><b>Back to the old Sol</b><small>Everything you had is where you left it. Turn the new Sol on again from the old Settings, and you come back here.</small></span>
-        <button className="st-btn" data-st="old-sol" disabled={!on} onClick={() => M.oldSol()}>{on ? "Back to the old Sol" : "Turning back…"}</button>
+        <span className="st-t"><b>Go back to the previous version</b><small>Everything you had is where you left it. Turn the new Sol on again from the old Settings, and you come back here.</small></span>
+        <button className="st-btn" data-st="old-sol" disabled={!on} onClick={() => M.oldSol()}>{on ? "Go back" : "Turning back…"}</button>
       </div>
     </section>
   );

@@ -15,7 +15,8 @@ export type Out = { url: string; label: string };
 export type Place = { project: string; part: string; path: string[]; out?: Out };
 /** a part: its words, how it names a child (the path up to that child), and whether it stands above any project
  *  (an anchor: what is yours across projects) */
-export type PartSpec = { label: string; childLabel?: (path: string[]) => string; anchor?: boolean };
+// off: registered but not offered now, its card's switch off (gate one q6, #1740): no rail row, no tile, no place
+export type PartSpec = { label: string; childLabel?: (path: string[]) => string; anchor?: boolean; off?: boolean };
 export type Crumb = { label: string; to: Place };
 
 export const ROOT: Place = { project: "", part: "", path: [] };
@@ -32,8 +33,8 @@ const tell = () => subs.forEach((f) => f());
 
 /** a part joins Cowork: its crumbs, its rail row, its children's names. Registered again, it is replaced */
 export function registerPart(part: string, spec: PartSpec) { parts.set(part, spec); tell(); }
-/** the parts in the order they were registered */
-export const partsOf = (): [string, PartSpec][] => [...parts];
+/** the parts in the order they were registered, the ones on now */
+export const partsOf = (): [string, PartSpec][] => [...parts].filter(([, s]) => !s.off);
 export const partOf = (part: string): PartSpec | undefined => parts.get(part);
 /** a part says what its children are called as it reads them (a cluster's id → its name); the crumbs use them */
 export function nameChildren(part: string, names: Record<string, string>) {
@@ -122,7 +123,7 @@ export function askedPlace(search: string): Place | null {
   const v = new URLSearchParams(search).get("cowork");
   if (!v) return null;
   const [part, ...path] = v.split("/").filter(Boolean);
-  if (!part || !parts.has(part)) return null;
+  if (!part || !parts.has(part) || parts.get(part)!.off) return null;
   return { project: "", part, path };
 }
 

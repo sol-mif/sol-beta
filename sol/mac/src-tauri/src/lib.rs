@@ -9,6 +9,7 @@ mod pop;
 mod root;
 mod screens;
 mod thing;
+mod update;
 mod welcome;
 
 use std::net::TcpStream;
@@ -18,7 +19,21 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
-pub const ENGINE_PORT: u16 = 7777;
+/// The engine's port, 7777 unless the build sets SOL_ENGINE_PORT: a second app (a test build of a try) then talks
+/// to its own engine and never to the person's Sol.
+pub const ENGINE_PORT: u16 = port_of(option_env!("SOL_ENGINE_PORT"));
+
+const fn port_of(s: Option<&str>) -> u16 {
+    let b = match s { Some(s) => s.as_bytes(), None => return 7777 };
+    let (mut i, mut n) = (0, 0u32);
+    while i < b.len() {
+        assert!(b[i].is_ascii_digit(), "SOL_ENGINE_PORT must be digits");
+        n = n * 10 + (b[i] - b'0') as u32;
+        i += 1;
+    }
+    assert!(n > 0 && n < 65536, "SOL_ENGINE_PORT out of range");
+    n as u16
+}
 
 fn engine_is_up() -> bool {
     TcpStream::connect_timeout(
@@ -152,13 +167,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())   // sol:// links (#327, link.rs)
+        .plugin(tauri_plugin_updater::Builder::new().build())   // the app updates itself (#1824, update.rs); no window may call it
         .manage(hot::Hot::default())
         .manage(thing::Tabs::default())
         .manage(link::Waiting::default())
         .invoke_handler(tauri::generate_handler![engine_port, engine_phase, engine_start, idle_seconds, face_mode, face_state,
             welcome::install_run, welcome::claude_login, welcome::claude_status, welcome::codex_login, welcome::codex_status, welcome::claude_install, welcome::welcome_done,
-            permit::permit_state, permit::permit_open, permit::permit_back, places::places_copy, places::places_drop,
-            thing::thing_open, thing::thing_show, thing::thing_bounds, thing::thing_close, thing::thing_nav, thing::thing_outside, thing::sites_sign_out, thing::sites_clear, thing::block_view_open, thing::block_view_bounds, thing::block_view_hide_all, thing::block_view_nav, thing::block_view_close, pop::block_pop, pop::block_pop_close, screens::screens, screens::screen_window_open, screens::screen_window_close, screens::screens_off, link::sol_url_take, haptic::haptic])
+            permit::permit_state, permit::permit_open, permit::permit_back, permit::app_relaunch, places::places_copy, places::places_drop,
+            thing::thing_open, thing::thing_show, thing::thing_bounds, thing::thing_close, thing::thing_nav, thing::thing_outside, thing::sites_sign_out, thing::sites_clear, thing::block_view_open, thing::block_view_bounds, thing::block_view_hide_all, thing::block_view_nav, thing::block_view_close, pop::block_pop, pop::block_pop_close, screens::screens, screens::screen_window_open, screens::screen_window_close, screens::screens_off, link::sol_url_take, haptic::haptic, update::app_update_apply, update::app_update_state])
         .setup(|app| {
             start_engine_if_needed(app.handle());
             link::init(app.handle());   // the link that launched Sol, then every sol:// link (#327)
@@ -202,6 +218,7 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            update::start(app.handle());   // the app updates itself, restarted only on the person's press (#1824, update.rs)
             pause::start();   // the pause signal's senses (#1597, pause.rs): the engine keeps it off until pause.signal is set
             // the face's pages follow the hot pick: checked every two seconds
             let h = app.handle().clone();

@@ -34,13 +34,13 @@ export function MyAiSheet({ me, table, others, my, onAi, onLevel, onDone }: { me
   const reach = (on: boolean, w: string) => <span key={w} className={`gh-pill${on ? " on" : " ctl"}`} title={on ? `${w}: connected on this mac` : `${w}: not connected on this mac (Settings › me)`}>{w}</span>;
   return (
     <div className="gh-lifted gh-sheet mine" data-sheet="myai" role="dialog" aria-label={`my ai at ${table}`}>
-      <Jelly login={me} me={me} s={88} /><span className="gh-stk r3">every table, for now</span>
+      <Jelly login={me} me={me} s={88} /><span className="gh-stk r3">how far: this table only</span>
       <div className="gh-disp d28" style={{ textAlign: "center" }}>my ai at {table}</div>
       <div className="gh-set"><span className="gh-dim">runs on</span><Seg words={my.machines.length ? my.machines : [my.machine]} on={my.machine} act="machine" /></div>
       <div className="gh-set"><span className="gh-dim">is</span><Seg words={["claude", "codex"]} on={my.ai} pick={(w) => onAi(w as "claude" | "codex")} act="ai" /></div>
       <div className="gh-set"><span className="gh-dim">and it</span><Seg words={LEVELS} on={my.level} pick={(w) => onLevel(w as Level)} act="level" /></div>
       <div className="gh-set"><span className="gh-dim">reaches</span><div className="gh-row g8">{reach(my.reaches.github, "github")}{reach(my.reaches.talk, "the talk")}{reach(my.reaches.drive, "drive")}</div></div>
-      <div className="gh-dim" style={{ textAlign: "center", maxWidth: 400 }}>{who} see the first three lines at your seat. not what it reaches. today these are this sol's settings at every table, not {table}'s alone.</div>
+      <div className="gh-dim" style={{ textAlign: "center", maxWidth: 400 }}>{who} see the first three lines at your seat. not what it reaches. how far it goes is {table}'s alone. where it runs and which ai are this sol's at every table, for now.</div>
       <div className="gh-row g8"><button type="button" className="gh-pill ctl gh-lg" data-act="done" onClick={onDone}>done</button></div>
     </div>
   );

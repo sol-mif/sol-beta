@@ -6,10 +6,12 @@
 // The checks are on the mechanics; every home, place and name in them is made up.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { agentsReader, askMeta, asksIn, axisX, cardStatus, causesOf, changedCount, dayRows, emptySol, headingOf, homeCount, idsIn, introOf, joinShades, listOf, meetLine, offersStamp, postureOf, railOf, railWord, rawIn, routinesLine, shelvesRead, siteMark, todayOf } from "./agents/model.ts";
 import { asker, withLine, joinQuestion, grouping, LOOK_SIGN_MS, lookSignIn, stepWords, doingOf, firstTicks, howFar, howWords, mayDo, peekOf, placeLine, questionOf, reachWords, restingByHand, saidOf, seenChip, stateWord, tileLine, timesLine, tooShort, typedJob, whenWord, workTitle, workParts, blankLine, type AgentRow } from "./agents/model.ts";
 import { HOMES, fakeEngine, fixtureList, fixtureOf, shelvesFor } from "./agents/fixture.ts";
-import { buildSwitch, MINE_ON, type SwitchEnv } from "./flag.ts";
+import { buildSwitch, MINE_ON, VERSION_KEY, type SwitchEnv } from "./flag.ts";
+import { AGENTS_KEPT, agentsReading, agentsSaidOf } from "./agents/flag.ts";
 
 const NOW = new Date(2026, 10, 16, 21, 30).getTime();
 const L = fixtureList(NOW);
@@ -461,12 +463,55 @@ test("through the engine in memory: a change rehearsed shows before and after an
   we.close();
 });
 
-test("the switch: agents.mode is off by default, on by its storage or link, and among Marco's own window's switches", () => {
+test("the switch: agents.mode off untouched in a test's window, on by its storage or link, and no longer on the concept-only list", () => {
   const env = (o: Record<string, string> = {}, search = ""): SwitchEnv => ({ storage: () => ({ getItem: (k) => o[k] ?? null, setItem: (k, v) => { o[k] = v; } }), search: () => search, target: new EventTarget() });
   assert.equal(buildSwitch("agents.mode", env()).get(), false);
   assert.equal(buildSwitch("agents.mode", env({ "agents.mode": "1" })).get(), true);
   assert.equal(buildSwitch("agents.mode", env({}, "?agents.mode=on")).get(), true);
-  assert.ok(MINE_ON.has("agents.mode"));
+  // #18 (gate one question 2): where its card stands is the engine's to say (agents/flag.ts agentsReading), not this list's
+  assert.equal(MINE_ON.has("agents.mode"), false);
+});
+
+test("agents.mode reads the engine's reading the way the views do: the link, then storage, then the engine, then what was kept (#18)", () => {
+  const kv = (o: Record<string, string> = {}) => ({ getItem: (k: string) => o[k] ?? null });
+  assert.equal(agentsSaidOf(null), undefined, "no settings yet");
+  assert.equal(agentsSaidOf({ window: null }), undefined, "the engine's first moment");
+  assert.equal(agentsSaidOf({ window: { "view.home": true } }), undefined, "an engine that sends no reading for it");
+  assert.equal(agentsSaidOf({ window: { "agents.mode": true } }), true);
+  assert.equal(agentsSaidOf({ window: { "agents.mode": false } }), false);
+  // the engine's word wins over the old concept-only rule both ways
+  assert.equal(agentsReading(true, "", kv({ [VERSION_KEY]: "complete" })), true, "complete, the card at complete: on");
+  assert.equal(agentsReading(false, "", kv({ [VERSION_KEY]: "concept" })), false, "the person said off by their AI: off");
+  // the Settings row (storage) and a link still win over it
+  assert.equal(agentsReading(true, "", kv({ "agents.mode": "0" })), false, "off in its row");
+  assert.equal(agentsReading(false, "", kv({ "agents.mode": "1" })), true, "on in its row");
+  assert.equal(agentsReading(true, "?agents.mode=off", kv({ "agents.mode": "1" })), false, "the link's off for one load");
+  assert.equal(agentsReading(false, "?agents.mode=on", kv()), true, "the link's on");
+  // before the engine says: what this window kept from it, else the rule before (#1427), so concept is unchanged
+  assert.equal(agentsReading(undefined, "", kv({ [AGENTS_KEPT]: "1", [VERSION_KEY]: "complete" })), true, "kept on");
+  assert.equal(agentsReading(undefined, "", kv({ [AGENTS_KEPT]: "0", [VERSION_KEY]: "concept" })), false, "kept off");
+  assert.equal(agentsReading(undefined, "", kv({ [VERSION_KEY]: "concept" })), true, "concept, nothing said yet: on, as before");
+  assert.equal(agentsReading(undefined, "", kv({ [VERSION_KEY]: "complete" })), false, "complete, nothing said yet: off");
+  assert.equal(agentsReading(undefined, "", kv()), false, "the version unknown: off");
+  assert.equal(agentsReading(undefined, "", null), false);
+});
+
+test("once stations.json says complete, a complete Sol's window reads agents.mode on; at concept, as today (#18)", async () => {
+  // the engine's own ladder (engine versions.ts onFor) on this table, as settings.ts readings sends it in settings.window
+  const V = await import(new URL("../../engine/src/versions.ts", import.meta.url).href);
+  const table = JSON.parse(readFileSync(new URL("./stations.json", import.meta.url), "utf8"));
+  assert.equal(table["agents.mode"].side, "window");
+  const windowIn = (t: unknown, mode: string) => ({ window: { "agents.mode": V.onFor("agents.mode", mode, undefined, V.stationsFrom(t).stages) as boolean } });
+  const kv = (o: Record<string, string>) => ({ getItem: (k: string) => o[k] ?? null });
+  const complete = kv({ [VERSION_KEY]: "complete" }), concept = kv({ [VERSION_KEY]: "concept" });
+  const moved = { ...table, "agents.mode": { ...table["agents.mode"], station: "complete" } };
+  assert.equal(agentsReading(agentsSaidOf(windowIn(moved, "complete")), "", complete), true, "complete card, complete Sol: on with no hand");
+  assert.equal(agentsReading(agentsSaidOf(windowIn(moved, "concept")), "", concept), true, "complete card, the team's concept: on");
+  assert.equal(agentsReading(agentsSaidOf(windowIn(moved, "product")), "", kv({})), false, "complete card, a tester's Sol: off");
+  assert.equal(agentsReading(agentsSaidOf(windowIn(moved, "complete")), "", kv({ [VERSION_KEY]: "complete", "agents.mode": "0" })), false, "its row's off still wins");
+  const atConcept = { ...table, "agents.mode": { ...table["agents.mode"], station: "concept" } };
+  assert.equal(agentsReading(agentsSaidOf(windowIn(atConcept, "concept")), "", concept), true, "concept card, concept Sol: on, as before");
+  assert.equal(agentsReading(agentsSaidOf(windowIn(atConcept, "complete")), "", complete), false, "concept card, complete Sol: off, as before");
 });
 
 test("Sol still looking: the floor's jelly works only once LOOK_SIGN_MS has passed since the floor drew, never before", () => {

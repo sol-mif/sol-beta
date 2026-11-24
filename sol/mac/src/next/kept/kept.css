@@ -1,0 +1,29 @@
+/* The pane beside the canvas (kept/Kept.tsx, keep.html §2): one piece, its head, the canvas live beside it. Signed: marcocyl04-ux's agent (builder E), BR1 (#1615). */
+[data-face="next"] .nx-split { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
+[data-face="next"] .nx-split > .nx-view { min-width: 0; }
+[data-face="next"] .kp { position: relative; z-index: var(--z-canvas); display: flex; flex-direction: column; flex: none; width: var(--kp-w); min-height: 0; border-left: 1px solid var(--hair); background: var(--card); animation: kp-in var(--d-turn) var(--e-arrive); }
+[data-face="next"] .kp-h { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); padding: var(--s2) var(--s2) var(--s2) var(--s4); border-bottom: 1px solid var(--hair); }
+[data-face="next"] .kp-h b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 700; }
+[data-face="next"] .kp-h small { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .kp-acts { display: flex; gap: var(--s1); margin-left: auto; }
+[data-face="next"] .kp-ic { display: grid; place-items: center; width: var(--h-chip); height: var(--h-chip); border: 0; border-radius: var(--r-chip); background: transparent; color: var(--ink2); font: inherit; font-size: var(--t-body); cursor: pointer; }
+[data-face="next"] .kp-ic:hover, [data-face="next"] .kp-ic:focus-visible { background: var(--hover); color: var(--ink); }
+[data-face="next"] .kp-b { flex: 1; min-height: 0; overflow: auto; }
+@keyframes kp-in { from { opacity: 0; transform: translateX(var(--s4)); } }
+@media (prefers-reduced-motion: reduce) { [data-face="next"] .kp { animation: none; } }
+/* the pane's width, written once for the window while a piece is kept; the talk, the bar and its card then centre on the
+   canvas left of the pane, never over it (inside.html §3: the canvas is its workbench) */
+.nx[data-face="next"].has-kept { --kp-w: 372px; }
+.nx[data-face="next"].has-kept :is(.nx-talk, .bar, .bar-card) { left: calc(var(--side-w) + (100% - var(--side-w) - var(--kp-w)) / 2); }
+.nx[data-face="next"].has-kept :is(.nx-talk, .bar-card) { max-width: calc(100% - var(--side-w) - var(--kp-w) - var(--s8)); }
+/* the strip of its table under the head (BR1 inside.html §3, near/Table.tsx Strip; builder E) */
+[data-face="next"] .kp-strip { display: flex; align-items: center; gap: var(--s1); padding: var(--s2) var(--s2) var(--s2) var(--s4); border-bottom: 1px solid var(--hair); overflow: hidden; flex: none; }
+[data-face="next"] .kp-chip { display: inline-flex; align-items: center; gap: var(--s1); min-width: 0; height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink2); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; }
+[data-face="next"] .kp-chip:disabled { cursor: default; }
+[data-face="next"] .kp-chip-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: calc(var(--s12) * 2); }
+[data-face="next"] .kp-all { flex: none; margin-left: auto; color: var(--ink3); }
+[data-face="next"] .kp-all:hover { color: var(--ink); }
+/* every place that takes what is dragged, faint, with its verb (kept/Takes.tsx, the second moment; builder E) */
+[data-face="next"] .kp-takes { position: absolute; pointer-events: none; border-radius: var(--r-card); outline: 1px solid var(--ink3); outline-offset: var(--s1); }
+[data-face="next"] .kp-takes.folder { outline-style: dashed; }
+[data-face="next"] .kp-takes span { position: absolute; left: 0; top: 0; transform: translateY(calc(-100% - var(--s2))); max-width: 100%; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--card); color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

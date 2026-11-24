@@ -1,0 +1,112 @@
+{
+  "v": 1,
+  "events": [
+    {
+      "id": "fit-mwrlw2o2-1-88s5fd",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.job",
+      "scope": "Users/someone/studio/site",
+      "take": "build",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-2-e7vqvk",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.look",
+      "scope": "Users/someone/studio/site",
+      "take": "workbench",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-3-or1mk8",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.job",
+      "scope": "Users/someone/studio/menus",
+      "take": "build",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-4-9rrvks",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.look",
+      "scope": "Users/someone/studio/menus",
+      "take": "workbench",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-5-3ajmky",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.job",
+      "scope": "Users/someone/calm/journal",
+      "take": "build",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-6-htxwa8",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.look",
+      "scope": "Users/someone/calm/journal",
+      "take": "workbench",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-7-bxaiq1",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.job",
+      "scope": "Users/someone/calm/garden",
+      "take": "build",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2o2-8-bc9zw5",
+      "at": 1795338000002,
+      "kind": "fit.set",
+      "knob": "folder.look",
+      "scope": "Users/someone/calm/garden",
+      "take": "workbench",
+      "author": "sol",
+      "reason": "moving in",
+      "count": 1,
+      "source": "moving in"
+    },
+    {
+      "id": "fit-mwrlw2oh-9-3ndb14",
+      "at": 1795338000017,
+      "kind": "fit.set",
+      "knob": "folder.look",
+      "scope": "Users/someone/calm/journal",
+      "take": "paper",
+      "author": "person",
+      "reason": "How it looks for journal",
+      "source": "fit mode: pick"
+    }
+  ]
+}

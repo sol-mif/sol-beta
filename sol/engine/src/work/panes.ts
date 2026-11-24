@@ -25,6 +25,31 @@ async function baseOf(cwd: string) {
   return "HEAD";
 }
 
+/** how many files a copy changed (the "all" scope's files, by name only: no patch is read): the branch against where it
+ *  left main, committed or not, and new files git does not track yet; null when the folder is not git */
+export async function changedCount(cwd: string): Promise<number | null> {
+  try { await git(cwd, ["rev-parse", "--is-inside-work-tree"]); } catch { return null; }
+  const names = (await git(cwd, ["-c", "core.quotePath=false", "diff", "--no-ext-diff", "--name-only", "-z", await baseOf(cwd)]).catch(() => "")).split("\0");
+  const fresh = (await git(cwd, ["ls-files", "-z", "-o", "--exclude-standard", "--full-name"]).catch(() => "")).split("\0");
+  return new Set([...names, ...fresh].filter(Boolean)).size;
+}
+
+/** a session as work.sessions lists it, as far as its copy goes */
+export type CopyRow = { id: string; cwd?: string; worktree?: string; gone?: boolean; archived?: boolean };
+/** each session's changed files, by its copy (BR1, #1615: the plane's piece.files, place.ts counts.files). A copy is
+ *  counted once however many sessions sit in it, and each of them carries `copy`, so a place that adds them up can count
+ *  a copy once too. At most `max` copies, a few at a time; a copy that is not git is left out */
+export async function changesPerCopy(rows: CopyRow[], count: (cwd: string) => Promise<number | null> = changedCount, max = 40): Promise<{ sessionId: string; files: number; copy: string }[]> {
+  const live = rows.filter((r) => !r.gone && !r.archived && (r.worktree || r.cwd));
+  const copies = [...new Set(live.map((r) => (r.worktree || r.cwd)!))].slice(0, max);
+  const n = new Map<string, number | null>();
+  for (let i = 0; i < copies.length; i += 4) {
+    const part = copies.slice(i, i + 4);
+    (await Promise.all(part.map((c) => count(c).catch(() => null)))).forEach((v, j) => n.set(part[j], v));
+  }
+  return live.flatMap((r) => { const copy = (r.worktree || r.cwd)!, files = n.get(copy); return typeof files === "number" ? [{ sessionId: r.id, files, copy }] : []; });
+}
+
 // git quotes a path with odd characters ("a/caf\303\251.txt"): back to the name
 function unq(p: string | undefined) {
   if (!p || !p.startsWith('"')) return p;

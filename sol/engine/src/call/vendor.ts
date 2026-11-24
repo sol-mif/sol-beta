@@ -24,10 +24,15 @@ export type CallOpts = {
   history: { who: "me" | "you"; text: string }[];
   send: (m: object) => void;
   // Run one seat turn on this conversation and resolve with its answer text; onDelta hears the answer as it streams.
-  ask: (text: string, abort: AbortSignal, onDelta?: (text: string) => void) => Promise<string>;
+  // said: the person's own words in `text`, which set_setting and log_erase ask for; a turn that names none has none
+  // (callSaid): a transcript, the voice model's own request and the engine's call lines are never the person's (#1794)
+  ask: (text: string, abort: AbortSignal, onDelta?: (text: string) => void, o?: { said?: string }) => Promise<string>;
   // Show one step in the face (kind "note"), for what the voice asked the seat.
   step: (s: { id: string; kind: "note"; text: string; done: boolean; ok?: boolean; detail?: string }) => void;
 };
+
+/** the person's own words in a call's turn: only what the call names as theirs, else none */
+export const callSaid = (o?: { said?: string }): string => o?.said ?? "";
 
 export interface VoiceCall {
   readonly done: boolean;

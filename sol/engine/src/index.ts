@@ -89,9 +89,10 @@ import { seatTools, runSolTool } from "./tools.js";
 import { setSuggestSend } from "./suggest.js";   // Home offers a group once (#321): its card goes to every face
 import { HOME_INVENTORY, solScript, type Inventory } from "./inventory.js";
 import { transcribe, DICTATION_MODEL } from "./voice.js";
-import { makeCall, haveVoiceKey, voiceKeyName, voiceVendor, type VoiceCall } from "./call.js";
+import { makeCall, haveVoiceKey, voiceKeyName, voiceVendor, callSaid, type VoiceCall } from "./call.js";
 import { stageOf, standsOn } from "./versions.js";   // the room's card in this version, for Settings › me (#1718)
-import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, reachRoom, reachTools, onLens, onSeatSet, onChannel, readings, versionMode } from "./settings.js";
+import { getSettings, patchSettings, VOICE_OFF, ELEVEN_VOICES, coworkV3Env, logKinds, reachRoom, reachTools, onLens, onSeatSet, onChannel, readings, versionMode, uiNext } from "./settings.js";
+import { firstTurnHere, rememberTold } from "./next/you.js";
 import { setArrangeHome, arrangeMsg, setArrangement, undoArrangement, addUsage, oneAsk } from "./arrange.js";
 import { setTitle, nameConversation, namingModel } from "./titles.js";
 import { Sample } from "./sample.js";
@@ -111,6 +112,7 @@ import { identity } from "./seams/identity.js";   // sign-in and the Sol ID (#13
 import { dataStore, useDataStore, hubStore, bothStores, SUPABASE_USAGE } from "./seams/store.js";   // data storage (#1320)
 import { hostedMembers } from "./team/members.js";
 import { startShip } from "./team/ship.js";
+import { onWindow } from "./team/window.js";   // an old Sol.app seen or gone (ticket K): the settings again, for ui.next
 import { getTeam, hostedRoom, speakParagraph, hubHosts, sharedHub } from "./team/settings.js";
 import { guardSpeak } from "./team/control.js";
 import { ownGhOnPath } from "./team/gh.js";
@@ -150,7 +152,7 @@ const PORT = Number(process.env.SOL_PORT ?? process.env.PORT ?? 7777); // SOL_PO
 const STARTED = new Date().toISOString();
 const HOST = "127.0.0.1";
 
-type Say = { type: "say"; text: string; seat?: Seat; sessionId?: string; draft?: string; model?: string; effort?: string; files?: FileIn[]; door?: Door; fresh?: boolean; cwd?: string; parent?: string; read?: boolean };   // read: a read turn (connectorsGuard below)
+type Say = { type: "say"; text: string; seat?: Seat; sessionId?: string; draft?: string; model?: string; effort?: string; files?: FileIn[]; door?: Door; fresh?: boolean; cwd?: string; place?: string; parent?: string; read?: boolean; engine?: true };   // read: a read turn (connectorsGuard below); engine: the engine wrote the text (talkSay), so none of it is the person's own words
 type Stop = { type: "stop"; sessionId?: string };
 type List = { type: "list" };
 type Open = { type: "open"; seat: Seat; sessionId: string; draft?: string; resume?: boolean };
@@ -343,14 +345,16 @@ async function doorConversation(door: Door | undefined, seat: Seat, sessionId?: 
 }
 
 // Two seats, both on Marco's subscriptions: Codex is Home's, Claude is Work's. Both are on the seam (seats.ts), where a block may put one more; a seat not on it (taken out, broken) is said, and Claude takes the turn.
-async function handleSay(conn: Conn, say: Say, abort: AbortController) {
+async function handleSay(conn: Conn, say: Say, abort: AbortController, o: { said?: string } = {}) {
   const ws = conn.ws;
   const { seat: provider, instead } = seatFor(say.seat ?? "codex");
   // the seat named is gone: Claude takes the turn as a fresh one (the gone seat's conversation is not Claude's)
   if (instead) { if (kernelNow()) send(ws, { type: "seat.instead", why: instead }); say = { ...say, sessionId: undefined }; }   // said with the frame on only, as before the seam (#1270)
   const seat = (provider.builtIn ? provider.name : say.seat) as Seat;
   // The browser tools know which conversation and which face they belong to through this.
-  const turn: TurnCtx = { sessionId: say.sessionId ?? say.draft, seat, said: say.text, sink: (step) => send(ws, { type: "tool", seat, ...step }) };
+  // said: the person's own words, which set_setting and log_erase ask for (openfor.ts saidThisTurn). A turn the engine
+  // wrote (a live talk's recap or ask, talkSay) holds the other side's words and the AI's: none of them (#1789); a call names its own (o.said, #1794)
+  const turn: TurnCtx = { sessionId: say.sessionId ?? say.draft, seat, said: say.engine ? "" : (o.said ?? say.text), sink: (step) => send(ws, { type: "tool", seat, ...step }) };
   conn.sessionId = say.sessionId;
   // one ending per turn: the seat ends it when its answer is complete; a refusal, a throw or a stop ends it in the
   // finally below, once (an error alone left the creature thinking the turn ran on)
@@ -368,7 +372,8 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
     conn.chars += say.text.length;
     const saved = say.files?.length ? await saveFiles(HOME, say.files) : [];
     // what Marco did on the desk since the seat last spoke, and, once past 100 presses on the rails, the one ask (arrange.ts)
-    const deskLines = [takeDeskLines(say.sessionId ?? say.draft), oneAsk()].filter(Boolean).join("\n\n");
+    const { w: youW, text: here, told } = firstTurnHere(HOME, homedir(), say.cwd ?? HOME, { place: say.place }, !say.sessionId && uiNext());   // a new session's first turn, new face on: "you, here" (next/you.ts: aims, this place's level and facts, ≤600 chars) (#1615)
+    const deskLines = [here, takeDeskLines(say.sessionId ?? say.draft), oneAsk()].filter(Boolean).join("\n\n");
     // A brand-new conversation gets a name after its first answer: watch the wire for the text and the done.
     const fresh = !say.sessionId;
     let answer = "";
@@ -378,7 +383,7 @@ async function handleSay(conn: Conn, say: Say, abort: AbortController) {
         send: (line: string) => {
           if (ws instanceof WebSocket && letGoIfBehind(ws)) return; ws.send(line); const m = JSON.parse(line);   // the same cap as send() (#1107)
           if (m.type === "delta") answer += m.text;
-          else if (m.type === "done" && m.ok && m.sessionId) void nameThread(seat, m.sessionId, say.text, answer);
+          else if (m.type === "done" && m.ok && m.sessionId) { void nameThread(seat, m.sessionId, say.text, answer); try { rememberTold(youW, m.sessionId, say.cwd ?? HOME, told); } catch { /* no why kept */ } }
         },
       };
     }
@@ -444,7 +449,7 @@ function talkSay(ws: Wire, text: string, sessionId?: string, title?: string): Pr
     else if (m.type === "delta") said += m.text;
     send(ws, m);
   } };
-  const say: Say = { type: "say", text, seat: "claude", ...(sessionId ? { sessionId } : { fresh: true, draft: randomUUID() }) };
+  const say: Say = { type: "say", text, seat: "claude", engine: true, ...(sessionId ? { sessionId } : { fresh: true, draft: randomUUID() }) };
   return handleSay({ ws: tap, chars: 0, sessionId }, say, new AbortController()).then(() => ({ text: said, sessionId: sid }));
 }
 const settingsMsg = () => ({
@@ -462,7 +467,7 @@ const settingsMsg = () => ({
   dictationModel: DICTATION_MODEL,
   up: { since: STARTED, port: PORT, health: health() }, login: getTeam().me.login,   // login: whose Sol this is (#1224)
 });
-for (const heard of [onLens, onSeatSet, onChannel]) heard(() => everyone(settingsMsg()));   // and the channel learned or changed (#1637)   // the lens changed from a stage (#824), a setting a seat changed for the person (#1521): every face hears the settings again, as after a settings.set
+for (const heard of [onLens, onSeatSet, onChannel, onWindow]) heard(() => everyone(settingsMsg()));   // and the channel learned or changed (#1637)   // the lens changed from a stage (#824), a setting a seat changed for the person (#1521): every face hears the settings again, as after a settings.set
 
 // Codex reaches the browser through a small stdio MCP server that calls back into this engine. Each turn
 // gets its own token, so the engine knows which conversation a browser call belongs to.
@@ -1031,7 +1036,7 @@ wss.on("connection", (ws, req) => {
   ws.on("pong", () => answered.set(ws, true));
   const hearing = { busy: false, next: null as { audio: string; tag?: number } | null, gen: 0 };   // dictation previews in flight
   // A seat turn run for the call: the face sees it like any turn; the answer text also comes back here.
-  const askSeat = (say: Say, abort: AbortSignal, onDelta?: (text: string) => void) => new Promise<string>((ok, no) => {
+  const askSeat = (say: Say, abort: AbortSignal, onDelta?: (text: string) => void, o?: { said?: string }) => new Promise<string>((ok, no) => {
     let text = "";
     let error = "";
     const tap: Wire = {
@@ -1046,7 +1051,7 @@ wss.on("connection", (ws, req) => {
     };
     const ac = new AbortController();
     abort.addEventListener("abort", () => ac.abort(), { once: true });
-    void handleSay({ ...conn, ws: tap }, say, ac).then(() => { if (!text && error) no(new Error(error)); ok(text); }, no);
+    void handleSay({ ...conn, ws: tap }, say, ac, o).then(() => { if (!text && error) no(new Error(error)); ok(text); }, no);
   });
   const face = { send: (m: object) => send(ws, m) };
   addFace(face);
@@ -1267,8 +1272,8 @@ wss.on("connection", (ws, req) => {
           if (t.type === "call" && t.state === "ended" && door && (sessionId ?? conn.sessionId)) touchDoor(door, (sessionId ?? conn.sessionId)!);
         },
         step: (s) => send(ws, { type: "tool", seat, ...s }),
-        ask: async (text, abort, onDelta) => {
-          const answer = await askSeat({ type: "say", text, seat, sessionId: sessionId ?? conn.sessionId, draft: sessionId ? undefined : m.draft, model: m.model, effort: m.effort, ...(door ? { door } : {}) }, abort, onDelta);
+        ask: async (text, abort, onDelta, o) => {
+          const answer = await askSeat({ type: "say", text, seat, sessionId: sessionId ?? conn.sessionId, draft: sessionId ? undefined : m.draft, model: m.model, effort: m.effort, ...(door ? { door } : {}) }, abort, onDelta, { said: callSaid(o) });
           sessionId = conn.sessionId ?? sessionId;
           return answer;
         },

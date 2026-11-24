@@ -1,0 +1,51 @@
+/* Workspace changes, the review panel (#1615 BR1). Every space, size, height and corner is the scale's (palette.css: --s*,
+   --t-*, --h-*, --r-*), every colour, shadow and curve the next set's (kit/next.css), as settings.css keeps them; the
+   gate's layout and look lints hold this. Signed: marcocyl04-ux's agent, BR1 carry (#1615). */
+
+.ws { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+.ws p { margin: 0; }
+.ws b { font-weight: 600; }
+.ws small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ws-h { margin: var(--s4) 0 0; font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; }
+.ws-say { color: var(--ink2); }
+.ws-sub { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ws-t { min-width: 0; flex: 1; }
+.ws-t3 { color: var(--ink3); }
+.ws-none { display: flex; align-items: center; gap: var(--s2); padding: var(--s3); border-radius: var(--r-card); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); }
+
+/* a suggestion: a white card, its title in the serif */
+.ws-card { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); min-width: 0; }
+.ws-title { margin: 0; font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: var(--display-w); letter-spacing: var(--title-k); }
+.ws-reason { color: var(--ink2); }
+
+/* its changes, each with its reason and its skip */
+.ws-ops { display: flex; flex-direction: column; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.ws-op { border-top: 1px solid var(--line); padding-top: var(--s2); }
+.ws-op:first-child { border-top: 0; padding-top: 0; }
+.ws-op.off .ws-t b { color: var(--ink3); text-decoration: line-through; }
+.ws-take { display: flex; align-items: flex-start; gap: var(--s2); cursor: pointer; }
+.ws-take input { margin-top: var(--s1); accent-color: var(--ink); flex: none; }
+.ws-cant { color: var(--ink); }
+small.ws-cant { color: var(--ink2); }
+
+/* why this setup */
+.ws-why { color: var(--ink2); }
+.ws-why summary { cursor: pointer; color: var(--ink); }
+.ws-why ul { display: flex; flex-direction: column; gap: var(--s2); margin: var(--s2) 0; padding: 0; list-style: none; }
+.ws-why p { margin-top: var(--s2); }
+.ws-reach { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+
+/* the preview: what keeping does, not kept yet */
+.ws-pv { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* Preview, Keep (the one black pill), Discard; Undo on a kept one */
+.ws-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.ws-btn { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; flex: none; }
+.ws-btn:hover { background: var(--hover); }
+.ws-btn.pri { background: var(--ink); color: var(--paper); box-shadow: none; }
+.ws-btn:disabled { color: var(--ink3); cursor: default; }
+.ws-btn.pri:disabled { background: var(--hover); color: var(--ink3); }
+
+/* kept lately */
+.ws-kept { display: flex; flex-direction: column; gap: var(--s2); }
+.ws-krow { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }

@@ -3,13 +3,19 @@
 // with the left column (a3, a10), the first-time card (a4), my AI at this table (a8), a new table (a7), sit down with
 // a code (a9), leave (a11). Nothing here is made up: who sits where is the engine's team.rooms.people, an AI at work
 // is team.state's agents (the room in use's only), what waits on me is the hands handed to me and the agents' asks
-// (team.chat), my AI's line is this Sol's seat, machine and permission mode, what it reaches is what is connected here.
+// (team.chat), my AI's line is this Sol's seat and machine and the table's own level (#1541: that room's `level` in
+// team.json, asks first unless changed there; the machine's Work mode is never touched), what it reaches is what is
+// connected here.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { useEngine } from "../../useEngine";
 import { askEngine } from "../askEngine";
 import { link } from "../../socket";
 import { ENGINE } from "../../useEngine";
 import { askMine, namesMyAgent } from "../whole/room-chat";
+// the Agents' room, the same page the team's shell has, opened here too (gate one q2, #1740): a Sol with no table, or not
+// on the team, reaches it from the home and from a table's side; it follows its switch, reach.room (q6)
+import { RoomChat } from "../whole/RoomChat";
+import { useRoomOn } from "../whole/roomSwitch";
 import { Gl } from "./Coin";
 import { later, take, useHands } from "../handed";
 import { useTeam, type Team } from "../useTeam";
@@ -18,10 +24,10 @@ import { Side } from "./Side";
 import { Page, type AskNow, type Send } from "./Page";
 import { Consent, LeaveSheet, MyAiSheet, type MyAi } from "./Sheets";
 import { NewTable, SitDown } from "./New";
-import { levelOf, modeOf, stageWith, tablesOf, talkRows, titleOf, type Level, type TalkIn } from "./view";
+import { levelOf, roomLevelOf, stageWith, tablesOf, talkRows, titleOf, type Level, type TalkIn } from "./view";
 import "./groups.css";
 
-type View = { k: "home" } | { k: "table"; id: string } | { k: "new" } | { k: "code" };
+type View = { k: "home" } | { k: "table"; id: string } | { k: "new" } | { k: "code" } | { k: "room" };
 type Sheet = "" | "consent" | "myai" | "leave";
 const AGREED = "sol.groups.agreed";
 const agreed = (id: string) => { try { return !!JSON.parse(localStorage.getItem(AGREED) ?? "{}")[id]; } catch { return false; } };
@@ -69,7 +75,7 @@ function useRoomReads(open: boolean, roomKey: string) {
   return { waiting, reach, talk, again: () => setN((x) => x + 1) };
 }
 
-export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
+export function GroupsHome(_: { e: ReturnType<typeof useEngine> }) {
   const team = useTeam();
   const hands = useHands();
   const people = usePeople(team);
@@ -79,6 +85,7 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
   const pending = useMemo(() => hands.pending.filter((h) => !hands.laterOf(h.id) || hands.doingOf(h.id)), [hands]);
   const tables = useMemo(() => tablesOf({ rooms, inUse, me, people, agents: team.state?.agents ?? [], hands: hands.hands, pending, now: Date.now() }), [rooms, inUse, me, people, team.state?.agents, hands.hands, pending]);
   const calling = tables.find((t) => t.ask);
+  const room = useRoomOn();
 
   const [view, setView] = useState<View>({ k: "home" });
   const [sheet, setSheet] = useState<Sheet>("");
@@ -96,12 +103,16 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
     setView({ k: "table", id }); setMenuFor(""); setSheet(agreed(id) ? "" : "consent");
   }, [inUse, team]);
   const home = useCallback(() => { setView({ k: "home" }); setSheet(""); setMenuFor(""); }, []);
+  const openRoom = useCallback(() => { setView({ k: "room" }); setSheet(""); setMenuFor(""); }, []);
+  useEffect(() => { if (view.k === "room" && !room) setView({ k: "home" }); }, [view.k, room]);   // turned off while open: gone
 
-  // my AI's line: this Sol's machine, seat and permission mode; what is connected here
+  // my AI's line: this Sol's machine and seat, and how far it goes at this table (its room's level); what is connected here
+  const atRoom = rooms.find((r) => r.id === at?.id);
   const machines = (team.state?.settings.machines ?? []).map((m) => m.name);
-  const my: MyAi = { machines, machine: machines[0] ?? "this mac", ai: team.state?.settings.seats.work === "codex" ? "codex" : "claude", level: levelOf(e.settings?.defaults.mode), reaches: { github: reads.reach.github, talk: true, drive: reads.reach.drive } };
+  const my: MyAi = { machines, machine: machines[0] ?? "this mac", ai: team.state?.settings.seats.work === "codex" ? "codex" : "claude", level: levelOf(atRoom?.level), reaches: { github: reads.reach.github, talk: true, drive: reads.reach.drive } };
   const onAi = (ai: "claude" | "codex") => void team.ask("team.settings", { patch: { seats: { work: ai } } }, 20_000);
-  const onLevel = (l: Level) => e.setSettings({ defaults: { mode: modeOf(l) } });
+  // a level is the open table's alone: only its room changes, every other table and the machine's Work mode stay as they are
+  const onLevel = (l: Level) => { if (atRoom) void patchRooms(rooms.map((r) => (r.id === atRoom.id ? { ...r, level: roomLevelOf(l) } : r))); };
   // each person's line under their seat: the machine the roster saw them on; mine is this Sol's (nothing per table yet)
   const lineOf = (login: string): string[] => {
     if (login.toLowerCase() === me.toLowerCase()) return [`${my.machine} · ${my.ai}`, my.level];
@@ -117,12 +128,12 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
       const h = hands.pending.find((p) => p.id === at.ask!.id);
       return h ? { kind: "hand", id: h.id, from: h.from, title: at.ask.title, at: at.ask.at, take: () => void take(h), later: () => later(h), doing: hands.doingOf(h.id) } : null;
     }
-    const b = reads.waiting.find((x) => x.asks);
+    const b = room ? reads.waiting.find((x) => x.asks) : undefined;   // the agents' asks are the room's: off, not lifted here
     if (!b) return null;
     const from = (b.asks?.from ?? b.asks?.by ?? "").replace(/'s agent$/i, "") || "sol";
     return { kind: "block", id: b.id, from, title: b.title, q: b.asks?.q ?? "", choices: b.asks?.choices?.length ? b.asks.choices : ["yes", "not yet"], at: b.at, busy: false,
       press: (choice) => void askEngine("work.stage.press", { sessionId: b.asks?.by ?? b.sessions?.[0], id: b.id, choice }, 20_000).then(() => reads.again()) };
-  }, [at, hands, reads]);
+  }, [at, hands, reads, room]);
 
   // a line said to a table, or a thing handed to it or to one person: the table's talk (the @ reaches that person's AI)
   const send: Send = async (words, to, thing) => {
@@ -145,7 +156,7 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
   };
 
   // the row's menu: copy the code, rename, quiet, leave (team.settings on the rooms; a room left is left on its hub)
-  const bare = (rs: typeof rooms) => rs.map(({ id, name, provider, org, repos, hub, quiet }) => ({ id, name, provider, org, repos, hub, ...(quiet ? { quiet } : {}) }));
+  const bare = (rs: typeof rooms) => rs.map(({ id, name, provider, org, repos, hub, quiet, level }) => ({ id, name, provider, org, repos, hub, ...(quiet ? { quiet } : {}), ...(level ? { level } : {}) }));
   const patchRooms = (next: typeof rooms) => team.ask<{ error?: string }>("team.settings", { patch: { rooms: bare(next) } }, 30_000);
   const menuRoom = rooms.find((r) => r.id === menuFor);
   const menu = menuRoom ? {
@@ -168,13 +179,14 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
   useEffect(() => { if (!note) return; const t = window.setTimeout(() => setNote(""), 4000); return () => window.clearTimeout(t); }, [note]);
 
   if (view.k === "home") return <HomeView tables={tables} me={me} calling={calling?.id ?? ""} inUse={inUse} hands={hands} onOpen={sitAt} send={sendHome} note={note}
-    onStart={() => { setView({ k: "new" }); setSheet(""); }} onCode={() => { setView({ k: "code" }); setSheet(""); }} />;
+    onStart={() => { setView({ k: "new" }); setSheet(""); }} onCode={() => { setView({ k: "code" }); setSheet(""); }} onRoom={room ? openRoom : undefined} />;
   const others = at ? at.seats.filter((s) => !s.me).map((s) => s.login) : [];
   const backed = sheet !== "";
   return (
     <div className="gh-home sw" data-place="groups">
       <Side tables={tables} me={me} at={at?.id ?? ""} lo={view.k === "new" ? "start" : view.k === "code" ? "code" : ""} menuFor={menuFor}
-        onHome={home} onOpen={sitAt} onMenu={(id) => setMenuFor((m) => (m === id ? "" : id))} onStart={() => { setView({ k: "new" }); setSheet(""); }} onCode={() => { setView({ k: "code" }); setSheet(""); }} menu={menu} />
+        onHome={home} onOpen={sitAt} onMenu={(id) => setMenuFor((m) => (m === id ? "" : id))} onStart={() => { setView({ k: "new" }); setSheet(""); }} onCode={() => { setView({ k: "code" }); setSheet(""); }} menu={menu}
+        onRoom={room ? openRoom : undefined} inRoom={view.k === "room"} />
       <div className="gh-body">
         {view.k === "new" && <NewTable me={me} team={team} onMade={() => undefined} onGone={home} onCopied={(ok) => setNote(ok ? "code copied" : "could not copy")} />}
         {view.k === "code" && <SitDown me={me} team={team} onSat={sitAt} onNotNow={home} />}
@@ -186,15 +198,16 @@ export function GroupsHome({ e }: { e: ReturnType<typeof useEngine> }) {
           </Page>
         )}
         {note && <div className="gh-note" role="status">{note}</div>}
+        {view.k === "room" && room && <div className="gh-room" data-page="room"><RoomChat /></div>}
       </div>
     </div>
   );
 }
 
-function HomeView({ tables, me, calling, inUse, hands, onOpen, send, note, onStart, onCode }: {
+function HomeView({ tables, me, calling, inUse, hands, onOpen, send, note, onStart, onCode, onRoom }: {
   tables: ReturnType<typeof tablesOf>; me: string; calling: string; inUse: string; hands: ReturnType<typeof useHands>;
   onOpen: (id: string) => void; send: (words: string, id: string) => Promise<{ ok: boolean; said: string }>; note: string;
-  onStart: () => void; onCode: () => void;
+  onStart: () => void; onCode: () => void; onRoom?: () => void;
 }) {
   const [picked, setPicked] = useState("");
   const at = tables.some((t) => t.id === picked) ? picked : (tables.some((t) => t.id === inUse) ? inUse : tables[0]?.id ?? "");
@@ -211,7 +224,9 @@ function HomeView({ tables, me, calling, inUse, hands, onOpen, send, note, onSta
   };
   return (
     <div className="gh-home" data-place="groups-home">
-      <div className="gh-hd"><h1 className="gh-title">{tables.length ? titleOf(tables) : "no tables yet."}</h1></div>
+      <div className="gh-hd"><h1 className="gh-title">{tables.length ? titleOf(tables) : "no tables yet."}</h1>
+        {/* the Agents' room, with or without a table: me and my own AI at least (gate one q2, #1740) */}
+        {onRoom && <button type="button" className="gh-pill" data-go="room" onClick={onRoom}>the agents' room</button>}</div>
       <div className="gh-tables">
         {tables.map((t) => (
           <Table key={t.id} t={t} me={me} away={away} quiet={!!calling && calling !== t.id} onOpen={() => onOpen(t.id)}

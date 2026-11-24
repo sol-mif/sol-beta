@@ -43,7 +43,7 @@ function convertedHome(): Ctx {
   mkdirSync(c.home); mkdirSync(c.engine);
   writeFileSync(join(c.engine, "team.json"), JSON.stringify({ me: { login: "marco" }, night: { hour: 4, staleDays: 9 }, rooms: [] }, null, 2));
   const r = runConversions(c, STEPS);
-  assert.equal(r.ok, true); assert.equal(r.version, 2);
+  assert.equal(r.ok, true); assert.equal(r.version, STEPS.length);
   return c;
 }
 const touched = (c: Ctx) => (id: number) => { const s = STEPS.find((x) => x.id === id); return !!s && s.touches(c).length > 0; };
@@ -61,7 +61,7 @@ test("going back over 0002: the copy from before it is put back, what was saved 
   writeFileSync(team, JSON.stringify({ ...json(team), rooms: [{ id: "r1" }] }, null, 2));
   const p = planBack(c, 1, touched(c));
   assert.equal(p.error, undefined);
-  assert.deepEqual(p.steps.map((s) => s.step), ["0002-rhythm-from-team-json"]);
+  assert.deepEqual(p.steps.filter((s) => s.at).map((s) => s.step), ["0002-rhythm-from-team-json"]);
   assert.deepEqual(lostOf(p).map((l) => l.path).sort(), [night, team].sort());
   const r = backTo(c, p);
   assert.equal(r.ok, true);
@@ -71,7 +71,7 @@ test("going back over 0002: the copy from before it is put back, what was saved 
   assert.equal(existsSync(night), false);                          // 0002 made it; before it there was none
   // back to latest: the newer build's start converts again, from the data as it is now
   const again = runConversions(c, STEPS);
-  assert.deepEqual(again.ran, ["0002-rhythm-from-team-json"]);
+  assert.equal(again.ran[0], "0002-rhythm-from-team-json");
   assert.equal("night" in json(team), false);
   assert.equal(json(night).hour, 4);
   // and the copy of before going back puts it all as it was
@@ -89,9 +89,9 @@ test("going back never half-does it: a copy that cannot be put back leaves every
   assert.equal(r.ok, false);
   assert.equal(readFileSync(team, "utf8"), before);
   assert.equal(existsSync(join(c.engine, "night.json")), true);
-  assert.equal(readVersion(c.dotSol), 2);
+  assert.equal(readVersion(c.dotSol), STEPS.length);   // the newest step
   // a plan read before the data moved is refused
-  writeFileSync(join(c.dotSol, "data-version"), "3\n");
+  writeFileSync(join(c.dotSol, "data-version"), `${STEPS.length + 1}\n`);
   assert.match((backTo(c, p) as { error: string }).error, /moved since the plan/);
 });
 
@@ -195,7 +195,7 @@ test("a plain Sol goes back over 0002: warned first, then on `pinned` at the rel
   const p = await pin.plan("dev-old");
   assert.ok(!("error" in p));
   if ("error" in p) return;
-  assert.deepEqual([p.data.from, p.data.to], [2, 1]);
+  assert.deepEqual([p.data.from, p.data.to], [STEPS.length, 1]);
   assert.deepEqual(p.lost.map((l) => l.file.split("/").pop()).sort(), ["night.json", "team.json"]);
   assert.match(p.said, /goes back to dev-old/);
   assert.match(p.said, /is lost/);
@@ -252,7 +252,7 @@ test("a release that does not build: the Sol is as it was, the data too, and it 
   assert.equal(git(f.root, "branch", "--show-current"), "main");
   assert.equal(git(f.root, "rev-parse", "HEAD"), f.latest);
   assert.equal(git(f.root, "branch", "--list", "pinned"), "");
-  assert.equal(readVersion(ctx.dotSol), 2);
+  assert.equal(readVersion(ctx.dotSol), STEPS.length);   // the newest step
   assert.equal(readFileSync(join(ctx.engine, "team.json"), "utf8"), before);
   assert.equal(pin.pinNow(), null);
   assert.equal(s.ended.length, 0);
@@ -276,7 +276,7 @@ test("something that starts while the release builds: nothing moves, the data ne
   leave();
   assert.equal(git(f.root, "branch", "--show-current"), "main");
   assert.equal(git(f.root, "rev-parse", "HEAD"), f.latest);
-  assert.equal(readVersion(ctx.dotSol), 2);
+  assert.equal(readVersion(ctx.dotSol), STEPS.length);   // the newest step
   assert.equal(readFileSync(join(ctx.engine, "team.json"), "utf8"), before);
   assert.equal(pin.pinNow(), null);
   assert.equal(s.ended.length, 0);
@@ -360,7 +360,7 @@ test("a */mine Sol with a merge of its own is never flattened by the move: the c
   await pin.goBack("dev-old", p.sure);
   await pin.goSettled();
   assert.equal(git(f.root, "rev-parse", "HEAD"), head);   // the folder as it was
-  assert.equal(readVersion(ctx.dotSol), 2);
+  assert.equal(readVersion(ctx.dotSol), STEPS.length);   // the newest step
   assert.ok(s.told.some((m) => m.type === "team.pin.carry"));
   assert.equal(carry.carryNow()?.back?.tag, "dev-old");
   assert.equal(typeof carry.carryNow()?.back?.data, "string");   // what the warning said goes back, kept for Use it
@@ -388,7 +388,7 @@ test("a */mine Sol whose change clashes with the older release: #425's side copy
   await pin.goSettled();
   assert.equal(git(f.root, "rev-parse", "HEAD"), head);   // the live folder did not move yet
   assert.equal(pin.pinNow(), null);
-  assert.equal(readVersion(ctx.dotSol), 2);
+  assert.equal(readVersion(ctx.dotSol), STEPS.length);   // the newest step
   const c = await carry.check();
   assert.equal(c?.stage, "ready");
   assert.deepEqual([c?.back?.tag, c?.back?.version, typeof c?.back?.data], ["dev-old", 1, "string"]);

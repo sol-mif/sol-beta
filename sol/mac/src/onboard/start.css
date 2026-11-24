@@ -5,3 +5,7 @@
 .st-stage .st-bar { position: absolute; left: 120px; top: 116px; width: 320px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, .08); overflow: hidden; }
 .st-stage .st-bar i { display: block; height: 100%; background: var(--pearl, #f2f2f4); transform-origin: left center; transition: transform .6s cubic-bezier(.3, 1, .5, 1); }
 @media (prefers-reduced-motion: reduce) { .st-stage .st-bar i { transition: none; } }
+/* the AI step (2026-11-22): its two presses in one row, and "later" as a quiet word after them */
+.st-stage .st-row { display: flex; align-items: center; gap: var(--s3, 12px); flex-wrap: wrap; }
+.st-stage .st-later { appearance: none; border: 0; background: none; padding: 0 6px; font: inherit; color: var(--dim); cursor: pointer; }
+.st-stage .st-later:hover { color: var(--pearl, #f2f2f4); }

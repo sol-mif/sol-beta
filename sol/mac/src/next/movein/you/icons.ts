@@ -1,0 +1,35 @@
+// The screens' marks, as the design draws them (mine/look/br1/you.html IC, APPC, jelly, appi): line icons, the app tiles
+// (a tile until Sol.app can hand the face a real macOS icon by bundle id), the jelly. Signed: marcocyl04-ux's agent (builder F).
+export const IC: Record<string, string> = {
+work:'<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18"/>',
+school:'<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>',
+build:'<path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17l3 3 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/>',
+biz:'<path d="M4 9h16l-1.5-5h-13z"/><path d="M5 9v11h14V9"/><path d="M10 20v-5h4v5"/>',
+life:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
+make:'<path d="M14 4l6 6-8 8H6v-6z"/><path d="M6 18l-3 3"/>',
+ai:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+code:'<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>',
+apps:'<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>',
+browser:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.5-3.5-8.5s1-6 3.5-8.5z"/>',
+cal:'<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>',
+files:'<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/>',
+notes:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/>',
+said:'<path d="M4 6h16v10H9l-5 4z"/>',
+lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+sieve:'<path d="M3 8h18l-3 9H6z"/><path d="M8 11.5v2.5M12 11.5v2.5M16 11.5v2.5"/>',
+eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+tray:'<path d="M4 13l2.5-7h11L20 13v6H4z"/><path d="M4 13h4.5l1 2h5l1-2H20"/>',
+check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+key:'<circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2.5 2.5M14 8l2 2"/>',
+money:'<rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M3 10h18M7 15h3"/>',
+health:'<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+talk:'<path d="M4 6h16v10H9l-5 4z"/>',
+id:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="11" r="2.3"/><path d="M5.5 16c.8-1.6 2-2.3 3.5-2.3s2.7.7 3.5 2.3M14.5 10h4M14.5 13.5h3"/>',
+back:'<path d="M9 6L4 11l5 5"/><path d="M4 11h11a5 5 0 0 1 0 10h-3"/>',
+palette:'<circle cx="12" cy="12" r="8.5"/><circle cx="8.5" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="15.5" cy="10" r="1.2"/>',
+shield:'<path d="M12 3l7.5 3v6c0 4.5-3.2 7.7-7.5 9-4.3-1.3-7.5-4.5-7.5-9V6z"/>',
+again:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+stop:'<rect x="6.5" y="6.5" width="11" height="11" rx="2"/>'};
+export const APPC: Record<string, [string, string]> = {claudecode:['#D97757','✳'],codex:['#111','◎'],claude:['#D97757','✳'],chatgpt:['#111','◎'],gemini:['linear-gradient(135deg,#4F8BFF,#B36BFF)','✦'],chrome:['conic-gradient(#EA4335 0 33%,#FBBC05 0 66%,#34A853 0)','●'],safari:['linear-gradient(#5AC8FA,#0A64D6)','➚'],calendar:['#fff','21'],notes:['linear-gradient(#FFE27A 0 30%,#FFF8DC 0)','≡'],files:['linear-gradient(#7CC4FF,#2C8BEA)','▢'],apps:['linear-gradient(135deg,#C9B6FF,#9FD3FF)','⌘'],gdrive:['conic-gradient(from 30deg,#0F9D58 0 33%,#F4B400 0 66%,#4285F4 0)','▲'],gcal:['#fff','31'],github:['#1D1C1A','⌥'],notion:['#fff','N'],slack:['conic-gradient(#36C5F0 0 25%,#2EB67D 0 50%,#ECB22E 0 75%,#E01E5A 0)','#'],dropbox:['#0061FE','◆'],key:['var(--side)','⚿'],sol:['linear-gradient(135deg,#FFD58A,#FF8F7A 55%,#C08BFF)','✺']};
+APPC.browser = APPC.safari; APPC.code = ["#1D1C1A", "⌥"];

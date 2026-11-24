@@ -108,6 +108,23 @@ test("the diary's book lives beside D, never in it; yesterday is seeded; the mov
   assert.equal(B.book().showing, 0);
 });
 
+test("a folder's Diary: a line written in it keeps its folder, and the folder's page holds only what is in it (BR1 item 1)", () => {
+  CV.load("dev-morning");
+  const [a, b] = CV.D.regions.map((r) => r.id);
+  assert.ok(a && b, "the morning has two folders");
+  const w = CV.M.write("Draft the intro.", { region: a });
+  assert.ok(w.ok);
+  const l = B.byId(w.id!)!;
+  assert.equal(l.region, a, "written in a folder, the line is that folder's");
+  assert.ok(B.within(l.region, a), "its folder's Diary holds it");
+  assert.ok(!B.within(l.region, b), "another folder's does not");
+  assert.ok(B.within(l.region, null) && B.within(null, null), "the canvas's Diary holds everything");
+  assert.ok(!B.within(null, a), "a line in no folder is only on the canvas's page");
+  const here = B.lines(0).filter((x) => B.within(x.region, a));
+  assert.ok(here.some((x) => x.id === l.id) && here.every((x) => x.region === a), "the folder's page: its own lines only");
+  assert.ok(B.lines(0).length > here.length, "the canvas's page holds more");
+});
+
 test("don't write this down: nothing but your own lines, and the gap is said", () => {
   CV.load("dev-morning");
   CV.M.pause_diary();

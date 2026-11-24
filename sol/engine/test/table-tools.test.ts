@@ -43,9 +43,12 @@ test("the cloud's refusal is said, not hidden", async () => {
   assert.match(txt(r), /sign in to Sol first/);
 });
 
-test("on in product: Cowork's card stands at product (#1718), so a tester's Sol offers it too", () => {
+test("off in product today: Cowork's card came back to complete (#1637, 2026-11-22), so a tester's Sol is not offered it; on at complete", () => {
   process.env.SOL_VERSION = "product";
   try {
+    assert.equal(TT.coworkOn(), false);
+    assert.ok(!T.solToolsNow().some((t) => t.name === "open_table"));
+    process.env.SOL_VERSION = "complete";
     assert.equal(TT.coworkOn(), true);
     assert.ok(T.solToolsNow().some((t) => t.name === "open_table"));
   } finally { process.env.SOL_VERSION = "concept"; }

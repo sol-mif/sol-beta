@@ -1,0 +1,254 @@
+/* Your turn (try.js): Sol's window with only the stage. The title bar, the stage taking the room, two lines of talk (you,
+   sol) and the chat bar; what Sol makes lands on the stage as a block and stays. Everything is under .soltry so the
+   page's own classes never reach in. The values are the app's: kit/tokens.ts (SHADE: one black at an opacity, every
+   surface that black laid again at a step, every word the "on" colour at an opacity; CURVE's corners; TYPE's steps),
+   stage/stage.css (a block's head and states, the full spring), home.css (the chat bar), EffortPill.tsx (the heat),
+   kit/Pearl.tsx (the nacre). Words a visitor reads are at 12 px or more. */
+
+/* the chapter's own ground: a warm glow low in the section that fades to the page's ground at both edges */
+#try { background: radial-gradient(ellipse 70% 50% at 50% 70%, rgba(251,113,41,.09), transparent 70%); }
+
+.soltry { position: relative; width: min(1180px, 100% - 64px); height: 760px; margin: 0 auto; text-align: left; -webkit-font-smoothing: antialiased;
+  /* the material (SHADE) */
+  --bc: 0 0 0; --ba: .78;
+  --on: 239 234 226;
+  --side: rgb(var(--bc) / .10);
+  --card: rgb(var(--bc) / .25);
+  --box: rgb(var(--bc) / .55);
+  --ink: rgb(var(--on) / .92);
+  --dim: rgb(var(--on) / .62);
+  --quiet: rgb(var(--on) / .54);   /* SHADE.read.mute: the quietest words still read at 4.5:1 */
+  --line: rgb(var(--on) / .06);
+  --edge: rgb(var(--on) / .10);
+  --shade: rgba(0,0,0,.55);
+  --pearl: #e6e1d8; --deep: #0a0a0b;
+  --pink: #ff4888; --orange: #fb7129; --sun: #f4c82a; --green: #70df45; --red: #fd302d;
+  --jelly: linear-gradient(90deg, #ff2e4e 8%, #ff4888 25%, #fb7129 42%, #f89b2a 58%, #f4c82a 75%, #70df45 92%);
+  /* the nacre (kit/Pearl.tsx, look nacre: the six at hue .34 in 26 px bands at 104deg, a top light, the sheen) */
+  --nacre: radial-gradient(70% 120% at 18% 0%, rgb(255 255 255 / .55), transparent 70%), linear-gradient(180deg, rgb(255 255 255 / .35), transparent 60%),
+    repeating-linear-gradient(104deg, rgb(255 46 78 / .34) 0, rgb(255 72 136 / .34) 26px, rgb(251 113 41 / .34) 52px, rgb(248 155 42 / .34) 78px, rgb(244 200 42 / .34) 104px, rgb(112 223 69 / .34) 130px, rgb(255 46 78 / .34) 156px),
+    #e6e1d8;
+  --sheen-ring: linear-gradient(115deg, rgb(246 243 236 / .55), rgb(228 220 240 / .25) 40%, rgb(217 236 232 / .10) 70%, rgb(242 228 214 / .35));
+  /* CURVE's corners */
+  --r-chip: 8px; --r-row: 12px; --r-box: 20px; --r-block: 18px; --r-card: 26px; --pill: 999px;
+  /* motion: durations, the pour, and the stage's full spring (760 ms passing its place by about 7%) */
+  --d-turn: 160ms; --d-pour: 850ms; --d-reveal: 120ms; --d-glass: 220ms; --e-pour: cubic-bezier(.3,1.12,.6,1); --e-full: cubic-bezier(.34,1.28,.5,1);
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  font: 13px/20px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", sans-serif;
+  color: var(--ink);
+}
+.soltry *, .soltry *::before, .soltry *::after { box-sizing: border-box; }
+.soltry button { font: inherit; color: inherit; margin: 0; }
+.soltry p, .soltry h4 { margin: 0; }
+.soltry svg { display: block; }
+.soltry .soljelly canvas { max-width: none; }
+/* one ring for the keyboard on everything a visitor can press */
+.soltry :is(button, textarea):focus-visible { outline: 2px solid var(--pearl); outline-offset: 2px; }
+
+/* the desktop the glass sits over: still on purpose (anything moving under a 48 px backdrop blur re-blurs every frame) */
+.soltry .ty-desk { position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: #050505; }
+.soltry .ty-desk i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .5; }
+.soltry .ty-desk i:nth-child(1) { width: 520px; height: 420px; left: -80px; top: 220px; background: radial-gradient(circle, #ff4888 0, rgba(255,72,136,0) 70%); }
+.soltry .ty-desk i:nth-child(2) { width: 560px; height: 460px; right: -120px; top: -60px; background: radial-gradient(circle, #fb7129 0, rgba(251,113,41,0) 70%); opacity: .42; }
+.soltry .ty-desk i:nth-child(3) { width: 420px; height: 360px; left: 40%; bottom: -160px; background: radial-gradient(circle, #f4c82a 0, rgba(244,200,42,0) 70%); opacity: .26; }
+
+/* the window: the base at its opacity over the desktop, blurred 48 px (SHADE.window, SHADE.blur) */
+.soltry .ty-win { position: absolute; left: 24px; right: 24px; top: 28px; bottom: 24px; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;
+  background: rgb(var(--bc) / var(--ba)); -webkit-backdrop-filter: blur(48px) saturate(1.2); backdrop-filter: blur(48px) saturate(1.2);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgb(var(--on) / .08), 0 40px 90px -20px rgba(0,0,0,.85), 0 0 0 .5px rgba(0,0,0,.9); }
+
+/* the title bar: the lights, the side's key, the session's title, project · branch; at the right how many things are on
+   the stage, and the jelly mark */
+.soltry .ty-bar { position: relative; z-index: 3; flex: none; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; color: var(--dim); }
+.soltry .ty-lights { display: flex; gap: 8px; margin-right: 14px; }
+.soltry .ty-lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.soltry .ty-lights i:nth-child(2) { background: #febc2e; }
+.soltry .ty-lights i:nth-child(3) { background: #28c840; }
+.soltry .ty-sidekey { flex: none; display: grid; place-items: center; width: 24px; height: 24px; color: var(--dim); }
+.soltry .ty-sidekey svg { width: 14px; height: 14px; }
+.soltry .ty-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 0 1 auto; }
+.soltry .ty-tt { color: var(--ink); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.soltry .ty-where { flex: none; color: var(--quiet); font-size: 12px; white-space: nowrap; }
+.soltry .ty-spacer { flex: 1; }
+.soltry .ty-count { flex: none; height: 24px; padding: 0 12px; border-radius: var(--pill); background: var(--pearl); color: var(--deep); font-size: 12px; line-height: 24px; white-space: nowrap; opacity: 0; transition: opacity var(--d-turn); }
+.soltry .ty-count.ty-has { opacity: 1; }
+.soltry .ty-barmark { flex: none; width: 20px; height: 20px; display: grid; place-items: center; }
+
+/* the stage: a panel at the side step on the card's curve; blocks land on it and stay */
+.soltry .ty-stage { position: relative; z-index: 1; flex: 1; min-height: 0; margin: 0 10px; border-radius: var(--r-card); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); }
+.soltry .ty-jel { position: absolute; left: 0; top: 0; z-index: 6; width: 40px; height: 40px; display: grid; place-items: center; pointer-events: none; opacity: 0;
+  transition: transform 760ms var(--e-full), opacity var(--d-reveal); }
+/* a block (stage.css): the glass at the card step, a 34 px head (a state dot, the title, the kind, the meta), its body.
+   Blocks re-lay on the stage's full spring as more land */
+.soltry .ty-blk { position: absolute; display: flex; flex-direction: column; border-radius: var(--r-block); overflow: hidden;
+  background: linear-gradient(180deg, rgb(var(--on) / .045), rgb(var(--on) / .02)), var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgb(var(--on) / .12), 0 16px 36px -20px rgba(0,0,0,.7);
+  transition: left 760ms var(--e-full), top 760ms var(--e-full), width 760ms var(--e-full), height 760ms var(--e-full), opacity var(--d-glass), box-shadow var(--d-glass); }
+.soltry .ty-blk.ty-folded { opacity: 0; pointer-events: none; visibility: hidden; }
+.soltry .ty-blk.ty-born { animation: ty-born var(--d-pour) var(--e-pour) both; }
+.soltry .ty-blk.ty-born::after { content: ""; position: absolute; inset: 0; background: var(--jelly); mix-blend-mode: screen; pointer-events: none; animation: ty-cool var(--d-pour) ease-out both; }
+@keyframes ty-born { from { opacity: 0; transform: scale(.72); } 30% { opacity: 1; } to { transform: scale(1); } }
+@keyframes ty-cool { from { opacity: .34; } to { opacity: 0; } }
+.soltry .ty-blk.ty-dying { animation: ty-dying .5s ease-out both; pointer-events: none; }
+@keyframes ty-dying { to { transform: scale(.6); opacity: 0; } }
+.soltry .ty-blk.ty-waits { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sun) 45%, transparent), 0 0 30px -14px color-mix(in srgb, var(--sun) 50%, transparent); }
+.soltry .ty-blk.ty-flash { box-shadow: inset 0 0 0 1px rgb(var(--on) / .5), 0 0 40px -12px rgba(255,72,136,.5); }
+/* working: the six bands sweep the top edge */
+.soltry .ty-sweep { position: absolute; left: 18px; right: 18px; top: 0; height: 2px; opacity: 0; background: var(--jelly); background-size: 300% 100%; transition: opacity var(--d-turn); pointer-events: none; }
+.soltry .ty-blk.ty-working .ty-sweep { opacity: 1; animation: ty-sweep calc(var(--d-pour) * 2) linear infinite; }
+@keyframes ty-sweep { to { background-position: -300% 0; } }
+.soltry .ty-bh { flex: none; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 14px; font-size: 13px; line-height: 16px; white-space: nowrap; }
+.soltry .ty-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--green); transition: background-color var(--d-turn); }
+.soltry .ty-blk.ty-frozen .ty-dot { background: var(--pearl); }
+.soltry .ty-blk.ty-waits .ty-dot { background: var(--sun); }
+.soltry .ty-bt { font-weight: 500; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.soltry .ty-kind { flex: none; font-size: 12px; color: var(--quiet); }
+.soltry .ty-bm { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--dim); }
+.soltry .ty-blk.ty-waits .ty-bm { color: var(--sun); }
+.soltry .ty-grow { flex: 1; }
+/* v1 | live: a pearl thumb in one track */
+.soltry .ty-vsw { position: relative; flex: none; display: none; grid-template-columns: 1fr 1fr; height: 24px; border-radius: var(--pill); box-shadow: inset 0 0 0 1px var(--edge); }
+.soltry .ty-vsw.ty-has { display: grid; }
+.soltry .ty-vsw .ty-thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: var(--pill); background: var(--nacre); transition: transform var(--d-glass) var(--e-pour); }
+.soltry .ty-vsw[data-v="live"] .ty-thumb { transform: translateX(100%); }
+.soltry .ty-vsw button { position: relative; min-width: 38px; padding: 0 8px; border: 0; border-radius: var(--pill); background: none; font-size: 12px; color: var(--dim); cursor: pointer; transition: color var(--d-turn); }
+.soltry .ty-vsw button.ty-on { color: var(--deep); }
+.soltry .ty-bb { position: relative; flex: 1; min-height: 0; overflow: hidden; padding: 0 12px 12px; transition: filter var(--d-glass); }
+.soltry .ty-blk.ty-frozen .ty-bb { filter: saturate(.3) brightness(.85); }
+/* the week: five columns (04-three-live) */
+.soltry .ty-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; height: 100%; }
+.soltry .ty-day { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 8px; border-radius: 6px; background: rgb(var(--on) / .035); box-shadow: inset 0 1px 0 rgb(var(--on) / .04); }
+.soltry .ty-day h4 { font-size: 12px; font-weight: 400; line-height: 16px; color: var(--ink); margin-bottom: 2px; }
+.soltry .ty-day.ty-today h4 { color: var(--sun); }
+.soltry .ty-day p { font-size: 12px; line-height: 16px; color: var(--dim); overflow-wrap: break-word; hyphens: none; }   /* breaks between words only */
+.soltry .ty-day p.ty-big { color: var(--ink); font-weight: 600; }
+/* runs: a total, seven bars, the goal in cells, a + */
+.soltry .ty-runs .ty-bb { display: flex; flex-direction: column; gap: 6px; }
+.soltry .ty-top { display: flex; align-items: center; gap: 12px; }
+.soltry .ty-tot { font-size: 26px; font-weight: 600; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.soltry .ty-tot small { margin-left: 4px; font-size: 12.5px; font-weight: 400; letter-spacing: 0; color: var(--dim); }
+.soltry .ty-add { flex: none; height: 26px; padding: 0 12px; border: 0; border-radius: var(--pill); background: rgb(var(--on) / .045); box-shadow: inset 0 0 0 1px var(--edge); color: var(--ink); font-size: 12px; cursor: pointer; transition: background-color var(--d-turn); }
+.soltry .ty-add:hover { background: rgb(var(--on) / .09); }
+.soltry .ty-bars { flex: 1; min-height: 34px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; padding-top: 16px; }
+.soltry .ty-b { position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+.soltry .ty-b span { display: block; width: 100%; min-height: 3px; border-radius: 4px 4px 2px 2px; background: rgb(var(--on) / .78); transition: height .6s var(--e-pour); }
+.soltry .ty-b.ty-zero span { background: rgb(var(--on) / .1); }
+.soltry .ty-b.ty-today span { background: linear-gradient(180deg, var(--sun), var(--orange) 55%, var(--pink)); box-shadow: 0 0 18px -2px rgba(251,113,41,.45); }
+.soltry .ty-b em { position: absolute; left: 50%; translate: -50% 0; bottom: calc(var(--h, 0%) + 3px); font: 12px var(--mono); font-style: normal; color: var(--dim); white-space: nowrap; }
+.soltry .ty-dl { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-size: 12px; line-height: 14px; color: var(--quiet); text-align: center; }
+.soltry .ty-dl .ty-today { color: var(--ink); }
+.soltry .ty-cells { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.soltry .ty-cells i { display: block; width: 6px; height: 6px; border-radius: 1.5px; background: rgb(var(--on) / .1); }
+.soltry .ty-cells i.ty-got { background: var(--ink); }
+.soltry .ty-cells small { margin-left: 8px; font-size: 12px; color: var(--quiet); }
+/* a diff (the stage's diff kind): the removed line a soft red band, the added a soft green one */
+.soltry .ty-diff .ty-bb { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
+.soltry .ty-diff p { display: grid; grid-template-columns: 18px 1fr; padding: 2px 8px; border-radius: 4px; font: 12px/20px var(--mono); color: var(--dim); }
+.soltry .ty-diff p b { font-weight: 400; color: var(--quiet); }
+.soltry .ty-diff p.ty-ins { background: color-mix(in srgb, #70df45 10%, transparent); color: #a6ec8a; }
+.soltry .ty-diff p.ty-ins b { color: #70df45; }
+.soltry .ty-diff p.ty-del { background: color-mix(in srgb, #fd302d 10%, transparent); color: #f59a91; }
+.soltry .ty-diff p.ty-del b { color: #ff6a5c; }
+/* a list: done things struck, the one that waits on you in yellow with its answer beside it */
+.soltry .ty-list .ty-bb { display: flex; flex-direction: column; padding-top: 2px; }
+.soltry .ty-list p { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 6px; font-size: 14px; color: var(--ink); }
+.soltry .ty-list p span { flex: 1; min-width: 0; }
+.soltry .ty-list p.ty-done span { color: var(--quiet); text-decoration: line-through; }
+.soltry .ty-list p.ty-asks span { color: var(--sun); }
+.soltry .ty-yes { flex: none; height: 26px; padding: 0 14px; border: 0; border-radius: var(--r-chip); background: var(--pearl); color: var(--deep); font-size: 12.5px; cursor: pointer; }
+/* folded blocks, on a narrow stage: a row of chips at its top (the stage's fold); a press brings one back */
+.soltry .ty-tray { position: absolute; left: 10px; right: 10px; top: 10px; z-index: 4; display: flex; gap: 6px; overflow: hidden; }
+.soltry .ty-tray:empty { display: none; }
+.soltry .ty-chip { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 0; border-radius: var(--pill); background: rgb(var(--on) / .06); box-shadow: inset 0 0 0 1px var(--edge); color: var(--ink); font-size: 12.5px; white-space: nowrap; cursor: pointer; animation: ty-chip .3s ease-out; }
+.soltry .ty-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.soltry .ty-chip.ty-frozen i { background: var(--pearl); }
+.soltry .ty-chip.ty-waits i { background: var(--sun); }
+@keyframes ty-chip { from { opacity: 0; transform: translateY(-4px); } }
+
+/* the two lines of talk, as the stage stills draw them: who, then what */
+.soltry .ty-talk { position: relative; z-index: 1; flex: none; width: min(760px, 100% - 40px); margin: 0 auto; padding: 12px 0 8px; }
+.soltry .ty-l { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: baseline; min-height: 24px; font-size: 14px; line-height: 24px; }
+.soltry .ty-l i { font-style: normal; color: var(--quiet); }
+.soltry .ty-l span { overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* a long answer takes more lines, never cut mid-thought */
+.soltry .ty-you span { color: var(--ink); }
+.soltry .ty-sol span { color: var(--dim); }
+.soltry .ty-l span.ty-in { animation: ty-in .42s ease-out both; }
+@keyframes ty-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* the chat bar (home.css, chatbar scenes): one box, the + and the words on top, the pills under */
+.soltry .ty-ask { position: relative; z-index: 2; flex: none; width: min(760px, 100% - 40px); margin: 0 auto 14px; }
+.soltry .ty-box { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--box); border-radius: var(--r-box); box-shadow: 0 18px 40px -18px var(--shade); }
+/* its ring: the pearl's sheen as a 1 px rim */
+.soltry .ty-box::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--sheen-ring); opacity: .7;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; transition: opacity var(--d-turn); }
+.soltry .ty-box.ty-focus::before { opacity: 1; }
+.soltry .ty-line { position: relative; display: flex; align-items: flex-start; gap: 10px; }
+.soltry .ty-plus { flex: none; width: 24px; height: 24px; border-radius: var(--pill); background: rgb(var(--on) / .07); color: var(--ink); font-size: 14px; line-height: 24px; text-align: center; }
+.soltry .ty-field { position: relative; flex: 1; min-width: 0; }
+.soltry .ty-input { display: block; width: 100%; height: 24px; max-height: 72px; overflow-y: auto; scrollbar-width: none; resize: none; background: transparent; color: var(--ink); border: 0; outline: 0; font: inherit; font-size: 15px; line-height: 24px; padding: 0; caret-color: var(--pink); }
+.soltry .ty-input:focus-visible { outline: 0; }
+.soltry .ty-box:has(.ty-input:focus-visible)::before { opacity: 1; background: var(--pearl); }
+.soltry .ty-input::placeholder { color: var(--quiet); opacity: 1; }
+/* the script's words while it types: in the flow, wrapping */
+.soltry .ty-typed { font-size: 15px; line-height: 24px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; pointer-events: none; }
+.soltry .ty-typed::after { content: ""; display: inline-block; width: 1.5px; height: 17px; margin-left: 1px; vertical-align: -3px; background: var(--pink); animation: ty-caret 1s steps(1) infinite; }
+.soltry .ty-typed:empty { display: none; }
+.soltry .ty-field.ty-typing .ty-input { display: none; }
+@keyframes ty-caret { 50% { opacity: 0; } }
+/* send: the pearl pill, shown when the box has words; stop, while it works */
+.soltry .ty-send { position: absolute; right: 0; top: 0; height: 24px; padding: 0 12px; border: 0; border-radius: var(--pill); background: var(--pearl); color: var(--deep); font-size: 12px; line-height: 24px; cursor: pointer;
+  opacity: 0; visibility: hidden; transform: scale(.86); transition: opacity var(--d-turn), transform var(--d-glass) var(--e-pour), visibility 0s var(--d-turn); }
+.soltry .ty-send.ty-on { opacity: 1; visibility: visible; transform: none; transition: opacity var(--d-turn), transform var(--d-glass) var(--e-pour); }
+.soltry .ty-line:has(.ty-send.ty-on) .ty-field { margin-right: 64px; }
+.soltry .ty-send.ty-stop { background: rgb(var(--on) / .06); color: var(--ink); box-shadow: inset 0 0 0 1px var(--edge); }
+.soltry .ty-pick { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.soltry .ty-pill { position: relative; flex: none; display: inline-flex; align-items: center; gap: 8px; height: 24px; padding: 0 12px; border-radius: var(--pill); background: rgb(var(--on) / .045); box-shadow: inset 0 0 0 1px var(--edge); color: var(--ink); font: 12px/16px var(--mono); }
+.soltry .ty-pill.ty-sys { font-family: inherit; }
+/* the effort pill at high: the level as heat inside the capsule (EffortPill.tsx; the still talk.png), a lit droplet,
+   a shade under the word so it reads at 4.5:1 */
+.soltry .ty-effort { isolation: isolate; box-shadow: none; padding-left: 10px; }
+.soltry .ty-heat { position: absolute; inset: 0; z-index: -1; border-radius: inherit; overflow: hidden; background: linear-gradient(90deg, #f4c82a 0%, #a39a1a 22%, #4f7416 44%, #6d3a10 72%, #5c300e 100%); }
+.soltry .ty-heat::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 20px, rgb(0 0 0 / .42) 30px); }
+.soltry .ty-effort b { font-weight: 400; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.soltry .ty-drop { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 34% 30%, rgb(255 255 255 / .45), transparent 45%), conic-gradient(#ff2e4e, #ff4888, #fb7129, #f89b2a, #f4c82a, #70df45, #ff2e4e); }
+.soltry .ty-icon { flex: none; display: grid; place-items: center; width: 24px; height: 24px; color: var(--dim); }
+.soltry .ty-icon svg { width: 14px; height: 14px; }
+.soltry .ty-ring svg { width: 12px; height: 12px; }
+
+/* the pointer the script presses with */
+.soltry .ty-cursor { position: absolute; left: 0; top: 0; z-index: 40; width: 20px; height: 22px; pointer-events: none; opacity: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5));
+  transition: transform .7s cubic-bezier(.65,0,.35,1), opacity .3s; }
+
+/* a tablet: the window takes the width; the stage stacks its blocks (try.js lays them) */
+@media (max-width: 900px) {
+  .soltry { width: calc(100% - 32px); }
+}
+/* a phone: the window nearly to the edges, the desk's margins thin, the call key goes from the row */
+@media (max-width: 560px) {
+  .soltry { width: calc(100% - 16px); height: 780px; }
+  .soltry .ty-win { left: 8px; right: 8px; top: 16px; bottom: 12px; }
+  .soltry .ty-bar { padding: 0 10px 0 12px; gap: 8px; }
+  .soltry .ty-lights { margin-right: 2px; gap: 6px; }
+  .soltry .ty-lights i { width: 10px; height: 10px; }
+  .soltry .ty-where { display: none; }
+  .soltry .ty-stage { margin: 0 6px; }
+  .soltry .ty-talk, .soltry .ty-ask { width: calc(100% - 16px); }
+  .soltry .ty-ask { margin-bottom: 8px; }
+  .soltry .ty-call { display: none; }
+  .soltry .ty-l { grid-template-columns: 34px minmax(0, 1fr); }
+  /* the week's five cells get every pixel the phone has, so a word like "meetings" fits whole */
+  .soltry .ty-week .ty-bb { padding: 0 8px 8px; }
+  .soltry .ty-days { gap: 2px; }
+  .soltry .ty-day { padding: 6px 3px; }
+  .soltry .ty-day p { letter-spacing: -.02em; }
+}
+/* on touch, the things a finger presses take a 44 px hit area; the look stays the same */
+@media (pointer: coarse) {
+  .soltry :is(.ty-send, .ty-add, .ty-yes, .ty-chip, .ty-vsw button)::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .soltry :is(.ty-add, .ty-yes, .ty-chip) { position: relative; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soltry .ty-blk, .soltry .ty-jel, .soltry .ty-b span { transition: none; }
+  .soltry .ty-blk.ty-born, .soltry .ty-blk.ty-born::after, .soltry .ty-blk.ty-working .ty-sweep, .soltry .ty-l span.ty-in, .soltry .ty-typed::after, .soltry .ty-chip { animation: none !important; }
+  .soltry .ty-blk.ty-born::after { opacity: 0; }
+}

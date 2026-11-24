@@ -30,10 +30,12 @@ export const PANES = ["changes", "files", "browser", "terminal", "page", "pr", "
 export const SETTABLE = ["voice", "voiceVendor", "elevenVoice", "patienceMs", "language", "look", "notify", "lens", "cowork", "ui", "defaults", "switches", "own"] as const;
 /** the switches a seat may turn by name in `switches`: the views', and Cowork's and the face's by their names */
 /** the window switches whose screen follows the person's settings today: the three views (mac/src/spine/views.ts reads
- *  settings.window). The other window cards read the window's own storage, so a seat turning one would change nothing on
- *  screen: they stay by hand in Settings › switches until the window reads the settings for them (#1694's window half),
- *  then they join this list (the door on #1708, question 4) */
-export const SEAT_WINDOW_SWITCHES = WINDOW_SWITCHES.filter((n) => n.startsWith("view."));
+ *  settings.window) and agents.mode (mac/src/agents/flag.ts reads it the same way, #18). The other window cards read the
+ *  window's own storage, so a seat turning one would change nothing on screen: they stay by hand in Settings › switches
+ *  until the window reads the settings for them (#1694's window half), then they join this list (the door on #1708,
+ *  question 4) */
+const READ_FROM_SETTINGS = new Set(["agents.mode"]);
+export const SEAT_WINDOW_SWITCHES = WINDOW_SWITCHES.filter((n) => n.startsWith("view.") || READ_FROM_SETTINGS.has(n));
 /** the two engine switches that send the person's words off the machine (reach.ts): at product they are on for a tester
  *  by default, so the person turns them off by asking, not only in a settings file (the door on #1718, question 4). Off
  *  only: back on widens what an AI may do (their words leave again), and like a looser mode (#36) that is never a seat's
@@ -154,7 +156,11 @@ export function settablePatch(patch: unknown): { patch: Record<string, unknown> 
           "Settings is open on me in the person's window, at its switch: say in a line that the switch is there and one press turns it on" };
         out.reach = { ...(out.reach as object | undefined), [SPOKEN_REACH[name as keyof typeof SPOKEN_REACH]]: v };
       }
-      else kept[name] = v;
+      else {
+        // agents.mode (#18): its card short of this Sol's version (concept on a tester's) has no way on by word, as reach
+        if (name === "agents.mode" && v === true && !standsOn(stageOf(name), versionMode())) return { why: `${name} is not part of this Sol yet: say in a line that their Sol does not have it yet, and offer no way to turn it on` };
+        kept[name] = v;
+      }
     }
     if (Object.keys(kept).length) out.switches = kept; else delete out.switches;
   }

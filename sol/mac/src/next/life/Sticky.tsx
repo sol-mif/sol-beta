@@ -13,7 +13,7 @@ const stop = (f: () => void) => (e: { stopPropagation: () => void }) => { e.stop
 
 function MadeRow({ p, m, first }: { p: St; m: Made; first: boolean }) {
   let s = `${m.by} · ${agoLabel(m.at)}`, act = null;
-  if (m.state === "waits") { s = "Drafted · waits for your Send"; act = <button className="lf-b pri" onClick={stop(() => send(p.id, m.id))}>Send</button>; }
+  if (m.state === "waits") { s = "Drafted · waits for your Send"; act = <button className="lf-b pri lf-quiet" onClick={stop(() => send(p.id, m.id))}>Send</button>; }
   else if (m.state === "held") { s = `${m.goes === "sent" ? "Sending" : "Goes"} in ${HOLD} s`; act = <button className="lf-b" onClick={stop(() => holdBack(p.id, m.id))}>Undo</button>; }
   else if (m.state === "sent") s = `Sent · ${agoLabel(m.at)}`;
   else if (m.state === "paid") s = `Paid · ${agoLabel(m.at)}`;
@@ -37,16 +37,16 @@ function Due({ p }: { p: St }) {
   return <span>{whenLabel(p.due, p.allDay)}</span>;
 }
 
-export function Sticky({ p, chosen }: { p: St; chosen?: boolean }) {
+export function Sticky({ p, chosen, picked }: { p: St; chosen?: boolean; picked?: boolean }) {
   const made = p.made || [], asks = asksOf(p), late = isLate(p);
-  const cls = ["lf-st", late ? "tinted" : "", chosen ? "chosen" : "", p.isNew ? "is-new" : ""].filter(Boolean).join(" ");
+  const cls = ["lf-st", late ? "tinted" : "", chosen ? "chosen" : "", picked ? "picked" : "", p.isNew ? "is-new" : ""].filter(Boolean).join(" ");
   return (
     <div className={cls} data-sticky={p.id} data-piece={p.id} data-front role="button" tabIndex={0} onClick={() => pressSticky(p.id)}>
       <span className="lf-t" data-words>{p.name}</span>
       <span className="lf-d"><Due p={p} />{p.note ? <span className="lf-tag">{p.note}</span> : null}{!p.due && !p.note && !made.length ? <span>No date</span> : null}</span>
       {made.length ? <div className="lf-made">{made.slice(0, SHOW).map((m, i) => <MadeRow key={m.id} p={p} m={m} first={i === 0} />)}{made.length > SHOW ? <div className="lf-more">{made.length - SHOW} earlier</div> : null}</div> : null}
       {asks.map((a) => <AskRow key={a.id} a={a} />)}
-      {chosen && !asks.length ? (
+      {!asks.length ? (   // drawn while the person chose the sticky, points at it or it holds the keys (life.css; a calm board, BR1 #1615)
         <div className="lf-acts">
           {made.some((m) => m.state === "waits") ? null : <button className={`lf-b${p.ran ? "" : " pri"}`} onClick={stop(() => M.run_sticky(p.id))}>{p.ran ? "Run again" : "Run it"}<span className="lf-kbd">⌘↩</span></button>}
           <button className="lf-b" onClick={stop(() => { const r = M.finish(p.id); if (r.ok) flash("Done. Kept here a day."); })}>Done<span className="lf-kbd">⌘D</span></button>

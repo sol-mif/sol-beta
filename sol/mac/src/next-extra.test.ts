@@ -8,6 +8,8 @@ import * as CV from "./next/cv/index.ts";
 import "./next/cv/fixture.ts";
 import { EXTRA, extOpen, firstWords, register, type ExtOpen } from "./next/people/extra.ts";
 import { answer, diaryLines, items, needsCount } from "./next/people/queue.ts";
+// slice 6b (docs/port/requests/seats.md): this file counts the people's own queue, so the slices' registered extra askers (Seats' blocked AI) step aside
+EXTRA.splice(0);
 
 test("an extra asker: above() and the badge count it once, an answer lowers both by one and writes one line", () => {
   CV.load("dev-morning");

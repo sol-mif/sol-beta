@@ -7,6 +7,7 @@
 //   - work.thread / work.item: a session's permission asks (an item of kind "perm" in state "ask"); answered with
 //     work.perm { allow: true }. They have no later in the engine: "later" moves them down here only.
 //   - next.needs (slice 7's ranked list, when it comes): taken as it is, in place of the two above.
+//   - next.you's drift question ("Add it as an aim?") is not a Need: aims are parked after BR1 (#1615).
 // Rank is computed, never claimed (needs/rank.ts TIER): a permission holds an AI up (3), a Thing with a date is due (4),
 // any other Thing is other (6); inside each tier the engine's own order. agent.answer has no ask here yet: an agent's
 // tickets are read per folder (agent.tickets), which nothing in the new face asks for yet (notes/needs.md).
@@ -18,6 +19,13 @@ import type { Engine } from "./types.ts";
 type Thing = { id: string; read: string; folder: string; words: string; state: string; waitsOn: string; due?: number; card?: { title?: string; answers?: [string, string] } };
 type PermItem = { id: string; kind: string; state?: string; tool?: string; input?: Record<string, unknown>; title?: string };
 type Mine = Ask & { live: "thing" | "perm" | "next"; thingId?: string; sessionId?: string; itemId?: string; yesWords?: string };
+
+/** a session's ask carries `because`, the keys of what its first turn told it (sol/PROTOCOL.md "next.session.told"):
+ *  kept when they are words, none when there are none */
+export const keysOf = (x: unknown): { because?: string[] } => {
+  const ks = Array.isArray(x) ? x.filter((k): k is string => typeof k === "string" && !!k) : [];
+  return ks.length ? { because: ks } : {};
+};
 
 /** the asks as the engine has them now, by id; and what was sent for each, so nothing is sent twice */
 const asks = new Map<string, Mine>();
@@ -67,8 +75,8 @@ export function attach(e: Engine): () => void {
   const offMsg = e.subscribe((m: { type?: string; [k: string]: any }) => {
     if (m.type === "next.needs" && Array.isArray(m.needs)) {   // slice 7's list, when it comes: it is the one list
       nextSeen = true;
-      settle(m.needs.map((n: { id: string; piece: string; words: string; kind?: "code" | "life"; yes?: string; serious?: boolean; rank: number; why?: string }) =>
-        ({ id: n.id, rank: n.rank, piece: n.piece, kind: n.kind ?? "life", source: n.why ?? "", text: n.words, how: "inplace", answered: false, serious: !!n.serious, live: "next", ...(n.yes ? { yes: n.yes } : {}) } as Mine)), ["next", "thing", "perm"], false);
+      settle(m.needs.map((n: { id: string; piece: string; words: string; kind?: "code" | "life"; yes?: string; no?: string; serious?: boolean; rank: number; why?: string; because?: unknown }) =>
+        ({ id: n.id, rank: n.rank, piece: n.piece, kind: n.kind ?? "life", source: n.why ?? "", text: n.words, how: "inplace", answered: false, serious: !!n.serious, live: "next", ...(n.yes ? { yes: n.yes } : {}), ...keysOf(n.because) } as Mine)), ["next", "thing", "perm"], false);
       return;
     }
     if (nextSeen) return;

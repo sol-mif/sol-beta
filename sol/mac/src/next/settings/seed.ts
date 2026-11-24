@@ -3,6 +3,7 @@
 // fixture (cv/moves/settings.ts seeds it on load); a real Sol builds its world from the engine (cv/wire/settings.ts)
 // and never shows a line of this. Signed: marcocyl04-ux's agent, slice 6 (#1615).
 import { C, defaults, type AiW, type HistRow, type Kind, type Serv, type Tool, type Way, type World } from "./model.ts";
+import type { Known } from "../known.ts";
 
 export const SAM_AIS: AiW[] = [
   { id: "inbox", n: "Inbox keeper", hue: 1, spent: 0.8, m: ["Archive one newsletter you never open", "Sort 200 old emails into folders", "Delete mail older than a year", "Send the reply to Ms. Lee"] },
@@ -11,12 +12,12 @@ export const SAM_AIS: AiW[] = [
   { id: "course", n: "Course catch-up", hue: 4, spent: 6.2, m: ["Summarise today’s Biology lecture", "Rebuild your notes for a whole chapter", "Clear last term’s notes", "Email the group about the slides"] },
   { id: "weekly", n: "Weekly review", hue: 5, spent: 0.9, m: ["Write Sunday’s recap", "Reshuffle next week’s plan", "Archive finished tasks", "Send the recap to your tutor"] }];
 
-const LEARNED = [
-  { id: 1, t: "You call the history essay “the beast”.", from: "a name you used on 12 Nov" },
-  { id: 2, t: "You like to read a note to a teacher before it is sent.", from: "you pressed “Read it first” 3 times" },
-  { id: 3, t: "You want bills paid two days early, never on the day.", from: "your pick on 10 Nov" },
-  { id: 4, t: "Sunday evenings are for the weekly review, so I stay quiet then.", from: "a habit I saw over 3 Sundays" },
-  { id: 5, t: "Home life stays quiet unless something is wrong.", from: "your pick on 13 Nov" }];
+const LEARNED: Known[] = [
+  { k: "learned:1", fact: "You call the history essay “the beast”.", source: "a name you used on 12 Nov", by: "sol", place: null },
+  { k: "learned:2", fact: "You like to read a note to a teacher before it is sent.", source: "you pressed “Read it first” 3 times", by: "sol", place: null },
+  { k: "learned:3", fact: "You want bills paid two days early, never on the day.", source: "your pick on 10 Nov", by: "person", place: null },
+  { k: "learned:4", fact: "Sunday evenings are for the weekly review, so I stay quiet then.", source: "a habit I saw over 3 Sundays", by: "sol", place: null },
+  { k: "learned:5", fact: "Home life stays quiet unless something is wrong.", source: "your pick on 13 Nov", by: "person", place: null }];
 
 export const SERV: Serv[] = [
   { id: "gmail", n: "Gmail", may: ["read mail", "write drafts"], not: "send or delete anything", by: "Inbox keeper, Course catch-up", off: "Inbox keeper can’t see your mail now." },
@@ -49,7 +50,7 @@ export function samWorld(): World {
   step("Sat 14 Nov, 11:30", "Weekly review: Goes ahead, tells me after", "you asked in words", () => { S.kept["autonomy:weekly"] = "ahead"; });
   step("Sun 15 Nov, 19:40", "Your writing: Suggest beside it", "you picked it", () => { S.kept.writing = "suggest"; });
   step("Mon 16 Nov, 22:10", "How much I say: A little more", "your AI tuned it", () => { S.kept["v-length"] = "mid"; }, "You asked “what does that mean for me?” after 5 of my last 8 one-line answers.");
-  step("Tue 17 Nov, 07:40", "How much of its working you see: Just the result", "your AI tuned it", () => { S.kept.working = "result"; }, "You haven’t opened the folded steps once in two weeks.");
+  step("Tue 17 Nov, 07:40", "Show the AI’s steps: Just the result", "your AI tuned it", () => { S.kept.working = "result"; }, "You haven’t opened the hidden steps once in two weeks.");
   step("Tue 17 Nov, 20:46", "Size of everything you read: Larger", "you picked it", () => { S.kept.size = "l"; });
   step("Wed 18 Nov, 08:05", "Size of everything you read: As it is", "you turned it back", () => { S.kept.size = "m"; });
   return { ais: C(SAM_AIS), prefs: S, hist: H, undo: [], own: {}, ways: C(WAYS), eveOk: false, serv: SERV, kinds: KINDS, tools: TOOLS, extra: EXTRA, live: false };

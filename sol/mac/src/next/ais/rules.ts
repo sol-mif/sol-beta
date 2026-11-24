@@ -36,7 +36,7 @@ export function onWhat(d: Data, ai: Ai, regionName: (id: string) => string | und
 export function sayLine(states: AiState[]): string {
   if (!states.length) return "No AIs yet. One appears when you hand a piece of work to it.";
   const need = states.filter((s) => s.cls === "st-need").length, work = states.filter((s) => s.cls === "st-work").length;
-  return [`${states.length} AI${states.length === 1 ? "" : "s"}.`, need ? `${need} ${need === 1 ? "needs" : "need"} you;` : "", work ? `${work} working.` : "", !need && !work ? "All resting." : ""]
+  return [`${states.length} AI${states.length === 1 ? "" : "s"}.`, need ? `${need === 1 ? "One of them needs" : need + " of them need"} you;` : "", work ? `${work} working.` : "", !need && !work ? "All resting." : ""]
     .filter(Boolean).join(" ").replace(/;$/, ".");
 }
 

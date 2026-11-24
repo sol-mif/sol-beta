@@ -19,7 +19,7 @@ function session(d: Data, id: string, region: string, ai: string, copy: string, 
   P(d, id, region, "session", `${ai} in ${copy}`, {
     ai, copy, branch: "ai/" + copy, files, state: "working",
     term: { lines: TERM(copy), waiting: null, stateWord: "tests: 1 failing" },
-    talk: [`you: ${ai}, take ${copy}`, `${ai}: on it. ${files} files so far.`, `${ai}: tests run on every save.`], ...x,
+    talk: [`you: take ${copy}`, `${ai}: on it. ${files} files so far.`, `${ai}: tests run on every save.`], ...x,
   });
   d.ais.push({ name: ai, piece: id });
 }
@@ -41,7 +41,7 @@ function copiesPiece(d: Data, id: string, region: string, n: number, opt: { pref
 
 export function devData(opt: { week?: boolean; morning?: boolean } = {}): Data {
   const d = mk();
-  for (const [id, n] of [["api", "api"], ["web", "web"], ["infra", "infra"], ["cli", "cli"]]) R(d, id, n + " (repo)", "code");
+  for (const [id, n] of [["api", "api"], ["web", "web"], ["infra", "infra"], ["cli", "cli"]]) R(d, id, n, "code");
   R(d, "home", "home, errands", "life"); R(d, "money", "money", "life"); R(d, "health", "health", "life");
   const pairs: Record<string, [string, string, string, string]> = { api: ["Ada", "fix-login", "Rex", "migrate-db"], web: ["Kai", "main-check", "Lu", "nav-cleanup"], infra: ["Mo", "tf-upgrade", "Ned", "deploy-dir"], cli: ["Oz", "json-flag", "Pia", "docs-sweep"] };
   const files: Record<string, number> = { Ada: 40, Rex: 9, Kai: 3, Lu: 6, Mo: 14, Ned: 5, Oz: 4, Pia: 11 };
@@ -62,28 +62,36 @@ export function devData(opt: { week?: boolean; morning?: boolean } = {}): Data {
   P(d, "budget", "money", "doc", "budget", { text: "November: on track." });
   P(d, "mia", "health", "doc", "Mia: dentist", { text: "Dentist moved Mia to 3pm Thursday." });
   if (opt.morning !== false) {
-    A(d, "a1", 1, "s-Kai", "code", "Kai · check", "check broke on main: revert a1b2c?", "near", { serious: true });
-    A(d, "a2", 2, "s-Ada", "code", "Ada · collision", "collision: Ada and Rex both edit session.ts. Ada waits?", "inplace");
+    // a session is named by its task, never its AI (Marco, 2026-11-21 11:51): "Fix login", not "Ada"
+    A(d, "a1", 1, "s-Kai", "code", "Main check · check", "check broke on main: revert a1b2c?", "near", { serious: true });
+    A(d, "a2", 2, "s-Ada", "code", "Fix login · collision", "collision: Fix login and Migrate db both edit session.ts. Fix login waits?", "inplace", { also: ["s-Rex"] });
     A(d, "a3", 3, "lease", "life", "landlord", "landlord: reply to lease renewal today", "inplace");
-    A(d, "a4", 4, "s-Mo", "code", "Mo · limit", "Mo hit its spending limit. Raise to $20 or stop?", "inplace");
-    A(d, "a5", 5, "s-Rex", "code", "Rex · permission", "Rex: allow npm run migrate?", "inplace");
-    A(d, "a6", 6, "s-Ned", "code", "Ned · permission", "Ned: allow writing to deploy/?", "inplace");
-    A(d, "a7", 7, "s-Oz", "code", "Oz · decision", "Oz: flag name, --json or --out?", "inplace");
-    A(d, "a8", 8, "s-Ada", "code", "Ada · change", "Ada: change ready, 40 files. Accept?", "near");
-    A(d, "a9", 9, "s-Lu", "code", "Lu · change", "Lu: change ready, 6 files. Accept?", "near");
-    A(d, "a10", 10, "mia", "life", "Mia", "dentist moved Mia to 3pm. Confirm?", "inplace");
+    A(d, "a4", 4, "s-Mo", "code", "Tf upgrade · limit", "Tf upgrade hit its spending limit. Raise to $20 or stop?", "inplace");
+    A(d, "a5", 5, "s-Rex", "code", "Migrate db · permission", "Migrate db: allow npm run migrate?", "inplace");
+    A(d, "a6", 6, "s-Ned", "code", "Deploy dir · permission", "Deploy dir: allow writing to deploy/?", "inplace");
+    A(d, "a7", 7, "s-Oz", "code", "Json flag · decision", "Json flag: flag name, --json or --out?", "inplace");
+    A(d, "a8", 8, "s-Ada", "code", "Fix login · change", "Fix login: change ready, 40 files. Accept?", "near");
+    A(d, "a9", 9, "s-Lu", "code", "Nav cleanup · change", "Nav cleanup: change ready, 6 files. Accept?", "near");
+    A(d, "a10", 10, "mia", "life", "Mia", "dentist moved Mia to 3pm. Confirm?", "inplace", { because: ["learned:5"] });   // the because (BR1 item 4): Settings' learned line 5
   }
+  return d;
+}
+/** ✦ landing (inside.html moment 3, BR1 #1615): what a session made while kept beside the canvas, on the canvas and
+ *  tied to it by `from` (plane/landed.ts): Fix login left a note in api (builder P9) */
+export function landedData(): Data {
+  const d = devData();
+  P(d, "ada-note", "api", "doc", "session.ts: Migrate db edits it too", { text: "Fix login and Migrate db both change session.ts. I left the login half alone; merge Migrate db first?", from: "s-Ada", by: "ai" });
   return d;
 }
 function loopData(): Data { // 1.7 at 2am: Rex's check fails the same way seven times
   const d = devData({ morning: false });
-  for (let i = 1; i <= 7; i++) A(d, "r" + i, i < 2 ? 1 : 3 + i, "s-Rex", "code", "Rex · check login", `Rex: check "login" failed again (round ${i}). Retry?`, "inplace", { same: "Rex-check-login" });
-  A(d, "c1", 2, "s-Ada", "code", "Ada · collision", "collision: Ada and Rex both edit session.ts", "inplace");
+  for (let i = 1; i <= 7; i++) A(d, "r" + i, i < 2 ? 1 : 3 + i, "s-Rex", "code", "Migrate db · check login", `Migrate db: check "login" failed again (round ${i}). Retry?`, "inplace", { same: "Rex-check-login" });
+  A(d, "c1", 2, "s-Ada", "code", "Fix login · collision", "collision: Fix login and Migrate db both edit session.ts", "inplace", { also: ["s-Rex"] });
   A(d, "c2", 3, "lease", "life", "landlord", "landlord: reply today", "inplace");
-  A(d, "c3", 4, "s-Ada", "code", "Ada · change", "Ada: change ready, 40 files", "near");
+  A(d, "c3", 4, "s-Ada", "code", "Fix login · change", "Fix login: change ready, 40 files", "near");
   return d;
 }
-function focusData(): Data { const d = devData({ morning: false }); A(d, "f1", 5, "s-Lu", "code", "Lu · change", "Lu: change ready, 6 files", "near"); return d; }
+function focusData(): Data { const d = devData({ morning: false }); A(d, "f1", 5, "s-Lu", "code", "Nav cleanup · change", "Nav cleanup: change ready, 6 files", "near"); return d; }
 function jaydenData(): Data {
   const d = mk();
   R(d, "cs", "CS 101 (class + repo)", "mixed"); R(d, "essay", "history essay", "life"); R(d, "reading", "reading", "life"); R(d, "life", "life", "life");
@@ -105,15 +113,15 @@ function deniseData(eleven: boolean): Data {
   P(d, "mia", "kids", "doc", "Mia", { text: "dentist, school form" });
   P(d, "draft", "work", "doc", "the report", { text: "Q3 summary, second draft." });
   d.ais.push({ name: "June", piece: "cal" });
-  A(d, "d1", 1, "mia", "life", "June", "dentist moved Mia to 3pm. Confirm?", "inplace");
+  A(d, "d1", 1, "mia", "life", "June", "dentist moved Mia to 3pm. Confirm?", "inplace", { because: ["learned:5"] });
   if (eleven) A(d, "d2", 2, "mia", "life", "school", "school form due tomorrow: sign?", "inplace");
   return d;
 }
 function p1Data(): Data {
   const d = devData({ morning: false }); R(d, "school", "school", "life");
   P(d, "paper9", "school", "doc", "paper due 9am", { text: "Section 3. The results show" });
-  A(d, "m1", 1, "s-Mo", "code", "Mo · migration", "Mo: run the migration on prod now?", "inplace", { serious: true });
-  for (const [i, s] of [["m2", "s-Rex"], ["m3", "s-Ned"], ["m4", "s-Oz"], ["m5", "s-Lu"]]) A(d, i, +i[1] + 1, s, "code", d.pieces[s].ai!, `${d.pieces[s].ai}: allow a command?`, "inplace");
+  A(d, "m1", 1, "s-Mo", "code", "Tf upgrade · migration", "Tf upgrade: run the migration on prod now?", "inplace", { serious: true });
+  for (const [i, s] of [["m2", "s-Rex"], ["m3", "s-Ned"], ["m4", "s-Oz"], ["m5", "s-Lu"]]) { const t = String(d.pieces[s].copy).replace(/-/g, " "), T = t[0].toUpperCase() + t.slice(1); A(d, i, +i[1] + 1, s, "code", T, `${T}: allow a command?`, "inplace"); }
   return d;
 }
 function minjiData(): Data {
@@ -128,13 +136,13 @@ function minjiData(): Data {
 }
 const EIGHT = ["Ada", "Rex", "Kai", "Lu", "Mo", "Ned", "Oz", "Pia"];
 function stressData(): Data {
-  const d = mk(); R(d, "api", "api (repo)", "code");
+  const d = mk(); R(d, "api", "api", "code");
   for (let i = 0; i < 30; i++) { const ai = i < 8 ? EIGHT[i] : null; session(d, "s" + i, "api", ai || "t" + i, "c" + String(i).padStart(2, "0"), 3); if (!ai) d.ais.pop(); }
   return d;
 }
 /* thirty sessions and one job split six ways (count 16); the split's parent comes first, its parts sit inside it */
 function thirtyData(): Data {
-  const d = mk(); R(d, "api", "api (repo)", "code");
+  const d = mk(); R(d, "api", "api", "code");
   session(d, "s-split", "api", "Vi", "split-auth", 12, { parts: [], splitBy: "Vi" }); d.pieces["s-split"].talk!.push("Vi: split this into 6 parts.");
   /* the parts live inside their parent (runs.js's shape: p.parts[], each {id:'<parent>.pN', part:true, …}), never as pieces of their own */
   ["Wu", "Xa", "Yo", "Zed", "Ama", "Bea"].forEach((ai, i) => {
@@ -170,7 +178,7 @@ function partOf(parent: Piece, i: number, ai: string, words: string, d: Data): P
 const NOTES = { code: ["session.ts: the token stays after logout", "login.test.ts: one case is still skipped", "flags.ts: --out is never read"] };
 function freshData(): Data {
   const d = mk();
-  d.regions.push({ id: "api", name: "api (repo)", kind: "code" }, { id: "notes", name: "notes", kind: "life" });
+  d.regions.push({ id: "api", name: "api", kind: "code" }, { id: "notes", name: "notes", kind: "life" });
   d.crew = [{ name: "Ada", region: "api" }, { name: "Rex", region: "api" }, { name: "June", region: "notes" }];
   return d;
 }
@@ -187,7 +195,7 @@ function devRunsData(): Data {
   }));
   ada.splitBy = "Ada";
   d.asks.k1 = { id: "k1", rank: 1, piece: "s-Ada", part: "s-Ada.p2", kind: "code", source: "Rex · write the login tests", text: "write the login tests: allow npm run migrate?", how: "inplace", answered: false };
-  d.asks.k2 = { id: "k2", rank: 2, piece: "s-Ada", kind: "code", source: "Ada · collision", text: "Ada and Rex both edit session.ts. Rex waits?", how: "inplace", answered: false, also: ["s-Rex"], collide: ["s-Ada", "s-Rex"], act: { move: "wait", args: ["s-Rex"] } };
+  d.asks.k2 = { id: "k2", rank: 2, piece: "s-Ada", kind: "code", source: "Fix login · collision", text: "Fix login and Migrate db both edit session.ts. Migrate db waits?", how: "inplace", answered: false, also: ["s-Rex"], collide: ["s-Ada", "s-Rex"], act: { move: "wait", args: ["s-Rex"] } };
   // web: Kai is done, checked by Rex, its changes wait one at a time; Lu made a page that is placed beside it, and stills still in arrivals
   Object.assign(Pc["s-Kai"], { state: "done", words: "make the main check green", checked: { by: "Rex", notes: NOTES.code.slice(0, 2) } });
   const nav = "Six links became four. “Docs” and “Guides” are one menu now; the search moved to the right.";
@@ -196,7 +204,7 @@ function devRunsData(): Data {
   Pc["blk-1"] = { id: "blk-1", region: "web", kind: "block", block: "page", name: "The nav, before and after", text: nav, by: "Lu", joined: "s-Lu" };
   // infra: Mo's machine stopped answering at 2:14
   d.machines = { "the second box": { up: false, since: "2:14" } }; Pc["s-Mo"].machine = "the second box"; Pc["s-Ned"].machine = "the build server";
-  d.asks.k3 = { id: "k3", rank: 3, piece: "s-Mo", kind: "code", source: "Mo · limit", text: "Mo hit its spending limit. Raise to $20 or stop? (its machine is out of reach since 2:14)", how: "inplace", answered: false };
+  d.asks.k3 = { id: "k3", rank: 3, piece: "s-Mo", kind: "code", source: "Tf upgrade · limit", text: "Tf upgrade hit its spending limit. Raise to $20 or stop? (its machine is out of reach since 2:14)", how: "inplace", answered: false };
   // cli: a row that runs, kept as a way of working; Oz and Pia on the same branch, so a group is offered with its evidence
   Object.assign(Pc["s-Oz"], { touch: ["docs/flags.md"], branch: "ai/flags" }); Object.assign(Pc["s-Pia"], { touch: ["docs/flags.md"], branch: "ai/flags" });
   Pc["row-1"] = { id: "row-1", region: "cli", kind: "row", name: "Ship a flag", steps: [{ what: "Write the flag", st: "done" }, { what: "Update the docs", st: "running" }, { what: "Open a pull request", st: "waits" }], kept: true, when: "Fridays 16:00", running: true };
@@ -245,6 +253,7 @@ const withRoutines = (f: () => Data) => (): Data => {
 
 export const FIXTURE: Record<string, Scen> = {
   "dev-morning": { label: "Dev · morning, 10 asks", data: () => devData(), start: "far" },
+  "dev-landed": { label: "Dev · Fix login left a note on the canvas (✦)", data: () => landedData(), start: "far" },
   "dev-focus": { label: "Dev · 40-file diff, tests", data: focusData, start: { piece: "s-Ada" } },
   "dev-week": { label: "Dev · a week, 30 copies", data: () => devData({ week: true, morning: false }), start: { region: "api" } },
   "loop": { label: "Dev · 2am check loop", data: loopData, start: "far" },

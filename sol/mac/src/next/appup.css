@@ -1,0 +1,8 @@
+/* The app's own update line in the new face (#1824, J1b; cowork/ShellLine.tsx, Next.tsx mounts it): over the talk pill,
+   above the bar when the bar is drawn; empty, it takes no room and no press. */
+.nx-appup { position: fixed; left: calc(var(--side-w) + (100% - var(--side-w)) / 2); bottom: calc(var(--s6) + var(--s12) + var(--s2)); transform: translateX(-50%); z-index: var(--z-frame);
+  width: 560px; max-width: calc(100% - var(--side-w) - var(--s12)); pointer-events: none; }
+.nx.has-bar .nx-appup { bottom: calc(var(--s6) + var(--s12) + var(--s2) + var(--s12) + var(--s1) + var(--s1) + var(--s2)); }   /* the bar: s12 and its s1 padding */
+.nx-appup > .sline { pointer-events: auto; margin: 0; background: var(--card); box-shadow: var(--shadow-up); }
+.nx.at-settings .nx-appup { display: none; }   /* as the pill: Settings' rows stay clear */
+.nx:has(.ask-col .appup) .nx-appup { display: none; }   /* a session open in front draws the old Composer, which has its own */

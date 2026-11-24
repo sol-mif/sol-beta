@@ -1,0 +1,5 @@
+/* the first time only (tips/Tips.tsx, tips.ts): one tip beside what just happened, in the pop-ups' layer; it takes no press */
+.tp-tip { display: flex; flex-direction: column; gap: var(--s1); max-width: 300px; padding: var(--s2) var(--s3); box-sizing: border-box; border-radius: var(--r-row); background: var(--card); color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); pointer-events: none; animation: tp-in .18s ease-out; }
+.tp-tip b { color: var(--ink); font-weight: 600; }
+@keyframes tp-in { from { opacity: 0; transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) { .tp-tip { animation: none; } }

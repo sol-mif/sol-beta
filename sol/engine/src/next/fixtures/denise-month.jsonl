@@ -1,0 +1,120 @@
+{"fixture":"denise-month","panel":6,"person":"Denise","age":63,"setting":"owns a small wellness business; first-timer, reading glasses, slow typist","from":["panel.md #6 Denise","S15 a fit offered once and kept by her","S16 weekly offers","S29 facts with sources","undo after a wrong press","a week away"],"start":"2026-10-01","days":30,"named":["say","run.start","run.end","ask","answer","offer","keep","fit.set","fact","undo","away","back","done"]}
+{"id":"denise-69","at":1790847000000,"day":1,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a2","need":{"src":"thing","id":"denise-t1","read":"you","folder":"denise/bookings","words":"Reply to a booking for Thursday","state":"asks","waitsOn":"you","due":1790931600000}}
+{"id":"denise-1","at":1790848800000,"day":1,"who":"Denise","act":"say","place":"denise/price-list","words":"help me write my price list","via":"keys"}
+{"id":"denise-2","at":1790848860000,"day":1,"who":"sol","act":"say","place":"denise","words":"Your files stay on this computer.","via":"sol"}
+{"id":"denise-3","at":1790848920000,"day":1,"who":"Denise","act":"piece.split","place":"denise/price-list","piece":"denise/price-list","parts":[{"id":"denise/price-list#s1","kind":"session","hands":"ai:claude","words":"a price list from her notes"}]}
+{"id":"denise-4","at":1790848980000,"day":1,"who":"ai:claude","act":"run.start","place":"denise/price-list","run":"denise-r1","part":"denise/price-list#s1","seat":"claude","model":"sonnet","machine":"here"}
+{"id":"denise-5","at":1790849340000,"day":1,"who":"ai:claude","act":"run.end","place":"denise/price-list","run":"denise-r1","part":"denise/price-list#s1","outcome":"done","changed":["price-list.md"]}
+{"id":"denise-6","at":1790849400000,"day":1,"who":"ai:claude","act":"ask","place":"denise/price-list","ask":"denise-a1","need":{"src":"draft","folder":"denise/price-list","sticky":"Price list","line":"did: draft: a price list, price-list.md"}}
+{"id":"denise-7","at":1790850000000,"day":1,"who":"Denise","act":"answer","place":"denise/price-list","ask":"denise-a1","yes":"Keep it"}
+{"id":"denise-8","at":1790850060000,"day":1,"who":"Denise","act":"done","place":"denise/price-list","piece":"denise/price-list"}
+{"id":"denise-70","at":1790863200000,"day":1,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a2","yes":"Done"}
+{"id":"denise-115","at":1790928000000,"day":2,"who":"sol","act":"fit.set","place":"denise","knob":"life.density","scope":"denise","take":"close","author":"sol","reason":"3 of the last 4 life days read this way","count":3}
+{"id":"denise-71","at":1790933400000,"day":2,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a3","need":{"src":"thing","id":"denise-t2","read":"you","folder":"denise/bookings","words":"Confirm the new client's time","state":"asks","waitsOn":"you","due":1791018000000}}
+{"id":"denise-72","at":1790935200000,"day":2,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a3","yes":"Done"}
+{"id":"denise-9","at":1790938800000,"day":2,"who":"sol","act":"offer","place":"denise","offer":"denise-o-text","knob":"text.size","scope":"denise","take":"larger","mode":"life","structural":false,"why":"this is hard to read: try a larger take?"}
+{"id":"denise-10","at":1790938860000,"day":2,"who":"Denise","act":"keep","place":"denise","offer":"denise-o-text"}
+{"id":"denise-11","at":1790938860000,"day":2,"who":"Denise","act":"fit.set","place":"denise","knob":"text.size","scope":"denise","take":"larger","author":"person"}
+{"id":"denise-12","at":1791018000000,"day":3,"who":"Denise","act":"fact","place":"denise","fact":"open Tuesday to Saturday, 9 to 5","source":"Denise said it, day 3"}
+{"id":"denise-13","at":1791018060000,"day":3,"who":"Denise","act":"fact","place":"denise","fact":"a massage is 60 or 90 minutes","source":"price-list.md, day 1"}
+{"id":"denise-73","at":1791019800000,"day":3,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a4","need":{"src":"thing","id":"denise-t3","read":"you","folder":"denise/bookings","words":"Move Friday's 3pm","state":"asks","waitsOn":"you","due":1791104400000}}
+{"id":"denise-14","at":1791028860000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 1: a note about their visit","source":"bookings/client-1.md","offLimits":true}
+{"id":"denise-15","at":1791028920000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 2: a note about their visit","source":"bookings/client-2.md","offLimits":true}
+{"id":"denise-16","at":1791028980000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 3: a note about their visit","source":"bookings/client-3.md","offLimits":true}
+{"id":"denise-17","at":1791029040000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 4: a note about their visit","source":"bookings/client-4.md","offLimits":true}
+{"id":"denise-18","at":1791029100000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 5: a note about their visit","source":"bookings/client-5.md","offLimits":true}
+{"id":"denise-19","at":1791029160000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 6: a note about their visit","source":"bookings/client-6.md","offLimits":true}
+{"id":"denise-20","at":1791029220000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 7: a note about their visit","source":"bookings/client-7.md","offLimits":true}
+{"id":"denise-21","at":1791029280000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 8: a note about their visit","source":"bookings/client-8.md","offLimits":true}
+{"id":"denise-22","at":1791029340000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 9: a note about their visit","source":"bookings/client-9.md","offLimits":true}
+{"id":"denise-23","at":1791029400000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 10: a note about their visit","source":"bookings/client-10.md","offLimits":true}
+{"id":"denise-24","at":1791029460000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 11: a note about their visit","source":"bookings/client-11.md","offLimits":true}
+{"id":"denise-25","at":1791029520000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 12: a note about their visit","source":"bookings/client-12.md","offLimits":true}
+{"id":"denise-26","at":1791029580000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 13: a note about their visit","source":"bookings/client-13.md","offLimits":true}
+{"id":"denise-27","at":1791029640000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 14: a note about their visit","source":"bookings/client-14.md","offLimits":true}
+{"id":"denise-28","at":1791029700000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 15: a note about their visit","source":"bookings/client-15.md","offLimits":true}
+{"id":"denise-29","at":1791029760000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 16: a note about their visit","source":"bookings/client-16.md","offLimits":true}
+{"id":"denise-30","at":1791029820000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 17: a note about their visit","source":"bookings/client-17.md","offLimits":true}
+{"id":"denise-31","at":1791029880000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 18: a note about their visit","source":"bookings/client-18.md","offLimits":true}
+{"id":"denise-32","at":1791029940000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 19: a note about their visit","source":"bookings/client-19.md","offLimits":true}
+{"id":"denise-33","at":1791030000000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 20: a note about their visit","source":"bookings/client-20.md","offLimits":true}
+{"id":"denise-34","at":1791030060000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 21: a note about their visit","source":"bookings/client-21.md","offLimits":true}
+{"id":"denise-35","at":1791030120000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 22: a note about their visit","source":"bookings/client-22.md","offLimits":true}
+{"id":"denise-36","at":1791030180000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 23: a note about their visit","source":"bookings/client-23.md","offLimits":true}
+{"id":"denise-37","at":1791030240000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 24: a note about their visit","source":"bookings/client-24.md","offLimits":true}
+{"id":"denise-38","at":1791030300000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 25: a note about their visit","source":"bookings/client-25.md","offLimits":true}
+{"id":"denise-39","at":1791030360000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 26: a note about their visit","source":"bookings/client-26.md","offLimits":true}
+{"id":"denise-40","at":1791030420000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 27: a note about their visit","source":"bookings/client-27.md","offLimits":true}
+{"id":"denise-41","at":1791030480000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 28: a note about their visit","source":"bookings/client-28.md","offLimits":true}
+{"id":"denise-42","at":1791030540000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 29: a note about their visit","source":"bookings/client-29.md","offLimits":true}
+{"id":"denise-43","at":1791030600000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 30: a note about their visit","source":"bookings/client-30.md","offLimits":true}
+{"id":"denise-44","at":1791030660000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 31: a note about their visit","source":"bookings/client-31.md","offLimits":true}
+{"id":"denise-45","at":1791030720000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 32: a note about their visit","source":"bookings/client-32.md","offLimits":true}
+{"id":"denise-46","at":1791030780000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 33: a note about their visit","source":"bookings/client-33.md","offLimits":true}
+{"id":"denise-47","at":1791030840000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 34: a note about their visit","source":"bookings/client-34.md","offLimits":true}
+{"id":"denise-48","at":1791030900000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 35: a note about their visit","source":"bookings/client-35.md","offLimits":true}
+{"id":"denise-49","at":1791030960000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 36: a note about their visit","source":"bookings/client-36.md","offLimits":true}
+{"id":"denise-50","at":1791031020000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 37: a note about their visit","source":"bookings/client-37.md","offLimits":true}
+{"id":"denise-51","at":1791031080000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 38: a note about their visit","source":"bookings/client-38.md","offLimits":true}
+{"id":"denise-52","at":1791031140000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 39: a note about their visit","source":"bookings/client-39.md","offLimits":true}
+{"id":"denise-53","at":1791031200000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 40: a note about their visit","source":"bookings/client-40.md","offLimits":true}
+{"id":"denise-54","at":1791031260000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 41: a note about their visit","source":"bookings/client-41.md","offLimits":true}
+{"id":"denise-55","at":1791031320000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 42: a note about their visit","source":"bookings/client-42.md","offLimits":true}
+{"id":"denise-56","at":1791031380000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 43: a note about their visit","source":"bookings/client-43.md","offLimits":true}
+{"id":"denise-57","at":1791031440000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 44: a note about their visit","source":"bookings/client-44.md","offLimits":true}
+{"id":"denise-58","at":1791031500000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 45: a note about their visit","source":"bookings/client-45.md","offLimits":true}
+{"id":"denise-59","at":1791031560000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 46: a note about their visit","source":"bookings/client-46.md","offLimits":true}
+{"id":"denise-60","at":1791031620000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 47: a note about their visit","source":"bookings/client-47.md","offLimits":true}
+{"id":"denise-61","at":1791031680000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 48: a note about their visit","source":"bookings/client-48.md","offLimits":true}
+{"id":"denise-62","at":1791031740000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 49: a note about their visit","source":"bookings/client-49.md","offLimits":true}
+{"id":"denise-63","at":1791031800000,"day":3,"who":"Denise","act":"fact","place":"denise/bookings","fact":"client 50: a note about their visit","source":"bookings/client-50.md","offLimits":true}
+{"id":"denise-74","at":1791043200000,"day":3,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a4","yes":"Done"}
+{"id":"denise-75","at":1791106200000,"day":4,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a5","need":{"src":"thing","id":"denise-t4","read":"you","folder":"denise/bookings","words":"Move Friday's 3pm","state":"asks","waitsOn":"you","due":1791190800000}}
+{"id":"denise-76","at":1791115200000,"day":4,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a5","yes":"Done"}
+{"id":"denise-65","at":1791122400000,"day":4,"who":"Denise","act":"say","place":"denise/bookings","words":"remove the Saturday bookings","via":"keys"}
+{"id":"denise-66","at":1791122460000,"day":4,"who":"Denise","act":"undo","place":"denise/bookings","of":"denise-65"}
+{"id":"denise-77","at":1791192600000,"day":5,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a6","need":{"src":"thing","id":"denise-t5","read":"you","folder":"denise/bookings","words":"Reply to a booking for Thursday","state":"asks","waitsOn":"you","due":1791277200000}}
+{"id":"denise-78","at":1791205200000,"day":5,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a6","yes":"Done"}
+{"id":"denise-79","at":1791212400000,"day":5,"who":"Denise","act":"say","place":"denise/newsletter","words":"write this week's newsletter","via":"keys"}
+{"id":"denise-80","at":1791212460000,"day":5,"who":"ai:claude","act":"run.start","place":"denise/newsletter","run":"denise-r2","part":"denise/newsletter#s1","seat":"claude","model":"sonnet","machine":"here"}
+{"id":"denise-81","at":1791212760000,"day":5,"who":"ai:claude","act":"run.end","place":"denise/newsletter","run":"denise-r2","part":"denise/newsletter#s1","outcome":"done","changed":["newsletter-5.md"]}
+{"id":"denise-82","at":1791212820000,"day":5,"who":"ai:claude","act":"ask","place":"denise/newsletter","ask":"denise-a7","need":{"src":"draft","folder":"denise/newsletter","sticky":"Newsletter 5","line":"did: draft: this week's newsletter, newsletter-5.md"}}
+{"id":"denise-83","at":1791216000000,"day":5,"who":"Denise","act":"answer","place":"denise/newsletter","ask":"denise-a7","yes":"Keep it"}
+{"id":"denise-107","at":1791224460000,"day":5,"who":"sol","act":"offer","place":"denise","offer":"denise-o1-life","knob":"life.tools","scope":"denise","take":"the last week's tools first","mode":"life","structural":true}
+{"id":"denise-108","at":1791226860000,"day":5,"who":"Denise","act":"notnow","place":"denise","offer":"denise-o1-life"}
+{"id":"denise-84","at":1791451800000,"day":8,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a8","need":{"src":"thing","id":"denise-t6","read":"you","folder":"denise/bookings","words":"Confirm the new client's time","state":"asks","waitsOn":"you","due":1791536400000}}
+{"id":"denise-85","at":1791457200000,"day":8,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a8","yes":"Done"}
+{"id":"denise-116","at":1791532860000,"day":9,"who":"sol","act":"fit.set","place":"denise","knob":"life.density","scope":"denise","take":"roomy","author":"sol","reason":"4 of the last 5 life days read this way","count":4}
+{"id":"denise-86","at":1791711000000,"day":11,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a9","need":{"src":"thing","id":"denise-t7","read":"you","folder":"denise/bookings","words":"Move Friday's 3pm","state":"asks","waitsOn":"you","due":1791795600000}}
+{"id":"denise-87","at":1791730800000,"day":11,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a9","yes":"Done"}
+{"id":"denise-88","at":1791817200000,"day":12,"who":"Denise","act":"say","place":"denise/newsletter","words":"write this week's newsletter","via":"keys"}
+{"id":"denise-89","at":1791817260000,"day":12,"who":"ai:claude","act":"run.start","place":"denise/newsletter","run":"denise-r3","part":"denise/newsletter#s1","seat":"claude","model":"sonnet","machine":"here"}
+{"id":"denise-90","at":1791817560000,"day":12,"who":"ai:claude","act":"run.end","place":"denise/newsletter","run":"denise-r3","part":"denise/newsletter#s1","outcome":"done","changed":["newsletter-12.md"]}
+{"id":"denise-91","at":1791817620000,"day":12,"who":"ai:claude","act":"ask","place":"denise/newsletter","ask":"denise-a10","need":{"src":"draft","folder":"denise/newsletter","sticky":"Newsletter 12","line":"did: draft: this week's newsletter, newsletter-12.md"}}
+{"id":"denise-92","at":1791820800000,"day":12,"who":"Denise","act":"answer","place":"denise/newsletter","ask":"denise-a10","yes":"Keep it"}
+{"id":"denise-109","at":1791828840000,"day":12,"who":"sol","act":"offer","place":"denise","offer":"denise-o2-life","knob":"life.layout","scope":"denise","take":"fewer tools at hand","mode":"life","structural":true}
+{"id":"denise-110","at":1791832380000,"day":12,"who":"Denise","act":"keep","place":"denise","offer":"denise-o2-life"}
+{"id":"denise-67","at":1791997200000,"day":14,"who":"Denise","act":"away","place":"denise","until":22}
+{"id":"denise-117","at":1792137720000,"day":16,"who":"sol","act":"fit.set","place":"denise","knob":"life.density","scope":"denise","take":"close","author":"sol","reason":"5 of the last 6 life days read this way","count":5}
+{"id":"denise-111","at":1792519440000,"day":20,"who":"sol","act":"offer","place":"denise","offer":"denise-o3-life","knob":"life.order","scope":"denise","take":"the last week's tools first","mode":"life","structural":true}
+{"id":"denise-112","at":1792525620000,"day":20,"who":"Denise","act":"keep","place":"denise","offer":"denise-o3-life"}
+{"id":"denise-68","at":1792659600000,"day":22,"who":"Denise","act":"back","place":"denise"}
+{"id":"denise-118","at":1792742580000,"day":23,"who":"sol","act":"fit.set","place":"denise","knob":"life.density","scope":"denise","take":"roomy","author":"sol","reason":"6 of the last 7 life days read this way","count":6}
+{"id":"denise-64","at":1792832400000,"day":24,"who":"Denise","act":"fact","place":"denise","fact":"open Tuesday to Sunday, 9 to 5","source":"Denise said it, day 24","replaces":"open Tuesday to Saturday, 9 to 5"}
+{"id":"denise-93","at":1792834200000,"day":24,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a11","need":{"src":"thing","id":"denise-t8","read":"you","folder":"denise/bookings","words":"Confirm the new client's time","state":"asks","waitsOn":"you","due":1792918800000}}
+{"id":"denise-94","at":1792839600000,"day":24,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a11","yes":"Done"}
+{"id":"denise-95","at":1792920600000,"day":25,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a12","need":{"src":"thing","id":"denise-t9","read":"you","folder":"denise/bookings","words":"Reply to a booking for Thursday","state":"asks","waitsOn":"you","due":1793005200000}}
+{"id":"denise-96","at":1792940400000,"day":25,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a12","yes":"Done"}
+{"id":"denise-97","at":1793007000000,"day":26,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a13","need":{"src":"thing","id":"denise-t10","read":"you","folder":"denise/bookings","words":"Confirm the new client's time","state":"asks","waitsOn":"you","due":1793091600000}}
+{"id":"denise-98","at":1793023200000,"day":26,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a13","yes":"Done"}
+{"id":"denise-99","at":1793026800000,"day":26,"who":"Denise","act":"say","place":"denise/newsletter","words":"write this week's newsletter","via":"keys"}
+{"id":"denise-100","at":1793026860000,"day":26,"who":"ai:claude","act":"run.start","place":"denise/newsletter","run":"denise-r4","part":"denise/newsletter#s1","seat":"claude","model":"sonnet","machine":"here"}
+{"id":"denise-101","at":1793027160000,"day":26,"who":"ai:claude","act":"run.end","place":"denise/newsletter","run":"denise-r4","part":"denise/newsletter#s1","outcome":"done","changed":["newsletter-26.md"]}
+{"id":"denise-102","at":1793027220000,"day":26,"who":"ai:claude","act":"ask","place":"denise/newsletter","ask":"denise-a14","need":{"src":"draft","folder":"denise/newsletter","sticky":"Newsletter 26","line":"did: draft: this week's newsletter, newsletter-26.md"}}
+{"id":"denise-113","at":1793124300000,"day":27,"who":"sol","act":"offer","place":"denise","offer":"denise-o4-life","knob":"life.start","scope":"denise","take":"the last week's tools first","mode":"life","structural":true}
+{"id":"denise-114","at":1793127720000,"day":27,"who":"Denise","act":"keep","place":"denise","offer":"denise-o4-life"}
+{"id":"denise-103","at":1793179800000,"day":28,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a15","need":{"src":"thing","id":"denise-t11","read":"you","folder":"denise/bookings","words":"Move Friday's 3pm","state":"asks","waitsOn":"you","due":1793264400000}}
+{"id":"denise-104","at":1793196000000,"day":28,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a15","yes":"Done"}
+{"id":"denise-105","at":1793266200000,"day":29,"who":"sol","act":"ask","place":"denise/bookings","ask":"denise-a16","need":{"src":"thing","id":"denise-t12","read":"you","folder":"denise/bookings","words":"Reply to a booking for Thursday","state":"asks","waitsOn":"you","due":1793350800000}}
+{"id":"denise-106","at":1793286000000,"day":29,"who":"Denise","act":"answer","place":"denise/bookings","ask":"denise-a16","yes":"Done"}
+{"end":"month","acts":118,"open":["denise-a14"],"order":["denise/newsletter","denise/bookings","denise","denise/price-list"]}

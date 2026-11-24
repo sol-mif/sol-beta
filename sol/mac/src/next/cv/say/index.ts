@@ -16,6 +16,10 @@ import ais from "./ais.ts";
 import settings from "./settings.ts";
 import engine from "./engine.ts";
 import people from "./people.ts";
+import movein from "./movein.ts";
+import pieces from "./pieces.ts";
+import seats from "./seats.ts";
+import lead from "./lead.ts";   // slice R7 (#1615)
 
 const one = (words: string[], f: () => Done | null | undefined): Phrase => ({ hears: new RegExp(`^(?:${words.join("|")})$`), run: () => f() });
 /** the plane's zoom step (engine.js ZSTEP) for "closer" and "further"; the zoom itself is slice 1's M.zoom */
@@ -26,7 +30,7 @@ export const SHARED: Phrase[] = [
   one(["out", "zoom out"], () => M.out()), one(["in", "dive"], () => M.dive()), one(["map"], () => M.map()),
   one(["recent"], () => M.recent(1)), one(["beside", "pull beside"], () => M.beside()), one(["follow"], () => M.follow()),
   { hears: /^follow (.+)$/, run: (m) => M.follow(m[1]) },
-  one(["needs", "needs you"], () => M.needs()),
+  one(["needs", "needs you", "waiting on you"], () => M.needs()),
   one(["closer", "zoom closer"], () => (M.zoom ? M.zoom(ZSTEP) : null)), one(["further", "zoom further"], () => (M.zoom ? M.zoom(1 / ZSTEP) : null)),
   one(["undo the fix"], () => M.undoFix()),
   one(["too much", "this is a lot"], () => M.tooMuch()),
@@ -34,7 +38,8 @@ export const SHARED: Phrase[] = [
   { hears: /^go to (.+)$/, run: (m) => { const id = findByWords(m[1]); return id ? M.goto(id) : null; } },
   { hears: /^yes$/, run: () => { const id = lineAsk(); return id ? done(answer(id), id) : null; } },
 ];
-export const CHAIN: Phrase[] = [...plane, ...settings, ...life, ...near, ...needs, ...ais, ...engine, ...people, ...SHARED];
+export const CHAIN: Phrase[] = [...pieces, ...plane, ...settings, ...life, ...near, ...needs, ...ais, ...engine, ...people, ...movein, ...seats, ...lead, ...SHARED];
+import fits from "./fits.ts"; CHAIN.splice(CHAIN.length - SHARED.length, 0, ...fits);   // slice R8 (#1615): before the shared ones
 
 /** the chain: the first phrase that hears the words (lower case) makes its move; null when none does */
 export function chain(words: string): Done | null {
@@ -89,3 +94,6 @@ export function say(words: string): Done | null {
 }
 /** the counts' handle on the voice (dev page): hooks.voice, as the mockup's CV.voice */
 (hooks as unknown as { voice: unknown }).voice = Object.assign(voice, { heard, chain });
+import scope from "./scope.ts"; CHAIN.splice(CHAIN.length - SHARED.length, 0, ...scope);   // slice R9 (#1615): before the shared ones
+import customize from "./customize.ts"; CHAIN.unshift(...customize);   // BR1 people (#1615): Customize hears its words first
+import tidy from "./tidy.ts"; CHAIN.splice(CHAIN.length - SHARED.length, 0, ...tidy);   // BR1 tidy (#1615): "tidy my folders", before the shared ones

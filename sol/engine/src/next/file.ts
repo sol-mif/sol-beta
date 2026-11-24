@@ -36,10 +36,14 @@ export function setAside(file: string): string {
   return to.slice(dirname(file).length + 1);
 }
 
-/** the whole file written: a temp file beside it, then renamed over it */
+/** a store's version: its `v`, or 1 when it has none (a store written before versions is v1, never set aside for it); a
+ *  number above what this engine knows is read as it is: the fields this engine knows, nothing wiped (BR1, #1615) */
+export const versionOf = (data: Record<string, unknown>): number => (typeof data.v === "number" && Number.isInteger(data.v) && data.v >= 1 ? data.v : 1);
+
+/** the whole file written: a temp file beside it, then renamed over it; an object without a `v` is stamped `v: 1` first */
 export function writeJson(file: string, data: unknown): void {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${++writes}.tmp`;
-  writeFileSync(tmp, JSON.stringify(data, null, 2) + "\n");
+  writeFileSync(tmp, JSON.stringify(isObj(data) && !("v" in data) ? { v: 1, ...data } : data, null, 2) + "\n");
   renameSync(tmp, file);
 }

@@ -1,0 +1,73 @@
+/* The bottom bar and its cards (#1615; Marco's decision 2026-11-21, mine/look/br1/bar-folder.html). Every space, size,
+   height and corner is the scale's (--s*, --t-*, --h-*, --r-*), every colour, shadow and curve the next set's (--card,
+   --ink*, --line, --hover, --a1..3, --good/--bad/--asks/--run, --shadow*, --d-*, --e-*). It floats just above the talk
+   pill, centred over the view like the pill; plane/layout.ts keeps BAR_PX clear at the plane's foot so it never covers a
+   card, and the ask line sits above it (next.css).
+   Signed: marcocyl04-ux's agent, the port's BR1 bar (#1615). */
+
+.bar-t0 { --tint: var(--a1); }
+.bar-t1 { --tint: var(--a2); }
+.bar-t2 { --tint: var(--a3); }
+.bar-t3 { --tint: var(--ink4); }
+
+/* the bar */
+.bar { position: fixed; left: calc(var(--side-w) + (100% - var(--side-w)) / 2); bottom: calc(var(--s6) + var(--s12) + var(--s2)); transform: translateX(-50%); z-index: var(--z-frame);
+  display: flex; align-items: center; gap: var(--s1); padding: var(--s1); border-radius: var(--r-card);
+  background: color-mix(in oklab, var(--card) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); }
+.nx .bar-b { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s1); min-width: 66px; height: var(--s12); padding: 0 var(--s3);
+  border-radius: var(--r-row); font-size: var(--t-pill); line-height: var(--t-pill-line); font-weight: 500; color: var(--ink2); transition: background var(--d-turn) var(--e-arrive), color var(--d-turn) var(--e-arrive); }
+.bar-b svg { width: 20px; height: var(--s6); fill: none; stroke: currentColor; stroke-width: 1.6px; stroke-linecap: round; stroke-linejoin: round; }
+.bar-b .bar-faint { opacity: 0.35; }
+.nx .bar-b:hover { background: var(--hover); color: var(--ink); }
+.nx .bar-b[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.nx .bar-b:focus-visible, .nx .bar-z:focus-visible, .bar-card button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* a page at Near ends above the bar as it ends above the pill (near.css .nr-body): the bar's lift, its height, s4 */
+.nx.has-bar .nr-body, .nx.has-bar .fv { padding-bottom: calc(var(--s6) + var(--s12) + var(--s2) + var(--s12) + var(--s2) + var(--s4)); }
+
+/* zoom: − and +, the band in words between */
+.bar-zoom { display: flex; align-items: center; gap: var(--s1); padding: 0 var(--s2); margin: 0 var(--s1); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.nx .bar-z { display: grid; place-items: center; width: 26px; height: var(--h-chip); border-radius: var(--r-chip); background: var(--hover); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink); }
+.nx .bar-z:hover:not(:disabled) { background: var(--press); }
+.nx .bar-z:disabled { color: var(--ink4); cursor: default; }
+.bar-zl { width: 72px; text-align: center; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); white-space: nowrap; }
+
+/* a card: right above the bar, the canvas still showing around it */
+.bar-card { position: fixed; left: calc(var(--side-w) + (100% - var(--side-w)) / 2); bottom: calc(var(--s6) + var(--s12) + var(--s2) + var(--s12) + var(--s2) + var(--s2)); transform: translateX(-50%);
+  max-width: calc(100% - var(--side-w) - var(--s8)); max-height: calc(100% - var(--s12) * 4 - var(--s8)); overflow: auto; box-sizing: border-box;
+  padding: var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line);
+  animation: bar-in var(--d-glass) var(--e-reveal) both; }
+@keyframes bar-in { from { opacity: 0; transform: translate(-50%, var(--s2)); } to { opacity: 1; transform: translate(-50%, 0); } }
+.bar-card h3 { margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 700; }
+.bar-card > p { margin: 0 0 var(--s3); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink2); }
+.bar-note { margin-top: var(--s2); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink2); }
+.nx .bar-chip { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--hover); font-size: var(--t-pill); line-height: var(--t-pill-line); color: var(--ink); white-space: nowrap; }
+.nx .bar-chip:hover { background: var(--press); }
+.bar-chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+
+/* Where: the canvas, small */
+.bar-mini { position: relative; width: 340px; max-width: 100%; border-radius: var(--r-row); background-color: var(--paper); background-image: radial-gradient(circle, var(--ink4) 1px, transparent 1px); background-size: 10px 10px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.nx .bar-mp { position: absolute; border-radius: var(--r-chip); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.nx .bar-mf { position: absolute; border-radius: 1px var(--r-chip) var(--r-chip) var(--r-chip); background: var(--tint); transition: transform var(--d-turn) var(--e-arrive); }
+.nx .bar-mf:hover, .nx .bar-mf:focus-visible { transform: scale(1.12); z-index: var(--z-lift); }
+.nx .bar-mf.on { outline: 2px solid var(--ink); outline-offset: -2px; }
+.bar-mf.ask::after, .bar-mf.bad::after { content: ""; position: absolute; right: calc(var(--s1) * -1); top: calc(var(--s1) * -1); width: 8px; height: var(--s2); border-radius: var(--r-pill); background: var(--asks); outline: 2px solid var(--card); }
+.bar-mf.bad::after { background: var(--bad); }
+.bar-vp { position: absolute; border-radius: var(--r-chip); outline: 2px solid var(--ink); outline-offset: -2px; background: color-mix(in oklab, var(--ink) 4%, transparent); pointer-events: none; }
+
+/* Arrange: drawn choices */
+.bar-arr { display: grid; grid-template-columns: repeat(2, 116px); gap: var(--s2); }   /* four choices, two by two (Gather notes, BR1 C) */
+.nx .bar-opt { display: flex; flex-direction: column; align-items: stretch; gap: calc(var(--s1) / 2); padding: var(--s2); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); text-align: left; }
+.nx .bar-opt:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.bar-pic { position: relative; display: block; height: var(--s12); margin-bottom: var(--s1); border-radius: var(--r-chip); background: var(--paper); overflow: hidden; }
+.bar-pic i { position: absolute; width: 16px; height: var(--s3); border-radius: 1px var(--s1) var(--s1) var(--s1); }
+.bar-opt b { font-size: var(--t-pill); line-height: var(--t-pill-line); }
+.bar-opt small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.bar-undo { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: var(--s3); padding: var(--s1) var(--s3); border-radius: var(--r-row); background: var(--paper); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink2); }
+.nx .bar-undo button { flex: none; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-chip); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-pill); color: var(--ink); }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-card { animation: none; }
+  .nx .bar-b, .nx .bar-mf { transition: none; }
+}

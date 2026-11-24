@@ -7,6 +7,7 @@ import { GeminiCall } from "./call/gemini.js";
 import { ElevenCall } from "./call/elevenlabs.js";
 
 export { VOICE_MODEL } from "./call/gemini.js";
+export { callSaid } from "./call/vendor.js";
 export type { CallOpts, VoiceCall, VoiceVendor };
 
 export const voiceVendor = (): VoiceVendor => pickVendor(getSettings().voiceVendor);

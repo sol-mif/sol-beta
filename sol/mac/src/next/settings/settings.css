@@ -6,15 +6,19 @@
 .st { display: flex; flex-direction: column; gap: var(--s3); padding: 0 var(--s4) var(--s12); min-width: 0; }
 .st b { font-weight: 600; }
 .st small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
-.st h1 { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); margin: var(--s2) 0 0; }
+.st h1 { font-family: var(--serif); font-weight: var(--display-w); letter-spacing: var(--title-k); font-size: var(--t-title); line-height: var(--t-title-line); margin: var(--s2) 0 0; }
 .st p { margin: 0; }
 .st input { min-width: 0; height: var(--h-row); padding: 0 var(--s3); border: 0; outline: 0; border-radius: var(--r-row); background: var(--paper); font: inherit; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .st-say { color: var(--ink2); }
 .st-t { min-width: 0; flex: 1; }
+.st .st-t { display: block; overflow: visible; -webkit-line-clamp: none; font-weight: inherit; }   /* over the stage's .st-t (stage.css, in the built app with the rest): two lines, the rest cut (BR1 try 5: "Go back to the previous version" cut its line at "from th…") */
 .st-t3 { color: var(--ink3); }
 
-/* the bar: back, find, point at it, close */
-.st-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--s2); padding: var(--s3) 0; background: var(--card); }
+/* the bar: back, find, point at it, close. Under .st: the old face's stage.css has its own .st-bar (a column), which the
+   whole face loads too */
+.st .st-bar { flex-direction: row; justify-content: normal; min-height: 0; position: sticky; top: 0; z-index: var(--z-lift); display: flex; align-items: center; gap: var(--s2); padding: var(--s3) 0; background: var(--card); }
+/* a row a find or a link brings into view lands below the find field, never under it (BR1 first-timer, builder F) */
+#v-settings { scroll-padding-top: calc(56px + var(--s2)); }
 .st-find { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s2); }
 .st-find input { flex: 1; }
 .st-back, .st-x { display: inline-grid; place-items: center; width: var(--h-row); height: var(--h-row); border-radius: var(--r-row); color: var(--ink2); flex: none; }
@@ -44,7 +48,7 @@
 .st-fin { color: var(--ink2); }
 
 /* the box drawn round the thing pointed at */
-.st-pbox { position: fixed; z-index: 60; pointer-events: none; border-radius: var(--r-row); outline: 1px solid var(--ink); outline-offset: var(--s1); }
+.st-pbox { position: fixed; z-index: var(--z-frame); pointer-events: none; border-radius: var(--r-row); outline: 1px solid var(--ink); outline-offset: var(--s1); }
 .st-pbox span { position: absolute; left: 0; bottom: 100%; margin-bottom: var(--s1); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--ink); color: var(--paper); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
 .st[data-pointing] { cursor: crosshair; }
 
@@ -61,7 +65,7 @@
 .st-head:hover { background: var(--hover); }
 .st-ht { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .st-who { color: var(--ink4); }
-.st-cur { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-cur { flex: none; max-width: 40%; text-align: end; overflow-wrap: break-word; color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); }   /* a row's value whole, on two lines when long, never cut (BR1 try 5: "Steps hidden until you open th…") */
 .st-cur.try { color: var(--ink); }
 .st-body { display: flex; flex-direction: column; gap: var(--s3); padding: 0 var(--s3) var(--s3); }
 .st-ais { display: flex; flex-wrap: wrap; gap: var(--s1); }
@@ -120,11 +124,15 @@
 .st-v { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); }
 .st-learn, .st-card0 { display: flex; flex-direction: column; border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--line); }
 .st-fact, .st-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s3); border-bottom: 1px solid var(--line); }
-.st-acts { display: flex; gap: var(--s2); flex: none; }
+.st-do { display: flex; gap: var(--s2); flex: none; }   /* not .st-acts: the stage's (stage.css) hides that until its block is hovered */
 .st-toggle, .st-persona { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--line); }
 .st-toggle { flex-direction: row; align-items: center; }
-.st-switch { width: var(--s8); height: var(--h-chip); border-radius: var(--r-pill); background: var(--ink4); flex: none; }
-.st-switch[aria-checked="true"] { background: var(--ink); }
+/* .st: .nx button's reset (background: none) outweighs a lone class, and drew every switch that is off as nothing */
+.st .st-switch { position: relative; width: var(--s8); height: var(--h-chip); border-radius: var(--r-pill); background: var(--ink4); flex: none; }
+.st .st-switch[aria-checked="true"] { background: var(--ink); }
+.st .st-switch::after { content: ""; position: absolute; top: var(--s1); left: var(--s1); width: calc(var(--h-chip) - 2 * var(--s1)); height: calc(var(--h-chip) - 2 * var(--s1)); border-radius: var(--r-pill); background: var(--card); transition: transform .16s var(--ease); }
+.st .st-switch[aria-checked="true"]::after { transform: translateX(calc(var(--s8) - var(--h-chip))); }
+.st .st-switch:disabled { opacity: .45; }
 .st-qq { font-weight: 600; }
 .st-why, .st-may { display: block; width: 100%; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
 .st-state { font-size: var(--t-label); color: var(--ink2); }
@@ -162,3 +170,49 @@
 /* the way back to the old Sol */
 .st-back-old { display: flex; flex-direction: column; gap: var(--s2); }
 .st-back-old .st-row { border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* How Sol worked (#1615): one day's runs, read from the engine's next.traces. Signed: franktsai2008-eng's agent */
+.st-worked { display: flex; flex-direction: column; gap: var(--s3); }
+.st-wk-days { align-self: flex-start; }
+.st-wk-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s3); border-radius: var(--r-card); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); }
+.st-wk-sum { color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); }
+.st-wk-run { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--line); }
+.st-wk-res { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); padding: 0 var(--s2); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line); }
+.st-wk-run[data-result="failed"] .st-wk-res, .st-wk-run[data-result="waiting"] .st-wk-res { color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink3); }
+.st-wk-line { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.st-wk-list, .st-wk-unk, .st-wk-gaps { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.st-wk-l { color: var(--ink3); }
+.st-wk-unk { color: var(--ink3); font-style: italic; }
+.st-wk-gaps { padding-top: var(--s2); border-top: 1px solid var(--line); color: var(--ink3); }
+
+/* kept for a place (Fits.tsx, BR1 #1615): the reach above the takes, why this value under them */
+.st-keepfor { display: flex; align-items: center; gap: var(--s2); min-width: 0; margin-bottom: var(--s2); color: var(--ink2); font-size: var(--t-label); }
+.st-seg button:disabled { opacity: .45; cursor: default; }
+.st-why li { flex-wrap: wrap; padding: var(--s1) 0; }
+.st-why li .st-when { min-width: 9em; }
+.st-why li.use b { color: var(--ink); }
+.st-why li:not(.use) { color: var(--ink2); }
+.st-hold { flex-basis: 100%; color: var(--ink2); font-size: var(--t-label); }
+/* Privacy: a source turned off, the lines Sol forgot from it fade out of the ledger and fold away, the count beside the
+   heading ticks down; Back brings them in again (BR1, #1615) */
+.st-fact.pv-leave { animation: pv-leave .9s var(--ease) forwards; overflow: hidden; pointer-events: none; }
+.st-fact.pv-back { animation: pv-back .5s var(--ease); }
+.pv-n { display: inline-block; animation: pv-tick .5s var(--ease); }
+@keyframes pv-leave { 0% { opacity: 1; max-height: 12em; } 55% { opacity: 0; max-height: 12em; } 100% { opacity: 0; max-height: 0; padding-block: 0; border-bottom-width: 0; } }
+@keyframes pv-back { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pv-tick { from { opacity: .3; transform: translateY(-.3em); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .st-fact.pv-leave { animation: none; display: none; } .st-fact.pv-back, .pv-n { animation: none; } }
+/* Settings holds fixed inputs only (BR1 item 6; index.tsx Main): a row that only says (the language) or holds its choice in
+   itself (When Sol sees a better fit) is not a press; a part folded at rest opens under its row, without its own title;
+   the because line on a row Sol set is the because's grey */
+.st .st-head { box-sizing: border-box; padding: var(--s3); height: auto; overflow: visible; white-space: normal; cursor: inherit; }   /* over .nx button's padding: 0, which left a row's words on its edge; and over the stage's .st-head (stage.css, in the built app with the rest): one head's height, nowrap and clipped, a grab hand, which cut a row's words (BR1 try 5: "Steps hidden until you open th…") and sat its second line on the edge */
+.st-says { display: flex; align-items: center; gap: var(--s3); box-sizing: border-box; width: 100%; padding: var(--s3); }   /* a row that only says (the Mac's language): a head's box, no press. Not .st-still: the stage's stills (stage.css) made it a column, its heading 0px high (BR1 try 5: Account, Language blank) */
+.st-says .st-cur { max-width: none; font-size: var(--t-label); }   /* a value, not .st-go's › */
+.st-acc { flex: none; display: inline-flex; align-items: center; gap: var(--s2); white-space: nowrap; color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); }   /* who is signed in, and the one press beside it */
+.st .st-acc .st-btn { height: var(--h-chip); padding: 0 var(--s3); font-size: var(--t-label); }   /* Sign out / Sign in drawn as the row actions are (Go back), so it reads pressable */
+.st-fbody > .st-page { padding: 0; }
+.st-fbody > .st-page > h1 { display: none; }
+.st-bcl { display: block; padding: 0 var(--s3) var(--s3); margin-top: calc(-1 * var(--s2)); }   /* why Sol set the row: under its head, wrapped, the shared chevron (Knob.tsx BecauseLine) */
+.st-group[data-st-g="updates"] .st-back-old > .st-gh { display: none; }   /* Back's own title, under Updates */
+.st-fbody .ld-row .st-ht { display: none; }   /* What you see first, opened under its own row */
+.st-fbody > .st-seg { margin: 0 var(--s3) var(--s3); }

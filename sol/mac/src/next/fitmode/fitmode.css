@@ -1,0 +1,66 @@
+/* Fit mode in place (BR1 people item 1, #1615): the marks it leaves on the canvas, and Customize's bar. Every space,
+   size and corner is the scale's (--s*, --t-*, --h-*, --r-*), every colour and curve the next set's (--card, --paper,
+   --ink*, --line, --hover, --press, --bad, --d-*, --e-*). No layer of its own: the ring is an outline on the thing itself,
+   a look a filter on it, a size the text scale inside it (FitMode.tsx sets --t-*). Fit Sol's card went with Customize
+   (BR1 item 4). Signed: marcocyl04-ux's agent, BR1 people (#1615). */
+
+/* on the canvas: what is pointed at, what Customize is on, and a look tried or kept */
+html[data-fm-pointing] #view, html[data-fm-pointing] #side, html[data-fm-pointing] #top { cursor: crosshair; }
+html[data-fm-pointing] #view * { cursor: crosshair; }
+[data-fm-hov] { outline: 2px dashed var(--ink); outline-offset: var(--s1); }
+[data-fm-on] { outline: 2px solid var(--ink); outline-offset: var(--s1); }
+[data-fm-look="night"][data-fm-on], [data-fm-look="night"][data-fm-hov] { outline-color: var(--paper); }   /* the filter turns it back to ink */
+[data-fm-look] { transition: filter var(--d-turn) var(--e-arrive), opacity var(--d-turn) var(--e-arrive); }
+[data-fm-look="night"] { filter: invert(0.9) hue-rotate(180deg); }
+[data-fm-look="night"] [data-fm-look="night"] { filter: none; }
+[data-fm-look="night"] [data-fm-look="paper"], [data-fm-look="night"] [data-fm-look="bright"] { filter: invert(0.9) hue-rotate(180deg); }
+[data-fm-look="bright"] { filter: contrast(1.08) saturate(1.2); }
+[data-fm-look="back"] { filter: saturate(0.2); opacity: 0.62; }
+
+/* a folder's look at rest, by its job: the papers peeking out of it show the kind of work inside (folder.css draws them),
+   and opened, its body carries the same ground faintly */
+[data-fs-look="notebook"] .fo-sheet { background-image: repeating-linear-gradient(180deg, transparent 0 calc(var(--s2) - 1px), var(--line) calc(var(--s2) - 1px) var(--s2)); }
+[data-fs-look="workbench"] .fo-sheet { background-image: linear-gradient(90deg, var(--line) 1px, transparent 1px), linear-gradient(180deg, var(--line) 1px, transparent 1px); background-size: var(--s3) var(--s3); }
+[data-fs-look="desk"] .fo-sheet:nth-child(1) { transform: translate(calc(0px - var(--s2)), var(--s2)) rotate(-5deg); }
+[data-fs-look="desk"] .fo-sheet:nth-child(2) { transform: translate(var(--s2), var(--s1)) rotate(4deg); }
+[data-fs-look="paper"] .fo-sheet { box-shadow: inset 0 0 0 1px var(--line); }
+[data-fs-look="gallery"] .fo-sheet { background: color-mix(in oklab, var(--tint, var(--hover)), var(--ink) 8%); box-shadow: inset 0 0 0 var(--s1) var(--card); }
+[data-fs-look="notebook"].pl-area { background-image: repeating-linear-gradient(180deg, transparent 0 calc(var(--s6) - 1px), var(--line) calc(var(--s6) - 1px) var(--s6)); }
+[data-fs-look="workbench"].pl-area { background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: var(--s6) var(--s6); }
+
+/* Customize (customize.html): on, a faint dashed outline on everything a press can change; the small bar beside the
+   thing, its choices as pictures (swatches, S M L, light or night, Aa), Sol's tries dashed (✦), Back and Keep. The bar
+   is a pop-up in the pop-ups' layer (Overlay.tsx Pop), placed beside its thing */
+html[data-cu] #view [data-region], html[data-cu] #view .pl-area[data-area], html[data-cu] #view [data-piece], html[data-cu] #view #pl-dy { outline: 1px dashed var(--ink3); outline-offset: var(--s1); cursor: pointer; }
+html[data-cu] #view [data-region][data-fm-on], html[data-cu] #view .pl-area[data-fm-on], html[data-cu] #view [data-piece][data-fm-on], html[data-cu] #view #pl-dy:has([data-fm-on]), html[data-cu] #view #pl-dy[data-fm-on] { outline: 2px solid var(--ink); }
+/* its one line at the canvas's top (customize.html .hint; BR1 conform 33): a dark pill, read and not pressed */
+.cu-hint { position: absolute; transform: translate(-50%, var(--s3)); padding: var(--s1) var(--s3); border-radius: var(--r-pill); background: var(--ink); color: var(--card);
+  font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; pointer-events: none; }
+.cu-hint em { font-style: normal; color: var(--ink4); }
+html[data-cu] #view { cursor: pointer; }
+.cu-bar { min-width: 148px; max-width: 260px; padding: var(--s3); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up); color: var(--ink); }
+.cu-l { margin: var(--s2) 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.cu-l:first-child { margin-top: 0; }
+.cu-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); }
+.nx .cu-sw { width: var(--h-chip); height: var(--h-chip); padding: 0; border-radius: var(--r-chip); box-shadow: inset 0 0 0 1px var(--line); }
+.nx .cu-sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+.nx .cu-sz, .nx .cu-aa { min-width: var(--h-chip); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--hover);
+  font-size: var(--t-pill); line-height: var(--t-pill-line); font-weight: 600; color: var(--ink2); }
+.nx .cu-aa { font-family: var(--sans); }
+.nx .cu-sz:hover, .nx .cu-aa:hover, .nx .cu-try:hover { background: var(--press); }
+.nx .cu-sz[aria-pressed="true"], .nx .cu-aa[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.nx .cu-th { position: relative; width: 36px; height: 26px; padding: 0; border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.nx .cu-th[data-look="night"] { background: var(--ink); }
+.cu-th i { position: absolute; left: var(--s1); top: var(--s1); width: var(--s4); height: var(--s3); border-radius: 3px; background: var(--a1); }
+.nx .cu-th[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+.nx .cu-try { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: none;
+  border: 1px dashed var(--run); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--run); white-space: nowrap; }
+.nx .cu-try[aria-pressed="true"] { border-style: solid; background: color-mix(in oklab, var(--a1) 22%, var(--card)); }
+.cu-miss { margin: var(--s2) 0 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--bad); }
+.cu-kb { display: flex; justify-content: flex-end; gap: var(--s1); margin-top: var(--s3); }
+.nx .cu-back, .nx .cu-keep { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); font-size: var(--t-pill); line-height: var(--t-pill-line); white-space: nowrap; }
+.nx .cu-back { background: var(--hover); color: var(--ink); }
+.nx .cu-keep { background: var(--ink); color: var(--card); font-weight: 600; }
+.nx .cu-back:disabled, .nx .cu-keep:disabled { opacity: 0.45; cursor: default; }
+.cu-bar button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+[data-fm-look="night"] .cu-th { filter: invert(0.9) hue-rotate(180deg); }   /* light and night stay what they show under a night tried */

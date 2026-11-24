@@ -10,17 +10,22 @@
 //   Canvas       not built: no Canvas source exists in the engine (sign-in, a key and a network call, none tonight). A
 //                course never shows; `knows` is always [] (what a place knows comes from Canvas)
 //   people       always []: no source knows people
+//                In Sol's own home (the engine's SOL_HOME, or the record's solHome) only the folders of the person's
+//                record (its areas, the first name of each id) are places, so none of the engine's own stores is one and
+//                none needs naming; a record with no area leaves the home with none
 // With no files source registered, or nothing in its scope, and no Thing in a folder: places is [].
 // Answers: home.places to the asker. Once any window has asked, a Thing change that changes the places (a Thing filed in
 // a folder that is new) sends home.places to every window; the disk is read again only on an ask or such a change.
 import { createHash } from "node:crypto";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import type { Face } from "../browser.js";
 import type { Scope } from "../contract/home/policy.js";
 import type { From, PlaceItem, PlacesMsg } from "../contract/home/places.js";
+import { areaTops, readRecordOf, solHomeOf } from "./rules.js";
 import { sourcesMsg } from "./sources.js";
+import { holdsOnlyStores, OWN_FOLDERS } from "./own-folders.js";
 import type { Ctx, Handler, Unit } from "./unit.js";
 
 // ── the names and numbers that are the engine's pick, not Marco's: in one place, so one edit changes them ───────────
@@ -44,12 +49,16 @@ const under = (p: string, dir: string): boolean => { const r = relative(dir, p);
 const fits = (name: string): boolean => !!name.trim() && !name.startsWith(".") && !name.includes("›") && !/[\u0000-\u001f\u007f]/.test(name);
 const isDir = (p: string): boolean => { try { return statSync(p).isDirectory(); } catch { return false; } };
 
+const same = (a: string, b: string): boolean => { try { return realpathSync(a) === realpathSync(b); } catch { return resolve(a) === resolve(b); } };
+
 /** the folders a files source's scope reads, as places without ids (pure but for reading folder names). `user` is the
- *  person's own folder, what "~" means (os.homedir(); a test's own) */
-export function diskFolders(scope: Scope, user: string = homedir()): Raw[] {
+ *  person's own folder, what "~" means (os.homedir(); a test's own). `own`: Sol's own homes; directly in one of them
+ *  only a folder named in `areas` (the record's) is a place, what is below it as anywhere */
+export function diskFolders(scope: Scope, user: string = homedir(), own: string[] = [], areas: string[] = []): Raw[] {
   const real = (p: string): string => resolve(p === "~" ? user : p.startsWith("~/") ? join(user, p.slice(2)) : isAbsolute(p) ? p : join(user, p));
   const label = (abs: string): string => (under(abs, user) ? (abs === resolve(user) ? "~" : `~/${relative(user, abs)}`) : abs);
   const never = scope.never.map(real);
+  const engines = (dir: string): boolean => own.some((o) => same(real(o), dir));
   const out: Raw[] = [], seen = new Set<string>();
   const walk = (abs: string, name: string, parentPath: string | undefined, depth: number): void => {
     if (out.length >= MAX || never.some((n) => under(abs, n))) return;
@@ -61,7 +70,9 @@ export function diskFolders(scope: Scope, user: string = homedir()): Raw[] {
     let subs: string[] = [];
     try {
       // a real folder only: a link (to a folder elsewhere) is not followed
-      subs = readdirSync(abs, { withFileTypes: true }).filter((d) => d.isDirectory() && fits(d.name)).map((d) => d.name).sort().slice(0, PER_FOLDER);
+      subs = readdirSync(abs, { withFileTypes: true }).filter((d) => d.isDirectory() && fits(d.name)).map((d) => d.name).sort();
+      if (engines(abs)) subs = subs.filter((n) => areas.includes(n));
+      subs = subs.slice(0, PER_FOLDER);
     } catch { /* unreadable: nothing below it */ }
     for (const s of subs) walk(join(abs, s), s.trim().toLowerCase(), path, depth + 1);
   };
@@ -90,13 +101,25 @@ export function withIds(raw: Raw[]): PlaceItem[] {
 /** the whole of places now (R8: the same disk and store give the same message). `user`: what "~" means */
 export function placesMsg(ctx: Ctx, user?: string): PlacesMsg {
   const files = sourcesMsg(ctx, null).sources.find((s) => s.id === "files");
-  const raw = files ? diskFolders(files.scope, user) : [];
+  // Sol's own home: this engine's, and the one the person's record names (the same folder by design)
+  const record = readRecordOf(user), rec = solHomeOf(record);
+  const raw = files ? diskFolders(files.scope, user, [ctx.home, ...(rec ? [rec] : [])], areaTops(record)) : [];
   const have = new Set(raw.map((r) => r.path));
-  // the folders the Things on the list name that the disk has not, each crumb above them too
+  // the folders the Things on the list name that the disk has not, each crumb above them too; never one the disk has
+  // as Sol's own in its home (a store, a project's folder: a Thing filed by a session's project name, #1816)
+  const own = new Map<string, boolean>();
+  const solsOwn = (name: string) => {
+    if (!own.has(name)) {
+      let names: { name: string; dir: boolean }[] = [];
+      try { names = readdirSync(join(ctx.home, name), { withFileTypes: true }).map((d) => ({ name: d.name, dir: d.isDirectory() })); } catch { /* not there */ }
+      own.set(name, OWN_FOLDERS.has(name) || holdsOnlyStores(names));
+    }
+    return own.get(name)!;
+  };
   for (const t of ctx.items.all()) {
     if (t.gone || t.state === "done" || !t.folder) continue;
     const names = t.folder.split(CRUMB);
-    if (names.some((n) => !n.trim())) continue;
+    if (names.some((n) => !n.trim()) || solsOwn(names[0])) continue;
     for (let i = 0; i < names.length && raw.length < MAX; i++) {
       const path = names.slice(0, i + 1).join(CRUMB);
       if (have.has(path)) continue;

@@ -5,16 +5,16 @@
 // Pure: each reads the world it is given (W, the mockup's S, H, U, OWN, WAYS) and the panel's state (UI); nothing here
 // touches the store or the page. The pictures of each take are not ported: the visual pass draws them (notes/settings.md).
 // Signed: marcocyl04-ux's agent, slice 6 (#1615).
+import type { Known } from "../known.ts";
 
 export type Take = { id: string; n: string; s: string; sets?: string; z?: number; look?: string; offered?: boolean; base?: string; mine?: boolean; fresh?: boolean };
 export type Knob = { id: string; n: string; s: string; short: string; per?: boolean; def: string; core?: string; takes: Take[] };
 /** an AI as Settings knows it: its four jobs (the samples) and what it spent this month */
 export type AiW = { id: string; n: string; hue: number; spent: number; m: string[] };
-export type Learned = { id: number | string; t: string; from: string };
 /** the mockup's S: everything Settings keeps, every change a new snapshot of it */
 export type Prefs = {
   kept: Record<string, string>; data: Record<string, string>; conns: Record<string, boolean>; tools: Record<string, string>;
-  learned: Learned[]; learn: boolean; persona: string; personaText: string; whyAsked: boolean; offers: boolean; offerGone: boolean;
+  learned: Known[]; learn: boolean; persona: string; personaText: string; whyAsked: boolean; offers: boolean; offerGone: boolean;
   tune: string; keepMine: Record<string, boolean>; quiet?: string | null;
 };
 export type HistRow = { when: string; label: string; how: string; snap: Prefs; why?: string };
@@ -24,21 +24,35 @@ export type Kind = { id: string; n: string; by: string; here: string; model: str
 export type Tool = { n: string; kind: string; what: string; say: string };
 /** the world Settings reads: D.prefs */
 export type World = {
-  ais: AiW[]; prefs: Prefs; hist: HistRow[]; undo: { prev: Prefs; label: string }[]; own: Record<string, Take[]>; ways: Way[]; eveOk: boolean;
+  ais: AiW[]; prefs: Prefs; hist: HistRow[]; undo: { prev: Prefs; label: string; scope?: string }[]; own: Record<string, Take[]>; ways: Way[]; eveOk: boolean;
   serv: Serv[]; kinds: Kind[]; tools: Record<string, Tool>; extra: Record<string, Serv>;
   /** a real Sol: the rows whose engine row is "no" (spend, the history, the ways) are not drawn */
   live: boolean;
   /** live: the engine's connections (home.connections), shown as they are */
   connections?: { id: string; name: string; state: string; from: string }[];
+  /** live: every fit the engine keeps (next.fits, S15): a take on a knob in a scope, who set it, why, and its history */
+  fits?: Fit[];
+  /** live: the folder and the session Settings was opened over, the reaches a take can be kept for */
+  here?: Here;
 };
+/** a fit as the engine keeps it (next.fits, engine next/fits.ts) */
+export type FitStep = { id: string; at: number; act: "set" | "back" | "release" | "offer" | "keep" | "notnow"; take?: string; author?: "person" | "sol"; reason?: string; count?: number; source?: string; undoes?: string; undone?: true };
+export type Fit = { knob: string; scope: string; take: string | null; author: "person" | "sol" | "default"; reason: string | null; count: number | null; source: string | null; change: string | null; held: boolean; history: FitStep[] };
+/** where a take is kept: All of Sol ("~"), the folder Settings was opened over, or that one session */
+export type Reach = "~" | "folder" | "session";
+/** the folder here and the session; `up`: the folder's scope and those above it as the engine walks them (fits.ts upward),
+ *  the person's nesting before the path, made by hereNow; without it, the path alone */
+export type Here = { folder: { scope: string; name: string; up?: string[] } | null; session: { scope: string; name: string } | null };
 export type Trying = { k: string; t: string; ai: string | null; sticky: boolean };
 export type Filter = { l: string; k: string[]; p: string[] };
 /** the panel's state (the mockup's UI): S.st */
 export type Ui = {
   open: string | null; ai: Record<string, string>; trying: Trying | null; q: string; sel: number; filter: Filter | null; pointing: boolean;
-  page: "main" | "voice" | "data"; reply: { say?: string; done?: string; miss?: string } | null; hx: number | null; hsee: number | null;
+  page: "main" | "voice" | "data" | "privacy"; reply: { say?: string; done?: string; miss?: string } | null; hx: number | null; hsee: number | null;
   own: string | null; edit: number | string | null; persona: boolean; why: false | "ask" | "yes"; saveWay: boolean; conn: string | null; tool: string | null;
   hov: { l: string; k: string[]; p: string[]; ai: string | null } | null;
+  /** live: where a take pressed now is kept */
+  reach: Reach;
 };
 
 export const C = <T>(o: T): T => JSON.parse(JSON.stringify(o));
@@ -51,36 +65,36 @@ export const ATT: Record<string, number[]> = { quiet: [0, 0, 0, 0, 0], money: [1
 export const LIM: Record<string, number | null> = { c5: 5, c20: 20, c50: 50, none: null };
 
 export const K: Record<string, Knob> = {
-  autonomy: { id: "autonomy", n: "How far an AI goes on its own", s: "Choose it for each AI. Spending, sending and deleting always ask first.", short: "how far it goes alone", per: true, def: "asks",
+  autonomy: { id: "autonomy", n: "How often an AI checks with you", s: "Choose it for each AI. Spending, sending and deleting always ask first.", short: "how far it goes alone", per: true, def: "asks",
     core: "In every take, an AI asks before anything leaves this machine, costs money or deletes. No take changes that.",
     takes: [
       { id: "only", n: "Only when I ask", s: "It does nothing until you ask, then only what you asked.", sets: "Starts nothing alone · does only what you asked · tells you on Home" },
       { id: "asks", n: "Asks first", s: "It says what it would do and waits for your yes, every time.", sets: "Starts nothing alone · shows each change before it lands" },
       { id: "small", n: "Goes ahead on small things", s: "It handles small things by itself and asks before anything bigger.", sets: "Small edits in one place alone · anything bigger asks · a line after each" },
       { id: "ahead", n: "Goes ahead, tells me after", s: "It does the whole job and tells me after. I take back what I don’t want.", sets: "Whole jobs alone · one summary after · every change can be taken back" }] },
-  working: { id: "working", n: "How much of its working you see", s: "The result always comes. This is how much of the “how” comes with it.", short: "how much of its working you see", def: "folded",
+  working: { id: "working", n: "Show the AI’s steps", s: "The result always comes. This is how much of the “how” comes with it.", short: "how much of its working you see", def: "folded",
     takes: [
       { id: "result", n: "Just the result", s: "You see what it made, and nothing about how.", sets: "Result only · steps are kept, never shown unless you ask" },
-      { id: "folded", n: "The steps, folded", s: "The result first, with its steps one press below.", sets: "Result first · “Read 3 files” fold under it · open any time" },
+      { id: "folded", n: "Steps hidden until you open them", s: "The result first, with its steps one press below.", sets: "Result first · “Read 3 files” hidden under it · open any time" },
       { id: "every", n: "Every step", s: "You watch each step as it happens.", sets: "Result · every step listed as it happens" }] },
-  writing: { id: "writing", n: "How it touches your own writing", s: "Your essays, notes and drafts. Nothing is changed without a way back.", short: "how it touches your writing", def: "flag",
+  writing: { id: "writing", n: "AI edits to your writing", s: "Your essays, notes and drafts. Nothing is changed without a way back.", short: "how it touches your writing", def: "flag",
     takes: [
       { id: "leave", n: "Leave it alone", s: "It never touches what you wrote. It may read it.", sets: "Never marks, never suggests, never edits" },
-      { id: "flag", n: "Flag only", s: "It marks a spot and says why. You fix it.", sets: "Marks a spot with a reason · changes nothing" },
+      { id: "flag", n: "Mark problems only", s: "It marks a spot and says why. You fix it.", sets: "Marks a spot with a reason · changes nothing" },
       { id: "suggest", n: "Suggest beside it", s: "It puts a suggestion next to your words. You choose.", sets: "Suggestion beside the line · your words stay until you use it" },
       { id: "edit", n: "Edit", s: "It changes your words and shows what changed, with a way back.", sets: "Edits in place · shows every change · undo on each" }] },
-  attention: { id: "attention", n: "What may open the island on its own", s: "The island opens at a pause, never mid-sentence. Everything else waits in Needs you.", short: "what may open the island", def: "asksbreaks",
+  attention: { id: "attention", n: "Notifications", s: "The island opens at a pause, never mid-sentence. Everything else waits in Waiting on you.", short: "what may open the island", def: "asksbreaks",
     takes: [
-      { id: "quiet", n: "Nothing, I’ll look", s: "The island never opens on its own. Everything waits in Needs you.", sets: "Never opens on its own · all of it waits in Needs you" },
-      { id: "money", n: "Money and leaving the Mac", s: "It opens before a payment or anything that leaves your Mac.", sets: "Opens for money and for anything sent off your Mac · the rest waits" },
-      { id: "asksbreaks", n: "+ whatever holds an AI up", s: "Also when an AI can’t go on without you.", sets: "Money, leaving the Mac, and an AI held up · the rest waits" },
-      { id: "needs", n: "+ what is due today", s: "Also for what is due today.", sets: "All of the above, and what is due today · news waits" },
+      { id: "quiet", n: "Nothing, I’ll look", s: "The island never opens on its own. Everything waits in Waiting on you.", sets: "Never opens on its own · all of it waits in Waiting on you" },
+      { id: "money", n: "Money and sending", s: "It opens before a payment or anything that leaves your Mac.", sets: "Opens for money and for anything sent off your Mac · the rest waits" },
+      { id: "asksbreaks", n: "Money, sending, a stuck AI", s: "Also when an AI can’t go on without you.", sets: "Money, leaving the Mac, and an AI held up · the rest waits" },
+      { id: "needs", n: "Everything but news", s: "Also for what is due today.", sets: "All of the above, and what is due today · news waits" },
       { id: "all", n: "Anything", s: "It opens for all of it, at the next pause.", sets: "Opens for everything, at the next pause" }] },
-  marking: { id: "marking", n: "How a finished piece is marked", s: "A small moment at the end of real work, never during it.", short: "how a finished piece is marked", def: "lift",
+  marking: { id: "marking", n: "Animation when a task finishes", s: "A small moment at the end of real work, never during it.", short: "how a finished piece is marked", def: "lift",
     takes: [
       { id: "quiet", n: "Quiet", s: "A finished piece just appears in its place.", sets: "No motion · no sound" },
-      { id: "lift", n: "A small lift", s: "The piece lifts a little and settles. Once, at the end.", sets: "One lift and settle · no sound" },
-      { id: "sound", n: "Lift and sound", s: "The same lift, with one soft sound.", sets: "One lift and settle · one soft sound" }] },
+      { id: "lift", n: "A short animation", s: "The piece lifts a little and settles. Once, at the end.", sets: "One lift and settle · no sound" },
+      { id: "sound", n: "Animation and sound", s: "The same animation, with one soft sound.", sets: "One lift and settle · one soft sound" }] },
   size: { id: "size", n: "Size of everything you read", s: "Text, lists and buttons, in every view.", short: "the size of text", def: "m",
     takes: [
       { id: "s", n: "A little smaller", s: "More fits on each screen.", z: 0.92, sets: "Everything 8% smaller" },
@@ -98,7 +112,16 @@ export const K: Record<string, Knob> = {
     takes: [
       { id: "over", n: "Over windows", s: "At the edge of the screen, above whatever is open.", sets: "At the screen’s edge · above every window" },
       { id: "desk", n: "On the desktop", s: "Behind your windows. You see it when you clear the screen.", sets: "On the desktop · behind every window" },
-      { id: "off", n: "Off", s: "No glance. The island and Needs you still work.", sets: "No glance · the island and Needs you are unchanged" }] },
+      { id: "off", n: "Off", s: "No glance. The island and Waiting on you still work.", sets: "No glance · the island and Waiting on you are unchanged" }] },
+  // BR1 tabs (#1615): how a click opens a piece, per kind; Sol offers "As a tab" once after four taken out in a day (cv/moves/tabs.ts)
+  "open-session": { id: "open-session", n: "Opening a session", s: "A click opens it where it is on the canvas, or as a tab with the whole window.", short: "how a session opens", def: "place",
+    takes: [
+      { id: "place", n: "In place", s: "It grows where it is and the canvas stays around it.", sets: "A click opens it in place · ⤢ or ⌘-click takes it out to a tab" },
+      { id: "tab", n: "As a tab", s: "It opens as a tab with the whole window. Closing the tab puts it back.", sets: "A click opens a tab · it keeps its place on the canvas" }] },
+  "open-page": { id: "open-page", n: "Opening a page", s: "Pages, notes, lists and any other piece that isn't a session.", short: "how a page opens", def: "place",
+    takes: [
+      { id: "place", n: "In place", s: "It grows where it is and the canvas stays around it.", sets: "A click opens it in place · ⤢ or ⌘-click takes it out to a tab" },
+      { id: "tab", n: "As a tab", s: "It opens as a tab with the whole window. Closing the tab puts it back.", sets: "A click opens a tab · it keeps its place on the canvas" }] },
   spend: { id: "spend", n: "A monthly limit for each AI", s: "It asks me before it goes past. Each job shows its cost first.", short: "its monthly limit", per: true, def: "c20",
     core: "Every job shows what it will cost before it starts. Past the limit, the AI stops and asks.",
     takes: [
@@ -121,6 +144,7 @@ export const GROUPS: { n: string; s: string; knobs?: string[]; custom?: "voice" 
   { n: "How your AIs work", s: "What they do on their own, and how much you see.", knobs: ["autonomy", "working", "writing"] },
   { n: "What reaches you", s: "When the island may open, and how work ends.", knobs: ["attention", "marking"] },
   { n: "How it looks and reads", s: "The whole window changes at once.", knobs: ["size", "look", "glance"] },
+  { n: "How things open", s: "A click opens in place. A tab gives a piece the whole window.", knobs: ["open-session", "open-page"] },
   { n: "Your AI’s voice", s: "How I talk to you.", custom: "voice" },
   { n: "Money and your data", s: "What it costs, and where things go.", knobs: ["spend"], custom: "money" }];
 
@@ -129,12 +153,12 @@ export const NOT_LIVE = new Set(["spend"]);
 
 // ---------------------------------------------------------------- the words for each choice (ui.html SYN, TSYN, PLACES)
 
-export const SYN: Record<string, string> = { autonomy: "permission permissions alone automatic approve approval allow trust independent control",
-  working: "steps details log logs transparency process show work how",
-  writing: "essay essays edit grammar spelling suggestions drafts notes autocorrect rewrite",
-  attention: "notifications notification ping pings tap taps alerts alert interrupt disturb quiet focus dnd badge island pop up popup open",
+export const SYN: Record<string, string> = { autonomy: "how far goes on its own permission permissions alone automatic approve approval allow trust independent control",
+  working: "how much of its working you see steps details log logs transparency process show work how",
+  writing: "how it touches your own writing essay essays edit grammar spelling suggestions drafts notes autocorrect rewrite",
+  attention: "what may open the island on its own notifications notification ping pings tap taps alerts alert interrupt disturb quiet focus dnd badge island pop up popup open",
   glance: "glance side edge desktop overlay over windows float floating widget",
-  marking: "done finish finished sound animation celebrate confetti motion",
+  marking: "how a finished piece is marked done finish finished sound animation celebrate confetti motion",
   size: "font text bigger larger smaller zoom read eyes scale tiny",
   look: "theme dark light mode colour color night bright white contrast appearance",
   spend: "money cost costs budget limit price pay spending cap dollars",
@@ -147,17 +171,18 @@ export const TSYN: Record<string, string> = { "look:night": "dark black evening 
   "marking:sound": "chime ding", "marking:quiet": "no animation reduce motion off", "working:every": "verbose all", "working:result": "answer only minimal hide",
   "writing:edit": "rewrite autocorrect fix", "writing:leave": "never off hands", "autonomy:only": "manual never", "autonomy:ahead": "autopilot everything trust", "autonomy:asks": "approve confirm check",
   "spend:none": "unlimited no limit", "v-length:short": "terse concise brief", "v-length:full": "detailed explain verbose", "v-humour:play": "funny cheeky jokes", "v-humour:none": "serious no jokes", "v-register:warm": "friendly kind", "v-register:brisk": "blunt direct fast" };
-export type Place = { id: string; n: string; w: string; where: string; page: "voice" | "data" | "main"; anchor?: string };
+export type Place = { id: string; n: string; w: string; where: string; page: "voice" | "data" | "privacy" | "main"; anchor?: string };
 export const PLACES: Place[] = [
-  { id: "voice", n: "Your AI’s voice", w: "voice personality persona tone talk sound", where: "The voice, and your own personality", page: "voice" },
-  { id: "learned", n: "What I’ve learned about you", w: "memory memories remember forget learned know facts about me", where: "Read, change or remove each line", page: "voice", anchor: "st-learned" },
-  { id: "data", n: "Where your data goes", w: "privacy private data local cloud model machine", where: "Stays on this machine, or goes to the model", page: "data" },
+  { id: "voice", n: "How your AI talks", w: "your ai’s voice personality persona tone talk sound", where: "The voice, and your own personality", page: "voice" },
+  { id: "privacy", n: "Privacy", w: "privacy private erase forget reads read sources consent what sol knows", where: "What Sol may read, and everything it has learned", page: "privacy" },
+  { id: "learned", n: "What I’ve learned about you", w: "memory memories remember forget learned know facts about me", where: "Each line, where Sol learned it, and Forget", page: "privacy", anchor: "st-learned" },
+  { id: "data", n: "Where your data goes", w: "private data local cloud model machine", where: "Stays on this machine, or goes to the model", page: "data" },
   { id: "conn", n: "Connected services", w: "connect connections accounts gmail calendar bank portal school wispr granola dictation reminders integrations apps", where: "Gmail, Calendar, your bank, your own dictation", page: "data", anchor: "st-conn" },
   { id: "history", n: "History of changes", w: "history undo revert changes turn back earlier previous", where: "Every change, and a way back to any of them", page: "main", anchor: "st-history" },
-  { id: "tune", n: "How I keep your settings fitting", w: "automatic adjust tuning tune ai changes learns my settings adapt", where: "What I changed lately, and whether I may", page: "main", anchor: "st-tune" },
+  { id: "worked", n: "How Sol worked", w: "worked log logs trace traces runs ran happened activity did tokens cost tools permissions waits observability", where: "What ran each day, with what, and how it went", page: "main", anchor: "st-worked" },
   { id: "ways", n: "Ways of working", w: "ways modes mode focus study exam preset presets profile", where: "Several choices in one press", page: "main", anchor: "st-ways" }];
 /** places whose engine row is "no" live */
-export const PLACES_NOT_LIVE = new Set(["history", "ways"]);
+export const PLACES_NOT_LIVE = new Set(["ways"]);
 
 // ---------------------------------------------------------------- reading the state
 
@@ -194,7 +219,7 @@ export function setBy(W: World, key: string): HistRow | null {
 export const byAI = (h: HistRow | null) => !!h && /^your AI/.test(h.how);
 export const day = (w: string) => (w || "").split(",")[0];
 export function whoText(W: World, k: Knob): string {
-  if (k.per) { const u = new Set(W.ais.map((a) => W.prefs.kept[kk(k, a.id)])); return u.size === 1 ? `All ${W.ais.length} AIs` : `${u.size} different ways`; }
+  if (k.per) { const u = new Set(W.ais.map((a) => W.prefs.kept[kk(k, a.id)])); if (!W.ais.length) return "the default"; return u.size === 1 ? (W.ais.length === 1 ? "Your one AI" : `All ${W.ais.length} AIs`) : `${u.size} different ways`; }
   const h = setBy(W, k.id); if (!h) return "the default";
   return byAI(h) ? `your AI tuned it · ${day(h.when)}` : `you · ${day(h.when)}`;
 }
@@ -350,7 +375,7 @@ export const POINTS: Point[] = [
   { q: "[data-proof],[data-steps]", l: "how a job was done", k: ["working"] },
   { q: "#line [data-ask],[data-ask],[data-row]", l: "a question for you", k: ["attention", "autonomy"] },
   { q: "[data-done]", l: "a finished piece", k: ["marking"] },
-  { q: "#needsrow,[data-needs]", l: "Needs you", k: ["attention"] },
+  { q: "#needsrow,[data-needs]", l: "Waiting on you", k: ["attention"] },
   { q: "#top", l: "the top bar", k: ["look", "size"] },
   { q: "#side", l: "the sidebar", k: ["look", "size"] },
   { q: "[data-night],[data-seen]", l: "what happened overnight", k: ["attention", "v-length", "working"] },
@@ -359,7 +384,7 @@ export const POINTS: Point[] = [
   { q: "h1,h2,p", l: "the words you read", k: ["size", "look"] },
   { q: "#main", l: "the window", k: ["look", "size"] }];
 /** the parts Settings itself draws over, never pointed at */
-export const NOT_POINTED = "#v-settings,#st-pbox,.nx-toast";
+export const NOT_POINTED = "#v-settings,#st-pbox,.nx-say";
 export type Hit = { el: Element; l: string; k: string[]; p: string[]; ai: string | null; i: number };
 /** what a thing in the window is (ui.html pointAt): an AI's name first (its own two choices), else the first POINT that
  *  holds it. Live, a "no" knob is left out of what it changes */
@@ -421,10 +446,10 @@ export function keepLabel(W: World, kid: string, ai: string | null, t: string): 
 export function freshUi(W: World): Ui {
   const first = W.ais[0]?.id ?? "";
   return { open: null, ai: { autonomy: W.ais.find((a) => a.id === "inbox")?.id ?? first, spend: W.ais.find((a) => a.id === "course")?.id ?? first }, trying: null, q: "", sel: 0, filter: null, pointing: false, page: "main",
-    reply: null, hx: null, hsee: null, own: null, edit: null, persona: false, why: false, saveWay: false, conn: null, tool: null, hov: null };
+    reply: null, hx: null, hsee: null, own: null, edit: null, persona: false, why: false, saveWay: false, conn: null, tool: null, hov: null, reach: "~" };
 }
 /** the defaults: every knob at its default for every AI (ui.html DEF) */
-export function defaults(ais: AiW[], learned: Learned[] = []): Prefs {
+export function defaults(ais: AiW[], learned: Known[] = []): Prefs {
   const p: Prefs = { kept: {}, data: { writing: "here", mail: "model", cal: "model", bills: "here", voice: "here" }, conns: { gmail: true, cal: true, portal: true, bank: true }, tools: { dictation: "built", notes: "built" },
     learned, learn: true, persona: "default", personaText: "", whyAsked: false, offers: true, offerGone: false, tune: "small", keepMine: {} };
   Object.values(K).forEach((k) => { if (k.per) ais.forEach((a) => { p.kept[kk(k, a.id)] = k.def; }); else p.kept[k.id] = k.def; });
@@ -436,3 +461,73 @@ export function fx(W: World, U: Ui, snap?: Prefs): { look: string; z: number; si
   const sz = takeOf(W, K.size, size), lk = takeOf(W, K.look, look);
   return { look: lk.look || "paper", z: sz.z || 1, size: sz.base || sz.id };
 }
+
+// ---------------------------------------------------------------- kept for a place (next.fits, S15; BR1 #1615)
+// Live, each knob not per AI is a fit the engine keeps: a take in a scope, read nearest first (this session, then its
+// folder and the folders above it, then All of Sol), with who set it, why, and whether the person held it by taking it
+// back. The take that stands here is what the panel shows as in use. How far an AI goes stays agents.mode.
+
+/** a knob kept as a fit: not per AI, and live */
+export const fitKnob = (k: Knob | undefined): k is Knob => !!k && !k.per && !NOT_LIVE.has(k.id);
+/** a folder's scope from its region: a work folder by its path, a Home place by its id (no empty segment) */
+export function scopeOfRegion(id: string): string | null {
+  const p = id.startsWith("w:") ? id.slice(2) : id.startsWith("h:") ? "home/" + id.slice(2) : "";
+  const s = p.split("/").filter((x) => x && x !== "." && x !== "..").join("/");
+  return s || null;
+}
+/** a scope and the scopes above it, nearest first, ending at All of Sol: as the engine's (fits.ts upward, P's 399004f8a5),
+ *  a folder the person nested in another (`inOf`) goes up to that one, else to its path's parent; null: nothing above */
+export function upward(scope: string, inOf?: (s: string) => string | null | undefined): string[] {
+  const out: string[] = [], seen = new Set<string>();
+  for (let s: string | null = scope, n = 0; s && s !== "~" && !seen.has(s) && n < 64; n++) {
+    out.push(s); seen.add(s);
+    const said: string | null | undefined = inOf?.(s);
+    s = said === null ? null : said ? said : s.includes("/") ? s.slice(0, s.lastIndexOf("/")) : null;
+  }
+  return [...out, "~"];
+}
+/** the person's nesting by scope (Region.parent, parentBy "person": pos.json's `in`, M.nest), for upward's `inOf`;
+ *  a folder they took out of every other is null; nesting by a rule or by Sol is the path's or not the person's */
+export function nestingOf(regions: readonly { id: string; parent?: string; parentBy?: string }[]): Map<string, string | null> {
+  const m = new Map<string, string | null>();
+  for (const r of regions) {
+    const s = scopeOfRegion(r.id);
+    if (s && r.parentBy === "person") m.set(s, r.parent ? scopeOfRegion(r.parent) : null);
+  }
+  return m;
+}
+/** where a take is looked for here: the session, the folder and those above it, All of Sol */
+export function chainHere(W: World): string[] {
+  const h = W.here, f = h?.folder ? h.folder.up ?? upward(h.folder.scope) : ["~"];
+  return h?.session ? [h.session.scope, ...f] : f;
+}
+/** the scope a press keeps for, by the reach chosen; a reach with nothing here is All of Sol */
+export function reachScope(W: World, r: Reach): string {
+  return r === "session" && W.here?.session ? W.here.session.scope : r === "folder" && W.here?.folder ? W.here.folder.scope : "~";
+}
+/** a scope in words */
+export function scopeName(W: World, scope: string): string {
+  if (scope === "~") return "All of Sol";
+  if (W.here?.session?.scope === scope) return `This session, ${W.here.session.name}`;
+  if (W.here?.folder?.scope === scope) return W.here.folder.name;
+  if (scope.startsWith("session:")) return "Another session";
+  return scope.split("/").pop() || scope;
+}
+export const fitOf = (W: World, knob: string, scope: string) => W.fits?.find((f) => f.knob === knob && f.scope === scope) ?? null;
+/** the fit that decides a knob here: the nearest with a take standing, or held with none (what was taken back is not
+ *  handed back from above); null: the default */
+export function standing(W: World, knob: string): Fit | null {
+  for (const s of chainHere(W)) { const f = fitOf(W, knob, s); if (f && (f.take !== null || f.held)) return f; }
+  return null;
+}
+/** the takes in use here, folded from the fits (the panel's kept) */
+export function applyFits(W: World): void {
+  for (const k of Object.values(K)) if (fitKnob(k)) { const f = standing(W, k.id); W.prefs.kept[k.id] = f?.take ?? k.def; }
+}
+/** one line of who set a fit and why */
+export function fitWho(f: Fit): string {
+  if (f.take === null) return f.held ? "You took it back" : "Not set here";
+  if (f.author === "sol") return `Sol fit it${f.reason ? `: ${f.reason}` : ""}`;
+  return `Set by you${f.reason ? `: ${f.reason}` : ""}`;
+}
+export const when = (at: number) => new Date(at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

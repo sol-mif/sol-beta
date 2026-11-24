@@ -7,6 +7,7 @@ import { registerView } from "./parts";
 import { ForYou, Guardrails, People, Room, SystemPart, useForYouCount } from "./tabs";
 import { Releases } from "../Releases";
 import { MapPart } from "../map/MapPart";   // the map of the team's work, drawn from the engine's spec (#1433)
+import { onRoomSwitch, roomOn } from "./roomSwitch";
 
 registerPart("foryou", { label: "For you", anchor: true });
 registerView("foryou", { View: ForYou, useCount: useForYouCount });
@@ -14,7 +15,11 @@ registerPart("map", { label: "Map" });
 registerView("map", { View: ({ at }) => <MapPart at={at} room="room" /> });
 registerPart("system", { label: "System" });
 registerView("system", { View: SystemPart });
-registerPart("room", { label: "Agents' room" });
+// the Agents' room follows its card's switch, reach.room (gate one q6, #1740): off, no row, no tile, no place; it keeps
+// its spot in the rail when it comes back
+const room = () => registerPart("room", { label: "Agents' room", off: !roomOn() });
+room();
+onRoomSwitch(room);
 registerView("room", { View: Room });
 registerPart("people", { label: "People" });
 registerView("people", { View: People });

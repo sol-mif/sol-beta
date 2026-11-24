@@ -257,7 +257,7 @@ test("conversion step 0002: team.json's night moves to night.json beside it, saf
   const team = join(c.engine, "team.json");
   writeFileSync(team, JSON.stringify({ me: { login: "marco", name: "M" }, night: { hour: 22, staleDays: 3 }, speak: { github: true } }, null, 2) + "\n", { mode: 0o600 });
   const r = runConversions(c, STEPS);
-  assert.equal(r.ok, true); assert.deepEqual(r.ran, ["0001-baseline", "0002-rhythm-from-team-json"]);
+  assert.equal(r.ok, true); assert.deepEqual(r.ran.slice(0, 2), ["0001-baseline", "0002-rhythm-from-team-json"]);
   const t = JSON.parse(readFileSync(team, "utf8"));
   assert.equal("night" in t, false); assert.deepEqual(t.speak, { github: true }); assert.equal(t.me.login, "marco");
   assert.equal(statSync(team).mode & 0o777, 0o600);
@@ -268,7 +268,7 @@ test("conversion step 0002: team.json's night moves to night.json beside it, saf
   // the engine stopped before data-version was written: the step runs again and ends the same
   const after1 = { team: readFileSync(team, "utf8"), night: readFileSync(join(c.engine, "night.json"), "utf8") };
   writeFileSync(join(c.dotSol, "data-version"), "1\n");
-  assert.deepEqual(runConversions(c, STEPS).ran, ["0002-rhythm-from-team-json"]);
+  assert.equal(runConversions(c, STEPS).ran[0], "0002-rhythm-from-team-json");
   assert.deepEqual({ team: readFileSync(team, "utf8"), night: readFileSync(join(c.engine, "night.json"), "utf8") }, after1);
   // and again at the newest version: nothing runs
   assert.deepEqual(runConversions(c, STEPS).ran, []);

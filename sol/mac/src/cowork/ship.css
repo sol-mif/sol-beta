@@ -20,3 +20,6 @@
 .sline .wbtn.ghost { background: none; box-shadow: inset 0 0 0 1px var(--edge); color: var(--ink); }
 .sline .wbtn.ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--mute); }
 .sline .wbtn:disabled { opacity: .4; cursor: default; }
+/* the app's own update (#1824, ShellLine.tsx): the Full Disk Access note sits under the words and the button, whole */
+.sline.appup { flex-wrap: wrap; row-gap: 4px; }
+.sline.appup .note { order: 3; flex-basis: 100%; color: var(--dim); }

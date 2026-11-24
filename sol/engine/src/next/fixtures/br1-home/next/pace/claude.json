@@ -1,0 +1,12 @@
+{
+  "windows": {
+    "five_hour": {
+      "seat": "claude",
+      "window": "five_hour",
+      "at": 1795338000026,
+      "status": "allowed",
+      "used": 40,
+      "windowMs": 18000000
+    }
+  }
+}

@@ -1,17 +1,18 @@
 // The people's rules (slices 8+9, #1615), merge/people.js ported as it is: which setup each person has (P4), what was
 // answered, and the one queue (P3: Needs you = the canvas's asks + the Cowork waits that count + the Social cards, once
 // each; ⌘J walks them in one order). Pure on the store and the book; the moves (cv/moves/people.ts) and the views read
-// these. Live (a real Sol) the team is the one cv/wire/people.ts reads from team.v3.*, and the circle is empty: Social's
-// friends, shares, grants and links are not in the engine yet. Signed: marcocyl04-ux's agent, port slice 8+9 (#1615).
-import { D, MODE, SCEN, SCN, above, render } from "../cv/core.ts";
+// these. Live (a real Sol) the team is the one cv/wire/people.ts reads from team.v3.*, and the circle is the one
+// cv/wire/social.ts shapes from Isaac's Social (#1072's model, BR1). Signed: marcocyl04-ux's agent, port slice 8+9 (#1615).
+import { D, MODE, SCEN, SCN, above, dataVer, render } from "../cv/core.ts";
 import { COWORK, DEFAULTS, FALLBACK, KIND, SOCIAL, type Circle, type Group, type Inbox, type Team, type Wait } from "./data.ts";
 import { note, lines as noted } from "./diary.ts";
 import { extraAll, type ExtOpen } from "./extra.ts";
+import type { social as LiveSocial } from "../cv/wire/social.ts";   // BR1 people: Social's moves, live
 
 // ---------------------------------------------------------------- the pages (P2)
 
 /** the people's pages, each with its argument after a colon ("group:bio", "friend:Maya"), and the view they belong to */
-export const PEOPLE: Record<string, "cowork" | "social"> = { cowork: "cowork", group: "cowork", first: "cowork", social: "social", friend: "social", link: "social", asfriend: "social" };
+export const PEOPLE: Record<string, "cowork" | "social"> = { cowork: "cowork", group: "cowork", first: "cowork", social: "social", friend: "social", link: "social", asfriend: "social", share: "social", setup: "social" };
 export const pk = (page: string | null | undefined) => (page ? String(page).split(":")[0] : null);
 export const parg = (page: string | null | undefined) => (page && page.includes(":") ? page.slice(page.indexOf(":") + 1) : "");
 /** whether a page is one of the people's (the shell routes these to the people slot) */
@@ -24,8 +25,12 @@ export type Book = {
   face: number; faced: boolean; close: Set<string>; open: Set<string>;
 };
 const BOOK = new WeakMap<object, Book>();
-/** the live team, read from team.v3.* by cv/wire/people.ts (null until it answers) */
-export const live: { team: Team | null; answer: ((g: Group, w: Wait) => boolean) | null } = { team: null, answer: null };
+/** the live team, read from team.v3.* by cv/wire/people.ts (null until it answers); the live circle and Social's moves,
+ *  from cv/wire/social.ts (null until it is attached); a group's invite link and a group's link opened, team.v3.join.* */
+export const live: { team: Team | null; answer: ((g: Group, w: Wait) => boolean) | null; circle: Circle | null; social: typeof LiveSocial | null;
+  invite: ((gid: string) => boolean) | null; join: ((url: string) => boolean) | null } = { team: null, answer: null, circle: null, social: null, invite: null, join: null };
+/** a press that has nothing behind it in a real Sol yet says so in its own words, never the pretend line it plays on the dev page */
+export const notHere = (words: string) => `Not here yet: ${words.trim() ? `“${words.trim()}”` : "this"} comes in a later Sol`;
 const EMPTY: Circle = { label: "live", me: { line: "", level: 0 }, shares: { fb: 0, pr: 0, wo: 0, ar: 0 }, friends: [], inbox: [], fav: { n: 0, from: "nobody", used: 0 } };
 const NONE: Team = { label: "live", groups: [], live: true };
 
@@ -45,7 +50,7 @@ export function use(o: { s?: string; f?: string } = {}): Book {
   return b;
 }
 export const team = (): Team => (MODE === "fixture" ? COWORK[st().s] : live.team ?? NONE);
-export const circle = (): Circle => (MODE === "fixture" ? SOCIAL[st().f] : EMPTY);
+export const circle = (): Circle => (MODE === "fixture" ? SOCIAL[st().f] : live.circle ?? EMPTY);
 export const me = (t: unknown) => String(t ?? "").replace(/\{me\}/g, personName());
 
 // ---------------------------------------------------------------- the one queue (P3)
@@ -70,14 +75,16 @@ export function waitsAll(): WaitItem[] {
 /** Social's cards: people.html's rankInbox, each card and each row with an id; three of a kind (two requests) fold */
 export function cardsAll(): Card[] {
   const b = st(), s = circle();
-  const items: Row[] = s.inbox.map((x, i) => ({ ...x, i, id: `r:${b.f}:${i}` }));
+  // live, a row is named by its request (#1072's id), so an answer never lands on another after the list moves
+  const tag = MODE === "live" ? "live" : b.f;
+  const items: Row[] = s.inbox.map((x, i) => ({ ...x, i, id: `r:${tag}:${x.rid ?? i}` }));
   const kinds: Record<string, Row[]> = {};
   items.forEach((x) => (kinds[x.k] = kinds[x.k] || []).push(x));
   const cards: Card[] = [];
   for (const k in kinds) {
     const xs = kinds[k].sort((a, c) => (c.need ? 2 : 0) + (c.close ? 1 : 0) - ((a.need ? 2 : 0) + (a.close ? 1 : 0)));
-    if (xs.length >= 3 || (k === "request" && xs.length >= 2)) cards.push({ fold: 1, k, xs, need: xs.some((x) => !!x.need), close: xs.some((x) => !!x.close), id: `c:${b.f}:${k}`, type: "card" });
-    else xs.forEach((x) => cards.push({ ...x, need: !!x.need, close: !!x.close, fold: 0, xs: [x], id: `c:${b.f}:${x.i}`, type: "card" }));
+    if (xs.length >= 3 || (k === "request" && xs.length >= 2)) cards.push({ fold: 1, k, xs, need: xs.some((x) => !!x.need), close: xs.some((x) => !!x.close), id: `c:${tag}:${k}`, type: "card" });
+    else xs.forEach((x) => cards.push({ ...x, need: !!x.need, close: !!x.close, fold: 0, xs: [x], id: `c:${tag}:${x.rid ?? x.i}`, type: "card" }));
   }
   const score = (c: Card) => (c.need ? 100 : 0) + (c.close ? 10 : 0) + (c.k === "request" ? -50 : 0) - (c.i || 0) / 100;
   return cards.sort((a, c) => score(c) - score(a));
@@ -94,6 +101,10 @@ export const count = () => items().length;
 /** the sidebar's Needs you: the one count above "From people" (cv/core.ts above(): the canvas's asks and the extra
  *  askers') and the people's, each once (round 6 · F1) */
 export const needsCount = () => above() + items().filter((x) => x.type !== "ext").length;
+/** the badge kept per version of the data (the join, #1615): a pan or a zoom draws the plane, whose need words read the
+ *  badge, every frame (S32); the queue is made again only when the data changed (render() and every move say so) */
+let keptAt = -1, kept = 0;
+export const needsCountKept = (): number => { const v = dataVer(); if (v !== keptAt) { kept = needsCount(); keptAt = v; } return kept; };
 export const find = (id: string): Item | null => extraAll().find((x) => x.id === id) || waitsAll().find((x) => x.id === id) || cardsAll().find((x) => x.id === id) || null;
 export const cardOfRow = (id: string) => cardsAll().find((c) => c.xs.some((x) => x.id === id)) || null;
 
@@ -121,6 +132,11 @@ export function answer(id: string, said = "Yes"): boolean {
   if (!t) return false;
   if (/^(later|keep waiting later)$/i.test(said)) { b.later.set(id, ++b.seq); if (b.focus === id) b.focus = null; render(); return true; }
   if (MODE === "live" && !(t.type === "ext") && t.type === "wait" && !(live.answer?.(t.g, t.w))) return false;
+  // live, a Social card or row answers #1072's requests: the row's own, or each open row of a card answered whole
+  if (MODE === "live" && t.type === "card") {
+    const rows = t.id === id ? t.xs.filter((x) => !b.done.has(x.id)) : t.xs.filter((x) => x.id === id);
+    if (!live.social?.answer(rows.map((x) => x.rid).filter((r): r is string => !!r), said)) return false;
+  }
   const l = line(id, said);
   b.done.add(id);
   if (!(t.type === "ext") && t.type === "card" && t.id === id) t.xs.forEach((x) => b.done.add(x.id));   // a card answered whole answers its rows
@@ -140,7 +156,7 @@ export const FN: Record<string, string> = {
   see_social: "S2 · S5 · S11", open_friend: "FX6 · S7", see_as_friend: "N7", make_link: "FX5", pick_face: "S1",
   answer_card: "S11 · S13 · S10 · S9 · S4", make_close: "S6", next_wait: "S11 · C4",
 };
-/** the moves that touch Social: live they answer "not yet" (no engine behind friends, shares, grants or links) */
+/** the moves that touch Social: live they answer "not yet" until Social's wire is attached (cv/wire/social.ts) */
 export const SOCIAL_MOVES = new Set(["see_social", "open_friend", "see_as_friend", "make_link", "pick_face", "answer_card", "make_close"]);
 
 /** the pages a setup has: Cowork, each group and its first time, Social, each close friend and the first friend, the link,
@@ -169,8 +185,10 @@ export function crumbOf(page: string | null | undefined): { id: string; label: s
     if (g) seg.push({ id: "group", label: g.name, act: `page:group:${g.id}` });
     if (k === "first") seg.push({ id: "first", label: "First time" });
   }
-  if (k === "friend" || (k === "asfriend" && a)) seg.push({ id: "friend", label: a, act: `page:friend:${a}` });
+  if (k === "friend" || k === "share" || (k === "asfriend" && a)) seg.push({ id: "friend", label: a, act: `page:friend:${a}` });
   if (k === "asfriend") seg.push({ id: "asfriend", label: "As a friend sees you" });
+  if (k === "share") seg.push({ id: "share", label: "How you work" });
+  if (k === "setup") seg.push({ id: "setup", label: "How a friend works" });
   if (k === "link") seg.push({ id: "link", label: "Make a link" });
   return seg;
 }

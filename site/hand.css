@@ -1,0 +1,219 @@
+/* Bring your people: two Macs, one hand-off (hand.js mounts it). The look is the app kit's (sol/design/system/tokens.json,
+   look.md): one black at its steps over the desk (window .78 blurred 48; side .10, card .25, raised .40, box .55, pop
+   .96), every word and line the "on" colour at a strength (ink .92, dim .55, mute .32, line .06, edge .10), CURVE's
+   corners (chip 8, row 12, field 14, block 18, box 20, card 26), the pearl and its nacre. The notch card is Hand's
+   (sol/design/together/4-hand). Everything is under .solhand and prefixed hd- so the page's classes never reach in. */
+
+/* ---- the section (the chapter's shape, as Your turn has it, held here so the section stands on its own) ---- */
+#together { padding: 150px 0 130px; text-align: center; position: relative; }
+#together h2 { margin: 0; font-size: clamp(40px, 5.6vw, 84px); letter-spacing: -.05em; font-weight: 650; line-height: .98; }
+#together h2 span { background: var(--acc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#together > p { color: var(--dim); font-size: 18px; max-width: 600px; margin: 18px auto 56px; line-height: 1.5; padding: 0 24px; }
+#together .hand { width: min(1392px, 100% - 48px); margin: 0 auto; }
+@media (max-width: 900px) { #together { padding: 100px 0 80px; } #together > p { font-size: 16px; } #together .hand { width: calc(100% - 24px); } }
+
+.solhand {
+  --on: 239 234 226;
+  --side: rgb(0 0 0 / .10); --card: rgb(0 0 0 / .25); --raised: rgb(0 0 0 / .40); --box: rgb(0 0 0 / .55); --pop: rgb(0 0 0 / .96);
+  --k-ink: rgb(var(--on) / .92); --k-dim: rgb(var(--on) / .55); --k-mute: rgb(var(--on) / .32); --k-quiet: rgb(var(--on) / .54);
+  --line: rgb(var(--on) / .06); --edge: rgb(var(--on) / .10); --shade: rgba(0,0,0,.55);
+  --k-pearl: #e6e1d8; --deep: #0a0a0b; --amber: #f89b2a; --green: #70df45;
+  --k-nacre: radial-gradient(70% 120% at 18% 0%, rgb(255 255 255 / .55), transparent 70%), linear-gradient(180deg, rgb(255 255 255 / .35), transparent 60%),
+    repeating-linear-gradient(104deg, rgb(255 46 78 / .34) 0, rgb(255 72 136 / .34) 26px, rgb(251 113 41 / .34) 52px, rgb(248 155 42 / .34) 78px, rgb(244 200 42 / .34) 104px, rgb(112 223 69 / .34) 130px, rgb(255 46 78 / .34) 156px),
+    #e6e1d8;
+  --sheen-ring: linear-gradient(115deg, rgb(246 243 236 / .55), rgb(228 220 240 / .25) 40%, rgb(217 236 232 / .10) 70%, rgb(242 228 214 / .35));
+  --sheen-words: linear-gradient(115deg, rgb(246 243 236 / .14), rgb(228 220 240 / .08));
+  --r-chip: 8px; --r-row: 12px; --r-field: 14px; --r-block: 18px; --r-box: 20px; --r-card: 26px;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --pour: cubic-bezier(.3,1.12,.6,1);
+  position: relative; display: block; overflow: hidden; contain: layout paint;
+  font: 13px/20px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", sans-serif;
+  color: var(--k-ink); text-align: left; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none;
+}
+.solhand * { box-sizing: border-box; }
+.solhand p { margin: 0; }
+.solhand svg { display: block; }
+.solhand .soljelly canvas { max-width: none; }
+.solhand [hidden] { display: none !important; }
+
+/* ---- the canvas: a fixed design size, scaled to the element's width ---- */
+.solhand .hd-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.solhand .hd-mac { position: absolute; }
+
+/* the desk a Mac's window sits on (demo's desk): near black, three still lights, blurred under the glass */
+.solhand .hd-desk { position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: #050505; }
+.solhand .hd-desk i { position: absolute; border-radius: 50%; filter: blur(60px); }
+.solhand .hd-desk i:nth-child(1) { width: 60%; height: 60%; left: -14%; top: 34%; background: radial-gradient(circle, #ff4888 0, rgba(255,72,136,0) 70%); opacity: .5; }
+.solhand .hd-desk i:nth-child(2) { width: 64%; height: 64%; right: -18%; top: -14%; background: radial-gradient(circle, #fb7129 0, rgba(251,113,41,0) 70%); opacity: .42; }
+.solhand .hd-desk i:nth-child(3) { width: 50%; height: 50%; left: 36%; bottom: -26%; background: radial-gradient(circle, #f4c82a 0, rgba(244,200,42,0) 70%); opacity: .26; }
+.solhand .hd-label { position: absolute; z-index: 2; left: 20px; top: 10px; display: flex; align-items: center; gap: 7px; font-size: 12px; line-height: 16px; color: var(--k-quiet); }
+.solhand .hd-lj { width: 14px; height: 14px; display: grid; place-items: center; }
+
+/* the notch: a black slab out of the desk's top edge; open, Hand's card: who hands you what, Take / Pass / Later */
+.solhand .hd-notch { position: absolute; z-index: 20; left: 50%; top: 0; width: 140px; height: 24px; translate: -50% 0; background: #000; border-radius: 0 0 13px 13px; overflow: hidden;
+  transition: width .6s var(--pour), height .6s var(--pour), border-radius .4s, box-shadow .4s; }
+.solhand .hd-notch.open { width: 452px; height: 80px; border-radius: 0 0 24px 24px; box-shadow: 0 24px 60px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.06); }
+.solhand .hd-nm { position: absolute; left: 12px; top: 4px; width: 16px; height: 16px; display: grid; place-items: center; transition: opacity .2s; }
+.solhand .hd-notch.open .hd-nm { opacity: 0; }
+.solhand .hd-say { position: absolute; left: 18px; top: 30px; width: 416px; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .45s var(--pour); }
+.solhand .hd-notch.open .hd-say { opacity: 1; transform: none; transition-delay: .18s; }
+.solhand .hd-sj { flex: none; width: 22px; height: 22px; display: grid; place-items: center; }
+.solhand .hd-sx { flex: 1; min-width: 0; }
+.solhand .hd-s1 { font-size: 13px; line-height: 1.3; color: #e9e6df; white-space: nowrap; }
+.solhand .hd-s2 { margin-top: 2px; font-size: 12px; line-height: 1.2; color: #96938b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.solhand .hd-btns { flex: none; display: flex; gap: 6px; }
+.solhand .hd-nb { font: 500 12px/1 -apple-system, system-ui, sans-serif; white-space: nowrap; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(233,230,223,.5); color: #e9e6df; transition: transform .12s; }
+.solhand .hd-nb.first { background: var(--k-pearl); border-color: var(--k-pearl); color: var(--deep); }
+.solhand .press { transform: scale(.92); }
+
+/* the window: the black at .78 over the desk, blurred 48 */
+.solhand .hd-glass { position: absolute; left: 14px; right: 14px; top: 34px; bottom: 14px; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px;
+  background: rgb(0 0 0 / .78); -webkit-backdrop-filter: blur(48px) saturate(1.2); backdrop-filter: blur(48px) saturate(1.2);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgb(var(--on) / .08), 0 40px 90px -20px rgba(0,0,0,.85), 0 0 0 .5px rgba(0,0,0,.9); }
+.solhand .hd-bar { flex: none; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 14px; color: var(--k-dim); white-space: nowrap; overflow: hidden; }
+.solhand .hd-lights { flex: none; display: flex; gap: 7px; margin-right: 8px; }
+.solhand .hd-lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.solhand .hd-lights i:nth-child(2) { background: #febc2e; } .solhand .hd-lights i:nth-child(3) { background: #28c840; }
+.solhand .hd-tt { color: var(--k-ink); font-size: 13px; }
+.solhand .hd-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--k-quiet); font-size: 12px; }
+.solhand .hd-body { position: relative; flex: 1; min-height: 0; display: flex; padding: 0 8px 8px; }
+
+/* the side: home | cowork on the nacre, the group, its sessions */
+.solhand .hd-side { flex: none; width: 184px; padding: 2px 2px 0; display: flex; flex-direction: column; }
+.solhand .hd-modes { display: grid; grid-template-columns: 1fr 1fr; height: 24px; margin: 0 2px 8px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--edge); }
+.solhand .hd-modes span { text-align: center; font-size: 12px; line-height: 24px; color: var(--k-dim); border-radius: 999px; }
+.solhand .hd-modes span.on { margin: 2px; line-height: 20px; background: var(--k-nacre); color: var(--deep); box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 2px 8px -2px rgba(0,0,0,.5); }
+.solhand .hd-ghead { display: flex; justify-content: space-between; margin: 8px 8px 2px; font-size: 12px; color: var(--k-quiet); }
+.solhand .hd-row { position: relative; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border-radius: var(--r-row); font-size: 12.5px; color: var(--k-dim); white-space: nowrap; }
+.solhand .hd-row .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.solhand .hd-row.room .t { color: var(--k-ink); }
+.solhand .hd-row code { margin-left: auto; font: 9.5px var(--mono); letter-spacing: .06em; color: var(--k-quiet); }
+.solhand .hd-caret { flex: none; width: 0; height: 0; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; border-left: 4.5px solid var(--k-mute); transform: rotate(90deg); }
+.solhand .shut .hd-caret { transform: none; }
+.solhand .hd-rows { display: flex; flex-direction: column; }
+.solhand .hd-row.sess { padding-left: 22px; }
+.solhand .hd-row.sess .t { color: var(--k-ink); opacity: .86; }
+.solhand .hd-row .st { flex: none; margin-left: auto; font-size: 12px; color: var(--k-quiet); }
+.solhand .hd-row.handed .st, .solhand .hd-row .st.from { color: var(--amber); }
+.solhand .hd-row.sess.on { background: linear-gradient(180deg, rgb(var(--on) / .12), rgb(var(--on) / .06)); box-shadow: inset 0 1px 0 rgb(var(--on) / .14), inset 0 0 0 1px rgb(var(--on) / .07); }
+.solhand .hd-row.sess.on .t { opacity: 1; }
+.solhand .hd-row.new i { font-style: normal; font-size: 14px; color: var(--k-quiet); width: 10px; }
+.solhand .hd-row.new .t { color: var(--k-quiet); opacity: 1; }
+.solhand .hd-row.arrive { animation: hd-arrive .7s var(--pour) both; }
+@keyframes hd-arrive { from { opacity: 0; transform: translateX(-10px); background-color: rgb(248 155 42 / .14); } }
+
+/* the talk: your words a bubble on the right, a step a thin line, the answer plain; the chat bar under it */
+.solhand .hd-talk { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 10px; }
+.solhand .hd-col { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 8px 0 10px; transition: opacity .35s, transform .45s var(--pour); }
+.solhand .hd-col.gone { opacity: 0; transform: translateY(-14px); }
+.solhand .hd-me { display: flex; justify-content: flex-end; }
+.solhand .hd-me p { max-width: 92%; padding: 7px 11px; background: var(--sheen-words); box-shadow: inset 0 1px 0 rgb(246 243 236 / .16); border-radius: var(--r-field); border-bottom-right-radius: 4px; font-size: 12.5px; line-height: 1.5; }
+.solhand .hd-step { display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; border-radius: var(--r-chip); background: var(--raised); box-shadow: inset 0 1px 0 var(--edge); font-size: 12px; color: var(--k-dim); white-space: nowrap; }
+.solhand .hd-step .gl { flex: none; display: grid; color: var(--k-quiet); }
+.solhand .hd-step .tx { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.solhand .hd-step .tx b { font-weight: 500; color: var(--k-ink); }
+.solhand .hd-step .ct { flex: none; font: 11px var(--mono); color: var(--k-quiet); }
+.solhand .hd-step .ok { flex: none; display: grid; color: var(--green); }
+.solhand .hd-you { font-size: 12.5px; line-height: 1.55; color: var(--k-ink); }
+.solhand .in { animation: hd-in .55s var(--pour) both; }
+@keyframes hd-in { from { opacity: 0; transform: translateY(10px); } }
+
+.solhand .hd-box { position: relative; flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--r-box); background: var(--box); box-shadow: 0 18px 40px -18px var(--shade); transition: box-shadow .4s; }
+.solhand .hd-box::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--sheen-ring); opacity: .7; transition: opacity .3s;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.solhand .hd-box.lit::before { opacity: 1; }
+.solhand .hd-box.lit { box-shadow: 0 18px 40px -18px var(--shade), 0 0 34px -10px rgb(255 72 136 / .35); }
+.solhand .hd-line { display: flex; align-items: flex-start; gap: 8px; }
+.solhand .hd-plus { flex: none; width: 22px; height: 22px; border-radius: 999px; background: rgb(var(--on) / .07); font-size: 13px; line-height: 22px; text-align: center; }
+.solhand .hd-field { flex: 1; min-width: 0; font-size: 12.5px; line-height: 22px; color: var(--k-quiet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.solhand .hd-field.brief { color: var(--k-ink); line-height: 18px; padding-top: 2px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; animation: hd-in .5s var(--pour) both; }
+.solhand .hd-pills { display: flex; gap: 6px; }
+.solhand .hd-pill { position: relative; height: 22px; padding: 0 10px; border-radius: 999px; background: rgb(var(--on) / .045); box-shadow: inset 0 0 0 1px var(--edge); font: 10.5px/22px var(--mono); color: var(--k-ink); overflow: hidden; }
+.solhand .hd-pill.eff { box-shadow: none; }
+.solhand .hd-pill.eff i { position: absolute; inset: 0; background: linear-gradient(90deg, #f4c82a, #70df45 20%, #fb7129 45%, #ff2e4e 70%, #ff4888 85%, #f89b2a); opacity: .9; }
+.solhand .hd-pill.eff i::after { content: ""; position: absolute; inset: 0; background: rgb(0 0 0 / .42); }
+.solhand .hd-pill.eff b { position: relative; font-weight: 400; color: #fff; text-shadow: 0 0 2px rgba(0,0,0,.55); }
+
+/* the stage: what the AI made, as blocks; the jelly at its foot */
+.solhand .hd-stage { position: relative; flex: none; width: 196px; margin-left: 8px; padding: 8px; display: flex; flex-direction: column; gap: 8px; border-radius: var(--r-card); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); }
+.solhand .hd-empty { position: absolute; left: 0; right: 0; bottom: 52px; text-align: center; font-size: 12px; color: var(--k-quiet); }
+.solhand .hd-foot { position: absolute; left: 50%; bottom: 10px; width: 30px; height: 30px; margin-left: -15px; display: grid; place-items: center; }
+.solhand .hd-blk { position: relative; flex: none; height: 146px; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--r-block);
+  background: linear-gradient(180deg, rgb(var(--on) / .045), rgb(var(--on) / .02)), var(--card); box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgb(var(--on) / .12), 0 16px 36px -20px rgba(0,0,0,.7); }
+.solhand .hd-blk .bh { flex: none; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px 0 11px; font-size: 12px; white-space: nowrap; }
+.solhand .hd-blk .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.solhand .hd-blk .bh b { font-weight: 500; color: var(--k-ink); }
+.solhand .hd-blk .bh small { font-size: 10px; color: var(--k-quiet); }
+.solhand .hd-blk .bh .grow { flex: 1; }
+.solhand .hd-blk .bh em { font-style: normal; font-size: 12px; color: var(--amber); }
+.solhand .hd-blk:has(em) .bh small { display: none; }
+.solhand .hd-blk .bb { flex: 1; min-height: 0; margin: 0 8px 8px; border-radius: 10px; background: #060607; box-shadow: inset 0 0 0 1px var(--line); }
+.solhand .page .bb { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.solhand .page .pj { width: 18px; height: 18px; display: grid; place-items: center; }
+.solhand .page u { display: block; width: 70%; height: 6px; border-radius: 3px; background: rgb(var(--on) / .5); }
+.solhand .page u.s { width: 50%; background: rgb(var(--on) / .16); }
+.solhand .page s { display: block; width: 46px; height: 13px; margin-top: 2px; border-radius: 999px; background: var(--k-pearl); }
+.solhand .tiers .bb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 8px; background: none; box-shadow: none; }
+.solhand .tiers i { border-radius: var(--r-chip); background: rgb(var(--on) / .035); box-shadow: inset 0 1px 0 rgb(var(--on) / .04); }
+.solhand .tiers i.hi { background: linear-gradient(180deg, rgb(255 72 136 / .16), rgb(244 200 42 / .06)); box-shadow: inset 0 0 0 1px rgb(var(--on) / .1); }
+.solhand .hd-blk.born { animation: hd-born .85s var(--pour) both; }
+.solhand .hd-blk.born::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #ff2e4e 0 14%, #ff4888 19% 31%, #fb7129 36% 47%, #f89b2a 53% 64%, #f4c82a 69% 81%, #70df45 86%);
+  mix-blend-mode: screen; pointer-events: none; opacity: 0; animation: hd-cool .85s ease-out; }
+@keyframes hd-born { from { opacity: 0; transform: scale(.72); } 30% { opacity: 1; } to { transform: scale(1); } }
+@keyframes hd-cool { from { opacity: .34; } to { opacity: 0; } }
+
+/* the row's menu (work/Menu) at the pop step */
+.solhand .hd-menu { position: absolute; z-index: 40; left: 0; top: 0; width: 188px; padding: 5px; border-radius: var(--r-block); background: var(--pop); box-shadow: inset 0 0 0 1px var(--edge), 0 24px 60px -16px rgba(0,0,0,.85);
+  transform-origin: 0 0; opacity: 0; transform: scale(.94) translateY(-4px); visibility: hidden; transition: opacity .18s, transform .35s var(--pour), visibility 0s .35s; }
+.solhand .hd-menu.on { opacity: 1; transform: none; visibility: visible; transition: opacity .18s, transform .35s var(--pour); }
+.solhand .hd-menu .it { display: block; padding: 6px 10px; border-radius: var(--r-row); color: var(--k-ink); font-size: 12.5px; }
+.solhand .hd-menu .it.hot { background: rgb(var(--on) / .09); }
+.solhand .hd-menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+
+/* what is carried: sam's jelly with the session's name under it */
+.solhand .hd-carry { position: absolute; z-index: 50; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.solhand .hd-carry.on { opacity: 1; }
+.solhand .hd-cj { width: 30px; height: 30px; display: grid; place-items: center; }
+.solhand .hd-chip { padding: 3px 10px; border-radius: 999px; background: var(--pop); box-shadow: inset 0 0 0 1px var(--edge), 0 10px 26px -8px rgba(0,0,0,.8); font-size: 12px; line-height: 16px; white-space: nowrap; color: var(--k-ink); }
+
+/* the demo's cursor */
+.solhand .hd-cursor { position: absolute; left: 0; top: 0; z-index: 60; width: 18px; height: 22px; pointer-events: none; opacity: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); transition: transform .8s cubic-bezier(.65,0,.35,1), opacity .3s; }
+.solhand .hd-cursor.on { opacity: 1; }
+
+/* ---- the smaller Mac (mid and narrow): the window without its side's chrome and without the stage; the session rows
+   sit in a strip over the talk, the type a step up so it reads at a phone's scale ---- */
+.solhand :is(.mid, .narrow) .hd-label { left: 14px; top: 6px; font-size: 12.5px; }
+.solhand :is(.mid, .narrow) .hd-glass { left: 10px; right: 10px; top: 32px; bottom: 10px; }
+.solhand :is(.mid, .narrow) .hd-notch { width: 104px; }
+.solhand :is(.mid, .narrow) .hd-notch.open { width: 340px; height: 112px; }
+.solhand :is(.mid, .narrow) .hd-say { left: 14px; top: 30px; width: 312px; flex-wrap: wrap; row-gap: 10px; }
+.solhand :is(.mid, .narrow) .hd-sx { flex: 1 1 250px; }
+.solhand :is(.mid, .narrow) .hd-s1 { font-size: 14px; }
+.solhand :is(.mid, .narrow) .hd-s2 { font-size: 12.5px; }
+.solhand :is(.mid, .narrow) .hd-btns { margin-left: 32px; }
+.solhand :is(.mid, .narrow) .hd-nb { font-size: 13px; padding: 7px 14px; }
+.solhand :is(.mid, .narrow) .hd-bar { height: 36px; }
+.solhand :is(.mid, .narrow) .hd-tt { font-size: 13.5px; }
+.solhand :is(.mid, .narrow) .hd-where { font-size: 12.5px; }
+.solhand :is(.mid, .narrow) .hd-body { flex-direction: column; padding: 0 8px 8px; }
+.solhand :is(.mid, .narrow) .hd-side { width: auto; padding: 0 0 4px; border-bottom: 1px solid var(--line); }
+.solhand :is(.mid, .narrow) :is(.hd-modes, .hd-ghead, .hd-row.new, .hd-row.shut) { display: none; }
+.solhand :is(.mid, .narrow) .hd-row { height: 30px; font-size: 13.5px; }
+.solhand :is(.mid, .narrow) .hd-row code { font-size: 12px; }
+.solhand :is(.mid, .narrow) .hd-row .st { font-size: 12.5px; }
+.solhand :is(.mid, .narrow) .hd-talk { padding: 0 2px; }
+.solhand :is(.mid, .narrow) .hd-col { gap: 7px; padding: 8px 0; }
+.solhand :is(.mid, .narrow) :is(.hd-me p, .hd-you) { font-size: 13.5px; line-height: 1.45; }
+.solhand :is(.mid, .narrow) .hd-step { font-size: 12.5px; }
+.solhand :is(.mid, .narrow) .hd-step .ct { font-size: 12.5px; }
+.solhand :is(.mid, .narrow) .hd-pills { display: none; }
+.solhand :is(.mid, .narrow) .hd-field { font-size: 13.5px; }
+.solhand :is(.mid, .narrow) .hd-field.brief { -webkit-line-clamp: 2; line-height: 19px; }
+.solhand :is(.mid, .narrow) .hd-stage { display: none; }
+.solhand :is(.mid, .narrow) .hd-menu { width: 196px; }
+.solhand :is(.mid, .narrow) .hd-menu .it { font-size: 13.5px; padding: 7px 10px; }
+.solhand :is(.mid, .narrow) .hd-chip { font-size: 12.5px; line-height: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .solhand *, .solhand *::before, .solhand *::after { transition: none !important; animation: none !important; }
+}

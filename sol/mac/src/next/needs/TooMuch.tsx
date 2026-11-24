@@ -29,7 +29,7 @@ export function TooMuch() {
         <ol className="tm-steps">
           <li><span className="tm-k">Now</span><div>
             {first ? <Row a={first} line hideWhy /> : <p className="tm-p">Nothing asks. Rest here as long as you like.</p>}
-            <p className="tm-p">{rest ? `${rest} more wait${rest === 1 ? "s" : ""}, held in Needs you. Nothing moved and nothing was deleted.` : "Nothing else waits."}</p>
+            <p className="tm-p">{rest ? `${rest} more wait${rest === 1 ? "s" : ""}, held in Waiting on you. Nothing moved and nothing was deleted.` : "Nothing else waits."}</p>
           </div></li>
           <li><span className="tm-k">Why</span><div>
             <p className="tm-p">{repeats ? <>{o.length} asks; {d.top[1]} of them are <b>{said(topName)}</b>, the same way again and again.</>

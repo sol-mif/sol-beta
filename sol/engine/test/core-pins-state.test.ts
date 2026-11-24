@@ -96,3 +96,13 @@ test("a folder moved: every kept path follows, a sibling with the same prefix do
   assert.equal(relocated("/m/a/x"), "/m/a/x");
   assert.equal(movedTo({})("/anything"), "/anything");
 });
+
+test("#1541 handed is set once: a hand my AI took on its own stays capped on every run, never taken off", () => {
+  S.mark("h1", { handed: true });
+  assert.equal(S.workState().marks.h1?.handed, true);
+  S.mark("h1", { handed: false });
+  S.mark("h1", { handed: null });
+  assert.equal(S.workState().marks.h1?.handed, true, "never taken off");
+  S.mark("h2", { handed: "yes" });
+  assert.equal(S.workState().marks.h2?.handed, undefined, "only true sets it");
+});

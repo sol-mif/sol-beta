@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, type GateResult, type Step } from "../src/team/gate.ts";
+import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, TOKENS_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, type GateResult, type Step } from "../src/team/gate.ts";
 
 const EVAL = (status: string, body = "") => `# fr-12 · Open Sol: evals
 
@@ -372,6 +372,29 @@ test("the old goo kit: refused outside the legacy list, words in comments and st
     "lint:goo:sol/mac/src/kit/Word.tsx",
   ]);
   assert.ok(GOO_LEGACY.includes("sol/mac/src/creature/goo.tsx"), "the old kit itself is on the list");
+});
+
+test("lint: the new face's files that held typed values at the BR1 join are held apart, and the list only shrinks (#1615)", () => {
+  const files: Record<string, string> = {
+    "sol/mac/src/next/old.css": ".a { margin: 6px; color: #fff; }",          // listed, still typed: let through
+    "sol/mac/src/next/clean.css": ".a { margin: var(--s2); }",                // listed, now clean: must come off
+    "sol/mac/src/next/new.css": ".a { margin: 6px; }",                        // not listed: refused as ever
+  };
+  const legacy = ["sol/mac/src/next/old.css", "sol/mac/src/next/clean.css", "sol/mac/src/next/gone.css"];
+  const found = lintFiles(Object.keys(files), (f) => (f in files ? Buffer.from(files[f]) : null), () => false, () => null, legacy).map((x) => x.id).sort();
+  assert.deepEqual(found, [
+    "lint:layout-value:sol/mac/src/next/new.css",
+    "lint:tokens-legacy-gone:sol/mac/src/next/clean.css",
+    "lint:tokens-legacy-gone:sol/mac/src/next/gone.css",
+  ]);
+  assert.ok(TOKENS_LEGACY.every((f) => /^sol\/mac\/src\/next\//.test(f)), "only the new face's files");
+});
+
+test("the face as it stands: no file off the legacy list draws from the old goo kit (#1824's ShellLine, #674)", () => {
+  const root = join(import.meta.dirname, "../../..");
+  const files = execFileSync("git", ["ls-files", "sol/mac/src"], { cwd: root, encoding: "utf8" }).split("\n").filter(Boolean);
+  const read = (f: string) => { try { return readFileSync(join(root, f)); } catch { return null; } };
+  assert.deepEqual(gooFindings(files, read).map((x) => x.line), []);
 });
 
 test("the e2e cap grows with the suite: 15 s a path, never under 15 minutes, 25 minutes when the count is unknown (#1583)", () => {

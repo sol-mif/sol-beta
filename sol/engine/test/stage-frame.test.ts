@@ -160,8 +160,9 @@ test("on: the agent's tools offer the frame first, more, making and reopen; reop
 test("off: a compose with no body is live, more and making change nothing, and the tools read as they do today", async () => {
   const A = "sess-fram0006";
   whole("off");
+  process.env.SOL_REACH_ROOM = "on";   // the press has its own switch, reach.room (#1740); on here, as the team runs it
   const before = Object.fromEntries(["compose", "update", "place"].map((n) => [n, { description: tool(n)!.description, keys: Object.keys(tool(n)!.shape) }]));
-  // asks (#1298) is on with stage.whole off too: the press is every Sol's, not the frame's
+  // asks (#1298) is on with stage.whole off too: the press follows reach.room, not the frame
   assert.deepEqual(before.compose.keys, ["kind", "title", "body", "slot", "at", "format", "parent", "waits", "asks"]);
   assert.deepEqual(before.update.keys, ["id", "body", "title", "waits", "format", "asks"]);
   assert.deepEqual(before.place.keys, ["id", "slot", "fold", "carry", "close"]);
@@ -191,6 +192,7 @@ test("off: a compose with no body is live, more and making change nothing, and t
     assert.equal(tool(k)!.description, before[k].description);
     assert.deepEqual(Object.keys(tool(k)!.shape), before[k].keys);
   }
+  delete process.env.SOL_REACH_ROOM;
   assert.equal(existsSync(process.env.SOL_SETTINGS!), false, "the settings file is never written");
 });
 

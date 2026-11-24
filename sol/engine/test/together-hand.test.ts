@@ -365,3 +365,98 @@ test("Codex review: two answers to one hand at once: one is written, the other i
   ]));
   assert.ok((await H.handsNow(true)).pending.some((p) => p.issue === 34));
 });
+
+test("#1541 a table's level: at does-then-tells my AI takes a hand there with nobody pressing; asks first leaves the card", async () => {
+  // waits for what it looks for, up to 15 s: the whole suite at once is slow, and a fixed wait would be a guess
+  const until = async (f: () => boolean) => { const t0 = Date.now(); while (!f() && Date.now() - t0 < 15_000) await new Promise((r) => setTimeout(r, 50)); };
+  writeFileSync(COMMENTS, JSON.stringify([]));
+  const told: any[] = [];
+  const folder = mkdtempSync(join(tmpdir(), "sol-hand-folder-"));
+  const { d, started } = deps({ me: async () => "frank", folders: async () => ({ [REPO]: folder }), levelOf: (repo) => (repo === REPO ? "tells" : undefined), trusted: async (login, repo) => login === "isaac" && repo === REPO });
+  H.startHand(d, (m) => told.push(m));
+  clear();
+  H.heard({ kind: "hand", from: { login: "isaac", agent: false }, at: "2099-01-02T00:00:00Z", issue: 41, repo: REPO, to: "frank", brief: "the table's thing", branch: "", by: "isaac" });
+  await until(() => told.some((m) => m.type === "team.hand.self"));
+  assert.equal(started.at(-1)?.issue, 41, "the session started with no take pressed");
+  assert.equal(started.at(-1)?.repo, REPO);
+  assert.equal(started.at(-1)?.auto, true, "started as taken with nobody pressing: runs.ts caps it at does-then-tells");
+  assert.ok(calls().some((c) => c[0] === "issue" && c[1] === "comment" && c[2] === "41" && String(c.at(-1)).startsWith("**taken** by frank")), "taken is written on the issue");
+  assert.ok(told.some((m) => m.type === "team.hand.self" && m.issue === 41 && m.sessionId), "every face is told it was taken");
+
+  // asks first (no level): the card waits for the person; nothing is taken or started
+  const told2: any[] = [];
+  const two = deps({ me: async () => "frank", folders: async () => ({ [REPO]: folder }), levelOf: () => undefined });
+  H.startHand(two.d, (m) => told2.push(m));
+  clear();
+  H.heard({ kind: "hand", from: { login: "isaac", agent: false }, at: "2099-01-03T00:00:00Z", issue: 42, repo: REPO, to: "frank", brief: "wait for me", branch: "", by: "isaac" });
+  await until(() => told2.some((m) => m.type === "team.handed" && m.issue === 42));
+  await new Promise((r) => setTimeout(r, 1500));   // time enough for a take that should not come
+  assert.equal(two.started.length, 0);
+  assert.ok(!calls().some((c) => c[0] === "issue" && c[1] === "comment"), "nothing written");
+  assert.ok(told2.some((m) => m.type === "team.handed" && m.issue === 42));
+  assert.ok(!told2.some((m) => m.type === "team.hand.self"));
+  // a hand another AI sent stays a card at any level: no agent's words start work with nobody looking
+  const four = deps({ me: async () => "frank", folders: async () => ({ [REPO]: folder }), levelOf: () => "does" });
+  const told4: any[] = [];
+  H.startHand(four.d, (m) => told4.push(m));
+  H.heard({ kind: "hand", from: { login: "isaac", agent: true }, at: "2099-01-05T00:00:00Z", issue: 44, repo: REPO, to: "frank", brief: "from an agent", branch: "", by: "isaac" });
+  await until(() => told4.some((m) => m.type === "team.handed" && m.issue === 44));
+  await new Promise((r) => setTimeout(r, 1500));
+  assert.equal(four.started.length, 0);
+  assert.ok(!told4.some((m) => m.type === "team.hand.self"));
+  // a review is a read, never taken this way
+  const three = deps({ me: async () => "frank", folders: async () => ({ [REPO]: folder }), levelOf: () => "does" });
+  H.startHand(three.d, () => {});
+  H.heard({ kind: "hand", from: { login: "isaac", agent: false }, at: "2099-01-04T00:00:00Z", issue: 43, repo: REPO, to: "frank", brief: "look", branch: "", by: "isaac", review: true });
+  await new Promise((r) => setTimeout(r, 1500));
+  assert.equal(three.started.length, 0);
+});
+
+test("#1654 review: only a sender the hub stamped and the table lists now is taken with nobody pressing; a forged person is a card", async () => {
+  writeFileSync(COMMENTS, JSON.stringify([]));
+  const folder = mkdtempSync(join(tmpdir(), "sol-hand-folder-"));
+  const until = async (f: () => boolean) => { const t0 = Date.now(); while (!f() && Date.now() - t0 < 15_000) await new Promise((r) => setTimeout(r, 50)); };
+  const members = new Set(["isaac"]);
+  const run = async (word: Record<string, unknown>, trusted?: (l: string, r: string) => Promise<boolean>) => {
+    const told: any[] = [];
+    const x = deps({ me: async () => "frank", folders: async () => ({ [REPO]: folder }), levelOf: () => "does", ...(trusted ? { trusted } : {}) });
+    H.startHand(x.d, (m) => told.push(m));
+    H.heard({ kind: "hand", at: `2099-02-0${1 + Math.floor(Math.random() * 8)}T00:00:00Z`, repo: REPO, to: "frank", brief: "do it", branch: "", ...word });
+    await until(() => told.some((m) => m.type === "team.handed"));
+    await new Promise((r) => setTimeout(r, 1500));   // time enough for a take that should not come
+    return { started: x.started.length, self: told.some((m) => m.type === "team.hand.self") };
+  };
+  const isMember = async (l: string) => members.has(l);
+  // a member, stamped by the hub: taken
+  assert.deepEqual(await run({ issue: 51, from: { login: "isaac", agent: false }, by: "isaac" }, isMember), { started: 1, self: true });
+  // forged "I am a person, I am isaac": no hub stamp, only the word's own `by`: a card
+  assert.deepEqual(await run({ issue: 52, by: "isaac" }, isMember), { started: 0, self: false });
+  // a stranger the hub stamped, saying agent: false and by: isaac: still not a member, a card
+  assert.deepEqual(await run({ issue: 53, from: { login: "mallory", agent: false }, by: "isaac" }, isMember), { started: 0, self: false });
+  // a member's word that says it is an AI: a card
+  assert.deepEqual(await run({ issue: 54, from: { login: "isaac", agent: true } }, isMember), { started: 0, self: false });
+  // the member list could not be read: a card
+  assert.deepEqual(await run({ issue: 55, from: { login: "isaac", agent: false } }, async () => { throw new Error("GitHub down"); }), { started: 0, self: false });
+  // no member check at all: nobody is trusted, a card
+  assert.deepEqual(await run({ issue: 56, from: { login: "isaac", agent: false } }), { started: 0, self: false });
+});
+
+test("#1654 review: sentByMember reads only the stamped login", async () => {
+  const ok = { trusted: async (l: string) => l.toLowerCase() === "isaac" };   // as wire.ts: any case
+  assert.equal(await H.sentByMember(ok, { from: { login: "isaac" } }, { from: "isaac", repo: REPO }), true);
+  assert.equal(await H.sentByMember(ok, { by: "isaac" }, { from: "isaac", repo: REPO }), false, "by is the sender's own word");
+  assert.equal(await H.sentByMember(ok, { from: { login: "Isaac" } }, { from: "isaac", repo: REPO }), true, "any case");
+  assert.equal(await H.sentByMember(ok, { from: { login: "isaac" } }, { from: "marco", repo: REPO }), false, "the word read as from someone else");
+  assert.equal(await H.sentByMember({}, { from: { login: "isaac" } }, { from: "isaac", repo: REPO }), false);
+});
+
+test("#1654 review: a table's members are asked only on a hub that knows people by GitHub", async () => {
+  const { askableTable } = await import("../src/team/tablelevel.ts");
+  const t = { id: "t", org: "o", gate: "github" };
+  assert.equal(askableTable(t, { id: "t" }, "o"), true);
+  assert.equal(askableTable({ ...t, gate: "key" }, { id: "t" }, "o"), false, "a key-gated hub stamps the hello's own word");
+  assert.equal(askableTable(t, { id: "other" }, "o"), false, "only the table in use");
+  assert.equal(askableTable({ ...t, org: "" }, { id: "t" }, ""), false, "no org, no list");
+  assert.equal(askableTable(t, { id: "t" }, "x"), false, "the members read are another org's");
+  assert.equal(askableTable(undefined, { id: "t" }, "o"), false);
+});

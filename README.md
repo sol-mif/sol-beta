@@ -8,7 +8,7 @@ inside when you ask it to.
 The idea: today each AI lives in its own tab and knows nothing of the others. Sol is the one surface you sit
 at, and the AIs are its hands. Over time it becomes the system you need, built by being talked to.
 
-This is the version beta testers run: dev-20261120-1820. It is made from the development repository when a whole day's
+This is the version beta testers run: dev-20261124-1219. It is made from the development repository when a whole day's
 release passes to beta, and holds only what runs. Nothing here is edited by hand; the next version replaces it.
 
 ## Install
@@ -45,9 +45,15 @@ Every commit there gets `mine: ` in front. The harness comes along (`sol/harness
 
 ## Keep it current
 
-A new version: Sol says so in its own window within the hour, with an **Update** button; press it and Sol
-fetches the new version and rebuilds its engine and face from it. The Mac app's own shell comes from the
-[latest release](https://github.com/sol-mif/sol-beta/releases/latest) when it changed; the release notes say so. On your own branch, `bash sol/mine/rebase` instead:
-it puts your changes on top of the new version, and if one does not fit it names the place and changes nothing. When something breaks, `sol/HELP.md`.
+A new version installs itself. Sol looks for one every ten minutes, builds it beside the one running, and moves
+to it at a quiet moment, never in the middle of a reply; your own changes go on top. If the new engine does not
+start, Sol goes back to the version before. To hold new versions for a while, set **updates** to paused in Settings
+(the engine drawer). When Sol cannot move by itself (paused, a reply under way, changes not kept yet, or your own
+changes clash with the new version), its window says so with an **Update** button. On your own branch you can also
+run `bash sol/mine/rebase` by hand: it puts your changes on top of the new version, and if one does not fit it names
+the place and changes nothing. On a Mac, Sol's window comes with
+the app: a new look arrives when you download the newest `Sol-mac.zip` from the
+[latest release](https://github.com/sol-mif/sol-beta/releases/latest); the release notes say when it changed. When
+something breaks, `sol/HELP.md`.
 Something wrong, or a thought: say it in the beta testers' Discord, https://discord.gg/f2CHmYDDZV (in Sol, **Tell us…**
 in the menu bar menu opens it), or open an issue on this repository.

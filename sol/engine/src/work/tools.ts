@@ -5,7 +5,7 @@ import { z } from "zod";
 import { PING_KINDS, type PingKind } from "../team/pings.js";
 import { usedPart, type Part } from "../team/used.js";
 import { factsRefusal, spokenBy, type Share } from "../team/facts.js";
-import { coworkV3, onCoworkV3, onStageWhole, stageWhole } from "../settings.js";
+import { coworkV3, onCoworkV3, onStageWhole, reachRoom, stageWhole } from "../settings.js";
 import * as stage from "./blocks.js";
 import * as eyes from "./eyes.js";
 import * as hands from "./hands.js";   // what the person's window drew (#1435)
@@ -514,17 +514,22 @@ const ASKS_TEXT = " `asks` ({ q, choices? }) puts a press at the block's foot: t
   "the person presses once, and the press comes back to you as a turn in this session (\"<the press …>\"); later keeps it waiting.";
 const FRAME_TEXT = " Compose as soon as you know what you will make, with no body: the frame is up at once, working, and you fill it with update.";
 const UPDATE_TEXT = "Change a block's body (its id from compose or read); the frame says working and the ledger gets a line. " +
-  "A frozen block refined is live again: its versions never change, what changes is the next one. `waits` when it now needs the person's word." + ASKS_TEXT;
+  "A frozen block refined is live again: its versions never change, what changes is the next one. `waits` when it now needs the person's word.";
+// the press is the Agents' room card's (product/cowork/room): offered only while its switch reach.room stands on, so off
+// means no block of an agent's asks at all (gate one q6, #1740). Read at each turn's start, as the tools' list is
+const asksText = () => (reachRoom() ? ASKS_TEXT : "");
+const withAsks = <T extends object>(shape: T) => (reachRoom() ? shape : (({ asks: _, ...rest }) => rest)(shape as T & { asks?: unknown }));
+const PRESS_OFF = "; no press on it: the press on a block is off on this Sol (the setting reach.room turns it on)";
 const MORE_TEXT = " `more: true` while more of the body is coming: the block stays working until an update without it.";
 const UPDATE_SHAPE = { id: z.string(), body: z.string().max(2_000_000).optional(), title: z.string().max(80).optional(), waits: z.boolean().optional(), format: z.enum(["html", "md", "json", "text", "diff"]).optional(), asks: COMPOSE_SHAPE.asks };
 const STAGE_TOOLS = [{
     name: "compose",
-    get description() { return stageWhole() ? COMPOSE_TEXT + ASKS_TEXT + FRAME_TEXT + MAKING_TEXT : COMPOSE_TEXT + ASKS_TEXT; },
-    get shape() { return stageWhole() ? { ...COMPOSE_SHAPE, making } : COMPOSE_SHAPE; },
+    get description() { return stageWhole() ? COMPOSE_TEXT + asksText() + FRAME_TEXT + MAKING_TEXT : COMPOSE_TEXT + asksText(); },
+    get shape() { return withAsks(stageWhole() ? { ...COMPOSE_SHAPE, making } : COMPOSE_SHAPE); },
   } as const, {
     name: "update",
-    get description() { return stageWhole() ? UPDATE_TEXT + MORE_TEXT + MAKING_TEXT : UPDATE_TEXT; },
-    get shape() { return stageWhole() ? { ...UPDATE_SHAPE, more: z.boolean().optional(), making } : UPDATE_SHAPE; },
+    get description() { return stageWhole() ? UPDATE_TEXT + asksText() + MORE_TEXT + MAKING_TEXT : UPDATE_TEXT + asksText(); },
+    get shape() { return withAsks(stageWhole() ? { ...UPDATE_SHAPE, more: z.boolean().optional(), making } : UPDATE_SHAPE); },
   } as const, {
     name: "bind",
     description: "Tie a block to a source: a file (relative to this folder or whole), a URL, a PR (#123 or its link), or a test's or a run's " +
@@ -740,12 +745,12 @@ export async function runStageTool(name: string, a: any, self: string): Promise<
           return b ? ok(`composed ${line(b)} on the stage of ${w.project}; the engine keeps it current`) : no("a session never shows itself");
         }
         if (a.kind === "browser") { const v = (() => { try { return JSON.parse(str(a.body) ?? "{}"); } catch { return { url: str(a.body) }; } })(); const b = live.composeBrowser(w, { url: str(v?.url), title: str(a.title), slot: a.slot, ...(at ? { at } : {}) }); return ok(`composed ${line(b)} on the stage of ${w.project}; the browser tools drive it with block: "${b.id}" while sol holds its wheel`); }
-        const b = stage.compose(w, { kind: a.kind, title: str(a.title), body: str(a.body), slot: a.slot, format: a.format, parent: str(a.parent), waits: a.waits === true, ...(at ? { at } : {}), ...(a.making ? { making: a.making } : {}), ...(a.asks ? { asks: await withIssue(a.asks, self) } : {}) });
-        return ok(`composed ${line(b)} on the stage of ${w.project}${b.asks ? `; it asks "${b.asks.q}" (${b.asks.choices.join(" · ")}): the press comes back to you as a turn here` : ""}${await eyes.landed(self, b.id, undefined, { tool: "compose", kind: b.kind })}`);
+        const b = stage.compose(w, { kind: a.kind, title: str(a.title), body: str(a.body), slot: a.slot, format: a.format, parent: str(a.parent), waits: a.waits === true, ...(at ? { at } : {}), ...(a.making ? { making: a.making } : {}), ...(a.asks && reachRoom() ? { asks: await withIssue(a.asks, self) } : {}) });
+        return ok(`composed ${line(b)} on the stage of ${w.project}${b.asks ? `; it asks "${b.asks.q}" (${b.asks.choices.join(" · ")}): the press comes back to you as a turn here` : a.asks ? PRESS_OFF : ""}${await eyes.landed(self, b.id, undefined, { tool: "compose", kind: b.kind })}`);
       }
       case "update": {
-        const b = stage.update(w, { id: String(a.id ?? ""), body: str(a.body), title: str(a.title), waits: a.waits === true, format: a.format, ...(a.more === true ? { more: true } : {}), ...(a.making ? { making: a.making } : {}), ...(a.asks ? { asks: await withIssue(a.asks, self) } : {}) });
-        return ok(`updated ${line(b)}${a.more === true ? "" : await eyes.landed(self, b.id, undefined, { tool: "update", kind: b.kind })}`);
+        const b = stage.update(w, { id: String(a.id ?? ""), body: str(a.body), title: str(a.title), waits: a.waits === true, format: a.format, ...(a.more === true ? { more: true } : {}), ...(a.making ? { making: a.making } : {}), ...(a.asks && reachRoom() ? { asks: await withIssue(a.asks, self) } : {}) });
+        return ok(`updated ${line(b)}${a.asks && !reachRoom() ? PRESS_OFF : ""}${a.more === true ? "" : await eyes.landed(self, b.id, undefined, { tool: "update", kind: b.kind })}`);
       }
       case "bind": {
         const b = stage.bind(w, { id: String(a.id ?? ""), source: String(a.source ?? ""), watch: a.watch });

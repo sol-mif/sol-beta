@@ -1,0 +1,29 @@
+/* A folder's setup in its header (folder/setup/Setup.tsx, setup.html §2). Roles only: the next set's colours, corners
+   and the scale's spaces and sizes. At rest one quiet pill under the name; open, a card in place with three rows.
+   ✦ is Sol's own reading, in the run colour. Signed: marcocyl04-ux's agent (builder F10), BR1 (#1615). */
+[data-face="next"] .su { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); min-width: 0; }
+[data-face="next"] .fv .su-line { display: inline-flex; align-items: center; gap: var(--s2); max-width: 100%; height: auto; min-width: 0; padding: var(--s1) var(--s3) var(--s1) var(--s2); border: 0; border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); white-space: nowrap; cursor: pointer; }
+[data-face="next"] .fv .su-line:hover, [data-face="next"] .fv .su-line.su-on { box-shadow: inset 0 0 0 1.5px var(--a1); }
+[data-face="next"] .su-lab { color: var(--ink3); letter-spacing: .04em; font-size: .88em; }
+[data-face="next"] .su-try { color: var(--run); }
+[data-face="next"] .su-w { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+[data-face="next"] .su-open { width: min(560px, 100%); padding: var(--s2) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); }
+[data-face="next"] .su-row { display: grid; grid-template-columns: 84px 1fr 18px; gap: var(--s3); align-items: start; padding: var(--s2) 0; border-top: 1px solid var(--line); }
+[data-face="next"] .su-row:first-child { border-top: 0; }
+[data-face="next"] .su-k { padding-top: 2px; color: var(--ink3); font-size: .85em; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+[data-face="next"] .su-say { min-width: 0; }
+[data-face="next"] .fv .su-l { display: block; height: auto; padding: 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+[data-face="next"] .fv .su-l:hover { text-decoration: underline; text-decoration-color: var(--ink4); text-underline-offset: 3px; }
+[data-face="next"] .su-why { display: block; margin-top: 2px; color: var(--ink3); font-size: .9em; }
+[data-face="next"] .su-takes { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: var(--s2); }
+[data-face="next"] .fv .su-take { height: auto; padding: 2px var(--s2); border: 0; border-radius: var(--r-pill); background: var(--side); font: inherit; font-size: .92em; color: var(--ink2); cursor: pointer; }
+[data-face="next"] .fv .su-take:hover, [data-face="next"] .fv .su-take.su-trying { background: var(--hover); color: var(--ink); box-shadow: inset 0 0 0 1px var(--a1); }
+[data-face="next"] .su-tr { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); color: var(--ink2); }
+[data-face="next"] .fv .su-x { height: auto; padding: 0; border: 0; background: none; font: inherit; color: var(--ink4); cursor: pointer; }
+[data-face="next"] .fv .su-x:hover { color: var(--ink); }
+[data-face="next"] .su-ft { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-top: 2px; padding-top: var(--s2); border-top: 1px solid var(--line); color: var(--ink3); }
+[data-face="next"] .fv .su-keep { height: auto; padding: 3px var(--s3); border: 0; border-radius: var(--r-chip, 8px); background: var(--ink); color: var(--card); font: inherit; font-weight: 600; cursor: pointer; }
+[data-face="next"] .fv .su-keep:disabled { opacity: .4; cursor: default; }
+[data-face="next"] .fv .su-esc, [data-face="next"] .fv .su-tr button:not(.su-keep) { height: auto; margin-left: auto; padding: 0; border: 0; background: none; font: inherit; color: var(--ink3); cursor: pointer; }
+[data-face="next"] .fv .su-tr button:not(.su-keep) { margin-left: 0; }
+[data-face="next"] .su-none, [data-face="next"] .su-says { margin: var(--s2) 0 0; color: var(--ink2); }

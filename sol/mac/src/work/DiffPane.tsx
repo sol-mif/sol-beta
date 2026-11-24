@@ -1,16 +1,24 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CFG, enter } from "../motion";
 import type { Work } from "./useWork";
 import { Empty } from "./Panes";
 
 // The changes pane: what the session's folder holds that its base does not (git on the engine), file by file. A click
 // on a line opens a comment under it; Enter keeps the comment, ⌘↵ puts them all in the box as one message.
+// A big change never draws whole (BR1 gate 2: a +60103 diff froze the window): the list shows the first files and
+// "+n more", each file's lines open on a press past the first few small ones, and an open file draws its lines in parts.
+// Keys are by place, since git can name one path twice (an untracked file beside its deletion, a path it could not read).
 type DF = { path: string; old?: string; status: string; add: number; del: number; patch: string; binary?: boolean };
 type Diff = { files?: DF[]; root?: string; base?: string; branch?: string; add?: number; del?: number; notGit?: boolean; error?: string };
 type Line = { t: " " | "+" | "-" | "@"; s: string; a?: number; b?: number };
 export type Remark = { path: string; line: number; code: string; text: string };
 
 const SCOPES = [["all", "this branch"], ["uncommitted", "not committed"], ["last", "last commit"]] as const;
+const LIST = 40;      // files named in the list at once
+const BODY = 12;      // files in the body at once, every file shown
+const OPEN = 4;       // the first files opened by themselves, each under SMALL lines
+const SMALL = 400;
+const LINES = 500;    // lines an open file draws, then 2000 more a press
 
 function lines(patch: string): Line[] {
   const out: Line[] = [];
@@ -34,7 +42,9 @@ export function DiffPane({ w, cwd, busy, onSend, onFile }: {
   const [scope, setScope] = useState<string>(() => localStorage.getItem("sol.work.diffscope") ?? "all");
   const [d, setD] = useState<Diff | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pick, setPick] = useState<string | null>(null);   // one file, or every file
+  const [pick, setPick] = useState<number | null>(null);   // one file (its place in the list), or every file
+  const [listN, setListN] = useState(LIST);
+  const [bodyN, setBodyN] = useState(BODY);
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [writing, setWriting] = useState<{ path: string; line: number; code: string } | null>(null);
   const [text, setText] = useState("");
@@ -47,6 +57,7 @@ export function DiffPane({ w, cwd, busy, onSend, onFile }: {
   };
   // comments belong to the folder they were written on
   useLayoutEffect(() => { setRemarks([]); setWriting(null); setText(""); setD(null); setPick(null); }, [cwd]);
+  useLayoutEffect(() => { setListN(LIST); setBodyN(BODY); setPick(null); }, [cwd, scope]);
   // asked again when the scope or folder changes, and when a turn ends (the files may have moved)
   useEffect(load, [cwd, scope, busy]); // eslint-disable-line react-hooks/exhaustive-deps
   // a review by Codex of the scope shown: its remarks arrive in the talk (review.ts); a refusal shows on the button
@@ -82,7 +93,8 @@ export function DiffPane({ w, cwd, busy, onSend, onFile }: {
   if (d?.notGit) return <Empty>this folder is not a git repository, so there are no changes to show.</Empty>;
   if (d?.error) return <Empty>{d.error}</Empty>;
   const files = d?.files ?? [];
-  const shown = pick ? files.filter((f) => f.path === pick) : files;
+  const one = pick != null && files[pick] ? pick : null;
+  const shown = one != null ? [{ f: files[one], i: one }] : files.slice(0, bodyN).map((f, i) => ({ f, i }));
   return (
     <div ref={pane} className="wdiffp">
       <div className="wdhead">
@@ -97,21 +109,23 @@ export function DiffPane({ w, cwd, busy, onSend, onFile }: {
       {d && !files.length && <Empty>{scope === "uncommitted" ? "nothing waits to be committed." : scope === "last" ? "no last commit." : "no changes on this branch."}</Empty>}
       {files.length > 1 && (
         <div className="wdfiles">
-          <button className={`wdf ${pick ? "" : "on"}`} onClick={() => setPick(null)}><span className="n">every file</span><span className="c">{files.length}</span></button>
-          {files.map((f) => (
-            <button key={f.path} className={`wdf ${pick === f.path ? "on" : ""} ${f.status}`} onClick={() => setPick(f.path)} title={f.path}>
+          <button className={`wdf ${one != null ? "" : "on"}`} onClick={() => setPick(null)}><span className="n">every file</span><span className="c">{files.length}</span></button>
+          {files.slice(0, listN).map((f, i) => (
+            <button key={i} className={`wdf ${one === i ? "on" : ""} ${f.status}`} onClick={() => setPick(i)} title={f.path}>
               <i className="st" /><span className="n">{name(f.path)}</span><span className="d">{dir(f.path)}</span><span className="c"><b>+{f.add}</b> −{f.del}</span>
             </button>
           ))}
+          {files.length > listN && <button className="wdf wdmore" onClick={() => setListN((n) => n + LIST * 5)}><span className="n">+{files.length - listN} more</span></button>}
         </div>
       )}
       <div className="wdbody">
-        {shown.map((f) => (
-          <FileDiff key={f.path + scope} f={f} remarks={remarks.filter((r) => r.path === f.path)} writing={writing?.path === f.path ? writing : null}
+        {shown.map(({ f, i }) => (
+          <FileDiff key={`${scope}:${i}`} f={f} open={one != null || (i < OPEN && f.add + f.del < SMALL)} remarks={remarks.filter((r) => r.path === f.path)} writing={writing?.path === f.path ? writing : null}
             text={text} setText={setText} onLine={(line, code) => { if (writing && text.trim()) keep(); setWriting({ path: f.path, line, code }); setText(""); }}
             onKeep={keep} onCancel={() => setWriting(null)} onDrop={(r) => setRemarks((x) => x.filter((y) => y !== r))}
             onFile={(p, l) => onFile(d?.root ? `${d.root}/${p}` : p, l)} />
         ))}
+        {one == null && files.length > bodyN && <div className="wdmore"><button className="wlink" onClick={() => setBodyN((n) => n + BODY)}>+{files.length - bodyN} more files</button></div>}
       </div>
       {remarks.length > 0 && (
         <div className="wdsend">
@@ -123,11 +137,13 @@ export function DiffPane({ w, cwd, busy, onSend, onFile }: {
   );
 }
 
-function FileDiff({ f, remarks, writing, text, setText, onLine, onKeep, onCancel, onDrop, onFile }: {
-  f: DF; remarks: Remark[]; writing: { line: number } | null; text: string; setText: (s: string) => void;
+function FileDiff({ f, open: open0, remarks, writing, text, setText, onLine, onKeep, onCancel, onDrop, onFile }: {
+  f: DF; open: boolean; remarks: Remark[]; writing: { line: number } | null; text: string; setText: (s: string) => void;
   onLine: (line: number, code: string) => void; onKeep: () => void; onCancel: () => void; onDrop: (r: Remark) => void; onFile: (p: string, l?: number) => void;
 }) {
-  const ls = lines(f.patch);
+  const [open, setOpen] = useState(open0);
+  const [upTo, setUpTo] = useState(LINES);
+  const ls = useMemo(() => (open || writing ? lines(f.patch) : []), [f.patch, open, !!writing]); // eslint-disable-line react-hooks/exhaustive-deps
   const field = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => { if (writing && field.current) { field.current.focus(); enter(field.current.parentElement!, { y: -6, cfg: CFG.settle }); } }, [writing?.line]); // eslint-disable-line react-hooks/exhaustive-deps
   const at = (l: Line) => l.b ?? l.a ?? 0;
@@ -137,9 +153,11 @@ function FileDiff({ f, remarks, writing, text, setText, onLine, onKeep, onCancel
         <span className={`wdtag ${f.status}`}>{f.status === "added" ? "new" : f.status === "deleted" ? "gone" : f.status === "renamed" ? "moved" : "changed"}</span>
         <span className="p">{f.old ? `${f.old} → ` : ""}{f.path}</span><span className="c"><b>+{f.add}</b> −{f.del}</span>
       </div>
-      {f.binary ? <p className="wpempty">a binary file, or too big to show.</p> : (
+      {f.binary ? <p className="wpempty">a binary file, or too big to show.</p> : !open && !writing ? (
+        <div className="wdmore"><button className="wlink" onClick={() => setOpen(true)}>show its {f.add + f.del} changed lines</button></div>
+      ) : (
         <div className="wdiff wdlines">
-          {ls.map((l, i) => {
+          {ls.slice(0, upTo).map((l, i) => {
             const n = at(l);
             const mine = l.t !== "@" ? remarks.filter((r) => r.line === n && l.t !== "-") : [];
             return (
@@ -160,6 +178,7 @@ function FileDiff({ f, remarks, writing, text, setText, onLine, onKeep, onCancel
               </div>
             );
           })}
+          {ls.length > upTo && <div className="wdmore"><button className="wlink" onClick={() => setUpTo((n) => n + LINES * 4)}>{ls.length - upTo} more lines</button></div>}
         </div>
       )}
     </div>

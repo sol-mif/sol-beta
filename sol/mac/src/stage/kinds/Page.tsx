@@ -109,10 +109,12 @@ function face(): Record<string, string> {
   if (typeof document === "undefined") return {};
   const el = document.createElement("span");
   el.style.cssText = "position:absolute;visibility:hidden";
-  document.body.appendChild(el);
-  const css = getComputedStyle(document.documentElement), v = (k: string) => css.getPropertyValue(k).trim();
+  // read where the stage stands: in the new face's session view (next/session/Port.tsx, BR1 #1615) its ink is the paper's,
+  // not the old face's glass set on the root, which wrote a page's words white on white
+  (document.querySelector(".sport") ?? document.body).appendChild(el);
+  const css = getComputedStyle(el), v = (k: string) => css.getPropertyValue(k).trim();
   const colour = (k: string) => { el.style.color = `var(${k})`; return getComputedStyle(el).color; };
-  const out = { ink: colour("--ink"), dim: colour("--dim"), mute: colour("--mute"), line: colour("--line"), font: getComputedStyle(document.body).fontFamily, mono: v("--mono"),
+  const out = { ink: colour("--ink"), dim: colour("--dim"), mute: colour("--mute"), line: colour("--line"), font: css.fontFamily, mono: v("--mono"),
     body: v("--t-body"), bodyL: v("--t-body-line"), read: v("--t-read"), readL: v("--t-read-line"), label: v("--t-label"), labelL: v("--t-label-line"), code: v("--t-code"), codeL: v("--t-code-line"), s1: v("--s1"), s2: v("--s2"), s3: v("--s3"), s4: v("--s4") };
   el.remove();
   return out;

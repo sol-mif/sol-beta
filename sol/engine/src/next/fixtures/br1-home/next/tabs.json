@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "tabs": [
+    {
+      "id": "s-note-1",
+      "by": "person",
+      "kind": "note",
+      "at": 1795338000023
+    },
+    {
+      "id": "s-doc-2",
+      "by": "ai",
+      "kind": "doc",
+      "fresh": true,
+      "at": 1795338000024
+    }
+  ],
+  "front": "s-note-1",
+  "taken": {
+    "note": {
+      "day": "2026-11-22",
+      "n": 1
+    }
+  },
+  "quiet": {}
+}

@@ -1,0 +1,8 @@
+/* ✦ landing (BR1, #1615; inside.html moment 3): a piece a session made, tied to it. One family with what the move-in
+   marks as an AI's (migration.css .mg-fold.ai, folder.css .fo-pwas): the same dashed edge, here in its session's colour
+   (--ld, its folder's tint), and a ✦ with the session's name, washed in that colour as the AI's folders are */
+.pl-piece.ld-made, .pl-fold.ld-made { outline: 1.5px dashed var(--ld); outline-offset: -1.5px; }
+.ld-star { align-self: flex-start; display: inline-flex; align-items: baseline; gap: 0.3em; max-width: 100%; padding: 0 var(--s2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--ld, var(--ink4)) 24%, var(--card)); color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); overflow-wrap: anywhere; }
+.pl-fold .ld-star { padding: 0 var(--s1); }
+/* the ✦ itself as the holders draw what a session made (holders.css .hd-ai) */
+.ld-star i { font-style: normal; color: var(--sun); }

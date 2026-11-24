@@ -10,6 +10,8 @@ const line = (o: Record<string, unknown> = {}) => JSON.stringify({ at: "2026-11-
 
 test("a line is kept only as the engine writes it", () => {
   assert.ok(parseLine(line(), T));
+  assert.deepEqual(parseLine(line({ props: { folder: "secret-client", dir: "abcdef012345" } }), T)!.props, { dir: "abcdef012345" }, "an older Sol's folder name is not kept (#1249)");
+  assert.doesNotMatch(readDay(line({ props: { folder: "secret-client", n: 1 } }) + "\n", T).kept.join("\n"), /secret-client/, "nor stored in the raw file");
   assert.ok(parseLine(line({ props: { n: 2, on: true, part: "things" } }), T));
   assert.equal(parseLine(line({ tester: "t_other00000" }), T), null, "another code's line");
   assert.equal(parseLine(line({ name: "a sentence" }), T), null);

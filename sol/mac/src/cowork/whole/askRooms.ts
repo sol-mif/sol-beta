@@ -8,14 +8,16 @@ type Timer = { set: (f: () => void, ms: number) => unknown; clear: (t: unknown) 
 // wrapped, not passed bare: a browser's setTimeout called as another object's method throws "Illegal invocation"
 const WINDOW_TIMER: Timer = { set: (f, ms) => setTimeout(f, ms), clear: (t) => clearTimeout(t as ReturnType<typeof setTimeout>) };
 
-/** keep asking for the rooms; `got` on each answer, `quiet` true while the engine is down or has not answered in `ms` */
-export function askRooms(L: Pick<Link, "on" | "onLink" | "send">, got: (r: Rooms) => void, quiet: (q: boolean) => void,
+/** keep asking for the rooms; `got` on each answer with whether I am on the team (team.state `onTeam`, #1541: true or
+ *  false, null while the engine still asks GitHub; a state that does not say is false), `quiet` true while the engine is
+ *  down or has not answered in `ms` */
+export function askRooms(L: Pick<Link, "on" | "onLink" | "send">, got: (r: Rooms, onTeam: boolean | null) => void, quiet: (q: boolean) => void,
   has: () => boolean, ms = QUIET_MS, timer: Timer = WINDOW_TIMER): () => void {
   let t: unknown;
   const stop = () => { if (t !== undefined) timer.clear(t); t = undefined; };
   const off = L.on((m: any) => {   // eslint-disable-line @typescript-eslint/no-explicit-any
     if (m?.type !== "team.state" || !Array.isArray(m.settings?.rooms)) return;
-    stop(); quiet(false); got(m.settings.rooms);
+    stop(); quiet(false); got(m.settings.rooms, m.onTeam === null ? null : m.onTeam === true);
   });
   const offLink = L.onLink((up) => {
     stop();

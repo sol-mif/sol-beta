@@ -853,3 +853,6 @@ svg.sol .eyes { transform-origin: 46px 47.5px; transition: transform .08s ease-o
 .lwspot .lwname.sure { color: #ffb084; }
 .lwheel.plain .lwarc { animation: none; }
 @media (prefers-reduced-motion: reduce) { .lwheel .lwarc { animation: none; } .lwheel .lwdrop, .lwheel .lwbig, .lwheel .lwsol, .lwspot .lwname { transition: none; } }
+
+/* the face Sol fell back to says so (#1822, faceBack.ts): one line along the bottom, above everything, clear of the header's controls; clicks pass through */
+.face-back { position: fixed; bottom: 0; left: 0; right: 0; z-index: 2147483000; padding: 6px 16px; background: var(--base-color, #1c1c1e); color: var(--warn); font-size: 12px; line-height: 1.4; border-top: 1px solid rgb(from var(--warn) r g b / .35); pointer-events: none; }

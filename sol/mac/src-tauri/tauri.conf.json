@@ -39,6 +39,11 @@
       "desktop": {
         "schemes": ["sol"]
       }
+    },
+    "updater": {
+      "endpoints": ["https://github.com/sol-mif/sol-beta/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQzM0E1Njk0MTY5OURBMUYKUldRZjJwa1dsRlk2UStYbkZLQ2xpZjNOc01XTjZwL05NbnoxQjc2cGdkYU04bTF4N2dtWjc4MmQK",
+      "requireSignedVersion": true
     }
   },
   "bundle": {

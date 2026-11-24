@@ -1,17 +1,18 @@
 // The people's pages (slices 8+9, #1615; merge/shell.js P2 and merge/people.js): the slot the shell mounts in #view on
-// a people page (cowork, group:<id>, first:<id>, social, friend:<name>, asfriend:<name>, link) and under Needs you
+// a people page (cowork, group:<id>, first:<id>, social, friend:<name>, asfriend:<name>, link, share:<friend>,
+// setup:<room code>) and under Needs you
 // (part "needs": the people's waits and cards below the canvas's asks, answerable there, P3). It hears the presses the
 // shell does not: an answer (data-said) goes through M.answer_wait or M.answer_card; a friend's "Also in" link switches
 // the setup first (data-s); the rest are the page's own toggles, as the mockup drew them. Links are data-act, the shell's.
 // Signed: marcocyl04-ux's agent, port slice 8+9 (#1615).
-import type { MouseEvent as RMouseEvent } from "react";
-import { M, S, hooks, useNext } from "../cv/index.ts";
+import type { KeyboardEvent, MouseEvent as RMouseEvent } from "react";
+import { M, MODE, S, act, hooks, useNext } from "../cv/index.ts";
 import type { SlotProps } from "../slots.ts";
 import { Face, Faces } from "./Face.tsx";
 import { KIND } from "./data.ts";
-import { NAV, items, me, parg, pk, st, team, toggleOpen, use, type Card, type Item } from "./queue.ts";
+import { NAV, items, live, me, notHere, parg, pk, st, team, toggleOpen, use, type Card, type Item } from "./queue.ts";
 import { First, GroupPage, Home } from "../cowork/Cowork.tsx";
-import { AsFriend, FriendPage, LinkPage, SocialPage } from "../social/Social.tsx";
+import { AsFriend, FriendPage, LinkPage, SetupPage, SharePage, SocialPage } from "../social/Social.tsx";
 import type { ExtOpen } from "./extra.ts";
 import "./people.css";
 import "../cowork/cowork.css";
@@ -24,7 +25,7 @@ function press(ev: RMouseEvent) {
     const it = s.closest<HTMLElement>("[data-pid]"), id = it?.dataset.pid, w = s.dataset.said ?? "Yes";
     if (id) {
       const r = (id.startsWith("w:") ? M.answer_wait : M.answer_card)(id, w);
-      if (r.ok) hooks.flash?.(/^later$/i.test(w) ? "Later: it stays in Needs you, last." : `You said “${w}”. Written in today’s page.`);
+      if (r.ok) hooks.flash?.(/^later$/i.test(w) ? "Later: it stays in Waiting on you, last." : `You said “${w}”. Written in the Diary.`);
     }
     return;
   }
@@ -32,6 +33,25 @@ function press(ev: RMouseEvent) {
   if (u && !team().groups.some((g) => `page:group:${g.id}` === u.dataset.act)) use({ s: u.dataset.s });
   const o = t.closest<HTMLElement>("[data-open]");
   if (o) { const c = o.closest<HTMLElement>(".fold2"); if (c?.dataset.pid) toggleOpen(c.dataset.pid); return; }
+  // live Social (BR1, cv/wire/social.ts): an ask by name, a grant's switch and the link change Isaac's Social itself
+  const ls = live.social;
+  if (ls) {
+    const add = t.closest<HTMLElement>("[data-add]");
+    if (add) {
+      const i = add.parentElement?.querySelector("input"), r = ls.add(i?.value ?? "") ?? "Asked";
+      hooks.flash?.(r); if (i && r.startsWith("Asked")) i.value = "";
+      return;
+    }
+    const g = t.closest<HTMLElement>(".gr[data-g]");
+    if (g && t.closest(".tog")) { const r = ls.grant(g.dataset.friend ?? "", g.dataset.g ?? ""); if (r) hooks.flash?.(r); return; }
+    const uf = t.closest<HTMLElement>("[data-unfriend]"), us = uf ? ls.unfriend(uf.dataset.unfriend ?? "") : null;
+    if (us) { hooks.flash?.(us); act("page:social"); ev.stopPropagation(); return; }
+    if (t.closest("[data-copy]")) {
+      const l = ls.link();
+      if (!l) { hooks.flash?.(ls.linkWhy()); ev.stopPropagation(); return; }
+      navigator.clipboard?.writeText(l).catch(() => {}); hooks.flash?.(`Link copied: ${l}. It works once, for one friend.`); return;
+    }
+  }
   const uu = t.closest<HTMLElement>(".usual .u");
   if (uu) { uu.classList.toggle("off"); uu.querySelector(".tog")?.classList.toggle("on"); }
   else t.closest(".tog")?.classList.toggle("on");
@@ -39,8 +59,19 @@ function press(ev: RMouseEvent) {
   if (pick) { pick.parentElement?.querySelectorAll(".pick").forEach((x) => x.classList.remove("on")); pick.classList.add("on"); }
   const sg = t.closest(".pseg button,.tpick span,.fchips span");
   if (sg) { sg.parentElement?.querySelectorAll(sg.tagName).forEach((x) => x.classList.remove("on")); sg.classList.add("on"); }
+  // live (BR1): a group's Invite is a real link (team.v3.join.link); any other line a press plays is the dev page's
+  // pretend unless the button says it is true here (data-real), so it says the press is not here yet instead
+  const inv = t.closest<HTMLElement>("[data-invite]");
+  if (MODE === "live" && inv) { if (!live.invite?.(inv.dataset.invite ?? "")) hooks.flash?.(notHere(inv.textContent ?? "")); return; }
   const d = t.closest<HTMLElement>("[data-t]");
-  if (d?.dataset.t) hooks.flash?.(d.dataset.t);
+  if (d?.dataset.t) hooks.flash?.(MODE === "live" && !("real" in d.dataset) ? notHere(d.textContent ?? "") : d.dataset.t);
+}
+
+/** live, Enter in a find-and-add box asks that name (the box with no Ask button, FX12) */
+function key(ev: KeyboardEvent<HTMLDivElement>) {
+  const i = ev.target as HTMLInputElement;
+  if (ev.key !== "Enter" || !live.social || !i.closest?.(".findadd") || i.tagName !== "INPUT" || !i.value.trim()) return;
+  const r = live.social.add(i.value) ?? "Asked"; hooks.flash?.(r); if (r.startsWith("Asked")) i.value = "";
 }
 
 /** the page, by S.page */
@@ -54,6 +85,8 @@ function Page() {
   if (k === "friend") return <FriendPage name={a} />;
   if (k === "asfriend") return <AsFriend name={a} />;
   if (k === "link") return <LinkPage />;
+  if (k === "share") return <SharePage key={a} name={a} />;
+  if (k === "setup") return <SetupPage key={a} code={a} />;
   return null;
 }
 
@@ -65,14 +98,14 @@ const noOf = (c: Card) => c.fold ? null : ({ help: "Not this time", invite: "Dec
 const ring = (id: string) => (st().focus === id ? " pfocus" : "");
 
 /** Needs you: the people's waits and cards under the canvas's asks, answerable there (P3) */
-function Needs() {
+function Needs({ top }: { top?: boolean }) {   // top: the extra askers alone, drawn above the canvas's asks (slice 6b, docs/port/requests/seats.md)
   useNext(() => 0);
   const all: Item[] = items(), ex = all.filter((x): x is ExtOpen => x.type === "ext"), o = all.filter((x): x is Exclude<Item, ExtOpen> => x.type !== "ext");
   if (!all.length) return null;
   return (<>
     {/* round 6: the extra askers (a blocked AI, a move-in item left by Skip) stand at the top, each drawn by its own row */}
-    {ex.length ? <section className="pplneeds ppl r6needs" data-people-needs="">{ex.map((x) => <div key={x.id} data-pid={x.id}>{x.ext.row?.(x, st().focus === x.id) ?? null}</div>)}</section> : null}
-    {o.length ? <section className="pplneeds ppl" data-people-needs="">
+    {top && ex.length ? <section className="pplneeds ppl r6needs" data-people-needs="">{ex.map((x) => <div key={x.id} data-pid={x.id}>{x.ext.row?.(x, st().focus === x.id) ?? null}</div>)}</section> : null}
+    {!top && o.length ? <section className="pplneeds ppl" data-people-needs="">
       <h2>From people <small>{o.length} · Cowork and Social</small></h2>
       {o.map((x) => {
         if (x.type === "wait") {
@@ -94,5 +127,5 @@ function Needs() {
 
 export default function People({ part }: SlotProps) {
   useNext(() => 0);
-  return <div className="ppl-host" onClick={press}>{part === "needs" ? (!S.page && S.dist === "needs" ? <Needs /> : null) : <Page />}</div>;
+  return <div className="ppl-host" onClick={press} onKeyDown={key}>{part === "needs" || part === "extra" ? (!S.page && S.dist === "needs" ? <Needs top={part === "extra"} /> : null) : <Page />}</div>;
 }

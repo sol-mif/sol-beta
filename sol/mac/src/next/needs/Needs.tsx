@@ -6,6 +6,7 @@ import { D, above, open, regionOf, useNext } from "../cv/index.ts";
 import { reason } from "./rank.ts";
 import { Kbd, Row } from "./Row.tsx";
 import { Offer } from "./Offer.tsx";
+import { Slot } from "../slots.ts";
 
 export function Needs() {
   const o = useNext(() => open());
@@ -14,8 +15,9 @@ export function Needs() {
     : "Nothing needs you. Your AIs keep working; anything new lands here first.";
   return (
     <div className="nd-page">
-      <h1 className="nd-h1" data-m1="what">Needs you</h1>
+      <h1 className="nd-h1" data-m1="what">Waiting on you</h1>
       <p className="nd-say" data-m1="needs">{head}</p>
+      <Slot name="people" part="extra" />{/* round 6/7: the extra askers stand first (a blocked AI's seat, a joined blocker; slices 6b and R7, requests/seats.md and lead.md) */}
       {o.length ? <div className="nd-hint" data-m1="next"><Kbd k="⌘J" /> next ask, from anywhere · <Kbd k="⌘↩" /> yes · <Kbd k="⌘⌫" /> later · <Kbd k="⌘⇧H" /> too much</div> : null}
       {o.map((a, i) => {
         const r = reason(D, a), rid = D.pieces[a.piece]?.region, reg = regionOf(rid);

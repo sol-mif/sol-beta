@@ -1,0 +1,119 @@
+/* Pieces by hand (BR1, #1615; mine/look/br1/pieces.html): the Diary's handle and corner, its spine, a folder's tab, a
+   session's chip, the ⋯ button and its menu. Every space, size, height and corner is the scale's, every colour, shadow
+   and curve the next set's. Signed: marcocyl04-ux's agent, the port's BR1 pieces (#1615). */
+
+/* the ⋯ button: on every piece, shown on hover or focus (always on a touch screen); a folder's at rest, on its tab (A9) */
+.nx .pc-more { display: inline-grid; place-items: center; flex: none; width: var(--s6); height: var(--s6); padding: 0; border-radius: var(--r-chip); background: none; color: var(--ink2);
+  font-size: var(--t-read); line-height: var(--t-read-line); cursor: pointer; transition: background var(--d-turn) var(--e-arrive), opacity var(--d-turn) var(--e-arrive); }
+.nx .pc-more:hover, .nx .pc-more[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
+.nx .pc-more:focus-visible, .nx .pc-grip:focus-visible, .nx .pc-fold:focus-visible, .nx .sp-main:focus-visible, .nx .pc-rs:focus-visible, .pc-mi:focus-visible, .pc-seg:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+@media (hover: hover) {
+  .pl-piece > .pc-more, .pl-lab .pc-more { opacity: 0; }
+  .pl-piece:hover > .pc-more, .pl-piece:focus-within > .pc-more, .pl-piece > .pc-more[aria-expanded="true"],
+  .pl-area:hover .pl-lab .pc-more, .pl-lab:focus-within .pc-more, .pl-lab .pc-more[aria-expanded="true"] { opacity: 1; }
+  /* the calm screen (BR1 item 3, #1615): a piece at rest shows its first press only (Yes, Open it, the switch); its other
+     presses (Pause, Stop, Later, Chat, Change) and its ⋯ come on hover or focus (Middle always holds a selection, so
+     a selected piece is not reason enough), and stay unpressable while
+     unseen. The Diary's grip, fold, ⋯ and corner come the same way, while the pointer is on today's page or on them */
+  .pl-piece > .pc-more { opacity: 0; pointer-events: none; }
+  .pl-piece .pl-run .pl-btn, .pl-piece .pl-ask .pl-btn:not(.pl-pri), .pl-piece .au-tx { opacity: 0; pointer-events: none; transition: opacity var(--d-turn) var(--e-arrive); }
+  .pl-piece:is(:hover, :focus-within) > .pc-more, .pl-piece > .pc-more[aria-expanded="true"],
+  .pl-piece:is(:hover, :focus-within) .pl-run .pl-btn, .pl-piece:is(:hover, :focus-within) .pl-ask .pl-btn:not(.pl-pri),
+  .pl-piece:is(:hover, :focus-within) .au-tx { opacity: 1; pointer-events: auto; }
+  /* an automation that does not need you keeps its switch and Run now for the hover too (its "On" or "Paused" stays) */
+  .pl-piece .au:not([data-state="needs you"]) :is(.au-switch, .au-btn) { opacity: 0; pointer-events: none; transition: opacity var(--d-turn) var(--e-arrive); }
+  .pl-piece:is(:hover, :focus-within) .au :is(.au-switch, .au-btn) { opacity: 1; pointer-events: auto; }
+  /* shown, its presses take room: the piece lets go of its height and lifts over what is under it, so nothing in it is cut */
+  .pl-piece:is(:hover, :focus-within) { max-height: none !important; z-index: var(--z-lift); }
+}
+/* the Diary's handles (its grip, fold, ⋯ and corner) stay at rest, as pieces.html draws them: a piece shows how the hand
+   moves it (BR1 23+Q4, builder G; they were shown only on pointing, the calm round) */
+/* more asks on screen than it holds presses for: they gather into Middle's one line (Gather.tsx) and each piece drops its
+   first press too, until it is pointed at or focused */
+.pl-gathered .pl-piece .pl-ask .pl-pri { opacity: 0; pointer-events: none; transition: opacity var(--d-turn) var(--e-arrive); }
+.pl-gathered .pl-piece:is(:hover, :focus-within) .pl-ask .pl-pri { opacity: 1; pointer-events: auto; }
+/* a folder's ⋯ sits on its tab after what is yours, quiet at rest and full under the hand: the corner is the raise's pip,
+   the side the contents card and below it the raise, so nothing the hover opens ever covers it; the piece's ⋯ chip, since the tab's paper is narrower than what it holds (A9) */
+.fo-tab > .pc-more { width: var(--s6); height: var(--s4); line-height: var(--s4); margin-left: var(--s1); color: var(--ink3); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.fo:is(:hover, :focus-within) .fo-tab > .pc-more { color: var(--ink); }
+/* on a session's face: its top right corner */
+.pl-piece > .pc-more { position: absolute; right: var(--s1); top: var(--s1); z-index: var(--z-lift); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.pl-lab .pc-more { margin-left: var(--s1); pointer-events: auto; }
+
+/* the menu: a small card in place */
+.pc-menu { width: 232px; padding: var(--s1); border-radius: var(--r-card); background: var(--card); box-sizing: border-box;
+  box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); animation: pc-in var(--d-glass) var(--e-reveal) both; }
+.pc-menu[data-side="above"] { animation-name: pc-in-up; }
+@keyframes pc-in { from { opacity: 0; transform: translateY(calc(var(--s1) * -1)); } to { opacity: 1; transform: none; } }
+@keyframes pc-in-up { from { opacity: 0; transform: translateY(var(--s1)); } to { opacity: 1; transform: none; } }
+.pc-mh { padding: var(--s1) var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--ink3); overflow-wrap: break-word; }
+.nx .pc-mi { display: flex; align-items: center; justify-content: space-between; width: 100%; height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-row); background: none;
+  font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); text-align: left; cursor: pointer; }
+.nx .pc-mi:hover:not(:disabled) { background: var(--hover); }
+.nx .pc-mi:disabled { color: var(--ink3); cursor: default; }
+.pc-sep { height: 1px; margin: var(--s1) var(--s2); background: var(--line); }
+/* the Diary's What feeds it: what it writes down, a line each, words to read and not presses */
+.pc-feed { padding: var(--s1) var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); overflow-wrap: break-word; }
+.pc-feed-no { color: var(--ink3); }
+.pc-mi small, .pc-show small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.pc-show { display: flex; align-items: center; gap: var(--s1); padding: var(--s1) var(--s2); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink2); }
+.pc-show > span { margin-right: auto; }
+.nx .pc-seg { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-chip); background: var(--hover); font-size: var(--t-pill); line-height: var(--t-pill-line); color: var(--ink); cursor: pointer; }
+.nx .pc-seg[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.nx .pc-seg:disabled { background: none; color: var(--ink4); cursor: default; }
+
+/* the Diary open: its handles inside its own top strip (pieces.html, BR1 conform 23): a bar at the top's middle to move
+   it, fold and ⋯ as chips at its top right, and a corner to pull; plane.css .pl-diary .dy leaves the strip room */
+.pc-dyhd { position: absolute; z-index: var(--z-lift); display: flex; justify-content: flex-end; align-items: center; gap: var(--s1); height: var(--s6); padding: 0 var(--s2); box-sizing: border-box; transform: translateY(var(--s2)); pointer-events: none; }
+.pc-dyhd > * { pointer-events: auto; }
+.nx .pc-dyhd > .pc-grip { position: absolute; left: 50%; top: calc(var(--s2) * -1); width: var(--s8); height: var(--s4); transform: translateX(-50%); }
+.pc-grip > .pc-bar { display: block; width: var(--s6); height: var(--s1); border-radius: var(--r-pill); background: var(--ink4); }
+.pc-grip:hover > .pc-bar { background: var(--ink2); }
+.nx .pc-dyhd > .pc-fold, .nx .pc-dyhd > .pc-more { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); }
+.nx .pc-grip, .nx .pc-fold { display: inline-grid; place-items: center; width: var(--s6); height: var(--s6); padding: 0; border-radius: var(--r-chip); background: none; color: var(--ink3);
+  font-size: var(--t-head); line-height: var(--t-head-line); cursor: grab; }
+.nx .pc-fold { cursor: pointer; }
+.nx .pc-grip:hover, .nx .pc-fold:hover { background: var(--hover); color: var(--ink); }
+/* the corner as pieces.html's .rz: an L in the corner, a little in from the edge */
+.nx .pc-rs { position: absolute; z-index: var(--z-lift); width: var(--s4); height: var(--s4); padding: 0; transform: translate(calc(-100% - var(--s1)), calc(-100% - var(--s1))); border: 0; border-right: 2px solid var(--ink4); border-bottom: 2px solid var(--ink4); border-radius: 0 0 var(--r-chip) 0; background: none; cursor: nwse-resize; }
+.nx .pc-rs:hover { border-color: var(--ink2); }
+
+/* the Diary folded: the spine, one line with a dark binding */
+.pc-spine { position: absolute; z-index: var(--z-lift); display: flex; align-items: center; gap: var(--s1); height: calc(var(--s12) - var(--s1)); padding-right: var(--s1); box-sizing: border-box;
+  border-radius: var(--r-row); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); overflow: hidden; }
+.sp-bind { flex: none; align-self: stretch; width: var(--s3); background: var(--ink); border-radius: var(--r-row) 0 0 var(--r-row); }
+.nx .sp-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s4); height: 100%; padding: 0 var(--s2); background: none; text-align: left; cursor: pointer;
+  font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink2); white-space: nowrap; overflow: hidden; }
+.sp-day { flex: none; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 700; color: var(--ink); }
+.sp-next, .sp-last { min-width: 0; overflow-wrap: break-word; }
+.sp-next { flex: 0 1 auto; color: var(--ink); }
+.sp-last { flex: 1 1 0; }
+.sp-next i, .sp-last i { margin-right: var(--s1); font-style: normal; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; }
+.sp-asks { flex: none; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--asks); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 700; }
+
+/* a folder folded: its tab, the name and a status dot */
+.pl-card.fo-folded { display: flex; flex-direction: row; align-items: center; gap: var(--s2); height: calc(var(--s8) + 1px + 1px) !important; padding: 0 var(--s1) 0 var(--s3); box-sizing: border-box; overflow: hidden;
+  border-radius: var(--r-row) var(--r-card) var(--r-chip) var(--r-chip); background: var(--tint); box-shadow: var(--shadow); cursor: pointer; }
+.fo-folded .fo-tn { flex: 1; min-width: 0; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; color: var(--ink); overflow-wrap: break-word; }
+.fo-folded > .pc-more { position: static; opacity: 1; }
+/* My day's "+N" (narrow.html .ftab.more): the folders the row does not hold, a plain tab */
+.pl-card.fo-daymore { justify-content: center; padding: 0 var(--s2); background: var(--side); color: var(--ink2); font-size: var(--t-body); font-weight: 500; border: 0; }
+.fo-d.fo-asks { background: var(--asks); }
+.fo-d.fo-bad { background: var(--bad); }
+.fo-d.fo-good { background: var(--good); }
+.fo-d.fo-run { background: var(--run); }
+.fo-d.fo-quiet { display: inline-block; background: var(--ink4); }
+.pl-area.pc-tabbed { background: none; box-shadow: none; }
+.pl-area.pc-tabbed::before { display: none; }
+
+/* a session folded: a chip, its folder's mark and its task */
+.pl-fold.pl-schip { gap: calc(var(--s1) * 1.5); width: auto; max-width: 280px; height: calc(var(--s8) + 1px + 1px); padding: 0 var(--s1) 0 var(--s3); border-radius: var(--r-pill); }
+.pc-ct { min-width: 0; font-weight: 600; color: var(--ink); overflow-wrap: break-word; }
+.pl-schip > .pc-more { width: var(--s6); height: var(--s6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-menu { animation: none; }
+  .nx .pc-more { transition: none; }
+}
+/* a folder's Put in a folder (BR1 item 5): the folders it can go in, scrolled past eight */
+.pc-put { max-height: calc(8 * var(--h-row)); overflow-y: auto; }

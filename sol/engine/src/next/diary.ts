@@ -16,10 +16,12 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { nextDir, readJson, writeJson } from "./file.js";
 
-export type Line = { id: string; at: number; who: "person"; words: string; region: string | null; embed: unknown; via: string | null };
+/** a line the person wrote, or one Sol wrote for a session (who "sol"), which carries its because: the keys of the facts
+ *  in next.known it acted on (one store, #1615); a line Sol writes without one is refused */
+export type Line = { id: string; at: number; who: "person" | "sol"; words: string; region: string | null; embed: unknown; via: string | null; session?: string; because?: string[] };
 export type Pause = { from: number; to?: number; skipped: number };
 type Ev =
-  | { ev: "write"; id: string; at: number; words: string; region?: string; embed?: unknown; via?: string }
+  | { ev: "write"; id: string; at: number; words: string; region?: string; embed?: unknown; via?: string; who?: "sol"; session?: string; because?: string[] }
   | { ev: "remove" | "back"; line: string; at: number };
 
 export const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,7 +50,8 @@ function events(home: string, day: string): Ev[] {
 export function readDay(home: string, day: string): Line[] {
   const lines = new Map<string, Line>(), gone = new Set<string>();
   for (const e of events(home, day)) {
-    if (e.ev === "write") lines.set(e.id, { id: e.id, at: e.at, who: "person", words: e.words, region: e.region ?? null, embed: e.embed ?? null, via: e.via ?? null });
+    if (e.ev === "write") lines.set(e.id, { id: e.id, at: e.at, who: e.who === "sol" ? "sol" : "person", words: e.words, region: e.region ?? null, embed: e.embed ?? null, via: e.via ?? null,
+      ...(e.who === "sol" && e.session ? { session: e.session } : {}), ...(e.who === "sol" && e.because?.length ? { because: e.because } : {}) });
     else if (e.ev === "remove") gone.add(e.line);
     else gone.delete(e.line);
   }
@@ -71,9 +74,12 @@ const small = (v: unknown, max: number) => { try { const s = JSON.stringify(v); 
 
 export type Done = { ok: true; day: string; id?: string; skipped?: true } | { ok: false; why: string };
 
-/** next.diary.write: one line appended to today's page */
-export function writeLine(home: string, m: unknown, now = new Date()): Done {
+export const NO_LINE_BECAUSE = "a line Sol writes for a session carries its because: the keys of the facts it acted on";
+/** next.diary.write: one line appended to today's page; `sol` (the engine's, never the window's): a line Sol writes for a
+ *  session, with the because the caller checked against what Sol knows (you-known.ts becauseFor) */
+export function writeLine(home: string, m: unknown, now = new Date(), sol?: { session: string; because: string[] | null }): Done {
   const x = (m && typeof m === "object" ? m : {}) as Record<string, unknown>;
+  if (sol && !sol.because?.length) return { ok: false, why: NO_LINE_BECAUSE };
   const words = typeof x.words === "string" ? x.words.trim() : "";
   if (!words) return { ok: false, why: "a line needs its words" };
   if (words.length > MAX_WORDS) return { ok: false, why: "a line of the diary holds 4000 characters" };
@@ -90,6 +96,7 @@ export function writeLine(home: string, m: unknown, now = new Date()): Done {
     ...(typeof x.region === "string" && x.region && x.region.length <= 300 ? { region: x.region } : {}),
     ...(x.embed !== undefined && x.embed !== null && small(x.embed, 2000) ? { embed: x.embed } : {}),
     ...(via ? { via } : {}),
+    ...(sol ? { who: "sol" as const, session: sol.session.slice(0, 120), because: sol.because!.slice(0, 40) } : {}),
   });
   return { ok: true, day, id };
 }

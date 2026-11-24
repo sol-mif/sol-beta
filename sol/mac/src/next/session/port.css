@@ -1,0 +1,45 @@
+/* The session's page, ported (session/Port.tsx, #1615): the old face's session view (work.css) fills the tab's view; only
+   what the port adds is styled here: its head (the way back, the task, the rail), the table beside the talk.
+   Signed: marcocyl04-ux's agent (builder P), BR1 (#1615). */
+.sport { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; color: var(--ink); }
+/* the old view reads the old face's token names (tokens.css, a dark glass); on the new face they are its own light set, so the
+   ported parts draw in the same paper and ink as the rest (kit/next.css; --ink, --line, --r and --side are already its) */
+.sport { color-scheme: light; --base-color: var(--card); --on: var(--ink); --dim: var(--ink2); --mute: var(--ink3); --edge: var(--line); --raised: var(--hover);
+  --surface: var(--card); --island: var(--card); --pop: var(--card); --pop-shadow: var(--shadow-up); --page: var(--paper); --base: var(--paper); }
+/* the permission chip wrote white on its dark glass (face.css .picker .wchip.leash); on paper it is ink */
+.sport .picker .wchip.leash.default { color: var(--ink2); text-shadow: none; }
+.sport.sport-compact { position: relative; inset: auto; height: 100%; }
+.sport > .face { flex: 1; min-height: 0; height: auto; display: flex; flex-direction: column; }
+.sport .face > .shell { position: relative; flex: 1; min-height: 0; display: flex; }
+.sport-bar { flex: none; display: flex; align-items: center; gap: var(--s2); min-height: var(--s12); padding: 0 var(--s4) 0 var(--s3); color: var(--dim); font-size: var(--t-label); user-select: none; border-bottom: 1px solid var(--line); }
+.sport-gap { flex: 1; align-self: stretch; }
+.sport-bar .barsep { flex: none; width: 1px; height: var(--s4); background: var(--line); }
+.sport .sport-bar .wtitle { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.sport .sport-bar .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.sport-back { flex: none; display: inline-flex; align-items: center; gap: var(--s1); padding: var(--s1) var(--s2); background: none; border: 1px solid var(--line); border-radius: var(--r); color: var(--ink); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.sport-back:hover { background: var(--raised); }
+.sport-back svg { width: var(--s4); height: var(--s4); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sport-tb { flex: none; padding: var(--s1) var(--s2); background: none; border: 1px solid transparent; border-radius: var(--r); color: var(--dim); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.sport-tb:hover, .sport-tb.on { color: var(--ink); border-color: var(--line); }
+.sport-table { flex: none; width: 300px; min-height: 0; overflow: auto; border-left: 1px solid var(--line); }
+.sport-asks { padding: var(--s3) var(--s4) 0; }
+.sport-none { padding: var(--s6); color: var(--dim); }
+.sport-bar .barbtn svg { width: var(--s4); height: var(--s4); }
+/* one box at a time (BR1 inside.html §1, "never a second bar"): on a session's own page the ported view's box is the
+   one, so the canvas's pill steps aside, as it does for Settings; kept beside the canvas, the port draws no box of its
+   own while the pill talks to it (a split job's open part, which the pill does not address, keeps its box) */
+.nx:has(.sport:not(.sport-compact)) :is(.nx-talk, #bar) { display: none; }   /* and the canvas's bar: a new session's tab is a starter, which bar/here.ts does not count as a session */
+/* the talk's pieces made of several spans, styled only in the stage's room (stage/space.css .st-room.whole .st-talk), so in
+   the tab their words ran together: "Room madenothing is lost", "1 file1 did not work, it went onshow" (BR1 gate 4) */
+.sport .wsum { appearance: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s3); width: 100%; padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-s);
+  background: none; color: var(--ink); font: inherit; font-size: var(--t-body); line-height: var(--t-body-line); text-align: left; cursor: pointer; }
+.sport .wsum:hover { background: var(--hover); }
+.sport .wsum-t { flex: 1 1 60%; min-width: 0; }
+.sport .wsum-bad, .sport .wsum-n { flex: none; font-size: var(--t-pill); color: var(--mute); }
+.sport .wsum:hover .wsum-n { color: var(--ink); }
+.sport .wpack { display: flex; justify-content: center; margin: var(--s3) 0; }
+.sport .wpack-in { display: inline-flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s3); border-radius: var(--pill); background: var(--hover); color: var(--dim); font-size: var(--t-pill); line-height: var(--t-body-line); white-space: nowrap; }
+.sport .wpack-in b { font-weight: 500; color: var(--ink); }
+.sport .wpack-in i { width: var(--s2); height: var(--s2); border-radius: var(--pill); background: var(--ink); }
+.sport .matts { display: block; margin-top: var(--s1); font-size: var(--t-pill); line-height: var(--t-pill-line); color: var(--mute); }
+.sport .wsent-on { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--mute); overflow: hidden; white-space: nowrap; }

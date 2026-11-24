@@ -1,0 +1,87 @@
+/* The sun is still rising (road.js): where Sol is going, as the sun's path. One path from the horizon; the jelly is
+   the sun on it, lit behind (today: customizable, convenient), dotted ahead (next: personalizable), and it never gets
+   to the top. Under the horizon, the ground all three stand on. The section starts and ends on the page's night
+   ground (style.css --bg) so the ending can begin there.
+   Two shapes, chosen by road.js from the section's size: "arc" (wide screens: one arc across the screen, the words
+   beside the stops) and "climb" (narrow screens: the path climbs the left edge, the words to its right). */
+#road.road { --on: 239 234 226; --jx: 50%; --jy: 60%; --warm: 0;
+  position: relative; height: 100vh; height: 100svh; min-height: 820px; overflow: hidden; background: var(--bg); color: var(--ink); }
+#road.road.climb { height: auto; min-height: max(100svh, 860px); }
+
+/* the light: a warm breath around the sun, a dawn band on the horizon, night below it */
+.road-sky { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(min(560px, 80vw) min(440px, 60vw) at var(--jx) var(--jy), rgba(251,113,41, calc(.2 * var(--warm))), rgba(255,72,136, calc(.07 * var(--warm))) 55%, transparent 75%); }
+.road-band { position: absolute; left: 0; right: 0; height: 200px; pointer-events: none; opacity: calc(.4 + .6 * var(--warm));
+  background: linear-gradient(to bottom, transparent, rgba(255,72,136,.04) 50%, rgba(251,113,41,.16)); }
+.road-floor { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; background: linear-gradient(#070505, var(--bg) 45%); }
+
+.road-path { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.road-path path { fill: none; stroke-linecap: round; }
+.road-path .done { stroke-width: 3; }
+.road-path .glow { stroke-width: 10; opacity: .5; }
+.road-path .ahead { stroke: rgb(var(--on) / .36); stroke-width: 2; stroke-dasharray: .1 9; animation: road-flow 3.2s linear infinite; }
+@keyframes road-flow { to { stroke-dashoffset: -9.1; } }
+.road-path .hz { stroke: rgb(var(--on) / .14); stroke-width: 1; }
+
+.road-head { position: absolute; z-index: 3; left: 6%; top: 96px; max-width: 46%; }
+.road-head h2 { margin: 0; font-size: clamp(36px, 3.9vw, 60px); letter-spacing: -.045em; font-weight: 650; line-height: 1; }
+.road-head p { margin: 16px 0 0; color: var(--dim); font-size: 17px; line-height: 1.45; max-width: 420px; }
+
+/* a stop: a bead on the path, its words beside it (road.js places both) */
+.road-stop { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; }
+.road-stop > i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg); box-shadow: inset 0 0 0 1.5px rgb(var(--on) / .3);
+  transition: background .4s, box-shadow .4s, transform .5s var(--spring); }
+.road-stop.on > i { background: var(--c); box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px color-mix(in srgb, var(--c) 60%, transparent), 0 0 22px var(--c); transform: scale(1.1); }
+.road-stop > div { position: absolute; left: 0; top: 0; width: 250px; display: flex; flex-direction: column; gap: 4px; translate: var(--tx) var(--ty);
+  opacity: 0; transition: opacity .5s; }
+.road-stop > div.l { text-align: right; align-items: flex-end; }
+.road-stop.on > div, .road-stop.next.seen > div { opacity: 1; }
+.road-stop.on > div { animation: road-pop .7s var(--spring); }
+@keyframes road-pop { from { translate: var(--tx) calc(var(--ty) + 10px); } }
+.road-stop h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.025em; line-height: 1.1; }
+.road-stop em { font-style: normal; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; border: 1px solid rgba(239,234,226,.32); color: var(--pearl);
+  background: rgba(239,234,226,.05); width: fit-content; white-space: nowrap; }
+.road-stop p { margin: 2px 0 0; color: var(--dim); font-size: 14.5px; line-height: 1.4; }
+.road-stop.next > i { background: var(--bg); box-shadow: none; outline: 1.5px dashed rgba(251,113,41,.75); transform: scale(1.25); }
+.road-stop.next.seen > i { animation: road-wait 2.4s ease-in-out infinite; }
+@keyframes road-wait { 50% { outline-color: rgba(244,200,42,.95); transform: scale(1.45); } }
+.road-stop.next em { border: 1px dashed rgba(251,113,41,.6); color: #fbb37d; background: rgba(251,113,41,.06); }
+
+/* the sun: the jelly on the path, "now" above it */
+.road-sun { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; pointer-events: none; }
+.road-jelly { position: absolute; left: calc(var(--js, 120px) / -2); top: calc(var(--js, 120px) / -2); width: var(--js, 120px); height: var(--js, 120px);
+  display: flex; align-items: center; justify-content: center; }
+.road-sun b { position: absolute; left: 0; top: calc(var(--js, 120px) * -.5 - 34px); translate: -50% 0; font-size: 12px; font-weight: 500; letter-spacing: .02em; padding: 3px 10px;
+  border-radius: 999px; color: #111; background: var(--nacre); opacity: 0; transition: opacity .5s; white-space: nowrap; }
+.road.here .road-sun b { opacity: 1; }
+
+/* the ground under the horizon */
+.road-ground { position: absolute; left: 0; right: 0; z-index: 2; text-align: center; padding: 0 6%; }
+.road-ground h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+.road-ground p { margin: 6px auto 0; color: var(--dim); font-size: 15.5px; max-width: 640px; }
+.road-ground i { display: block; width: 64px; height: 3px; margin: 0 auto 14px; border-radius: 3px; background: var(--jelly); opacity: .9; }
+
+/* climb: the path up the left edge, the words to its right, "now" beside the sun */
+.road.climb .road-head { top: 76px; left: 24px; right: 24px; max-width: none; padding-right: 0; }
+.road.climb .road-head h2 { font-size: clamp(32px, 6vw, 48px); }
+.road.climb .road-head p { font-size: 16px; max-width: 520px; }
+.road.climb .road-stop > div { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.road.climb .road-stop h3 { font-size: 20px; }
+.road.climb .road-stop p { flex-basis: 100%; }
+.road.climb .road-stop p { font-size: 14px; }
+.road.climb .road-sun b { top: -12px; left: calc(var(--js) * .5 + 6px); translate: 0 0; }
+.road.climb .road-ground { text-align: left; padding: 0 24px; }
+.road.climb .road-ground p { margin-left: 0; font-size: 15px; }
+.road.climb .road-ground i { margin-left: 0; }
+
+@media (min-width: 520px) and (max-width: 899px) {
+  .road.climb .road-head { left: 6%; right: 6%; }
+  .road.climb .road-stop h3 { font-size: 24px; }
+  .road.climb .road-stop p { font-size: 16px; }
+  .road.climb .road-ground { padding: 0 6%; }
+}
+
+/* reduced motion: the finished picture, nothing moving */
+@media (prefers-reduced-motion: reduce) {
+  .road *, .road *::before { transition: none !important; animation: none !important; }
+}

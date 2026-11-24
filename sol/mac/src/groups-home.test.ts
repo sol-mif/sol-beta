@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { agoOf, opensShell, STAGE, stageOf, stageWith, tablesOf, talkRows, titleOf, type HomeIn } from "./cowork/groups/view.ts";
+import { agoOf, levelOf, LEVELS, opensShell, roomLevelOf, STAGE, stageOf, stageWith, tablesOf, talkRows, titleOf, type HomeIn } from "./cowork/groups/view.ts";
 
 const NOW = Date.parse("2026-11-18T20:00:00Z");
 const base: HomeIn = {
@@ -62,11 +62,21 @@ test("a table with nobody read is me alone; more than four are counted", () => {
   assert.deepEqual(t[1].seats.map((s) => s.login), ["frank"]);
 });
 
-test("the way in: the team's shell for a Sol on the team or in concept, the groups home for everyone else", () => {
-  assert.equal(opensShell([{ org: "sol-mif" }], "complete"), false, "a table in a GitHub org is anyone's: not the team's pages (gate one q1)");
-  assert.equal(opensShell([{ org: "" }], "concept"), true);
-  assert.equal(opensShell([{ org: "" }, {}], "complete"), false);
+test("the way in (#1541): the team's shell for the team's checkout or GitHub's yes for the team's own org, never a typed org", () => {
+  assert.equal(opensShell(false, "complete"), false, "a table in a GitHub org is anyone's: not the team's pages (gate one q1)");
+  assert.equal(opensShell(true, "complete"), true, "GitHub says this sign-in is a member of the team's own org");
+  assert.equal(opensShell(false, "concept"), true);
+  assert.equal(opensShell(null, "complete"), false);
   assert.equal(opensShell(undefined, null), false);
+});
+
+test("a table's level is its room's own (#1541): absent is asks first, asks first keeps nothing", () => {
+  assert.equal(levelOf(undefined), "asks first");
+  assert.equal(levelOf("bypassPermissions"), "asks first");   // a machine's Work mode is no table's level
+  assert.equal(levelOf("tells"), "does, then tells");
+  assert.equal(levelOf("does"), "just does");
+  for (const l of LEVELS) assert.equal(levelOf(roomLevelOf(l)), l);
+  assert.equal(roomLevelOf("asks first"), undefined);
 });
 
 test("gate one q3: a table's stage is its real hand-overs, newest first, said plainly; none means an empty stage", () => {

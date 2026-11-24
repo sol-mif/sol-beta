@@ -10,7 +10,10 @@
 //             by the beta night's backup (`betaBackup`, #478), from that night's handover hour on. An edited comment
 //             signs nothing, whoever wrote it
 //   a day     the tag was made on an earlier day (in the rhythm's zone) and at least 20 hours ago: the 9am of the day
-//             after, with slack for the timer and for the 23-hour day when the clocks go forward
+//             after, with slack for the timer and for the 23-hour day when the clocks go forward. One exception, once
+//             (#1615, Frank's word, 2026-11-23): `.sol/rhythm.json`'s `betaSameDay` names one day in the rhythm's zone,
+//             and a release made on that day may pass on that same day (sameDayOnce). It waives nothing else, nothing
+//             on any other day, and nothing for a release made on another day; it ends by itself at that midnight
 //   not broke no merged change the release holds wears `broke` (#421, broke.ts brokenIn; GitHub not answering refuses)
 //   forward   `stable` as it is now is in the release's history: it only moves forward
 // A pass numbers the release too (#1300): the tag v<N> on the same commit as its dev-* tag, N one more than the highest
@@ -90,13 +93,22 @@ export function aDayOld(made: number, now: Date, zone = ""): boolean {
   return !!made && clockIn(new Date(made), zone).day < clockIn(now, zone).day && now.getTime() - made >= MIN_AGE;
 }
 
+/** the one-time exception to "a day" (pure, #1615): the rhythm names a day (`betaSameDay`, read only from
+ *  `.sol/rhythm.json`) and the release was made on that day and it is still that day, both in the rhythm's zone. No
+ *  zone, no exception: the day would be each machine's own */
+export function sameDayOnce(made: number, now: Date, r: Pick<Rhythm, "zone" | "betaSameDay">): boolean {
+  const day = r.betaSameDay;
+  if (!day || !r.zone || !made || made > now.getTime()) return false;
+  return clockIn(new Date(made), r.zone).day === day && clockIn(now, r.zone).day === day;
+}
+
 /** why a dev release may not go to beta now, or null when it may (pure; the list at the top of this file) */
-export function passRule(a: { tag: string; made: number; verdict?: Verdict; broken: { number: number }[]; now: Date; rhythm: Pick<Rhythm, "beta" | "zone"> }): string | null {
+export function passRule(a: { tag: string; made: number; verdict?: Verdict; broken: { number: number }[]; now: Date; rhythm: Pick<Rhythm, "beta" | "zone" | "betaSameDay"> }): string | null {
   if (!DEV_TAG.test(a.tag)) return `only a whole dev release goes to beta, and ${a.tag || "that"} is not one (a dev-* tag)`;
   const v = a.verdict;
   if (!v || v.at < a.made) return `${a.tag} has no pass from the beta reviewer (${a.rhythm.beta.join(" or ") || "nobody is named"}) written after it was made`;
   if (v.verdict === "hold") return `${a.tag} was held by ${v.by}: it stays off beta`;
-  if (!aDayOld(a.made, a.now, a.rhythm.zone)) return `${a.tag} is not a day old yet: it goes to beta at the release hour of the day after it was made`;
+  if (!aDayOld(a.made, a.now, a.rhythm.zone) && !sameDayOnce(a.made, a.now, a.rhythm)) return `${a.tag} is not a day old yet: it goes to beta at the release hour of the day after it was made`;
   if (a.broken.length) return `${a.tag} holds ${a.broken.map((b) => `#${b.number}`).join(", ")}, marked broke: it stays off beta until the label comes off`;
   return null;
 }

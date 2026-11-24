@@ -1,7 +1,7 @@
 // The app's own commands get permissions (an ACL manifest) so the pages may call them when they are served by Vite
 // (mutable mode, http://localhost:1420): Tauri refuses custom commands from a non-bundled origin unless a capability
 // with a `remote` URL allows them. Once a manifest exists the bundled pages need them listed too (capabilities/).
-const COMMANDS: &[&str] = &["engine_port", "face_mode", "face_state", "permit_state", "permit_open", "permit_back",
+const COMMANDS: &[&str] = &["engine_port", "face_mode", "face_state", "permit_state", "permit_open", "permit_back", "app_relaunch",
     "thing_open", "thing_show", "thing_bounds", "thing_close", "thing_nav", "thing_outside", "sites_sign_out", "sites_clear", "sol_url_take",
     // the stage's browser block in your hand (#699, thing.rs block_view_*)
     "block_view_open", "block_view_bounds", "block_view_hide_all", "block_view_nav", "block_view_close",
@@ -14,7 +14,9 @@ const COMMANDS: &[&str] = &["engine_port", "face_mode", "face_state", "permit_st
     // the tour's places finder through Sol's own Full Disk Access (#1069, places.rs)
     "places_copy", "places_drop",
     // the windows of Jelly on other screens (#1090, screens.rs)
-    "screens", "screen_window_open", "screen_window_close", "screens_off"];
+    "screens", "screen_window_open", "screen_window_close", "screens_off",
+    // the app's own update (#1824, update.rs): the version waiting, and the press that swaps it in and restarts; the bundled face only
+    "app_update_state", "app_update_apply"];
 
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)))

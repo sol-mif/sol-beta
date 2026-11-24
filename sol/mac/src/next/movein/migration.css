@@ -1,0 +1,105 @@
+/* The migration (BR1, #1615; mine/look/br1/migration.html C and D, its sizes as drawn): one step at a time in a column
+   as wide as the drawing's move window, the overview and D as wide as its overview window. Every size is the drawing's
+   times --k, which scales it to the window as the start-up's day screen does (Migration.tsx useK, Day.tsx); a 1px line
+   stays 1px. Colours are the next set's roles; a folder's four tints are the plane's (movein.css .mv-fold).
+   Signed: marcocyl04-ux's agent (builder P), BR1. */
+
+.mg-page { --k: 1; box-sizing: border-box; max-width: calc(670px * var(--k)); margin: 0 auto; padding: calc(72px * var(--k)) calc(30px * var(--k)) calc(32px * var(--k)); font-size: calc(13px * var(--k)); line-height: 1.4; }
+.mg-page.wide { max-width: calc(1184px * var(--k)); }
+.mg-page.calm { max-width: calc(1184px * var(--k)); }
+/* D: the folders beside Sol's box (migration.html D .calm, .say; builder T) */
+.mg-step.mg-calm { display: grid; grid-template-columns: 1fr calc(340px * var(--k)); gap: calc(22px * var(--k)); align-items: center; }
+.mg-calm .mg-cards { grid-template-columns: repeat(2, 1fr); max-width: none; }
+.mg-say { background: var(--card); border: 1px solid var(--line); border-radius: calc(16px * var(--k)); padding: calc(16px * var(--k)) calc(16px * var(--k)) calc(14px * var(--k)); }
+.mg-say .who { display: flex; align-items: center; gap: calc(8px * var(--k)); font-size: calc(12px * var(--k)); color: var(--ink3); margin-bottom: calc(10px * var(--k)); }
+.mg-say .who b { width: calc(22px * var(--k)); height: calc(22px * var(--k)); border-radius: calc(7px * var(--k)); background: var(--ink); display: inline-block; }
+.mg-say p { margin: 0 0 calc(10px * var(--k)); font-size: calc(13.5px * var(--k)); line-height: 1.5; }
+.mg-step { display: block; }
+
+.mg-dots { display: flex; gap: calc(5px * var(--k)); align-items: center; font-size: calc(11.5px * var(--k)); color: var(--ink3); }
+.mg-dots i { width: calc(20px * var(--k)); height: calc(4px * var(--k)); border-radius: calc(2px * var(--k)); background: var(--line); }
+.mg-dots i.done { background: var(--ink4); }
+.mg-dots i.on { background: var(--ink); }
+.mg-dots span { margin-left: calc(6px * var(--k)); }
+.mg-skip { margin-left: auto; color: var(--ink2); font-size: calc(12px * var(--k)); cursor: pointer; }
+.mg-skip:hover, .mg-skip:focus-visible { color: var(--ink); text-decoration: underline; }
+
+.mg-big { font: 800 calc(22px * var(--k))/1.25 var(--sans); margin: calc(16px * var(--k)) 0 0; letter-spacing: -0.01em; max-width: calc(560px * var(--k)); }
+.mg-h { font: 900 calc(24px * var(--k))/1.15 var(--sans); margin: 0 0 calc(6px * var(--k)); letter-spacing: -0.01em; }
+.mg-sub { font-size: calc(13px * var(--k)); color: var(--ink2); margin: calc(6px * var(--k)) 0 calc(14px * var(--k)); max-width: calc(640px * var(--k)); }
+
+.mg-pic { display: flex; align-items: center; justify-content: center; gap: calc(26px * var(--k)); background: var(--card); border: 1px solid var(--line); border-radius: calc(16px * var(--k)); padding: calc(26px * var(--k)) calc(18px * var(--k)) calc(20px * var(--k)); margin: calc(14px * var(--k)) 0 calc(12px * var(--k)); }
+.mg-from, .mg-to-many { display: flex; gap: calc(14px * var(--k)); flex-wrap: wrap; justify-content: center; min-width: 0; }
+.mg-mini { display: grid; justify-items: center; gap: calc(6px * var(--k)); font-size: calc(11.5px * var(--k)); color: var(--ink2); max-width: calc(96px * var(--k)); text-align: center; overflow-wrap: anywhere; }
+.mg-mini.more { align-self: center; color: var(--ink3); }
+.mg-mini.to { gap: calc(4px * var(--k)); max-width: calc(220px * var(--k)); }
+.mg-mini .nm { font-weight: 700; font-size: calc(14px * var(--k)); color: var(--ink); margin-top: calc(4px * var(--k)); }
+.mg-mini .tag { font-size: calc(11.5px * var(--k)); color: var(--ink3); }
+.mg-arrow { font-size: calc(22px * var(--k)); color: var(--ink4); flex: none; }
+
+.mg-fold { position: relative; display: inline-grid; place-items: center; flex: none; border-radius: calc(2px * var(--k)) calc(5px * var(--k)) calc(5px * var(--k)) calc(5px * var(--k)); background: var(--tint, var(--ink4)); }
+.mg-fold::before { content: ""; position: absolute; left: 0; border-radius: calc(3px * var(--k)) calc(3px * var(--k)) 0 0; background: inherit; filter: brightness(0.92); }
+.mg-fold.s { width: calc(13px * var(--k)); height: calc(10px * var(--k)); } .mg-fold.s::before { width: calc(6px * var(--k)); height: calc(3px * var(--k)); top: calc(-2.5px * var(--k)); }
+.mg-fold.c { width: calc(22px * var(--k)); height: calc(17px * var(--k)); } .mg-fold.c::before { width: calc(9px * var(--k)); height: calc(5px * var(--k)); top: calc(-4px * var(--k)); }
+.mg-fold.m { width: calc(30px * var(--k)); height: calc(23px * var(--k)); } .mg-fold.m::before { width: calc(12px * var(--k)); height: calc(6px * var(--k)); top: calc(-5px * var(--k)); }
+.mg-fold.l { width: calc(58px * var(--k)); height: calc(44px * var(--k)); border-radius: calc(3px * var(--k)) calc(9px * var(--k)) calc(9px * var(--k)) calc(9px * var(--k)); } .mg-fold.l::before { width: calc(24px * var(--k)); height: calc(9px * var(--k)); top: calc(-8px * var(--k)); border-radius: calc(4px * var(--k)) calc(4px * var(--k)) 0 0; }
+.mg-fold b { font-size: calc(13px * var(--k)); font-weight: 700; color: var(--ink); }
+/* C-2: a folder an AI made, drawn apart (the drawing's key): its colour washed, a dashed edge */
+.mg-fold.ai { background: color-mix(in srgb, var(--tint, var(--ink4)) 22%, transparent); outline: calc(1.5px * var(--k)) dashed var(--tint, var(--ink4)); outline-offset: calc(-1.5px * var(--k)); }
+.mg-fold.ai::before { filter: none; }
+.mg-pic:has(.mg-key) { flex-wrap: wrap; row-gap: 0; }
+.mg-mini.to { flex: none; } .mg-mini .nm { overflow-wrap: normal; }
+.mg-key { display: flex; align-items: center; gap: calc(6px * var(--k)); flex-basis: 100%; justify-content: center; margin: calc(10px * var(--k)) 0 0; font-size: calc(11.5px * var(--k)); color: var(--ink3); }
+.mg-fold.t0 { --tint: var(--a1); } .mg-fold.t1 { --tint: var(--a2); } .mg-fold.t2 { --tint: var(--a3); } .mg-fold.t3 { --tint: var(--ink4); }
+.mg-shelfbar { display: inline-block; width: calc(46px * var(--k)); height: calc(8px * var(--k)); border-radius: calc(3px * var(--k)); background: var(--line); box-shadow: 0 calc(-6px * var(--k)) 0 calc(-2px * var(--k)) var(--ink4) inset; flex: none; }
+
+.mg-why { font-size: calc(12.5px * var(--k)); color: var(--ink2); margin: 0; }
+.mg-why em { font-style: normal; font-size: calc(10.5px * var(--k)); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: calc(1px * var(--k)) calc(6px * var(--k)); border-radius: calc(5px * var(--k)); margin-right: calc(5px * var(--k)); }
+.mg-why em.saw { background: color-mix(in srgb, var(--ink4) 30%, var(--paper)); color: var(--ink2); }
+.mg-why em.told { background: color-mix(in srgb, var(--a2) 35%, var(--paper)); color: var(--ink); }
+
+.mg-acts { display: flex; gap: calc(8px * var(--k)); margin-top: calc(16px * var(--k)); flex-wrap: wrap; }
+.mg-btn { border: 0; border-radius: calc(11px * var(--k)); padding: calc(10px * var(--k)) calc(18px * var(--k)); font: inherit; font-size: calc(13.5px * var(--k)); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.mg-btn.pri { background: var(--ink); color: var(--card); }
+.mg-btn.line { background: var(--card); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line); font-weight: 500; font-size: calc(13px * var(--k)); padding: calc(9px * var(--k)) calc(14px * var(--k)); }
+.mg-btn:disabled { opacity: 0.5; cursor: default; }
+.mg-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mg-chg { position: relative; display: inline-block; }
+.mg-menu { position: absolute; left: 0; top: calc(100% + 6px * var(--k)); z-index: var(--z-lift); min-width: calc(206px * var(--k)); max-height: calc(280px * var(--k)); overflow: auto; background: var(--card); border-radius: calc(12px * var(--k)); box-shadow: 0 18px 40px -14px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--line); padding: calc(6px * var(--k)); display: grid; }
+.mg-menu button { display: flex; align-items: center; gap: calc(8px * var(--k)); text-align: left; border: 0; background: none; font: inherit; font-size: calc(12.5px * var(--k)); color: var(--ink); padding: calc(7px * var(--k)) calc(9px * var(--k)); border-radius: calc(8px * var(--k)); cursor: pointer; }
+.mg-menu button:hover, .mg-menu button:focus-visible { background: color-mix(in srgb, var(--ink4) 22%, var(--card)); outline: none; }
+
+/* the overview */
+.mg-ov { display: grid; grid-template-columns: 1.45fr 1fr; gap: calc(18px * var(--k)); align-items: start; }
+.mg-canvas { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(10px * var(--k)); background: var(--paper) radial-gradient(var(--line) 1px, transparent 1.2px) 0 0 / calc(20px * var(--k)) calc(20px * var(--k)); border: 1px solid var(--line); border-radius: calc(14px * var(--k)); padding: calc(14px * var(--k)); }
+.mg-card { position: relative; background: var(--card); border-radius: calc(12px * var(--k)); box-shadow: 0 0 0 1px var(--line); padding: calc(12px * var(--k)) calc(10px * var(--k)) calc(10px * var(--k)); display: grid; justify-items: start; align-content: start; gap: calc(3px * var(--k)); min-width: 0; }
+.mg-card .mg-fold.l { width: calc(40px * var(--k)); height: calc(30px * var(--k)); margin: calc(4px * var(--k)) 0 calc(6px * var(--k)); } .mg-card .mg-fold.l::before { width: calc(16px * var(--k)); height: calc(6px * var(--k)); top: calc(-5px * var(--k)); }
+.mg-card .mg-fold b { font-size: calc(11.5px * var(--k)); }
+.mg-card > b { font-size: calc(13px * var(--k)); overflow-wrap: anywhere; }
+.mg-card small { font-size: calc(11.5px * var(--k)); color: var(--ink2); overflow-wrap: anywhere; }
+.mg-pins { position: absolute; right: calc(8px * var(--k)); top: calc(8px * var(--k)); display: flex; gap: calc(3px * var(--k)); }
+.mg-pins i, .mg-ag i { font-style: normal; width: calc(18px * var(--k)); height: calc(18px * var(--k)); border-radius: 50%; background: var(--ink); color: var(--card); font-size: calc(10.5px * var(--k)); font-weight: 700; display: grid; place-items: center; flex: none; }
+.mg-shelfline { display: flex; align-items: center; gap: calc(10px * var(--k)); margin-top: calc(10px * var(--k)); padding: calc(9px * var(--k)) calc(12px * var(--k)); border: 1px dashed var(--ink4); border-radius: calc(11px * var(--k)); font-size: calc(12.5px * var(--k)); color: var(--ink2); }
+.mg-shelfline .mg-pins { position: static; }
+.mg-agreed { background: var(--card); border: 1px solid var(--line); border-radius: calc(14px * var(--k)); padding: calc(14px * var(--k)) calc(14px * var(--k)) calc(10px * var(--k)); }
+.mg-lbl { font-size: calc(11px * var(--k)); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink3); margin: 0 0 calc(8px * var(--k)); }
+.mg-ag { display: grid; grid-template-columns: calc(18px * var(--k)) 1fr auto; gap: calc(10px * var(--k)); align-items: center; width: 100%; padding: calc(9px * var(--k)) calc(6px * var(--k)); border: 0; border-top: 1px solid var(--line); border-radius: calc(9px * var(--k)); background: none; font: inherit; font-size: calc(13px * var(--k)); color: var(--ink); text-align: left; cursor: pointer; }
+.mg-lbl + .mg-ag { border-top: 0; }
+.mg-ag em { font-style: normal; font-size: calc(11.5px * var(--k)); color: var(--ink3); white-space: nowrap; }
+.mg-ag em.chg { display: none; color: var(--ink); font-weight: 600; border: 1px solid var(--line); border-radius: calc(8px * var(--k)); padding: calc(3px * var(--k)) calc(9px * var(--k)); background: var(--card); }
+.mg-ag:hover, .mg-ag:focus-visible { background: color-mix(in srgb, var(--ink4) 16%, var(--card)); outline: none; }
+.mg-ag:hover em.how, .mg-ag:focus-visible em.how { display: none; }
+.mg-ag:hover em.chg, .mg-ag:focus-visible em.chg { display: inline; }
+.mg-same { font-size: calc(12px * var(--k)); color: var(--ink3); margin: calc(8px * var(--k)) calc(6px * var(--k)) calc(2px * var(--k)); }
+.mg-foot { display: flex; align-items: center; gap: calc(12px * var(--k)); margin-top: calc(16px * var(--k)); padding-top: calc(14px * var(--k)); border-top: 1px solid var(--line); font-size: calc(12.5px * var(--k)); color: var(--ink2); }
+.mg-foot.plain { border: 0; padding-top: calc(4px * var(--k)); }
+.mg-r { margin-left: auto; }
+
+/* D: nothing to sort */
+.mg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(260px * var(--k)), 1fr)); gap: calc(10px * var(--k)); max-width: calc(760px * var(--k)); }
+.mg-c { background: var(--card); border: 1px solid var(--line); border-radius: calc(14px * var(--k)); padding: calc(12px * var(--k)) calc(13px * var(--k)) calc(11px * var(--k)); }
+.mg-c .hd { display: flex; align-items: center; gap: calc(9px * var(--k)); }
+.mg-c .hd b { font-size: calc(13.5px * var(--k)); }
+.mg-c p { font-size: calc(12.5px * var(--k)); color: var(--ink2); margin: calc(6px * var(--k)) 0 0; line-height: 1.4; }
+
+@media (max-width: 900px) { .mg-ov { grid-template-columns: 1fr; } .mg-canvas { grid-template-columns: repeat(2, 1fr); } }

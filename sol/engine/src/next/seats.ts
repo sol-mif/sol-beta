@@ -69,7 +69,7 @@ export function readBack(home: string): Back | null {
 export function goBack(home: string, now: number, on: boolean, turnOff: () => void): Back {
   const f = backFile(home), b: Back = { at: now, was: on };
   mkdirSync(join(home, "next"), { recursive: true });
-  writeFileSync(`${f}.tmp`, JSON.stringify(b) + "\n");
+  writeFileSync(`${f}.tmp`, JSON.stringify({ v: 1, ...b }) + "\n");
   renameSync(`${f}.tmp`, f);
   turnOff();
   return b;

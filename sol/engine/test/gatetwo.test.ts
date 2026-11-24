@@ -205,6 +205,27 @@ test("the report: seven answers from the release's own sources, posted once on t
   assert.equal(u.posted.length, 0);
 });
 
+test("question 4 says the one-time exception when it is what lets the release through (#1615), and only then", async () => {
+  const f = fixture();
+  const digest = [c(FRANK, betaComment("pass", { release: "2026-10-30", night: "2026-10-30", changes: [{ number: 12 } as any] }, FRANK), "2026-10-30T15:00:00Z")];
+  const q4 = async (at: string, rhythm: Rhythm) => {
+    const x = deps(f.runner, at, { digest: [...digest], catchup }, { dryRun: true });
+    const r = await gateTwo(x.d, { ...O, rhythm, tag: "dev-20261030" }) as any;
+    return { mark: r.report.answers.find((a: any) => a.n === 4).mark, line: r.report.answers.find((a: any) => a.n === 4).line };
+  };
+  const once = { ...RHYTHM, betaSameDay: "2026-10-30" };
+  const plain = (({ betaSameDay: _, ...r }) => r)(RHYTHM) as Rhythm;
+  // the same day, under 7 hours old: short as always, pass with the exception, saying so
+  assert.equal((await q4("2026-10-30T20:00:00Z", plain)).mark, "short");
+  const w = await q4("2026-10-30T20:00:00Z", once);
+  assert.equal(w.mark, "pass");
+  assert.match(w.line, /made 2026-10-30, 6 hours ago \(not a day old: the one-time exception for 2026-10-30 in \.sol\/rhythm\.json waives the day \(#1615\)\)/);
+  // the next day before 20 hours: over
+  assert.equal((await q4("2026-10-31T05:00:00Z", once)).mark, "short");
+  // a day old anyway: the ordinary words
+  assert.match((await q4("2026-10-31T13:00:40Z", once)).line, /the rule for now: an earlier day and 20 hours/);
+});
+
 test("what is not there says so: a converter step since v1, a red leak check, GitHub not answering, no morning run", async () => {
   const f = fixture();
   writeFileSync(join(f.repo, "sol", "engine", "src", "convert", "0003-rooms.ts"), "// 3\n");

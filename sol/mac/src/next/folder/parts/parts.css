@@ -1,0 +1,59 @@
+/* A folder's parts (Parts.tsx; BR1 override 4, mine/look/br1/folder.html): one row of small cards across the opened
+   folder, at most four. A part is a grid of two columns: its name and its corner's grey words on the first row, what it
+   lists under them, and the because's unfold under that (the head and corner are display: contents, so the because's
+   own siblings, its button and what it unfolds, take their places in the part). The scale's variables only; every word
+   wraps. Signed: marcocyl04-ux's agent (builder F). */
+[data-face="next"] .fv > .fp { grid-column: 1 / -1; }
+.fp { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--s12) * 5), 1fr)); gap: var(--s3); align-items: start; }
+.fp-part { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s3); row-gap: var(--s2); padding: var(--s3) var(--s4); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+.fp-h, .fp-c { display: contents; }
+.fp-n { order: 0; margin: 0; white-space: nowrap;font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--ink3); }
+.fp-n small { font-weight: normal; font-size: inherit; }
+.fp-c > .bc { order: 0; justify-self: end; text-align: right; max-width: calc(var(--s12) * 4); }
+.fp-part > :not(.fp-h), .fp-part .bc-open, .fp-part .bc-gone { grid-column: 1 / -1; }
+.fp-part > .fp-list, .fp-part > .fp-due, .fp-part > .fp-none, .fp-part > .fp-ppl, .fp-part > .fp-thumbs { order: 1; }
+.fp-part .bc-open, .fp-part .bc-gone { order: 2; margin: 0; max-width: none; }
+.fp-part.off { background: none; }
+/* each part is itself the press (Files opens Finder, Working now At work, any other its why); calm per screen (design-br1.md
+   03:10): a part's because and its own buttons show while the pointer or the keys are on it, or while its why is unfolded */
+.fp-part[role=button] { cursor: pointer; }
+.fp-part[role=button]:hover { box-shadow: inset 0 0 0 1px var(--ink3); }
+.fp-part[role=button]:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.fp-part .fp-c > .bc, .fp-part .fp-aw { transition: opacity var(--d-turn) var(--ease); }
+.fp-part:not(:hover):not(:focus-within):not(:has(.bc-open)) .fp-c > .bc, .fp-part:not(:hover):not(:focus-within) .fp-aw { opacity: 0; }
+.fp-part.off .fp-n, .fp-part.off .fp-c > .bc { opacity: .5; }
+/* what a part lists */
+.fp-list { display: flex; flex-direction: column; }
+.fp-li { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s1) 0; border-top: 1px solid var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); overflow-wrap: break-word; min-width: 0; }
+.fp-li:first-child { border-top: 0; }
+.fp-li i { flex: none; font-style: normal; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-body-line); }
+.fp-run { justify-content: flex-start; align-items: baseline; gap: var(--s2); }
+.fp-run b { flex: none; width: var(--s2); height: var(--s2); border-radius: 50%; background: var(--green); transform: translateY(-1px); }
+.fp-run i { margin-left: auto; }
+.fp-due { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.fp-due span { flex: 1 1 calc(var(--s12) * 1.5); padding: var(--s1) var(--s2); border-radius: var(--r-chip); background: var(--side); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); overflow-wrap: break-word; }
+.fp-due b { display: block; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--ink2); }
+/* coming up with nothing dated: one plain line, its reason after it */
+.fp-none { margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink3); overflow-wrap: break-word; }
+.fp-none b { font-weight: 600; color: var(--ink); }
+.fp-ppl { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.fp-ppl span { padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); }
+.fp-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s1); }
+.fp-thumbs i { aspect-ratio: 1; border-radius: var(--r-chip); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); }
+/* the plain line and the absences */
+.fp-plain, .fp-gone { grid-column: 1 / -1; margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.fp-gone { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); padding-top: var(--s2); border-top: 1px dashed var(--line); }
+.fp-back { padding: 0; border: 0; border-bottom: 1px dashed var(--ink4); background: none; color: var(--ink3); font: inherit; cursor: pointer; }
+.fp-back:hover, .fp-back:focus-visible { color: var(--ink); border-bottom-color: var(--ink3); }
+.nx .fp-back { font-size: var(--t-label); line-height: var(--t-label-line); }
+/* inside the opened folder, ".fv button" (notes.css) makes every button a pill: the because and the absence keep their own */
+[data-face="next"] .fp button.bc, [data-face="next"] .fp button.fp-back, [data-face="next"] .fp button.bc-tx { display: inline; height: auto; padding: 0; border-radius: 0; background: none; color: var(--ink3); border: 0; border-bottom: 1px dashed var(--ink4); }
+[data-face="next"] .fp button.bc { display: inline-flex; }
+[data-face="next"] .fp button.bc:hover, [data-face="next"] .fp button.bc[aria-expanded="true"], [data-face="next"] .fp button.fp-back:hover { color: var(--ink); border-bottom-color: var(--ink3); }
+[data-face="next"] .fp button.bc-btn { height: auto; min-height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); font-size: var(--t-label); }
+[data-face="next"] .fp button.bc-btn.q { background: none; color: var(--ink2); }
+[data-face="next"] .fp button.bc-btn.on { background: var(--ink); color: var(--card); }
+/* Working now's way into See what's at work on this folder (BR1 item 7) */
+.fp-aw { align-self: flex-start; margin-top: var(--s1); padding: 0; border: 0; background: none; font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.fp-aw:hover { color: var(--ink); }
+.fp-aw:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

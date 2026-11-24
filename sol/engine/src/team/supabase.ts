@@ -20,6 +20,8 @@ import type { AddressInfo } from "node:net";
 import { isQuiet } from "../quiet.js";
 import { failPage, namePage, openBrowser, page, SIGN_IN_FOR, type SignedIn } from "./cloud.js";
 import { CLOUD_HUB } from "./settings.js";
+import { getSettings, versionMode } from "../settings.js";
+import { onFor } from "../versions.js";
 
 /** Sol's Supabase project: its address and publishable key, both public (the environment names another) */
 export const PROJECT = {
@@ -199,9 +201,12 @@ export function suggestName(email: string): string {
   return LOGIN.test(s) ? s : "";
 }
 
-export const donePage = (login: string, form: string, github: string) => page("You can go back to Sol", `<p>You are signed in as <b>${esc(login)}</b>. This tab can close.</p>${github
+/** the GitHub link is Cowork's: offered only where Cowork stands in this Sol's version (a tester's Sol, Build only, is
+ *  not asked for a second account it has no use for yet, #1637) */
+export const coworkHere = (): boolean => onFor("view.cowork", versionMode(), getSettings().switches?.["view.cowork"]);
+export const donePage = (login: string, form: string, github: string, offerGithub = true) => page("You can go back to Sol", `<p>You are signed in as <b>${esc(login)}</b>. This tab can close.</p>${github
   ? `<p class="small">GitHub: ${esc(github)}.</p>`
-  : `<form method="post" action="/link"><input type="hidden" name="form" value="${esc(form)}"><p class="small">Link your GitHub account, so your teammates' Sols know which GitHub login is yours. Sol asks GitHub only who you are, and keeps no GitHub key.</p><button type="submit">Link GitHub</button></form>`}`);
+  : offerGithub ? `<form method="post" action="/link"><input type="hidden" name="form" value="${esc(form)}"><p class="small">Link your GitHub account, so your teammates' Sols know which GitHub login is yours. Sol asks GitHub only who you are, and keeps no GitHub key.</p><button type="submit">Link GitHub</button></form>` : ""}`);
 export const linkedPage = (github: string) => page("GitHub is linked", `<p>Your Sol name now goes with GitHub <b>${esc(github)}</b>. This tab can close.</p>`);
 
 const signingIn = new Map<string, Promise<SignedIn>>();
@@ -253,8 +258,9 @@ async function run(hub: string, d: SupabaseDeps): Promise<SignedIn> {
       if ("error" in a || !a.login) { send(res, 502, failPage("Supabase did not give the name back.")); finish({ ok: false, error: "no name in the sign-in" }); return; }
       const j = await enter(hub, d);
       if (!j.ok) { send(res, 200, failPage(`The cloud said: ${j.error}.`)); finish(j); return; }
-      send(res, 200, donePage(a.login, form, a.github));
-      finish(j, !a.github);
+      const offer = !a.github && coworkHere();   // the tab stays served for the GitHub link only where it is offered
+      send(res, 200, donePage(a.login, form, a.github, offer));
+      finish(j, offer);
     };
     let pendingRefresh = "";
     const ours = (req: IncomingMessage, q: URLSearchParams) => (req.headers.origin === origin || req.headers.origin === "null") && same(q.get("form") ?? "", form);

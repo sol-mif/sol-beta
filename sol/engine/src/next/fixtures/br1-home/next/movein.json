@@ -1,0 +1,20 @@
+{
+  "v": 1,
+  "on": 1795338000000,
+  "at": 1795338000001,
+  "keep": [
+    "w:/Users/someone/studio/site",
+    "w:/Users/someone/studio/menus",
+    "w:/Users/someone/calm/journal",
+    "w:/Users/someone/calm/garden"
+  ],
+  "fix": {},
+  "drop": [],
+  "lead": "both",
+  "batch": "movein-lq40tGEE",
+  "before": {
+    "keep": [],
+    "fix": {},
+    "drop": []
+  }
+}

@@ -7,6 +7,7 @@
 import type { ReactNode } from "react";
 import { D, M, S, looked, open, type Ask } from "../cv/index.ts";
 import { cap, glyph, reason, who, yesWords } from "./rank.ts";
+import Because from "../because/Because.tsx";   // BR1 item 4 (#1615): why the session asks, from what it was told
 
 const PATHS: Record<string, ReactNode> = {
   ask: <><path d="M10 5.8v5.2" /><circle cx="10" cy="14" r=".6" fill="currentColor" /></>,
@@ -47,7 +48,7 @@ export function Row({ a, n, total, line = false, hideWhy = false }: { a: Ask; n?
   return (
     <div className="nd-line" data-row={a.id}>
       <Glyph g={g} label={gl} />
-      <span className="nd-t">{cap(a.text)}<small>{src}{p?.name ? " · " + p.name : ""}{wait}</small></span>
+      <span className="nd-t">{cap(a.text)}<small>{src}{p?.name ? " · " + p.name : ""}{wait}</small><Because ks={a.because} here={p?.region} /></span>
       <Acts a={a} line={line} />
       {hideWhy ? null : (
         <details className="nd-why">

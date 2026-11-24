@@ -1,6 +1,6 @@
 /* Near (#1615, slice 3; the mockup's views/near.css and start.css, their structure as it is). Every space, size, height
    and corner is the scale's (palette.css: --s*, --t-*, --h-*, --r-*), every colour and shadow the next set's (kit/next.css);
-   widths of a column are the mockup's, written once here. Class prefix nr- (st- for the starter card), scoped to the face.
+   widths of a column are the mockup's, written once here. Class prefix nr- (ns- for the starter card, never Settings' st-), scoped to the face.
    Signed: marcocyl04-ux's agent, slice 3 (#1615). */
 
 [data-face="next"] .nr { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; --mono: ui-monospace, "SF Mono", Menlo, monospace; }
@@ -16,7 +16,7 @@
 /* the head: what this is, in words; what needs you; the keys */
 .nr-head { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s6) var(--s3); flex: none; }
 .nr-who { min-width: 0; display: flex; flex-direction: column; gap: var(--s1); }
-.nr-title { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nr-title { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: var(--display-w); letter-spacing: var(--title-k); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nr-sub { display: flex; align-items: center; gap: var(--s2); color: var(--ink3); white-space: nowrap; overflow: hidden; min-width: 0; }
 .nr-sub b { font-weight: 550; color: var(--ink2); }
 .nr-tag { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); }
@@ -31,8 +31,20 @@
 .nr-back { display: inline-flex; align-items: center; gap: var(--s2); margin: 0 var(--s4) var(--s2); padding: var(--s1) var(--s3) var(--s1) var(--s2); border-radius: var(--r-row); color: var(--ink2); width: max-content; }
 .nr-back:hover { background: var(--hover); color: var(--ink); }
 
-/* the body: one side, or two with beside (⌘\) */
-.nr-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding: 0 var(--s4) var(--s12); }
+/* the body: one side, or two with beside (⌘\); its foot clears the talk pill (next.css .nx-talk: s6 up, s12 tall) by s4 */
+/* a folder's own Diary up close (BR1 slots): the page alone on the ground, Back at its top; a press on the ground goes back */
+[data-face="next"] .nr.nr-dy { align-items: center; overflow-y: auto; padding: var(--s4); gap: var(--s2); cursor: default; }
+/* the calm screen (BR1 item 3): the Diary up close ends above the talk, and above the bar when it shows, so no line of it
+   ever sits or scrolls under them (the card check's covered text) */
+[data-face="next"] .nr.nr-dy { bottom: calc(var(--s6) + var(--s12) + var(--s2)); }
+.nx.has-bar .nr.nr-dy { bottom: calc(var(--s6) + var(--s12) + var(--s2) + var(--s12) + var(--s4)); }
+.nr-dyback { display: inline-flex; align-items: center; gap: var(--s1); align-self: center; height: var(--h-row); padding: 0 var(--s3) 0 var(--s2); border-radius: var(--r-row); color: var(--ink2); font-size: var(--t-body); line-height: var(--t-body-line); white-space: nowrap; }
+.nr-dyback:hover { background: var(--hover); color: var(--ink); }
+.nr-dyback svg { width: var(--s4); height: var(--s4); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.nr-dypage { width: 100%; max-width: 760px; min-width: 0; display: flex; justify-content: center; }
+.nr-dypage > .dy { flex: 1; min-width: 0; border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow); }
+.nr-auto { width: 100%; max-width: 760px; min-width: 0; margin: 0 auto; }   /* an automation up close reads at the Diary's width, its presses beside its words */
+.nr-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding: 0 var(--s4) calc(var(--s6) + var(--s12) + var(--s4)); }
 .nr.sess .nr-body { padding-bottom: var(--s4); }
 .nr-body.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .nr-side { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--s2); }
@@ -80,9 +92,6 @@
 .nr-me { align-self: flex-end; max-width: 92%; padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); }
 .nr-ai { display: flex; gap: var(--s2); align-items: flex-start; }
 .nr-grow { flex: 1; min-width: 0; }
-.nr-compose { margin: 0 var(--s3) var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink3); display: flex; align-items: center; gap: var(--s2); flex: none; }
-.nr-compose:focus-within { box-shadow: inset 0 0 0 1px var(--ink3); }
-.nr-say { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: var(--ink); }
 
 /* files and the blocks it made */
 .nr-files { flex: 1; min-height: 0; overflow: auto; padding: var(--s2); }
@@ -90,7 +99,7 @@
 .nr-files div small { margin-left: auto; font-family: var(--sans); color: var(--ink3); }
 .nr-blocks { flex: 1; min-height: 0; overflow: auto; padding: var(--s2) var(--s3) var(--s3); display: flex; flex-direction: column; gap: var(--s3); }
 .nr-blk { padding: var(--s3) var(--s4); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
-.nr-blk h3 { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); margin: var(--s1) 0; }
+.nr-blk h3 { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: var(--display-w); margin: var(--s1) 0; }
 .nr-blk p { color: var(--ink2); margin: 0 0 var(--s2); }
 .nr-bk { font-size: var(--t-label); text-transform: uppercase; color: var(--ink3); }
 .nr-bon { color: var(--ink3); }
@@ -107,7 +116,7 @@
 .nr-life { flex: 1; min-height: 0; overflow: auto; padding: var(--s1) var(--s2) 0; display: flex; flex-direction: column; gap: var(--s3); }
 .nr-life > .nr-ask { max-width: 760px; width: 100%; margin: 0 auto; }
 .nr-sheet { max-width: 760px; width: 100%; margin: 0 auto; padding: var(--s12) var(--s12) var(--s12); border-radius: var(--r-lg); min-height: 100%; background: var(--card); box-shadow: var(--shadow); }
-.nr-sheet h1 { font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 600; margin: 0; }
+.nr-sheet h1 { font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: var(--display-w); letter-spacing: var(--display-k); margin: 0; }
 .nr-say-line { font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); margin: var(--s2) 0 0; }
 .nr-text { margin-top: var(--s6); font-family: var(--serif); font-size: var(--t-big); line-height: var(--t-big-line); color: var(--ink); white-space: pre-wrap; word-break: break-word; }
 .nr-text .cur { color: var(--ink3); font-family: var(--sans); font-weight: 300; }
@@ -119,7 +128,7 @@
 
 /* side copies and arrivals at Near: lists sorted by state */
 .nr-list { flex: 1; min-height: 0; overflow: auto; padding: var(--s6) var(--s8); }
-.nr-list h1 { font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 600; margin: 0; }
+.nr-list h1 { font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: var(--display-w); letter-spacing: var(--display-k); margin: 0; }
 .nr-grp { display: flex; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 550; color: var(--ink3); margin: var(--s6) 0 var(--s1); }
 .nr-grp small { font-weight: 400; }
 .nr-copy { display: flex; align-items: center; gap: var(--s3); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); }
@@ -138,30 +147,45 @@
 .nr-ph { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 .nr-ps { color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .nr-st { margin-left: auto; font-size: var(--t-label); color: var(--ink2); white-space: nowrap; }
-.nr-part h3 { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); margin: 0; }
+.nr-part h3 { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); font-weight: var(--display-w); margin: 0; }
 .nr-psay { color: var(--ink2); margin: 0; }
 .nr-pface { white-space: pre; font-family: var(--mono); font-size: var(--t-code); line-height: var(--t-code-line); color: var(--ink3); overflow: hidden; text-overflow: ellipsis; }
 
 /* the starter card (drawn by the plane where it stands) */
-[data-face="next"] .st-card { display: flex; flex-direction: column; gap: var(--s3); height: 100%; cursor: text; padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
-[data-face="next"] .st-card.on { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink); }
-.st-line { display: flex; align-items: center; gap: var(--s2); white-space: nowrap; overflow: hidden; }
-.st-who { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-.st-ai { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-read); color: var(--ink); padding: 0 var(--s1); border-radius: var(--r-chip); }
-.st-ai:hover { background: var(--hover); }
-.st-ai b { font-weight: 600; }
-.st-chev, .st-in { color: var(--ink3); }
-.st-reach { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); white-space: nowrap; }
-.st-words { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); color: var(--ink); min-height: var(--s12); word-break: break-word; }
-.st-cur { color: var(--ink); }
-.st-ph { color: var(--ink4); }
-.st-given { display: flex; flex-wrap: wrap; gap: var(--s1); }
-.st-chip { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); }
-.st-facts { display: flex; flex-direction: column; gap: var(--s1); margin: 0; padding: var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
-.st-facts div { display: grid; grid-template-columns: 64px 1fr; gap: var(--s2); }
-.st-facts dt { color: var(--ink3); }
-.st-facts dd { margin: 0; color: var(--ink2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.st-facts b { color: var(--ink); font-weight: 600; }
-.st-foot { display: flex; align-items: center; gap: var(--s2); margin-top: auto; }
-.st-keys { font-size: var(--t-label); color: var(--ink3); white-space: nowrap; }
-.st-go { margin-left: auto; }
+[data-face="next"] .ns-card { display: flex; flex-direction: column; gap: var(--s3); height: 100%; cursor: text; padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
+[data-face="next"] .ns-card.on { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink); }
+/* the tab row's ＋ (Look 1 A3): the same card as a tab's start screen, a page's width, high in the window */
+[data-face="next"] .nr-start { display: flex; justify-content: center; align-items: flex-start; align-self: stretch; width: 100%; height: 100%; box-sizing: border-box; padding: calc(var(--s4) * 3) var(--s4) 0; }
+[data-face="next"] .nr-start .ns-card { height: auto; width: min(640px, 100%); }
+.ns-line { display: flex; align-items: center; gap: var(--s2); white-space: nowrap; overflow: hidden; }
+.ns-who { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.ns-ai { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-read); color: var(--ink); padding: 0 var(--s1); border-radius: var(--r-chip); }
+.ns-ai:hover { background: var(--hover); }
+.ns-ai b { font-weight: 600; }
+.ns-chev, .ns-in { color: var(--ink3); }
+.ns-reach { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); white-space: nowrap; }
+.ns-words { font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); color: var(--ink); min-height: var(--s12); word-break: break-word; }
+.ns-cur { color: var(--ink); }
+.ns-ph { color: var(--ink4); }
+.ns-given { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.ns-chip { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); }
+.ns-facts { display: flex; flex-direction: column; gap: var(--s1); margin: 0; padding: var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.ns-facts div { display: grid; grid-template-columns: 64px 1fr; gap: var(--s2); }
+.ns-facts dt { color: var(--ink3); }
+.ns-facts dd { margin: 0; color: var(--ink2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ns-facts b { color: var(--ink); font-weight: 600; }
+.ns-foot { display: flex; align-items: center; gap: var(--s2); margin-top: auto; }
+.ns-keys { font-size: var(--t-label); color: var(--ink3); white-space: nowrap; }
+.ns-go { margin-left: auto; }
+/* a session's table as a tab (BR1 inside.html §2, near/Table.tsx; builder E): what it uses and made, a press opens one */
+.nr-table { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.nr-tb-list { flex: 1; min-height: 0; overflow: auto; padding: var(--s2) var(--s3) var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
+.nr-tb-it { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.nr-tb-it:disabled { cursor: default; }
+.nr-tb-it:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--ink3); }
+.nr-tb-m { flex: none; width: var(--s4); text-align: center; color: var(--ink3); }
+.nr-tb-t { display: flex; flex-direction: column; min-width: 0; }
+.nr-tb-t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nr-tb-t small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nr-tb-hint { padding: var(--s4); border-radius: var(--r-row); border: 1px dashed var(--line); color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); text-align: center; }
+.nr-table[data-takes].nt-takes .nr-tb-hint { border-color: var(--ink2); color: var(--ink2); }

@@ -1,0 +1,21 @@
+/* Before you open it, and the hero's one line of needs. From the original site (#370, PR #371), carried here
+   unchanged in its words: what a friend must have, and macOS's one-time Open Anyway in three steps. The small grey
+   lines use --dim rather than --mute so they pass 4.5:1 on the black ground. */
+
+.desk .needs { margin:22px 0 0; font-size:13.5px; color:var(--dim); }
+.desk .needs a { color:var(--ink); border-bottom:1px solid rgba(255,255,255,.22); }
+.desk .needs a:hover { border-color:var(--ink); }
+
+#open .need { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; width:min(960px, 100% - 64px); margin:0 auto; text-align:left; }
+#open .need > div { padding:22px 22px 20px; border-radius:18px; border:1px solid var(--hair); background:rgba(255,255,255,.03); }
+#open .need b { display:block; font-size:17px; font-weight:600; margin-bottom:6px; }
+#open .need p { margin:0; font-size:14.5px; color:var(--dim); line-height:1.45; }
+#open .need p a { color:var(--ink); border-bottom:1px solid rgba(255,255,255,.2); }
+#open ol { list-style:none; counter-reset:s; display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; width:min(960px, 100% - 64px); margin:36px auto 0; padding:0; text-align:left; }
+#open li { counter-increment:s; display:grid; grid-template-columns:26px 1fr; gap:10px; font-size:14.5px; color:var(--dim); line-height:1.45; }
+#open li::before { content:counter(s); width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:600; color:#000; background:var(--pearl); }
+#open li b { color:var(--ink); font-weight:600; }
+#open li.here::before { background:var(--acc); }
+#open > p.why { margin-top:40px; margin-bottom:0; font-size:14.5px; color:var(--dim); }
+@media (max-width:900px) { #open .need, #open ol { grid-template-columns:1fr; } }
+@media (max-width:480px) { .desk .needs { font-size:13px; padding:0 8px; } #open .need, #open ol { width:calc(100% - 40px); } }

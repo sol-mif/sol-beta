@@ -1,0 +1,263 @@
+/* The session's UI in the new face (#1615, BR1; Marco 23:45: "redo the session UI in Sol's new face"): the session view
+   in a tab (its head bar, the talk, the panes and the stage) and the chat box. Their parts are the old face's by import
+   (work/*, stage/*, buttons/Rail; their logic untouched, P's port), and the old sheets still load for their layout; this
+   sheet draws them in the new face's look, as the canvas, the tabs, the folder pages and the bar draw: the scale's spaces,
+   sizes and corners (--s*, --t-*, --h-*, --r-*) and the next set's colours and shadows (--paper, --card, --side, --ink*,
+   --line, --hover, --press, --good, --bad, --asks, --shadow*). Every rule is under .sport, so nothing outside a session moves.
+   The chat box is one card with the talk pill's focus ring; its chips are the bar's chips (bar.css .bar-chip); a tool step
+   is a row in one quiet card per run; a pane's tabs are pills as in the tab row.
+   Signed: marcocyl04-ux's agent (builder R), BR1 (#1615). */
+
+/* ---------------------------------------------------------------- the view */
+.sport { background: var(--paper); }
+.sport .face { font-family: var(--sans); background: none; color: var(--ink); }
+.sport .face::before, .sport .face::after { display: none; }   /* the old face's glass and glow */
+
+/* ---------------------------------------------------------------- the head bar */
+.sport .sport-bar { gap: var(--s2); min-height: var(--s12); padding: 0 var(--s3); background: var(--paper); color: var(--ink2); }
+.sport .sport-back { height: var(--h-chip); padding: 0 var(--s2) 0 var(--s1); border: 0; border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font-size: var(--t-pill); line-height: var(--t-pill-line); }
+.sport .sport-back:hover { background: var(--press); color: var(--ink); }
+.sport .sport-bar .wtitle { align-items: center; gap: var(--s2); padding-left: var(--s1); }
+.sport .sport-bar .tt { max-width: 40vw; font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; color: var(--ink); }
+.sport .sport-bar .where { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.sport .wprivate { height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink3); font-size: var(--t-label); line-height: var(--h-chip); }
+.sport .wprivate:hover { background: var(--hover); color: var(--ink2); }
+.sport .wprivate.on { background: var(--ink); color: var(--card); }
+/* Its table, the rail's words (file it, normal, the changes count) and its glyphs: the bar's chips and buttons */
+.sport .sport-tb, .sport .sport-bar .wviewk { height: var(--h-chip); margin: 0; padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink2); font-size: var(--t-pill); line-height: var(--h-chip); }
+.sport .sport-tb:hover, .sport .sport-bar .wviewk:hover { background: var(--hover); color: var(--ink); }
+.sport .sport-tb.on, .sport .sport-bar .wviewk.on { background: var(--ink); color: var(--card); }
+.sport .sport-bar .rail { gap: var(--s1); }
+.sport .sport-bar .railrow { gap: var(--s1); }
+.sport .sport-bar .railname { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink4); }
+.sport .sport-bar .barbtn { width: var(--h-head); height: var(--h-chip); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink3); }
+.sport .sport-bar .barbtn:hover { background: var(--hover); color: var(--ink); }
+.sport .sport-bar .barbtn.on { background: var(--press); color: var(--ink); }
+.sport .sport-bar .barbtn.wpk { width: auto; padding: 0 var(--s2); }
+.sport .sport-bar .barsep { height: var(--s4); margin: 0 var(--s1); background: var(--line); }
+.sport .wstat { font-family: var(--sans); font-size: var(--t-label); color: var(--ink3); }
+.sport .wstat b { color: var(--good); }
+
+/* ---------------------------------------------------------------- the talk */
+.sport .msg.you { font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink); }
+.sport .msg :not(pre) > code { padding: 0 var(--s1); border-radius: var(--r-chip); background: var(--hover); box-shadow: none; border: 0; font-size: var(--t-code); color: var(--ink); }
+.sport .msg pre { border: 0; border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.sport .msg a { color: var(--ink); text-decoration-color: var(--ink4); }
+/* the person's own words: a soft bubble on the right, the sidebar's colour, never the old glass or glow */
+.sport .wtalk .wme .msg.me { max-width: 78%; padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-card); border-bottom-right-radius: var(--r-chip); background: var(--side); box-shadow: none; color: var(--ink); font-size: var(--t-read); line-height: var(--t-read-line); }
+.sport .merow { gap: var(--s2); margin: var(--s1) 0 var(--s3); font-size: var(--t-label); color: var(--ink3); }
+.sport .merow button { color: var(--ink3); font-size: var(--t-label); }
+.sport .merow button:hover { color: var(--ink); }
+
+/* a run of tool steps: one quiet card, a row each, the description in words and the command beside it, small */
+.sport .wsteps:not(.nested) { margin: var(--s2) 0 var(--s4); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.sport .wsteps .step { margin: 0; }
+.sport .wsteps .step-row { gap: var(--s2); min-height: var(--h-row); padding: 0 var(--s3); border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink2); font-size: var(--t-body); line-height: var(--t-body-line); }
+.sport .wsteps .step + .step > .step-row { box-shadow: inset 0 1px 0 var(--line); }
+.sport .wsteps .step.can > .step-row:hover, .sport .wsteps .step.open > .step-row { background: var(--hover); color: var(--ink); }
+.sport .wsteps .glyph { color: var(--ink3); }
+.sport .wsteps .step-meta { font-size: var(--t-label); color: var(--ink3); }
+.sport .wsteps .step-meta .cmd { font-size: var(--t-label); color: var(--ink3); }
+.sport .wsteps .step-meta .who, .sport .wsteps .step-meta .srv { border: 0; background: var(--hover); color: var(--ink2); font-size: var(--t-label); }
+/* its state: a dot, green when it worked, red when it did not; the old droplet and the ember cross are gone */
+.sport .step-state { width: var(--s2); height: var(--s2); }
+.sport .step-state .droplet { display: none; }
+.sport .step-state:has(.droplet)::after { content: ""; display: block; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--good); }
+.sport .step.failed .step-state i.bad, .sport .step.error .step-state i.bad { width: var(--s2); height: var(--s2); clip-path: none; border-radius: var(--r-pill); background: var(--bad); }
+.sport .step.failed .step-state i.bad::after, .sport .step.error .step-state i.bad::after { display: none; }
+.sport .wsteps .step.failed > .step-row, .sport .wsteps .step.error > .step-row { color: var(--ink); background: color-mix(in oklab, var(--bad) 6%, transparent); }
+.sport .wsteps .step + .step.failed > .step-row, .sport .wsteps .step + .step.error > .step-row { box-shadow: inset 0 1px 0 var(--line); }
+.sport .step.running > .step-row { background: var(--hover); box-shadow: none; color: var(--ink); }
+.sport .step.running .elapsed { font-family: var(--sans); font-size: var(--t-label); color: var(--ink2); }
+.sport .step-why { margin: 0; padding: 0 var(--s3) var(--s2) calc(var(--s3) + var(--s4) + var(--s2)); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.sport .step-detail { margin: 0 var(--s3) var(--s2); padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-code); line-height: var(--t-code-line); color: var(--ink2); }
+.sport .step-detail.prose { font-size: var(--t-body); color: var(--ink2); }
+.sport .wsteps.nested { margin: 0 0 var(--s1) var(--s6); }
+/* the jump to the end */
+.sport .orb { border: 0; background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); color: var(--ink2); }
+.sport .orb:hover { background: var(--card); color: var(--ink); }
+
+/* ---------------------------------------------------------------- the chat box (work/Composer) */
+.sport .ask { padding-bottom: var(--s4); }
+.sport .ask-inner { border: 0; border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); }
+.sport .ask-inner:focus-within { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); }   /* the talk pill's focus (next.css .nx-talk) */
+.sport :is(.dropping .ask-inner, .ask-inner.drop) { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink); }
+.sport .ask-line { gap: var(--s2); padding: var(--s3) var(--s4) 0 var(--s3); }
+.sport .ask-inner textarea, .sport .ask-inner .live { font-family: var(--sans); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink); }
+.sport .ask-inner textarea::placeholder { color: var(--ink3); }
+.sport .wplus { width: var(--h-chip); height: var(--h-chip); margin: 0; border: 0; border-radius: var(--r-pill); background: var(--hover); box-shadow: none; color: var(--ink2); }
+.sport .wplus:hover { background: var(--press); color: var(--ink); }
+/* the picks under the words: the bar's chips (bar.css .bar-chip), one height, one colour; the one on is ink */
+.sport .picker { gap: var(--s2); padding: var(--s2) var(--s3) var(--s3); font-size: var(--t-pill); }
+.sport .picker :is(.slider, .wchip, .seatsw) { height: var(--h-chip); border: 0; border-radius: var(--r-pill); background: var(--hover); box-shadow: none; color: var(--ink2); font-size: var(--t-pill); }
+.sport .picker :is(.slider, .wchip):hover { background: var(--press); color: var(--ink); }
+.sport .picker button { font-size: var(--t-pill); color: var(--ink2); letter-spacing: 0; }
+.sport .picker .slider .val { font-family: var(--sans); font-size: var(--t-pill); letter-spacing: 0; color: inherit; }
+.sport .seatsw .thumb { background: var(--card); box-shadow: var(--shadow); }
+.sport .picker .seatsw button, .sport .picker .seatsw button.on { color: var(--ink3); }
+.sport .picker .seatsw button.on { color: var(--ink); }
+.sport .seatsw.locked { opacity: 1; }
+.sport .seatsw.locked button:not(.on) { color: var(--ink4); }
+/* how hard it thinks: a chip like the others; its heat shows only while it is being set */
+.sport .picker .slider.epill { background: var(--hover); color: var(--ink2); }
+.sport .epill .eheat { opacity: 0; }
+.sport .epill.open .eheat { opacity: 0.18; }
+.sport .epill .eheat::after { display: none; }
+.sport .epill .name { color: var(--ink2); text-shadow: none; }
+.sport .epill .eword { color: var(--ink2); }
+.sport .epill .etrack i { background: var(--ink3); }
+.sport .picker .slider.epill:not(.open):not(.drag) > :first-child { display: none; }   /* its glass back (kit/Pill.tsx PillBack), heat and all, at rest */
+/* the permission chip: ink on its chip, whatever its mode; a mode that lets it act alone keeps its warning colour as a dot */
+.sport .picker .wchip.leash { color: var(--ink2); text-shadow: none; background: var(--hover); }
+.sport .picker .wchip.leash:not(.default)::before { content: ""; display: inline-block; width: var(--s2); height: var(--s2); margin-right: var(--s1); border-radius: var(--r-pill); background: var(--asks); vertical-align: middle; }
+.sport .picker .wchip.folder { color: var(--ink2); }
+.sport .picker .icon { width: var(--h-chip); height: var(--h-chip); border-radius: var(--r-pill); color: var(--ink3); }
+.sport .picker .icon:hover { background: var(--hover); color: var(--ink); }
+/* send and stop: one ink circle, as a press that matters */
+.sport .ask-inner :is(.wsend, .wgo, .stop) { border-radius: var(--r-pill); }
+.sport .ask-inner .wsend:not(.ghost), .sport .ask-inner .wgo.go { background: var(--ink); color: var(--card); box-shadow: none; }
+/* what waits to be sent, and an ask it is waiting on: rows on the paper, inside the box */
+.sport .wqueue { gap: var(--s1); padding: var(--s2) var(--s3) 0; }
+.sport .wq { border: 0; border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-body); color: var(--ink2); }
+.sport .wask { border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); }
+.sport .wpop { border: 0; border-radius: var(--r-row); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); color: var(--ink); }
+.sport .wpop .on { background: var(--hover); color: var(--ink); }
+
+/* ---------------------------------------------------------------- the panes at the right */
+.sport .pane { border-left: 1px solid var(--line); background: var(--card); }
+.sport .pane > .tabs { gap: var(--s1); height: var(--s12); padding: 0 var(--s3); border-bottom: 1px solid var(--line); font-size: var(--t-pill); }
+.sport .pane .tab { height: var(--h-chip); gap: var(--s1); padding: 0 var(--s1) 0 var(--s3); border: 0; border-radius: var(--r-pill); color: var(--ink2); font-size: var(--t-pill); }
+.sport .pane .tab:hover { background: var(--hover); color: var(--ink); }
+.sport .pane .tab.on { background: var(--ink); color: var(--card); }
+.sport .pane .tab button { width: var(--s4); height: var(--s4); color: inherit; }
+.sport .pane .tab button:hover { background: var(--press); }
+.sport .pane .tab.on button:hover { background: none; opacity: 0.7; }
+.sport .grip::after { background: var(--ink4); }
+.sport .wpempty { margin: var(--s6) var(--s4); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink3); }
+.sport .wlink { padding: 0 var(--s2); height: var(--h-chip); border-radius: var(--r-pill); color: var(--ink2); font-size: var(--t-pill); }
+.sport .wlink:hover { background: var(--hover); color: var(--ink); }
+.sport .wpane .md { font-size: var(--t-body); line-height: var(--t-body-line); }
+
+/* the Change pane (work/DiffPane): a segment of pills, the files as rows, each file's lines on the paper */
+.sport .wdhead { gap: var(--s2); padding: var(--s2) var(--s3); background: var(--card); border-bottom: 1px solid var(--line); }
+.sport .wseg { gap: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--hover); }
+.sport .wseg button { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); color: var(--ink2); font-size: var(--t-pill); }
+.sport .wseg button:hover { color: var(--ink); }
+.sport .wseg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.sport .wdstat { font-size: var(--t-label); color: var(--ink3); }
+.sport .wdstat b { color: var(--good); font-weight: 500; }
+.sport .wdfiles { padding: var(--s2); border-bottom: 1px solid var(--line); }
+.sport .wdf { gap: var(--s2); padding: var(--s1) var(--s2); border-radius: var(--r-row); color: var(--ink2); font-size: var(--t-body); }
+.sport .wdf:hover { background: var(--hover); color: var(--ink); }
+.sport .wdf.on { background: var(--press); color: var(--ink); }
+.sport .wdf .st { width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink4); }
+.sport .wdf.added .st { background: var(--good); }
+.sport .wdf.deleted .st { background: var(--bad); }
+.sport .wdf .d { font-size: var(--t-label); color: var(--ink3); }
+.sport .wdf .c, .sport .wdfh .c { font-family: var(--sans); font-size: var(--t-label); color: var(--ink3); }
+.sport .wdf .c b, .sport .wdfh .c b { color: var(--good); }
+.sport .wdbody { gap: var(--s4); padding: var(--s3); }
+.sport .wdfh { gap: var(--s2); padding: 0 0 var(--s2); font-size: var(--t-body); }
+.sport .wdfh .p { font-size: var(--t-label); color: var(--ink); }
+.sport .wdiff { border: 0; border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-code-line); }
+.sport .wdiff .dl { color: var(--ink2); }
+.sport .wdiff .dl.add { background: color-mix(in oklab, var(--good) 12%, transparent); color: var(--ink); }
+.sport .wdiff .dl.add i { color: var(--good); }
+.sport .wdiff .dl.del { background: color-mix(in oklab, var(--bad) 10%, transparent); color: var(--ink3); }
+.sport .wdiff .dl.del i { color: var(--bad); }
+.sport .wdiff .dl.gap { background: var(--hover); color: var(--ink3); font-size: var(--t-label); }
+.sport .wdlines .dl u { color: var(--ink4); font-size: var(--t-label); }
+
+/* ---------------------------------------------------------------- the stage (the page pane: stage/Stage, StageHere) */
+.sport .wpbody[data-pane="page"] { background: var(--paper); }
+.sport .st-stage { background: var(--paper); }
+.sport .st-empty { color: var(--ink3); font-size: var(--t-body); }
+.sport .st-empty b { color: var(--ink2); }
+.sport .st-chip { height: var(--h-chip); border: 0; border-radius: var(--r-pill); background: var(--hover); box-shadow: none; color: var(--ink2); font-size: var(--t-pill); }
+.sport .st-chip:hover { background: var(--press); color: var(--ink); }
+
+/* a block on the stage: a card on the paper, the canvas's pieces' corner and shadow; the old glass, rim and warm are gone */
+.sport .st-block { border-radius: var(--r-card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.sport .st-block .st-glass, .sport .st-block .st-rim, .sport .st-block .st-warm { display: none; }
+.sport .st-block .st-in { border-radius: var(--r-card); background: var(--card); --mute: var(--ink3); --dim: var(--ink2); }
+.sport .st-block.waits { box-shadow: var(--shadow), inset 0 0 0 1px var(--asks); }
+.sport .st-head { color: var(--ink); font-size: var(--t-body); }
+.sport .st-head .st-t { font-weight: 600; }
+.sport .st-head .st-meta { color: var(--ink3); }
+.sport .st-acts button { border: 0; border-radius: var(--r-pill); background: none; color: var(--ink3); }
+.sport .st-acts button:hover { background: var(--hover); color: var(--ink); }
+.sport .st-body { color: var(--ink2); }
+.sport .st-wtray { background: var(--paper); box-shadow: inset 0 1px 0 var(--line); color: var(--ink3); }
+
+/* ---------------------------------------------------------------- kept beside the canvas: the talk and the box, smaller */
+.sport.sport-compact .msg.you, .sport.sport-compact .wtalk .wme .msg.me { font-size: var(--t-body); line-height: var(--t-body-line); }
+
+/* ---- draft 2 (Marco, 2026-11-23): the head, the talk's column, the pinned ask, the box as the bar, the model card ---- */
+.sport { --col: calc(var(--s12) * 13 + var(--s8) + var(--s1)); }   /* the talk's one column, 660 */
+
+/* head: back, the folder chip, the name; the changes count, terminal, files and ⋯ at the right */
+.sport .sport-bar .wtitle .tt { font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 700; }
+.sport .sport-bar .wtitle .where { order: -1; display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font-size: var(--t-label); }
+.sport .sport-bar .wtitle .fmark { order: -2; }
+.sport .sport-bar :is(.railname, .raildots, .wviewk, .railplus, .barsep), .sport .sport-bar .rail > .barbtn:last-child, .sport .sport-bar .railrow.out { display: none; }
+.sport .sport-more-k { height: var(--h-chip); min-width: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink2); font: inherit; font-size: var(--t-body); cursor: pointer; }
+.sport .sport-more-k:hover { background: var(--hover); }
+.sport .sport-more-k.on { background: var(--ink); color: var(--card); }
+/* ⋯'s card: fixed under the button; Its table and private are in it, the rail's Build row is placed over its foot */
+.sport { --more-x: calc(var(--more-r, 0) * 1px); --more-y: calc(var(--more-t, 0) * 1px + var(--s2)); --more-w: calc(var(--h-row) * 7); }
+.sport .sport-more { position: fixed; z-index: var(--z-popups); right: var(--more-x); top: var(--more-y); width: var(--more-w); padding: var(--s2); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); display: flex; flex-direction: column; }
+.sport .sport-more > :is(.sport-tb, .wprivate) { display: flex; align-items: center; text-align: left; height: var(--h-row); justify-content: flex-start; width: 100%; border-radius: var(--r-row); background: transparent; color: var(--ink); font-size: var(--t-body); padding: 0 var(--s2); }
+.sport .sport-more > :is(.sport-tb, .wprivate):hover { background: var(--hover); }
+.sport .sport-more > :is(.sport-tb, .wprivate).on { background: var(--press); }
+.sport .sport-more-rail { display: block; height: calc(var(--h-row) * 3 + var(--s2)); border-top: 1px solid var(--line); margin-top: var(--s1); }
+.sport.sport-moreon .sport-bar :is(.railname, .raildots, .wviewk, .railplus), .sport.sport-moreon .sport-bar .rail > .barbtn:last-child { display: inline-flex; position: fixed; z-index: var(--z-frame); align-items: center; height: var(--h-row); }
+.sport.sport-moreon .sport-bar .railname { --row: 0; left: auto; right: calc(var(--more-x) + var(--s2) + var(--s2)); top: calc(var(--more-y) + var(--s2) + var(--h-row) * 2 + var(--s2)); width: calc(var(--more-w) - var(--s8)); color: var(--ink3); font-size: var(--t-label); pointer-events: none; }
+.sport.sport-moreon .sport-bar .raildots { right: calc(var(--more-x) + var(--s2) + var(--s2)); top: calc(var(--more-y) + var(--s2) + var(--h-row) * 2 + var(--s2)); gap: var(--s1); }
+.sport.sport-moreon .sport-bar .wviewk { top: calc(var(--more-y) + var(--s2) + var(--h-row) * 3 + var(--s2)); right: auto; left: calc(100vw - var(--more-x) - var(--more-w) + var(--s2)); }
+.sport.sport-moreon .sport-bar .wviewk:nth-of-type(2) { left: calc(100vw - var(--more-x) - var(--more-w) + var(--s2) + var(--s12) + var(--s6)); }
+.sport.sport-moreon .sport-bar .railplus { top: calc(var(--more-y) + var(--s2) + var(--h-row) * 4 + var(--s2)); left: calc(100vw - var(--more-x) - var(--more-w) + var(--s2)); }
+.sport.sport-moreon .sport-bar .rail > .barbtn:last-child { top: calc(var(--more-y) + var(--s2) + var(--h-row) * 4 + var(--s2)); right: calc(var(--more-x) + var(--s2)); }
+
+/* talk: one column; your lines white cards, its words plain, each tool run a small card with its state dot */
+.sport .wtalk, .sport .talk-inner { max-width: var(--col); margin-left: auto; margin-right: auto; }
+.sport .wtalk .wme .msg.me { background: var(--card); box-shadow: var(--shadow); }
+.sport .wsteps:not(.nested) { background: transparent; box-shadow: none; display: flex; flex-direction: column; gap: var(--s2); }
+.sport .wsteps:not(.nested) > .step { background: var(--card); border-radius: var(--r-row); box-shadow: var(--shadow); border-top: 0; }
+.sport .wsteps:not(.nested) > .step + .step { border-top: 0; }
+
+/* an ask, pinned above the box: the canvas's card, its amber dot and no amber edge */
+.sport .sport-asks { width: var(--col); max-width: 100%; margin: 0 auto; padding: 0 0 var(--s2); }
+.sport .sport-asks .nr-ask { border-radius: var(--r-card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); border: 0; }
+.sport .sport-asks .nr-ask > p { display: flex; gap: var(--s2); align-items: baseline; font-weight: 600; }
+.sport .sport-asks .nr-ask > p::before { content: ""; flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--asks); transform: translateY(-1px); }
+
+/* the box as the canvas bar: one pill, "To: <session>", the model's pills, "hold fn to talk"; call, mic, the orb and the
+   codex/claude switch leave the row (the call and voice stay on the fn key and the canvas) */
+.sport .ask-col { width: var(--col); max-width: 100%; margin: 0 auto; padding: 0; }
+.sport .sport-asks { padding-left: 0; padding-right: 0; }
+.sport .ask-col > .ask-inner { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: var(--s2); min-height: calc(var(--s12) + var(--s1)); padding: var(--s1) var(--s2) var(--s1) var(--s3); border-radius: var(--r-card); }
+.sport .ask-line { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s2); }
+.sport .ask-line > .wplus { order: 0; flex: none; }
+.sport .ask-line > textarea { order: 2; flex: 1; min-width: 0; }
+.sport .sport-to { order: 1; flex: none; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font-size: var(--t-label); white-space: nowrap; }
+.sport .sport-to b { color: var(--ink); font-weight: 600; max-width: calc(var(--s12) * 4); overflow: hidden; text-overflow: ellipsis; }
+.sport .sport-fn { order: 9; flex: none; margin-left: var(--s1); color: var(--ink3); font-size: var(--t-label); white-space: nowrap; }
+.sport .sport-fn kbd { font: inherit; padding: 0 var(--s1); border-radius: var(--r-chip); background: var(--hover); }
+.sport .ask-col > .ask-inner > .picker { flex: none; display: flex; align-items: center; gap: var(--s1); padding: 0; margin: 0; border: 0; }
+.sport .ask-inner .picker :is(.seatsw, .icon, .state, .grow) { display: none; }
+.sport .ask-inner .picker > :is(.slider, .wchip) { height: var(--h-chip); }
+
+/* the model card (draft 2): the model pill's own menu, risen from the pill as a card whose models are a row of pills */
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); width: max-content; min-width: calc(var(--s12) * 4); max-width: calc(var(--s12) * 8); padding: var(--s3) var(--s4) var(--s4); border-radius: var(--r-card); background: var(--card); color: var(--ink); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); border: 0; font-family: var(--sans); }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mhead { flex: 0 0 100%; margin: 0 0 var(--s1); padding: 0; font-size: var(--t-body); font-weight: 700; color: var(--ink); text-transform: none; letter-spacing: 0; }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mitem { flex: none; width: auto; display: inline-flex; align-items: center; gap: var(--s2); height: calc(var(--h-row) - var(--s1) + var(--s1)); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: var(--hover); color: var(--ink); font-size: var(--t-body); }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mitem:hover, body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mitem.hot { background: var(--press); }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mitem.on { background: var(--ink); color: var(--card); }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mitem :is(.tick, .mnum) { display: none; }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu .mitem .mmeta { font-family: var(--sans); font-size: var(--t-label); color: inherit; opacity: 0.6; background: none; padding: 0; }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu > div:not(.mhead) { display: flex; flex-wrap: wrap; gap: var(--s2); }
+body:has(.sport .picker .slider button.name.list[aria-expanded="true"]) > .menu.sport-menu { transform: translateY(calc(-1 * var(--s4))); }
+/* while the card is up, the pinned ask steps aside (it comes back when the card closes) */
+.sport:has(.picker .slider button.name.list[aria-expanded="true"]) .sport-asks { visibility: hidden; }
+/* a menu opened from the view (marked by Port.tsx): the old names read the new set, as in the view itself */
+.menu.sport-menu { color-scheme: light; --on: var(--ink); --dim: var(--ink2); --mute: var(--ink3); --edge: var(--line); --raised: var(--hover); --surface: var(--card); --island: var(--card); --pop: var(--card); --pop-shadow: var(--shadow-up); --page: var(--paper); --base: var(--paper); color: var(--ink); font-family: var(--sans); }

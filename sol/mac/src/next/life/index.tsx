@@ -7,7 +7,7 @@
 // Signed: marcocyl04-ux's agent, slice 4 (#1615).
 import type { SlotProps } from "../slots.ts";
 import { S, asksOn, piecesIn, regionOf, useNext } from "../cv/index.ts";
-import { bringBack, chosen, compose, closeComposer, composing } from "../cv/moves/life.ts";
+import { bringBack, chosen, compose, closeComposer, composing, picked } from "../cv/moves/life.ts";
 import { asksOf, gone, isLate, isLife, kindOfRegion, order } from "./rules.ts";
 import { Sticky } from "./Sticky.tsx";
 import "./life.css";
@@ -20,7 +20,7 @@ export default function Life(props: SlotProps) {
   const rid = props.region ?? (S.dist === "middle" ? S.region : null);
   if (band !== "middle" || !rid || !isLife(rid)) return null;
   const both = kindOfRegion(rid) === "both";
-  const ps = order(rid), pick = chosen(rid), comp = composing(rid), done = gone(rid);
+  const ps = order(rid), pick = chosen(rid), mine = picked(rid), comp = composing(rid), done = gone(rid);
   const rest = piecesIn(rid).filter((p) => !SKIP.has(p.kind) && !p.inside);
   const late = ps.filter(isLate).length, waits = ps.filter((p) => asksOf(p).length || (p.made || []).some((m) => m.state === "waits")).length;
   const say = [`${ps.length} stick${ps.length === 1 ? "y" : "ies"}`, late ? `${late} late` : "", waits ? `${waits} wait${waits === 1 ? "s" : ""} for you` : ""].filter(Boolean).join(" · ");
@@ -30,7 +30,7 @@ export default function Life(props: SlotProps) {
         <span className="lf-keys"><span className="lf-kbd">⌘N</span> new · <span className="lf-kbd">←→</span> choose · <span className="lf-kbd">⌘↩</span> run · <span className="lf-kbd">⌘D</span> done · <span className="lf-kbd">⌘Z</span> undo</span>
       </h2>
       <div className="lf-board">
-        {ps.map((p) => <Sticky key={p.id} p={p} chosen={!comp && pick?.id === p.id} />)}
+        {ps.map((p) => <Sticky key={p.id} p={p} chosen={!comp && pick?.id === p.id} picked={!comp && mine?.id === p.id} />)}
         {comp ? (
           <div className="lf-st lf-comp chosen" data-composer data-front>
             <span className="lf-t" data-words>{comp.words}<i className="lf-caret" /></span>

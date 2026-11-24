@@ -77,6 +77,9 @@ export function chosen(rid?: string | null): Sticky | null {
   if (pick.D === D && pick.id && o.some((p) => p.id === pick.id)) return D.pieces[pick.id] as Sticky;
   return o[0] || null;
 }
+/** the chosen sticky only when the person chose it (a press, the keys): the first one is chosen for the keys alone, and
+ *  draws no presses at rest (a calm board, BR1 #1615) */
+export function picked(rid?: string | null): Sticky | null { const c = chosen(rid); return c && pick.D === D && pick.id === c.id ? c : null; }
 export function choose(id: string): void {
   pick = { D, id };
   const p = D.pieces[id];
@@ -240,13 +243,13 @@ const diary = {
     if (!w) return { ok: false, why: "Nothing to write.", undo: () => {} };
     const id = B.note({ who: "person", what: w, region: o.region || null, kind: "mine" })!;
     render();
-    return ok(id, () => { const l = B.byId(id); if (l) l.removed = true; });
+    return ok(id, () => { const l = B.byId(id); if (l) { l.removed = true; B.out.remove?.(l, false); } });
   },
   remove_line(id?: string): Done {
     const l = id ? B.byId(id) : null;
     if (!l || l.removed) return { ok: false, why: "No such line.", undo: () => {} };
-    l.removed = true; render(); toast("Line removed");
-    return ok(l.id, () => { l.removed = false; });
+    l.removed = true; B.out.remove?.(l, false); render(); toast("Line removed");
+    return ok(l.id, () => { l.removed = false; B.out.remove?.(l, true); });
   },
   pause_diary(): Done {
     const b = B.book();

@@ -2,9 +2,14 @@
 // in use), and open: the AI it is for, its takes (moving onto one tries it on the window, a press or Enter keeps it,
 // ⌘Z or "Turn back" returns), "Now → With this" while one is tried, its sample, what it sets, the floor no take
 // changes, your own take and its earlier takes. Reads the store, presses M. Signed: marcocyl04-ux's agent, slice 6 (#1615).
-import type { PointerEvent as RPointerEvent } from "react";
+import { type PointerEvent as RPointerEvent } from "react";
+import Because from "../because/Because.tsx";
+import type { Fixer } from "../because/fix.ts";
+import type { Known } from "../known.ts";
 import { M } from "../cv/index.ts";
-import { K, allTakes, byAI, cmp, curName, day, kk, sample, setBy, takeOf, trail, tryOn, whoText, type Cmp, type Ui, type World } from "./model.ts";
+import { K, allTakes, byAI, cmp, curName, day, fitKnob, fitWho, kk, sample, setBy, standing, takeOf, trail, tryOn, whoText, type Cmp, type Ui, type World } from "./model.ts";
+import { ReachPick, WhyFit } from "./Fits.tsx";
+import { KnobWho, fitWhyOf } from "../fits/views.tsx";   // slice R8 (#1615): a knob's "who set it", requests/fits.md
 
 export function CmpBox({ c }: { c: Cmp }) {
   return (
@@ -19,11 +24,45 @@ export function CmpBox({ c }: { c: Cmp }) {
   );
 }
 
-export function Knob({ w, u, kid }: { w: World; u: Ui; kid: string }) {
+/** a change Sol made on its own, in at most six grey words after "because" (the because in flow's length; BR1 item 6) */
+export const becauseW = (why: string) => { const w = why.trim().replace(/^because\s+/i, "").replace(/\.$/, ""); return `because ${w.charAt(0).toLowerCase()}${w.slice(1)}`; };
+
+/** why Sol set a row, under its head and outside its button, on the shared because (Because.tsx, as the Diary and a
+ *  folder's parts): the grey words, then unfolded the reason as a sentence, where it came from with a link to History of
+ *  changes, and That's right · That's wrong · It's out of date. That's wrong previews going back to the value before
+ *  Sol's, It's out of date to the default; each is kept or given Back (the orchestrator's order, BR1 item 2, #1615) */
+function KnobBecause({ w, kid, kept, prev, why, from }: { w: World; kid: string; kept: string; prev: string | null; why: string; from: string }) {
+  const said = why.trim().replace(/^because\s+/i, ""), k = `set:${kid}`;
+  const fact: Known = { k, fact: said.charAt(0).toUpperCase() + said.slice(1).replace(/([^.])$/, "$1."), source: from, by: "sol", place: null };
+  return <span className="st-bcl"><Because ks={[k]} all={[fact]} fixer={knobFixer(w, kid, kept, prev)} words={becauseW(why)} link={{ label: "History of changes", go: () => M.stPlace("history") }} /></span>;
+}
+/** That's right changes nothing; the other two show what would change, "<knob> <now> → <then>", and keep it by the moves */
+function knobFixer(w: World, kid: string, kept: string, prev: string | null): Fixer {
+  const k = K[kid];
+  return {
+    fix: async ({ how }) => {
+      if (how === "right") return { changes: [], token: "right" };
+      const back = how === "not-true" && prev !== null, to = back ? prev : k.def;
+      return { changes: to === kept ? [] : [{ what: k.n, from: takeOf(w, k, kept).n, to: takeOf(w, k, to).n, when: "now" }], token: back ? "back" : "default" };
+    },
+    settle: async (token, keep) => { if (keep && token !== "right") M.stAct(token, kid); },
+  };
+}
+
+/** plain: the row says its name and what is in use, and why only when Sol set it (BR1 item 6: Settings holds fixed inputs as
+ *  plain rows); what it is for shows when it is open */
+export function Knob({ w, u, kid, plain = false }: { w: World; u: Ui; kid: string; plain?: boolean }) {
   const k = K[kid], ai = k.per ? u.ai[kid] : null, key = kk(k, ai), kept = w.prefs.kept[key], tr = tryOn(u, kid, ai), shown = tr || kept;
   const T = takeOf(w, k, shown), KT = takeOf(w, k, kept), open = u.open === kid, a = ai ? w.ais.find((x) => x.id === ai) : null;
   const tk = allTakes(w, u, k), last = trail(w, k, ai), prev = last.length > 1 ? last[last.length - 2] : null, trying = !!tr && tr !== kept;
-  const by = setBy(w, key), s = open ? sample(w, u, k, T, ai) : null;
+  const by = setBy(w, key), s = open ? sample(w, u, k, T, ai) : null, fit = w.live && fitKnob(k);
+  const lead = fit ? standing(w, kid) : null, who = fit ? (lead ? fitWho(lead) : "the default") : whoText(w, k);
+  // why Sol set it on its own, if it did and it still holds: the live fit's reason, the person's month, or the change Sol made
+  const solWhy = !plain ? null : fit ? (lead && lead.author === "sol" && lead.take !== null ? lead.reason ?? null : null)
+    : by && !byAI(by) ? null   // the person set it last: Sol's why no longer holds
+    : fitWhyOf(kid) ?? (byAI(by) && by?.why && by.snap.kept[key] === kept ? by.why : null);
+  // the row's name is its name alone; what is in use, and why, is its description (BR1 item 6: one label per control)
+  const cur = `${trying ? "Trying " : ""}${open || !k.per ? T.n : curName(w, k)}`;
   const leaveIfOut = (e: RPointerEvent) => {
     const t = u.trying; if (!t || t.sticky || t.k !== kid) return;
     const ae = document.activeElement as HTMLElement | null;
@@ -39,12 +78,15 @@ export function Knob({ w, u, kid }: { w: World; u: Ui; kid: string }) {
   return (
     <div className={`st-knob${open ? " open" : ""}`} data-knob={kid} onPointerLeave={leaveIfOut}>
       {kid === "attention" && w.prefs.quiet ? <div className="st-quiet"><span className="nx-aura" /><span>Quiet until <b>{w.prefs.quiet}</b>. Nothing opens the island before then.</span><button className="st-tx" onClick={() => M.stAct("quietend")}>End it</button></div> : null}
-      <button className="st-head" aria-expanded={open} onClick={() => M.stAct("open", kid)}>
-        <span className="st-ht"><b>{k.n}</b><small>{k.s}</small><small className="st-who">{whoText(w, k)}</small></span>
-        <span className={`st-cur${trying ? " try" : ""}`}>{trying ? "Trying " : ""}{open || !k.per ? T.n : curName(w, k)}</span>
+      <button className="st-head" aria-expanded={open} aria-label={k.n} aria-description={[cur, plain ? (solWhy ? becauseW(solWhy).replace(/^b/, "B") : null) : k.s].filter(Boolean).join(". ")} onClick={() => M.stAct("open", kid)}>
+        {plain ? <span className="st-ht"><b>{k.n}</b>{open ? <small>{k.s}</small> : null}</span>
+          : <span className="st-ht"><b>{k.n}</b><small>{k.s}</small><small className="st-who"><KnobWho kid={k.id} or={who} /></small></span>}
+        <span className={`st-cur${trying ? " try" : ""}`}>{cur}</span>
       </button>
+      {solWhy ? <KnobBecause w={w} kid={kid} kept={kept} prev={prev?.t ?? null} why={solWhy} from={[`Sol set “${KT.n}”`, ...(fit && lead ? [lead.source, lead.count ? `seen ${lead.count} times` : null] : [by && byAI(by) ? day(by.when) : null])].filter(Boolean).join(" · ")} /> : null}
       {open ? <div className="st-body">
         {a ? <div className="st-ais" role="radiogroup" aria-label="Which AI">{w.ais.map((x) => <button key={x.id} className="st-ai" role="radio" aria-checked={x.id === ai} data-ai-pick={x.id} onClick={() => M.stAct("ai", kid, x.id)}><span className="nx-aura" />{x.n}</button>)}</div> : null}
+        {fit ? <ReachPick w={w} u={u} /> : null}
         <div className="st-takes" role="radiogroup" aria-label={`${k.n}. Arrow keys try one; Enter keeps it.`}>
           {tk.map((t) => (
             <button key={t.id} className={`st-take${kept === t.id ? " use" : ""}${trying && tr === t.id ? " try" : ""}`} role="radio" aria-checked={kept === t.id} tabIndex={t.id === shown ? 0 : -1}
@@ -72,7 +114,8 @@ export function Knob({ w, u, kid }: { w: World; u: Ui; kid: string }) {
             {kept !== k.def ? <button className="st-btn" onClick={() => M.stAct("default", kid)}>Back to the default</button> : null}
           </>}
         </div>
-        {!trying && byAI(by) && by?.why ? <div className="st-whyai"><span className="nx-aura" /><span>I set this on {day(by.when)}. {by.why}</span></div> : null}
+        {fit && !trying ? <WhyFit w={w} k={k} /> : null}
+        {!fit && !trying && byAI(by) && by?.why ? <div className="st-whyai"><span className="nx-aura" /><span>I set this on {day(by.when)}. {by.why}</span></div> : null}
         {trying ? <div className="st-sample st-cmpbox" data-sample={kid}><CmpBox c={cmp(w, k, kept, tr!, ai)} /></div> : null}
         {!trying || ["working", "writing", "marking"].includes(kid) ? <div className="st-sample" data-sample={kid}>
           <div className="st-sl">{s!.lead}</div>

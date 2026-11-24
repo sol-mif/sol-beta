@@ -7,7 +7,7 @@ import * as CV from "./next/cv/index.ts";
 import { FIXTURE } from "./next/cv/fixture.ts";
 
 test("every scenario of the mockup loads, at its start, with the panel's people", () => {
-  assert.deepEqual(Object.keys(FIXTURE), ["dev-morning", "dev-focus", "dev-week", "loop", "p1", "jayden", "denise", "denise11", "minji", "stress", "thirty", "fresh", "dev-runs", "ai-night"]);
+  assert.deepEqual(Object.keys(FIXTURE), ["dev-morning", "dev-landed", "dev-focus", "dev-week", "loop", "p1", "jayden", "denise", "denise11", "minji", "stress", "thirty", "fresh", "dev-runs", "ai-night"]);
   for (const name of Object.keys(FIXTURE)) {
     assert.ok(CV.load(name), name);
     assert.equal(CV.SCN, name);
@@ -20,7 +20,7 @@ test("every scenario of the mockup loads, at its start, with the panel's people"
   assert.equal(CV.open().length, 10);
   assert.equal(CV.sessions().length, 8);
   assert.equal(CV.working(), 8);
-  assert.deepEqual(CV.zoneOrder(), { build: ["api", "web", "infra", "cli"], life: ["home", "money", "health"] });
+  assert.deepEqual(CV.folderOrder(), ["api", "web", "infra", "cli", "home", "money", "health"], "one list of folders in the canvas's reading order, no zones (BR1)");
   assert.equal(CV.D.routines?.filter((r) => r.ai === "Ada").length, 2);
 });
 

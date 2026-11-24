@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "facts": [
+    {
+      "id": "fact-mwrlw2ob-1itnw",
+      "place": "w:/Users/someone/calm/journal",
+      "fact": "Evenings only, nothing before six",
+      "source": "you told this folder",
+      "by": "person",
+      "at": 1795338000011,
+      "learned": false
+    },
+    {
+      "id": "fact-mwrlw2oc-283hi",
+      "place": "w:/Users/someone/studio/site",
+      "fact": "Prices are in euros",
+      "source": "you told this folder",
+      "by": "person",
+      "at": 1795338000012,
+      "learned": false
+    }
+  ],
+  "proposals": []
+}

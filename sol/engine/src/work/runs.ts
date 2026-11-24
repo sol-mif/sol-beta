@@ -3,10 +3,13 @@
 // Every event goes to every face, tagged with the session, so two windows (or a split view) show the same run.
 // A run that sits idle for 15 minutes is closed; the next message resumes it from the transcript.
 import { randomUUID } from "node:crypto";
-import { getSettings, liveContext } from "../settings.js";
+import { getSettings, liveContext, uiNext } from "../settings.js";
 import { latest } from "../models.js";   // an older version of a family runs as its newest (#863)
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { recordHomeOf, youHereTold } from "../next/you.js";   // "you, here" on a new face's new session (#1615)
+import { rememberTold } from "../next/you-known.js";
 import { homedir } from "node:os";
 import { query, createSdkMcpServer, tool, type HookCallbackMatcher, type HookEvent, type Options, type PermissionMode, type PermissionResult, type Query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
@@ -29,10 +32,14 @@ import type { Changing } from "../changing.js";
 import { join as joinBusy, lockSession } from "../busy.js";
 import { fromContext, estimateUsage, memoryFiles, catchUp, liveUsage, partOf, type Usage, type ContextAnswer, type CardPart, type PartReading } from "./overview.js";
 import { getTeam, speakParagraph } from "../team/settings.js";
+import { tableMode } from "../team/tablelevel.js";   // a table's level is its sessions' mode (#1541)
+import { onTeamNow } from "../team/onteam.js";
 import { guardSpeak } from "../team/control.js";
 import { ceilingGuard, ceilingHooks, solChecked } from "../home/ceiling.js";   // Home 5: the upper limit at position two, only inside a Home Run
 import { Held, sinceAfter, startsTurn, tasksAfter, type BgTask } from "./turns.js";
 import { ownStage, compacting } from "./one.js";
+import { AUTOMATION_PURPOSE } from "../next/automation-tool.js";
+import { CANVAS_NAMES } from "../next/canvas-tool.js";   // #1615: the canvas's own moves never ask   // #1615: a session Add's Automation opened is told what it is for
 import { issueAt } from "../team/show.js";
 import { relayUp } from "../team/relay.js";
 import { runGit } from "../team/note.js";
@@ -67,6 +74,9 @@ export type WorkSay = {
   stage?: AskStage;     // the stage's bar (#698): the chips (things) and what the person pointed at (on), sol.stage only
   home?: unknown[];     // #1031: the pieces a Home folder handed the talk (cross.ts homeLine), read under the words
   person?: boolean;     // #1521: said by the person in their own window (wire.ts work.say), never by Sol, a session or an agent
+  place?: unknown;      // #1615: where the new face put a new session ("dev/api"), read by "you, here"
+  here?: string;        // #1615: "you, here", set by workSay only (never the face's), read before the words
+  purpose?: unknown;    // #1615 birth.html row 5: what Add made the session for ("automation"), told before the words
 };
 export type Answer = { allow: boolean; always?: boolean; note?: string; answers?: Record<string, string>; mode?: PermissionMode };
 type Bus = (msg: object) => void;
@@ -93,10 +103,23 @@ export const workDefaults = () => { const d = getSettings().defaults; return { m
 // executors came up acceptEdits, each asking before a command, while his default said bypass)
 export const modeFor = (free: "ask" | "edits" | undefined, dflt: PermissionMode = workDefaults().mode): PermissionMode | undefined =>
   !free ? undefined : dflt === "bypassPermissions" ? "bypassPermissions" : free === "edits" ? "acceptEdits" : "default";
-/** the mode a session started from `parent` begins on before any mandate: the parent's own while it is live (the picker
- *  moved on it mid-session counts: a session switched to bypass starts the next ones on bypass, Frank 2026-11-20), never
- *  plan (a sub-session is started to do the work), else the person's Work default */
-export const baseModeOf = (parent?: string): PermissionMode => { const p = parent ? runs.get(parent) : undefined; return p && p.mode !== "plan" ? p.mode : workDefaults().mode; };
+/** the mode a session started from another begins on before any mandate (pure): bypass when the person's Work default is
+ *  bypass, whatever the opener runs on (Frank, 2026-11-20 #29: an auto orchestrator started its executors acceptEdits and
+ *  they stopped to ask while he was away); else the opener's own while it is live (the picker moved on it mid-session
+ *  counts: a session switched to bypass starts the next ones on bypass), never plan (a sub-session is started to do the
+ *  work), else the Work default */
+export const baseModeFrom = (own: PermissionMode | undefined, dflt: PermissionMode): PermissionMode =>
+  dflt === "bypassPermissions" || !own || own === "plan" ? dflt : own;
+export const baseModeOf = (parent?: string): PermissionMode => baseModeFrom(parent ? runs.get(parent)?.mode : undefined, workDefaults().mode);
+/** a run's mode as it starts (pure, #1151 and #1541): a session another person's words woke asks first, always; one that
+ *  works for a table (marked with a roomId) runs in that table's level (tablelevel.ts), no further than does-then-tells
+ *  when it is a hand my AI took with nobody pressing; any other keeps its own */
+export function startMode(mode: PermissionMode, woken: unknown, level: string | undefined, atTable: boolean, onTeam: boolean, handed = false): PermissionMode {
+  if (woken) return "default";
+  const m = (atTable ? tableMode(level, onTeam) : null) ?? mode;
+  // a hand my AI took on its own carries another person's words (#1541): edits may go ahead, a command still asks
+  return handed && m === "bypassPermissions" ? "acceptEdits" : m;
+}
 // the picker moved on a live session: told the session's id and its new mode, so the sessions under it can follow
 const modeChanges = new Set<(id: string, mode: PermissionMode) => void>();
 export function onModeChange(fn: (id: string, mode: PermissionMode) => void) { modeChanges.add(fn); return () => { modeChanges.delete(fn); }; }
@@ -137,6 +160,7 @@ export type RunInfo = {
   since: number;     // when this stretch of work began (the turn, or the agents after it), 0 while idle (#47)
   shown: boolean;    // shown to the team over the relay (#101), for this run only
   issue?: number; relay?: boolean;   // the team issue its branch names, and whether the relay is up: the switch shows then
+  paused?: boolean;  // held (next.atwork, BR1 item 7): the turn under way finishes, then nothing more begins until Go on
 };
 
 export class Run {
@@ -149,6 +173,7 @@ export class Run {
   tasks: BgTask[] = [];                        // background agents at work after the turn ended (turns.ts)
   since = 0;                                   // when `working` last turned on, for the face's clock (#47)
   failed = false;
+  paused = false;                              // held (parts/next-atwork.ts): the turn finishes, what waits behind it waits on
   shown = false;                               // shown to the team (#101): set by work.show, never kept past the run
   issue: number | null = null;                 // the issue the folder's branch names, read at start and after each turn
   turnFrom = 0;                                // when the turn under way began, 0 between turns: read at onTurnEnd (#1297, People's minutes)
@@ -188,7 +213,7 @@ export class Run {
     return {
       sessionId: this.id, busy: this.busy, waiting: this.perms.size, cwd: this.cwd, model: this.model, effort: this.effort, mode: this.mode,
       fast: this.fast, context: this.items.usage.context, window: this.window, failed: this.failed, cost: this.cost,
-      tasks: this.tasks.map((t) => t.description), since: this.since, shown: this.shown,
+      tasks: this.tasks.map((t) => t.description), since: this.since, shown: this.shown, ...(this.paused ? { paused: true } : {}),
       ...(this.issue ? { issue: this.issue, relay: relayUp() } : {}),
       ...(this.init ? { commands: this.init.slash_commands, skills: this.init.skills, agents: this.init.agents, mcp: this.init.mcp_servers, outputStyle: this.init.output_style } : {}),
       ...(this.init || this.items.usage.context ? { usage: this.usage ? (liveContext() ? liveUsage(this.usage, this.items.usage.context, this.steppedAt > this.countedOk) : catchUp(this.usage, this.items.usage.context)) : this.guess() } : {}),
@@ -267,7 +292,8 @@ export class Run {
     // mode and never bypass. One another person woke is narrow besides (its three tools, given again after a restart)
     const woken = workState().marks[this.id]?.woken;
     const side = !!workState().marks[this.id]?.parent;   // a side session builds in the background: nothing for the person lands there (#1298)
-    if (woken) this.mode = "default";
+    const roomId = workState().marks[this.id]?.roomId;
+    this.mode = startMode(this.mode, woken, roomId ? getTeam().rooms.find((r) => r.id === roomId)?.level : undefined, !!roomId, onTeamNow() !== false, !!workState().marks[this.id]?.handed);   // not yet asked counts as on the team: nothing changes until GitHub says no
     const solTools = woken ? [] : seatTools().filter((t) => (p.browser || !browser.has(t.name)) && !HOME_ONLY.has(t.name) && !t.name.startsWith("desk_"));
     // a session given a tool of its own (#421, the re-check) is narrow: that tool and nothing else. No built-in tool
     // (no shell, no edits, no web), none of Sol's other tools and no MCP server from settings, so words planted in the
@@ -322,8 +348,10 @@ export class Run {
       allowDangerouslySkipPermissions: !woken,
       // Sol's own bookkeeping and look-only session tools never ask; everything else is Marco's call. A woken session: its own tools only.
       // way_press puts its own card in front of him whatever the mode (#1281): asked here too, it would be two cards
+      // the canvas's own moves (#1615, next/canvas-tool.ts) are the AI's places, each one the person moves back by hand: never asked.
+      // The canvas bar's session (next/canvas-agent.ts) may also use the person's skills
       allowedTools: woken ? toolsOnlyFor(this.id).map((t) => `mcp__sol__${t.name}`)
-        : ["TodoWrite", ...["wrap_up", "list_sessions", "read_session", "rename_session", "mark_done", "archive_session", "hand_off", "pings", "read", "way_look", "way_press", ...toolsOnlyFor(this.id).map((t) => t.name)].map((t) => `mcp__sol__${t}`)],
+        : ["TodoWrite", ...(workState().marks[this.id]?.canvas ? ["Skill"] : []), ...["wrap_up", "list_sessions", "read_session", "rename_session", "mark_done", "archive_session", "hand_off", "pings", "read", "way_look", "way_press", ...CANVAS_NAMES, ...toolsOnlyFor(this.id).map((t) => t.name)].map((t) => `mcp__sol__${t}`)],
       canUseTool: guardSpeak(ceilingGuard((name, input, o) => this.ask(name, input, o), () => this.id)),
       hooks: ceilingHooks(() => this.id),   // Home 5: on every seat launched while Home is on, so one launched before its Run is checked too; none while Home is off
       includePartialMessages: true,
@@ -513,9 +541,10 @@ export class Run {
     if (s.stage && (s.stage.on?.length || (s.stage.things?.length ?? 0) > 1)) {
       if (w0) { if (s.stage.on?.length) point(this.id, s.stage.on); stageLine = askLine(w0.project, s.stage, since); on = splitAsk(`\n\n${stageLine}`).on; }
     } else if (since) stageLine = askLine("", { things: [] }, since);
-    const text = [s.text, attachedLines(saved), atLine, stageLine, homeLine(s.home)].filter(Boolean).join("\n\n");   // #1031: Home's pieces
+    const text = [s.here, s.text, attachedLines(saved), atLine, stageLine, homeLine(s.home)].filter(Boolean).join("\n\n");   // #1031: Home's pieces
     const images = saved.filter((f) => f.isImage);
     const uuid = typeof s.id === "string" && UUID.test(s.id) && !this.items.has(s.id) ? s.id : randomUUID();
+    if (s.person) this.paused = false;   // the person's own words go on a held session (BR1 item 7)
     const queued = this.busy, stops = this.stops;
     this.items.put({ id: uuid, kind: "me", text: s.text, ...(on ? { on } : {}), at: Date.now(), ...(saved.length ? { files: saved.map((f) => ({ name: f.name, path: f.path })) } : {}), ...(queued ? { queued: true } : {}) });
     await this.adjust(s);
@@ -563,6 +592,7 @@ export class Run {
 
   // the turn ended: what Marco said meanwhile goes to the SDK now, in order, and begins the next turn at once (#51)
   private release() {
+    if (this.paused) return;   // held: what was said meanwhile waits until Go on (hold(false))
     const all = this.held.release();
     if (!all.length) return;
     clearTimeout(this.idle);
@@ -576,8 +606,18 @@ export class Run {
     this.tell();
   }
 
+  // Pause (next.atwork, BR1 item 7): the turn under way finishes its step, then the session waits; Go on lets what was
+  // said meanwhile begin the next turn, as at a turn's end
+  hold(on: boolean) {
+    if (this.paused === on) return;
+    this.paused = on;
+    if (!on && !this.busy) this.release();
+    this.tell();
+  }
+
   // a queued message joins the running turn at its next step (the Claude app's Read now, #51)
   readNow(uuid: string) {
+    this.paused = false;   // the person's own press goes on a held session (BR1 item 7)
     const m = this.held.take(uuid);
     if (!m) return;
     if (!this.busy) { this.held.keep(m); this.release(); return; }   // no turn to join: it begins one, as at a turn's end
@@ -732,6 +772,10 @@ export async function workSay(s: WorkSay, bus: Bus, open = openRun): Promise<Run
   const h = s.fresh ? undefined : heldElsewhere(s.sessionId, !runs.has(s.sessionId));
   if (h) throw new Error(`it is open in ${HOLDER_NAME[h.who]} (${h.status}): fork it here to go on, or write there`);
   if (moving.has(s.sessionId)) throw new Error("its thread is being reconciled: a moment");
+  // a new session the person starts in the new face gets "you, here" first, with the place the face put it in, and
+  // the facts it told are kept by its id, as index.ts's say does for the old face's (#1615)
+  s.here = s.fresh && s.person && uiNext() ? hereFor(s) : undefined;
+  if (s.fresh && s.person && uiNext() && s.purpose === "automation") s.here = [s.here, AUTOMATION_PURPOSE].filter(Boolean).join("\n\n");   // Add's Automation (birth.html row 5)
   let run = runs.get(s.sessionId);
   if (!run) {
     let p = starting.get(s.sessionId);
@@ -744,6 +788,17 @@ export async function workSay(s: WorkSay, bus: Bus, open = openRun): Promise<Run
   }
   await run.say(s);
   return run;
+}
+
+/** "you, here" for a new session (next/you.ts youHereTold) in Sol's home (SOL_HOME, else the checkout's), its told kept */
+function hereFor(s: WorkSay): string | undefined {
+  try {
+    const sol = realpathSync(process.env.SOL_HOME ?? resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "home")), user = homedir();
+    const w = { sol, user, rec: recordHomeOf(sol, user) }, cwd = s.cwd ?? sol;
+    const { text, told } = youHereTold(w, cwd, { place: s.place });
+    rememberTold(w, s.sessionId, cwd, told);
+    return text || undefined;
+  } catch { return undefined; }   // no record or no home: the words go on alone
 }
 
 /** The run a message for this session goes to, or none (a new one is opened). A run whose inbox is closed is on its

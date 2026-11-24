@@ -189,7 +189,8 @@ export class ElevenCall implements VoiceCall {
     this.buf = ""; this.inCode = false;
     try {
       const abort = (this.asking = new AbortController());
-      await this.o.ask(text, abort.signal, (delta) => { if (gen === this.gen && !this.ended) this.take(delta); });
+      // the person's speech is theirs; CALL_FIRST and CALL_EACH around it are the engine's (#1794)
+      await this.o.ask(text, abort.signal, (delta) => { if (gen === this.gen && !this.ended) this.take(delta); }, { said });
       if (gen === this.gen && !this.ended) this.finish();
     } catch (err) {
       if (this.ended) return;   // hung up: the turn was stopped on purpose

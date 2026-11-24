@@ -1,0 +1,12 @@
+# The new face's saved files (SOL_HOME/next/, #1615): the code that owns the shape of each. Report only, for now: a PR
+# that changes one of these with no conversion step gets a note from sol/engine/convert-check, never a failed check.
+# Folding these stores into one is claimed on #1615; when that lands, as the step after 0003, these lines move
+# into SHAPES and the check holds them like the rest. One path from the repository's root per line.
+# next/file.ts is left out on purpose: it writes any of them and owns the shape of none.
+sol/engine/src/next/context.ts
+sol/engine/src/next/diary.ts
+sol/engine/src/next/fits.ts
+sol/engine/src/next/movein.ts
+sol/engine/src/next/pace.ts
+sol/engine/src/next/pos.ts
+sol/engine/src/next/seats.ts

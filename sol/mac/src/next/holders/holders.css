@@ -1,0 +1,86 @@
+/* The holders (BR1 #1615, mine/look/br1/holders.html; Holders.tsx): a stack of index cards, never a folder (no tab, no
+   folder colour), and the holder opened up close over the canvas. Every value a token (sol/design/system).
+   Signed: marcocyl04-ux's agent (builder HO), BR1 (#1615). */
+
+/* at rest: the card and the two cards under it, offset down and right, so it reads as a stack. No stacking number: the
+   three cards paint in their order (the face last), and the strip and the lines, positioned after them, over them */
+.hd-card { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4) var(--s3); box-sizing: border-box; color: var(--ink); font-size: var(--t-label); line-height: var(--t-label-line); cursor: pointer; user-select: none; }
+.hd-stack { position: absolute; inset: 0; pointer-events: none; }
+.hd-stack i { position: absolute; inset: 0; border-radius: var(--r); background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+.hd-stack i:nth-child(1) { translate: var(--s2) var(--s2); }
+.hd-stack i:nth-child(2) { translate: var(--s1) var(--s1); }
+.hd-stack i:nth-child(3) { box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.hd-h, .hd-body { position: relative; }
+.hd-card:hover .hd-stack i:nth-child(3), .hd-card.on .hd-stack i:nth-child(3) { box-shadow: var(--shadow-float), inset 0 0 0 1px var(--line); }
+
+.hd-h { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-chip); outline: none; }
+.hd-h:focus-visible { box-shadow: var(--shadow-focus); border-radius: var(--r-chip); }
+.hd-h b { font-size: var(--t-body); line-height: var(--t-body-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hd-h i { font-style: normal; margin-left: auto; color: var(--ink3); font-variant-numeric: tabular-nums; }
+.hd-h .pc-more { flex: none; }
+.hd-new { color: var(--sun); }
+.hd-ic, .hd-orb { flex: none; display: grid; place-items: center; width: var(--s6); height: var(--s6); border-radius: var(--r-chip); background: var(--hover); }
+.hd-orb::after { content: ""; width: var(--s3); height: var(--s3); border-radius: var(--r-pill); background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); }   /* the talk's own orb: a session is a talk */
+
+.hd-body { display: flex; flex-direction: column; }
+.hd-row { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; border-top: 1px solid var(--hair); white-space: nowrap; overflow: hidden; }
+.hd-row:first-child, .hd-thumbs + .hd-row { border-top: 0; }
+.hd-row .hd-n { overflow: hidden; text-overflow: ellipsis; }
+.hd-row small, .hd-r small { margin-left: auto; color: var(--ink3); white-space: nowrap; }
+.hd-quiet { color: var(--ink3); white-space: normal; }
+.hd-dot { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--line); }
+.hd-dot.d-needs { background: var(--asks); }
+.hd-dot.d-working { background: var(--meadow); }
+.hd-dot.d-done { background: var(--ink4); }
+.hd-ai { color: var(--sun); flex: none; }
+.hd-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s1); padding: var(--s1) 0; }
+.hd-th, .hd-p { display: block; height: var(--h-row); border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.k-pages { background: var(--c-mark-page); }
+.k-files { background: var(--c-mark-terminal); }
+.k-notes { background: var(--yellow-soft); }
+
+.hd-card.folded { padding-block: 0; }
+.hd-card.folded .hd-h { min-height: var(--h-chip); }
+
+/* opened up close: one card over the canvas, its filters plain words, Archived one of them */
+.hd-close { position: absolute; z-index: var(--z-popups); inset: var(--s6) auto auto 50%; translate: -50% 0; width: min(880px, calc(100% - 2 * var(--s8))); max-height: calc(100% - 2 * var(--s12) - var(--s12)); display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); box-sizing: border-box; border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-float), inset 0 0 0 1px var(--line); color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.hd-ch { display: flex; align-items: center; gap: var(--s2); }
+.hd-ch b { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: var(--display-w); letter-spacing: var(--title-k); }
+.hd-ch small { color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hd-x { margin-left: auto; flex: none; height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink3); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.hd-x:hover { background: var(--hover); color: var(--ink); }
+.hd-filt { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.hd-filt button { height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font: inherit; font-size: var(--t-label); white-space: nowrap; cursor: pointer; }
+.hd-filt button.on { background: var(--ink); color: var(--card); }
+.hd-filt button:focus-visible, .hd-close button:focus-visible { box-shadow: var(--shadow-focus); outline: none; }
+.hd-list { overflow: auto; display: flex; flex-direction: column; gap: var(--s3); min-height: 0; }
+.hd-r { position: relative; display: flex; align-items: center; gap: var(--s2); min-height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-row); }
+.hd-r:hover, .hd-r:focus-within { background: var(--hover); }
+.hd-open, .hd-nm { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hd-open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.hd-where { margin-left: var(--s2) !important; }
+.hd-where + small { margin-left: auto; }
+.hd-fd { flex: none; width: var(--s3); height: var(--s2); border-radius: var(--r-chip); background: var(--line); }
+.hd-acts { display: flex; align-items: center; gap: var(--s1); flex: none; }
+.hd-more { width: var(--h-chip); height: var(--h-chip); padding: 0; border: 0; border-radius: var(--r-pill); background: none; color: var(--ink3); font: inherit; cursor: pointer; opacity: 0; }
+.hd-r:hover .hd-more, .hd-r:focus-within .hd-more, .hd-more[aria-expanded="true"] { opacity: 1; }
+.hd-more:hover { background: var(--press); color: var(--ink); }
+.hd-back { height: var(--h-chip); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font: inherit; font-size: var(--t-label); cursor: pointer; }
+.hd-back:hover { background: var(--hover); }
+.hd-menu { position: absolute; z-index: var(--z-lift); right: 0; top: 100%; display: flex; flex-direction: column; min-width: 160px; padding: var(--s1); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow-float), inset 0 0 0 1px var(--line); }
+.hd-menu button { height: var(--h-row); padding: 0 var(--s3); border: 0; border-radius: var(--r-row); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.hd-menu button:hover { background: var(--hover); }
+.hd-art { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2); margin-bottom: var(--s2); border: 0; border-radius: var(--r); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font: inherit; font-size: var(--t-label); line-height: var(--t-label-line); text-align: left; cursor: pointer; }
+.hd-art:hover { box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.hd-art .hd-p { height: var(--h-head); }
+.hd-art small { color: var(--ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hd-none { margin: 0; padding: var(--s3) 0; color: var(--ink3); }
+/* the opened lists on the one list (Collection.tsx): rows sit flush with their hairlines, the history a column of rows;
+   Made's art grid stays three across, drawn and in the history alike */
+.hd-close .co.hd-co { gap: 0; }
+.hd-close .co.hd-co .co-count { margin-top: var(--s2); }
+.hd-close .co.hd-co .co-hist { margin-top: var(--s2); }
+.hd-close .co.hd-co .co-its { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+.hd-close .co.hd-arts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--s2); }
+.hd-close .co.hd-arts .co-count, .hd-close .co.hd-arts .co-hist { grid-column: 1 / -1; }
+.hd-close .co.hd-arts .co-its { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--s2); }

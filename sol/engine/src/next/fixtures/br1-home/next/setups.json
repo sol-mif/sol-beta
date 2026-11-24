@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "folders": {
+    "w:/Users/someone/studio/site": {
+      "at": 1795338000002,
+      "by": "sol"
+    },
+    "w:/Users/someone/studio/menus": {
+      "at": 1795338000002,
+      "by": "sol"
+    },
+    "w:/Users/someone/calm/journal": {
+      "at": 1795338000002,
+      "by": "person"
+    },
+    "w:/Users/someone/calm/garden": {
+      "at": 1795338000002,
+      "by": "sol"
+    }
+  },
+  "runs": [],
+  "pinned": [],
+  "dropped": {
+    "w:/Users/someone/studio/site": [
+      "looks"
+    ]
+  }
+}

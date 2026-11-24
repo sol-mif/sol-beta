@@ -61,16 +61,18 @@ const SEAT = {
   thinking: { type: "disabled" }, persistSession: false,
   systemPrompt: "You compare two short texts and answer with one number from 0 to 1. Nothing else.",
 } satisfies Options;
-/** the real turn: one CLI on the person's own sign-in, closed after its answer or at the budget */
-export const claudeTurn: Turn = async (model, prompt, budget) => {
+/** the real turn: one CLI on the person's own sign-in, closed after its answer or at the budget. `seatTurn(system)` is
+ *  the same bare seat told another job (next/raise.ts's judgment answers in sentences, not one number) */
+export const seatTurn = (systemPrompt: string): Turn => async (model, prompt, budget) => {
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), budget);
   try {
-    for await (const m of query({ prompt, options: { ...SEAT, model, cwd: tmpdir(), abortController: ac } }) as AsyncIterable<SDKMessage>) {
+    for await (const m of query({ prompt, options: { ...SEAT, systemPrompt, model, cwd: tmpdir(), abortController: ac } }) as AsyncIterable<SDKMessage>) {
       if (m.type === "result") return m.subtype === "success" && !m.is_error ? m.result ?? "" : null;
     }
     return null;
   } catch { return null; } finally { clearTimeout(t); }
 };
+export const claudeTurn: Turn = seatTurn(SEAT.systemPrompt);
 
 /** the day's count of the person's own model, kept in `home` (none: in memory, for this engine's life). `take` says
  *  whether one more may be asked today under the person's number (settings own.perDay, read each time, so "ask less"

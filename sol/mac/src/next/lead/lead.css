@@ -1,0 +1,82 @@
+/* One lead per piece (round 7, #1615; the mockup's merge/views/lead.css): a piece's one lead line, the said line, its
+   parts each as itself, a hand-off, the 80-AI groupings, the joined blocker's row. Every space, size and corner is the
+   scale's (palette.css), every colour the next set's roles (kit/next.css); the look and layout lints hold this.
+   Signed: marcocyl04-ux's agent, port slice R7 (#1615). */
+
+/* the lead line: one line by its lead; the first bit bold */
+.ld-line { display: flex; align-items: center; gap: var(--s2); margin: 0; font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); min-width: 0; }
+.ld-line .ld-t { min-width: 0; overflow-wrap: break-word; }
+.ld-line b { font-weight: 600; color: var(--ink); }
+.ld-line .nx-aura { flex: none; }
+/* Far: on the folder card, clamped to two lines */
+.ld-fars { display: flex; flex-direction: column; gap: var(--s1); }
+.ld-far { align-items: flex-start; font-size: var(--t-body); line-height: var(--t-body-line); }
+.ld-far .ld-t { overflow-wrap: break-word; }
+/* folded to one line at Middle */
+.ld-fold { flex: 1; font-size: var(--t-body); line-height: var(--t-body-line); }
+.ld-fold .nx-aura { display: none; }
+/* the said line and its one press */
+.ld-said { display: flex; align-items: center; gap: var(--s2); margin: 0; padding: var(--s1) var(--s1) var(--s1) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); min-width: 0; }
+.ld-said .ld-st { flex: 1; min-width: 0; overflow-wrap: break-word; }
+.ld-mini, .ld-btn { flex: none; display: inline-flex; align-items: center; height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); white-space: nowrap; cursor: pointer; }
+.ld-btn { height: var(--h-row); margin-left: auto; }
+.ld-mini.pri { background: var(--ink); color: var(--card); }
+/* a part's row, its kind and its state */
+.ld-parts { display: flex; flex-direction: column; }
+.ld-prow { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); min-width: 0; }
+.ld-pn { flex: 1; min-width: 0; overflow-wrap: break-word; }
+.ld-k, .ld-st { flex: none; padding: 0 var(--s2); border-radius: var(--r-pill); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); background: var(--side); }
+.ld-st { background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.ld-st.st-asks { background: var(--ink); color: var(--card); }
+.ld-st.st-with { background: var(--a1); color: var(--ink); }
+.ld-down, .ld-open { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ld-sum { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); min-width: 0; }
+.ld-sum .nx-kbd { margin-left: auto; }
+.ld-faces { display: inline-flex; gap: var(--s1); }
+.ld-ask { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+.ld-askt { flex: 1; min-width: 0; }
+.ld-askt small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ld-acts { display: flex; gap: var(--s1); flex: none; }
+
+/* Near: a job's parts, each its own kind */
+.ld-near .ld-nhead { display: flex; flex-direction: column; gap: var(--s2); padding: 0 var(--s4); }
+.ld-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--s3); padding: var(--s4); align-items: start; }
+.ld-part { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); min-width: 0; }
+.ld-ph { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.ld-ph .ld-st { margin-left: auto; }
+.ld-sub { color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.ld-sticky { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border-radius: var(--r-row); background: var(--a2); color: var(--ink); }
+.ld-page { padding: var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.ld-page h3 { margin: 0 0 var(--s1); font: var(--display-w) var(--t-read)/var(--t-read-line) var(--serif); color: var(--ink); }
+.ld-page p { margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.ld-run { cursor: pointer; border-radius: var(--r-row); }
+.ld-run:hover { background: var(--hover); }
+.ld-psay { margin: 0; color: var(--ink2); }
+.ld-face { white-space: pre-line; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ld-foot { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.ld-signed { display: flex; align-items: center; gap: var(--s2); }
+
+/* Cowork: what waits on a teammate from you */
+.ld-wo { color: var(--ink); font-weight: 500; }
+.ld-others { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s3); }
+.ld-orow { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink2); }
+.ld-ol { flex: none; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.ld-ot { flex: 1; min-width: 0; }
+.ld-ot b { font-weight: 600; color: var(--ink); }
+.ld-ot small { display: block; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+
+/* Your AIs at 80: a lead's card says who is under it */
+.ld-n { margin-left: auto; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.ld-team { margin-top: var(--s2); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink2); }
+.ld-team summary { cursor: pointer; list-style: none; }
+.ld-team summary::-webkit-details-marker { display: none; }
+.ld-names { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); padding-top: var(--s1); color: var(--ink3); }
+
+/* the joined blocker on Needs you */
+.ld-g { display: inline-grid; place-items: center; width: 20px; aspect-ratio: 1; border-radius: 50%; background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); flex: none; }
+
+/* round 8 fixes · F1: the sidebar's Diary row shows the badge's number or nothing (lead/extra.ts marks the page; the
+   join moves the condition into the shell, requests/lead.md 1) */
+[data-one-count="parts"] #sideregions [data-zone-go="diary"] .nx-n { display: none; }
+/* round 7 · F3: Your AIs scrolls in #view, which ends above the talk pill (requests/lead.md) */
+.nx-view:has(> .ais) { margin-bottom: calc(var(--s12) + var(--s12)); }

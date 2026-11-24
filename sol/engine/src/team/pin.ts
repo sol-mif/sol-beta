@@ -105,6 +105,8 @@ function say(words: string) { going = words; void view().then((v) => D?.tell({ t
 
 /** the pin this Sol is on, or null (ship.ts: no offer, no install, Update refused) */
 export const pinNow = () => P;
+/** what a go back under way is doing, in words, "" when none (J4 of #1824: Sol.app does not relaunch meanwhile, team/shell.ts) */
+export const goingNow = () => going;
 
 export async function startPin(d: Deps) {
   D = d; P = null; going = "";

@@ -1,0 +1,80 @@
+/* Your own pieces (round 6 · M3, #1615; the mockup's views/pieces.css, its structure only): the "yours" marks on the
+   canvas, the proposal and the update's cards under the headline, and the page in Settings. Every space, size, height
+   and corner is the scale's (palette.css), every colour and shadow the next set's roles (kit/next.css); Bloom's
+   colours are the set's accents. The look lint holds it; the visual pass redoes the look.
+   Signed: marcocyl04-ux's agent, port slice 12 (#1615). */
+
+/* "yours", wherever the canvas draws a piece of your own */
+[data-face=next] .yours { display: inline-flex; align-items: center; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--side); color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; white-space: nowrap; }
+[data-face=next] .cu-tag { margin-right: var(--s2); }
+[data-face=next] .cu-here { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); margin: var(--s2) 0 0; }
+[data-face=next] .cu-for { font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 400; color: var(--ink3); margin-left: var(--s2); }
+
+/* under the headline */
+.pc-under { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s4); text-align: left; color: var(--ink); font-size: var(--t-body); line-height: var(--t-body-line); }
+.pc-under button { font: inherit; cursor: pointer; }
+.pc-ic { width: var(--s4); height: var(--s4); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.pc-under .pc-btn { display: inline-flex; align-items: center; height: var(--h-row); padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; flex: none; }
+.pc-under .pc-btn:hover { background: var(--hover); }
+.pc-under .pc-btn.pri { background: var(--ink); color: var(--paper); box-shadow: none; }
+.pc-seen { display: flex; align-items: center; gap: var(--s2); padding: var(--s3); border-radius: var(--r-row); background: var(--side); }
+.pc-st { flex: 1; min-width: 0; }
+.pc-calm { display: flex; align-items: center; gap: var(--s2); margin: 0; color: var(--ink2); }
+.pc-card { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); min-width: 0; }
+.pc-card .ph { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
+.pc-card .ph .why, .pc-card .ph .here { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+.cu-prop .ph .here { margin-left: auto; }
+.cu-card .ph .why { margin-left: auto; }
+.cu-card { box-shadow: var(--shadow), inset 0 0 0 1px var(--a2); }
+.cu-said { font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; }
+.cu-said q { quotes: "“" "”"; }
+.pc-card > .why { color: var(--ink2); }
+.pc-under .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-top: var(--s2); }
+.pc-under .cmp .draft { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; padding: var(--s2); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.pc-under .cmp .to { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); min-width: 0; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.pc-under .cmp .to .yours { white-space: normal; min-width: 0; }
+.cu-mini { display: flex; flex-direction: column; gap: var(--s1); color: var(--ink2); }
+.cu-mini .r { display: flex; align-items: center; gap: var(--s2); min-width: 0; padding: var(--s1) var(--s2); border-radius: var(--r-chip); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; overflow: hidden; }
+.cu-mini .r b { color: var(--ink); font-weight: 600; min-width: 0; overflow-wrap: break-word; }
+.cu-mini .r.mine { box-shadow: inset 0 0 0 1px var(--a2); }
+.cu-mini .hl { font-family: var(--serif); font-size: var(--t-read); line-height: var(--t-read-line); color: var(--ink); }
+.pc-under .checks { list-style: none; display: flex; flex-direction: column; gap: var(--s2); margin: var(--s2) 0 0; padding: 0; color: var(--ink2); }
+.pc-under .checks li { display: flex; gap: var(--s2); align-items: flex-start; }
+.pc-under .checks .g { display: grid; place-items: center; flex: none; width: var(--s6); height: var(--s6); border-radius: var(--r-pill); font-weight: 700; }
+.pc-under .checks .g.ok { background: var(--ink); color: var(--paper); }
+.pc-under .checks .g.no { background: var(--side); color: var(--ink); box-shadow: inset 0 0 0 1px var(--a2); }
+.pc-under .checks b { color: var(--ink); font-weight: 600; }
+.pc-under .checks small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.cu-acts { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.cu-alt { padding: var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); }
+.cu-alt b { color: var(--ink); font-weight: 600; }
+.cu-why { margin: 0; font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; }
+.pc-hint { margin: 0; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
+.cu-sw { display: inline-flex; gap: var(--s1); margin-left: auto; }
+.cu-dot { display: inline-block; flex: none; width: var(--s3); height: var(--s3); border-radius: var(--r-chip); background: var(--a1); }
+.cu-dot.mint, .cu-dot.sea { background: var(--a3); }
+.cu-dot.pink { background: var(--a2); }
+.cu-dot.cream { background: var(--side); box-shadow: inset 0 0 0 1px var(--a2); }
+
+/* the page in Settings (inside .st: its buttons and headings are Settings') */
+.pc-page { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+.pc-page h1 { margin-top: 0; }
+.pc-back { align-self: flex-start; height: var(--h-chip); padding: 0 var(--s2); border: 0; border-radius: var(--r-pill); background: none; color: var(--ink2); font: inherit; cursor: pointer; }
+.pc-back:hover { background: var(--hover); color: var(--ink); }
+.pc-list { display: flex; flex-direction: column; border-radius: var(--r-card); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+.pc-list > .pc-row + .pc-row { box-shadow: inset 0 1px 0 var(--line); }
+.pc-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s3); border-radius: var(--r-card); min-width: 0; }
+.pc-row.hl { background: var(--hover); }
+.pc-all { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.pc-mk { display: inline-grid; place-items: center; flex: none; width: var(--h-row); height: var(--h-row); border-radius: var(--r-row); background: var(--paper); color: var(--ink2); }
+.pc-t { flex: 1; min-width: 0; }
+.pc-t small { display: block; color: var(--ink2); }
+.pc-acts { display: flex; gap: var(--s2); flex: none; }
+.cu-st { display: block; margin-top: var(--s1); }
+.pc-state { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+.pc-state i { display: inline-block; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink4); }
+.pc-state.on i { background: var(--a3); }
+.pc-state.need i { background: var(--a2); }
+.pc-conf { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s3); box-shadow: inset 0 1px 0 var(--line); color: var(--ink2); }
+.pc-conf span { flex: 1 1 100%; }
+.pc-find { margin-bottom: var(--s2); }

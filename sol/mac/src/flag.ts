@@ -33,7 +33,7 @@ const realEnv: SwitchEnv = { storage: storageOf, search: searchOf, target: windo
 // to team.channel.get (VersionSwitch asks), kept in this window's storage `sol.version`, so the next load reads it at
 // once; until the engine has answered once it reads complete (off), so nothing shows to someone it may not be for.
 // MINE_ON keeps its name: a switch added to it stands at concept.
-export const MINE_ON = new Set(["cross", "build.one", "build.one.long", "build.one.team", "build.snap", "side.sorted", "look.shown", "agents.mode", "build.orchestration"]);
+export const MINE_ON = new Set(["cross", "build.one", "build.one.long", "build.one.team", "build.snap", "side.sorted", "look.shown", "build.orchestration"]);
 export const MINE_KEY = "sol.mine";
 export const MINE_LOGINS = new Set(["marcocyl04-ux"]);
 export const VERSION_KEY = "sol.version";

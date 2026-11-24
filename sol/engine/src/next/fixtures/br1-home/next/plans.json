@@ -1,0 +1,37 @@
+{
+  "plans": [
+    {
+      "id": "plan-fc3c9ea9",
+      "title": "Open the new menu",
+      "why": "the lunch menu goes live today",
+      "ask": "",
+      "steps": [
+        {
+          "key": "s1",
+          "name": "Check prices",
+          "does": "Read the prices page",
+          "after": [],
+          "model": null,
+          "state": "waiting"
+        },
+        {
+          "key": "s2",
+          "name": "Publish",
+          "does": "Publish the menu",
+          "after": [
+            "s1"
+          ],
+          "model": null,
+          "state": "waiting"
+        }
+      ],
+      "state": "proposed",
+      "revision": 1,
+      "made": 1795338000026,
+      "by": {
+        "who": "you"
+      },
+      "cwd": null
+    }
+  ]
+}

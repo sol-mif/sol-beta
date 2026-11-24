@@ -251,6 +251,8 @@ export async function release(d: ReleaseDeps, o: { repo: string; rhythm: Rhythm;
     if (total > runs.length) return { error: `GitHub has ${total} runs on ${short(sha)} and gave ${runs.length}, so no urgent release` };
     const checks = checksOn(runs);
     if (!checks.green) return { error: `${base} at ${short(sha)} is not green: ${checks.why}; an urgent release waits until it is (#1231)` };
+    // dev-D-0000 would be the app version of the day's dev-D (0.D.0), so its update would never install: it waits a minute
+    if (c.minutes === 0) return { error: `an urgent release at 00:00 would share the day's version with ${devTag(c.day)}; try again in a minute` };
     tag = devTag(c.day, `${pad(Math.floor(c.minutes / 60))}${pad(c.minutes % 60)}`);
     if (await rev(d, `refs/tags/${tag}`)) return { error: `${tag} stands already; try again in a minute` };
     by = ok;

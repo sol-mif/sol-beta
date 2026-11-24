@@ -14,6 +14,7 @@ import { buildTable, homeHandles, UNITS } from "../src/home/wire.ts";
 import { onAnswer, onStage, homeStage } from "../src/home/hooks.ts";
 import { changeThing, newThing, verOf } from "../src/home/items.ts";
 import type { Thing } from "../src/contract/home/today.ts";
+import { fixWhere, knownNow, readStore } from "../src/next/you-known.ts";
 
 after(cleanup);
 const today = (ms: any[]) => ms.filter((m) => m.type === "home.today").at(-1);
@@ -369,4 +370,25 @@ test("an undo of a later's own reverse event writes nothing: an undo is no act t
   assert.deepEqual(got.map((m) => m.type), ["home.today"], "the plain state");
   assert.equal(r.events().length, n, "nothing written");
   assert.deepEqual(today(got).today.needs, FIRST.needs, "the later still undone");
+});
+
+// builder K (#1615): Later, an answer and their Undo are each one line in what Sol knows, at the Thing's folder, because of it
+test("one store: Later, an answer and the Undo of either are each one fix line, scoped to the Thing's folder, because of the Thing", async () => {
+  const r = rig({ now: NOW });
+  r.seed(seed(NOW));
+  const f = r.face();
+  const lines = () => readStore(r.home).fixes.map((x) => [x.how, x.what, x.place, x.reason, x.now ?? null]);
+  const later = done(await r.ask(f, { type: "home.later", thingId: "t-chem-set6" }));
+  assert.deepEqual(lines(), [["later", "“chem 110 set 6”", "school › chem 110", "thing:t-chem-set6", null]], "in no folder on the disk, the crumb Home says it by");
+  await r.ask(f, { type: "home.undo", ledgerId: later.ledgerId });
+  assert.deepEqual(lines().at(-1), ["undo", "“chem 110 set 6”", "school › chem 110", "thing:t-chem-set6", null]);
+  const ans = done(await r.ask(f, { type: "home.answer", thingId: "t-chem-set6", answer: "hold 19–21 for it" }));
+  assert.deepEqual(lines().at(-1), ["answer", "“chem 110 set 6”", "school › chem 110", "thing:t-chem-set6", "hold 19–21 for it"]);
+  await r.ask(f, { type: "home.undo", ledgerId: ans.ledgerId });
+  assert.equal(lines().length, 4);
+  assert.deepEqual(lines().at(-1)?.[0], "undo");
+  assert.ok(knownNow(fixWhere(r.home, r.home), {}, NOW).facts.some((k) => k.fact === "You put “chem 110 set 6” off till later" && k.place === "school › chem 110"), "said in what Sol knows");
+  // a refused ask writes no line
+  await r.ask(f, { type: "home.later", thingId: "t-nobody" });
+  assert.equal(lines().length, 4);
 });

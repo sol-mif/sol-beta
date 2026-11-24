@@ -50,10 +50,15 @@ test("the model is fetched once, on its own; a failed or false fetch leaves no h
     assert.match(r.why ?? "", /not a whisper model \(a sign-in page on this network\?\)/);
     await settled();
 
-    answer("lmgg MODEL bytes", 200);
+    // the fetch is held until both clips have answered: a stand-in that answers at once could land the model before the
+    // second clip looks, and that clip would then be right to run on it (#961: red under load)
+    let release!: () => void;
+    const held = new Promise<void>((ok) => (release = ok));
+    globalThis.fetch = (async (url: string | URL | Request) => { calls.push(String(url)); await held; return new Response("lmgg MODEL bytes", { status: 200 }); }) as typeof fetch;
     const before = calls.length;
     const two = await Promise.all([transcribe(home, wav), transcribe(home, wav)]);
     assert.ok(two.every((x) => /^fetching the speech model/.test(x.why ?? "")), "two clips at once: both told");
+    release();
     await settled();
     assert.equal(calls.length - before, 1, "one fetch for the two");
     assert.equal(readFileSync(model, "utf8"), "lmgg MODEL bytes", "the model is fetched and in place");

@@ -39,7 +39,7 @@ import { review, stopReview, markReview, withReviews } from "./review.js";
 import { withTonight } from "../team/tonight.js";   // the review session's card (#416)
 import { withHandIn } from "../team/handin.js";   // the hand-in card (#476)
 import { withCheckpoints, askPress, featuresRoot, PRESSES } from "../team/checkpoint.js";   // Scoped and Approve (#482)
-import { changes, pathIn, readText, writeText, pullRequest, openTerm, getTerm, closeTerm, allTerms, termInfo } from "./panes.js";
+import { changes, changesPerCopy, pathIn, readText, writeText, pullRequest, openTerm, getTerm, closeTerm, allTerms, termInfo } from "./panes.js";
 import { remote, changesSummary, createPr, CARD_PARTS } from "./overview.js";
 import { withMine } from "./mine.js";
 import { withPlace } from "./place.js";   // where each folder belongs, Build or Home (#1016)
@@ -285,8 +285,14 @@ export async function handleWork(w: Wire, m: any) {
       if (s.fresh) void fileByTopic(s.sessionId, getRun(s.sessionId)?.cwd ?? s.cwd ?? "", String(s.text ?? ""));
       return broadcastSessions();
     }
-    case "work.stop":
-      return getRun(sid(m.sessionId))?.stop();
+    case "work.stop": {   // one store (#1615): the person's Stop of a working session is one fix line, scoped to its folder
+      const run = getRun(sid(m.sessionId));
+      if (!run?.working) return run?.stop();
+      await run.stop();
+      const info = await sessionInfo(run.id).catch(() => null), title = info?.customTitle || info?.summary;
+      void import("../next/you-known.js").then((k) => k.noteStop(SOL_HOME, { what: title ? `“${title}”` : "a session", reason: `session:${run.id}`, cwd: run.cwd })).catch(() => {});
+      return;
+    }
     // a press on a session block of an orchestrator's stage (step 4): steer, answer, stop, archive; one message, one act
     case "work.stage.session": {
       const reply = (o: object) => w.send({ type: "work.stage.session", rid: m.rid, ...o });
@@ -606,6 +612,15 @@ export async function handleWork(w: Wire, m: any) {
     }
     case "work.remote":   // Remote Control: the away page over `tailscale serve`; on undefined reads the state only
       return w.send({ type: "work.remote", rid: m.rid, ...(await remote(typeof m.on === "boolean" ? m.on : undefined)) });
+    case "work.changes": {   // each session's changed files, by its copy (BR1, #1615: the plane's piece.files); one session with sessionId
+      const reply = (o: object) => w.send({ type: "work.changes", rid: m.rid, ...o });
+      try {
+        const id = typeof m.sessionId === "string" ? m.sessionId : "";
+        const rows = (await workSessions()).sessions.filter((s) => !id || s.id === id);
+        const per = await changesPerCopy(rows);
+        return reply(id ? (per[0] ?? { sessionId: id, files: null }) : { changes: per });
+      } catch (err) { return reply({ error: err instanceof Error ? err.message.split("\n")[0] : String(err) }); }
+    }
     case "work.changes.summary": case "work.pr.create": {   // the Changes card: +n −m, and a draft PR from the branch
       const cwd = folderOf(m.cwd);
       const reply = (o: object) => w.send({ type: m.type, rid: m.rid, ...o });
@@ -787,7 +802,7 @@ children.setChildDeps({
 });
 // the orchestration sessions' hands: the engine's own say, runs and list, given so one.ts never imports this file
 one.setOneDeps({
-  say: async (sessionId, text, fresh, how) => { const mode = modeFor(how?.free); await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd } : {}), ...(mode ? { mode } : {}) }, bus); if (fresh) invalidate(); broadcastSessions(); },
+  say: async (sessionId, text, fresh, how) => { const mode = how?.mode ?? modeFor(how?.free); await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd } : {}), ...(mode ? { mode } : {}), ...(how?.model ? { model: how.model } : {}), ...(how?.effort ? { effort: how.effort } : {}) }, bus); if (fresh) invalidate(); broadcastSessions(); },
   run: (id) => getRun(id),
   sessions: async () => (await workSessions()).sessions as never,
   lastWords: async (id) => {
@@ -848,7 +863,7 @@ const lastWordsOf = async (id: string) => {
 executor.setExecDeps({
   store: tickets,
   say: async (sessionId, text, fresh, how) => {
-    const mode = modeFor(how?.free, baseModeOf(how?.from));   // bypass when the opener's own mode or the Work default is bypass, else the mandate's free (runs.ts modeFor)
+    const mode = modeFor(how?.free, baseModeOf(how?.from));   // bypass when the Work default or the opener's own mode is bypass, else the mandate's free (runs.ts baseModeFrom, modeFor)
     await workSay({ sessionId, text, ...(fresh ? { fresh: true, cwd: fresh.cwd, worktree: !!fresh.worktree } : {}), ...(mode ? { mode } : {}) }, bus);
     if (fresh) invalidate(); broadcastSessions();
   },
@@ -1229,7 +1244,7 @@ const carding = new Map<string, Promise<string>>();   // proposal cards being st
 async function startFrom(from: string, a: Start & { card?: string; under?: string }): Promise<string> {
   const parent = getRun(from);
   const d = workDefaults();
-  const base = baseModeOf(from);   // the parent's own mode while it is live (never plan), else the Work default (runs.ts)
+  const base = baseModeOf(from);   // bypass when the Work default is; else the parent's own mode while it is live (never plan), else the default (runs.ts)
   const mode = modeFor(a.free, base) ?? base;
   // its part in the dev cycle (#484): the one asked for, never less held than the session that starts it
   const role = stricter(workState().marks[from]?.role, a.role);

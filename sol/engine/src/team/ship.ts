@@ -11,8 +11,12 @@
 //          (Settings › me, settings.ts updatesPaused) holds the swap, never the build. A `*/mine` Sol too since #1150,
 //          its own commits on top, and a clash leaves it where it was while #425's carry takes it over with no press.
 //          Each says what it runs after (runs.ts).
-//   beta   `stable`, moved by the beta pass (#419) to a whole dev release. A beta Sol follows `stable` and is offered it
-//          with Update and Later, as before.
+//   beta   `stable`, moved by the beta pass (#419) to a whole dev release. A beta Sol follows `stable` and, since #1615,
+//          installs it by itself the same way (built aside, swapped in between turns, one every EVERY_MS, `pause updates`
+//          holds it, a pin stops it, the keeper's way back if it does not start). Update and Later stay for the times it
+//          cannot: a turn in flight, paused, changes not kept. One difference: a beta Sol's own changes that clash with
+//          the release are never carried over by themselves (that would open a session on a stranger's machine with no
+//          press); the release then stays offered, and Update starts the carry as before.
 // A Sol's channel is its setting (`channel` in team.json); left empty, a developer (any checkout whose origin is not
 // the beta repo) is dev and a tester (origin sol-beta) is beta (channelOf).
 // every Sol learns: the relay's `stable { sha, tag, by, channel }` (channel absent: beta), whose sha is not this
@@ -45,7 +49,7 @@ import { join, resolve } from "node:path";
 import { join as joinBusy, betweenTurns, onBusy } from "../busy.js";
 import { onRelay } from "./relay.js";
 import { getTeam, onTeam } from "./settings.js";
-import { noteChannel, versionMode, updatesPaused } from "../settings.js";
+import { noteChannel, versionMode, updatesPaused, noteUiNext } from "../settings.js";
 import type { Mode } from "../versions.js";
 import { refreshVersion, releaseTag, versionNow } from "../version.js";
 import { carryOver, carryNow, stayedOn, clearStay, type Carry } from "./carry.js";   // own changes that clash with a release (#425)
@@ -53,6 +57,7 @@ import { pinNow } from "./pin.js";   // a pinned Sol takes no new release (#426)
 import { sayRuns, type Why } from "./runs.js";   // what this Sol runs, said on the relay (#1150)
 import { leakIn, guardProbe, isTeamFile, teamNames, notYetPublic, NOT_YET_PUBLIC, readText, commitLeak, EXPORT_IDENT, NEUTRAL_HOME, type ExportFile } from "./leak.js";   // nothing team-only reaches testers (#479)
 import { isQuiet, quietPush } from "../quiet.js";
+import { windowOld, onWindow, startWindow, OLD_WINDOW_LINE, OLD_WINDOW_SHA } from "./window.js";   // a Sol.app older than BR1 (#1824, ticket K)
 
 const run = promisify(execFile);
 const ENV = () => ({ ...process.env, GIT_TERMINAL_PROMPT: "0" });   // never a password prompt nobody can answer
@@ -64,7 +69,7 @@ export type Ship = {
   root: string;                                   // sol/: git runs here, the pathspecs are relative to it
   channel: () => Promise<Channel>;                // this Sol's channel (channelOf)
   origin?: () => Promise<string>;                 // the checkout's origin, for the version's channel (versionChannelOf)
-  auto?: boolean;                                 // a dev release installs itself between turns (default yes)
+  auto?: boolean;                                 // a release (dev, and beta since #1615) installs itself between turns (default yes)
   quietMs?: number;                               // how long no turn may be in flight before it does (default QUIET_MS)
   everyMs?: number;                               // #1566: the least time between two installs by itself (default EVERY_MS)
   capMs?: number;                                 // #1566: past this much waiting, a breath between turns is enough (CAP_MS)
@@ -79,6 +84,7 @@ export type Ship = {
   carry?: (release: string, tag: string, follow: string, auto?: boolean) => Promise<Carry>;
   runs?: (why?: Why) => void;                     // #1150: what this Sol runs is said on the relay, with why it did not install
   ci?: (dir: string) => Promise<void>;            // #1150: `npm ci` in a folder whose lock file the release changed (default npm)
+  kept?: () => Promise<boolean>;                  // #1615: launchd or systemd starts this engine again after a renew (default keptNow)
 };
 export type Offer = { type: "team.stable"; sha: string; tag: string; by: string; mine: string; behind: boolean; channel: Channel; count?: number; back?: true };
 // back (#638, #639, dev only): dev went back (sol/release --back) to a release older than the one this Sol runs; it stands
@@ -100,8 +106,9 @@ export const LOCKS = ["engine/package-lock.json", "mac/package-lock.json"];
 // (engine/keep, bash) reads, tab between words (a path may hold a space): `from <sha>` `to <sha>` `at <iso>`, `nm <live node_modules> <the one it replaced>` for a
 // folder whose packages were moved in, `ci <folder>` for one installed in place. The keeper deletes it, and the kept
 // node_modules, once the engine has stayed up its minute; at the third start that dies it moves the checkout back to
-// `from`, puts each folder's packages back, and writes engine/.skip, the release that did not start here. A release
-// in .skip is not installed by itself again (installDev); Update still can, and a newer release clears it.
+// `from`, puts each folder's packages back, and writes engine/.skip, the commit that did not start here (on a */mine
+// Sol the release with the person's own commits on top). A release in .skip, or under it, is not installed by itself
+// again (installRelease, skipped); Update still can, and a newer release clears it.
 export const SWAP = ".swap", SKIP = ".skip";
 /** the swap record's text (pure) */
 export function swapText(o: { from: string; to: string; at: string; nm: [string, string][]; ci: string[] }): string {
@@ -220,10 +227,16 @@ Every commit there gets \`mine: \` in front. The harness comes along (\`sol/harn
 
 ## Keep it current
 
-A new version: Sol says so in its own window within the hour, with an **Update** button; press it and Sol
-fetches the new version and rebuilds its engine and face from it. The Mac app's own shell comes from the
-[latest release](https://github.com/sol-mif/sol-beta/releases/latest) when it changed; the release notes say so. On your own branch, \`bash sol/mine/rebase\` instead:
-it puts your changes on top of the new version, and if one does not fit it names the place and changes nothing. When something breaks, \`sol/HELP.md\`.
+A new version installs itself. Sol looks for one every ten minutes, builds it beside the one running, and moves
+to it at a quiet moment, never in the middle of a reply; your own changes go on top. If the new engine does not
+start, Sol goes back to the version before. To hold new versions for a while, set **updates** to paused in Settings
+(the engine drawer). When Sol cannot move by itself (paused, a reply under way, changes not kept yet, or your own
+changes clash with the new version), its window says so with an **Update** button. On your own branch you can also
+run \`bash sol/mine/rebase\` by hand: it puts your changes on top of the new version, and if one does not fit it names
+the place and changes nothing. On a Mac, Sol's window comes with
+the app: a new look arrives when you download the newest \`Sol-mac.zip\` from the
+[latest release](https://github.com/sol-mif/sol-beta/releases/latest); the release notes say when it changed. When
+something breaks, \`sol/HELP.md\`.
 Something wrong, or a thought: say it in the beta testers' Discord, https://discord.gg/f2CHmYDDZV (in Sol, **Tell us…**
 in the menu bar menu opens it), or open an issue on this repository.
 `;
@@ -429,7 +442,21 @@ async function wentBack(d: Ship, sha: string, mine: string): Promise<boolean> {
 /** HEAD holds `sha` (it is HEAD or in its history) */
 const holds = async (d: Pick<Ship, "root">, sha: string) => (await tryGit(d, ["merge-base", "--is-ancestor", sha, "HEAD"])) !== null;
 
+/** the paths of `git status --porcelain` lines (pure): both ends of a rename, a quoted path unquoted */
+export function changedPaths(lines: string[]): string[] {
+  const unq = (p: string) => (p.startsWith("\"") && p.endsWith("\"") ? p.slice(1, -1) : p);
+  // the two status letters, the first one's space perhaps trimmed away with the output's (git() trims)
+  return lines.map((l) => l.replace(/^[A-Z?! ]{1,2} /, "")).filter(Boolean).flatMap((l) => l.split(" -> ").map(unq));
+}
+/** #1821: every unsaved path is the face's, sol/mac or sol/design, what sol/mutate keeps (pure); nothing unsaved is false */
+export function faceOnly(lines: string[]): boolean {
+  const paths = changedPaths(lines);
+  return paths.length > 0 && paths.every((p) => p.startsWith("sol/mac/") || p.startsWith("sol/design/"));
+}
+
 let updating = false;
+/** whether an update is moving this checkout now (J4 of #1824: Sol.app does not relaunch mid-swap, team/shell.ts) */
+export const swappingNow = () => updating;
 /** team.update: fast-forward to the channel's branch on GitHub (`dev` or `stable`); then the build watcher rebuilds and
  * renew goes live at a quiet moment */
 export async function update(d: Ship, channel?: Channel, auto = false, ready?: Prepared): Promise<{ ok: true; sha: string; renews: boolean } | { ok?: false; error: string; carry?: Carry; why?: Why }> {
@@ -439,15 +466,33 @@ export async function update(d: Ship, channel?: Channel, auto = false, ready?: P
   updating = true;
   const ch = channel ?? await d.channel().catch((): Channel => "beta");
   const B = BRANCH[ch];
+  const quiet = betweenTurns();   // read before this update counts itself busy (#1821: no seat's edit is kept mid-turn)
   const leave = joinBusy("update", B, `update to ${B}`);
   try {
-    const dirty = (await git(d.root, ["status", "--porcelain", "--untracked-files=no"])).split("\n").filter(Boolean);
+    let dirty = (await git(d.root, ["status", "--porcelain", "--untracked-files=no"])).split("\n").filter(Boolean);
     const branch = (await tryGit(d, ["branch", "--show-current"])) ?? "";
     const mine = /\/mine$/.test(branch);
-    // #425: a */mine Sol is a person's own, and what they read says change and keep, never commit
-    if (dirty.length) return { error: mine ? "you have changes not kept yet in your Sol; keep them first" : "you have changes; commit or stash first", why: "changes" };
     if (mine && carryNow()?.stage === "moving") return { error: "your Sol is moving over to your carried-over changes; a moment" };
     if (branch !== "main" && branch !== B && branch !== "stable" && !mine) return { error: `you are on ${branch || "a detached head"}; switch to main first` };
+    // #1821: a seat that changed the face and missed its sol/mutate (leak.ts) left the face unsaved; on a */mine Sol the
+    // update keeps those edits as one commit first, the commit the seat would have made, and goes on with them on top.
+    // Only between turns (a seat mid-turn may be half-way through its edit), and never with a new file there: mutate
+    // adds all of sol/mac and sol/design, and a scratch file is not an edit to keep. A failed look keeps nothing.
+    let fresh: string[] = [];
+    if (mine && faceOnly(dirty)) {
+      const look = await tryGit(d, ["status", "--porcelain", "--untracked-files=all", "--", "mac", "design"]);
+      fresh = look === null ? ["?? (git status did not answer)"] : look.split("\n").filter((l) => l.startsWith("??"));
+      if (quiet && !fresh.length) {
+        await run("bash", [join(d.root, "mutate"), "kept before the update"], { cwd: d.root, env: ENV(), timeout: 60_000 }).catch(() => {});
+        dirty = (await git(d.root, ["status", "--porcelain", "--untracked-files=no"])).split("\n").filter(Boolean);
+      }
+    }
+    // #425: a */mine Sol is a person's own, and what they read says change and keep, never commit; #1821: which files,
+    // a new file that stopped the keep first
+    if (dirty.length) {
+      const paths = [...changedPaths(fresh), ...changedPaths(dirty)], named = paths.slice(0, 3).join(", ") + (paths.length > 3 ? ", …" : "");
+      return { error: `${mine ? "you have changes not kept yet in your Sol; keep them first" : "you have changes; commit or stash first"} (${named})`, why: "changes" };
+    }
     // a release built aside (#1566) was fetched then: it is the target, nothing is fetched now
     if (!ready) {
       try { await git(d.root, ["fetch", "-q", "origin", `+refs/heads/${B}:refs/remotes/origin/${B}`], 120_000); }
@@ -472,7 +517,9 @@ export async function update(d: Ship, channel?: Channel, auto = false, ready?: P
           // the carry could not even begin: the folder is as it was, said in plain words
           return { error: "your own changes do not go onto today's release by themselves, and Sol could not start carrying them over; nothing changed" };
         }
-        return { error: said ? said.slice(0, 400) : `sol/mine/rebase did not finish: ${firstLine(e)}` };
+        // a clash with no carry here (a beta Sol installing by itself, #1615): the folder is as it was, and it says clash
+        const clash = /does not go onto/.test(said) ? { why: "clash" as Why } : {};
+        return { error: said ? said.slice(0, 400) : `sol/mine/rebase did not finish: ${firstLine(e)}`, ...clash };
       }
     } else if (ch === "dev" && target !== was && await wentBack(d, target, (await tryGit(d, ["rev-parse", "--verify", "-q", `refs/heads/${B}`]))
       ?? (offer?.back && offer.sha === target ? offer.mine : ""))) {
@@ -551,19 +598,20 @@ async function sameAt(d: Pick<Ship, "root">, a: string, b: string, paths: string
   return true;
 }
 /** where a release is built aside, and the file that keeps when the last install by itself was */
-export const asideIn = async (d: Pick<Ship, "root">) => { const c = (await placeOf(d)).common; return { dir: join(c, "sol-next"), at: join(c, "sol-next.at") }; };
+export const asideIn = async (d: Pick<Ship, "root">) => { const c = (await placeOf(d)).common; return { dir: join(c, "sol-next"), at: join(c, "sol-next.at"), clash: join(c, "sol-next.clash") }; };
 
-/** fetch dev and build the release `sha` aside (#1566): `git archive` of its engine and the face's package files into
+/** fetch the channel's branch (dev, or beta's stable since #1615) and build the release `sha` aside (#1566): `git archive` of its engine and the face's package files into
  *  sol-next/, `npm ci` there for a folder whose lock differs from HEAD's (the same lock: the live node_modules, linked),
  *  and tsc there when its engine differs from HEAD's (a release with no tsconfig has nothing to build). The live
  *  checkout is not touched. An error says why, and the Sol says `build` (runs.ts) */
-export async function prepare(d: Ship, sha: string): Promise<Prepared | { error: string; silent?: true }> {
+export async function prepare(d: Ship, sha: string, ch: Channel = "dev"): Promise<Prepared | { error: string; silent?: true }> {
+  const B = BRANCH[ch];
   // offline is no build failure: nothing is said, and the next word or ask tries again
-  try { await git(d.root, ["fetch", "-q", "origin", `+refs/heads/${BRANCH.dev}:refs/remotes/origin/${BRANCH.dev}`], 120_000); }
-  catch (e) { return { error: `could not fetch ${BRANCH.dev}: ${firstLine(e)}`, silent: true }; }
-  // only what GitHub's dev is now is ever built or installed, as Update installs origin/dev: a relay word names a sha,
-  // and a sha that is not dev's (an old word, or one nobody released) is not this Sol's to run
-  if ((await tryGit(d, ["rev-parse", `refs/remotes/origin/${BRANCH.dev}`])) !== sha) return { error: `the release ${short(sha)} is not GitHub's ${BRANCH.dev} now`, silent: true };
+  try { await git(d.root, ["fetch", "-q", "origin", `+refs/heads/${B}:refs/remotes/origin/${B}`], 120_000); }
+  catch (e) { return { error: `could not fetch ${B}: ${firstLine(e)}`, silent: true }; }
+  // only what GitHub's branch is now is ever built or installed, as Update installs origin/<branch>: a relay word names
+  // a sha, and a sha that is not the branch's (an old word, or one nobody released) is not this Sol's to run
+  if ((await tryGit(d, ["rev-parse", `refs/remotes/origin/${B}`])) !== sha) return { error: `the release ${short(sha)} is not GitHub's ${B} now`, silent: true };
   const place = await placeOf(d);
   const dir = join(place.common, "sol-next");
   // what an earlier swap left, unless the engine it brought has not yet stayed up its minute (#1576: the way back)
@@ -627,10 +675,21 @@ let tell: (m: object) => void = () => {};
 let listening = false;
 let asking: NodeJS.Timeout | null = null;
 let heard = 0;   // every word hear() took, counted: an ask of GitHub that a relay word overtook drops its answer
-let installing = "";   // the dev release waiting for a quiet moment, or being installed
+let installing = "";   // the release waiting for a quiet moment, or being installed (either channel, #1615)
+/** the release installRelease is building aside, waiting to swap in, or installing; "" when none (J4 of #1824, team/shell.ts) */
+export const installingNow = () => installing;
 export const shipNow = () => D;
 /** the standing offer (a face that connects asks for it with team.stable.get) */
 export const offerNow = () => offer;
+// ticket K (#1824): under a Sol.app older than BR1 (window.ts) the faces are shown, while no release waits, an offer that
+// is the line: the old face draws it as "a new stable is out <the line>", with Update (wire.ts answers it with the
+// download) and Later (12 hours, by this sha). The real offer stays offerNow's: runs.ts and the carry read it
+/** the offer every face is shown: the standing one, or under an old Sol.app the line (none waiting to install) */
+export function offerShown(): Offer | null {
+  if (!windowOld() || offer?.behind) return offer;
+  return { type: "team.stable", sha: OLD_WINDOW_SHA, tag: OLD_WINDOW_LINE, by: "", mine: offer?.mine ?? "", behind: true, channel: "beta" };
+}
+const tellShown = () => tell(offerShown() ?? { type: "team.stable", sha: null });
 
 /** what the engine does with a `stable` heard on the relay, or read from GitHub (exported for the tests). The same
  * offer heard again (the ten-minute ask, #353) is not told again: the faces have it, and a face that connects later asks. */
@@ -646,14 +705,14 @@ export async function hear(m: { sha?: unknown; tag?: unknown; by?: unknown; chan
   }
   // GitHub's answer names no releaser and may name no tag: for the sha already standing, what was heard before stays said
   const next: Offer = offer && offer.sha === o.sha ? { ...o, tag: o.tag || offer.tag, by: o.by || offer.by } : o;
-  // nothing new (the ten-minute ask): the faces have it. A dev release still behind is tried again: its last try may have
-  // been refused (a dirty tree since cleaned)
-  if (!offer || JSON.stringify(next) !== JSON.stringify(offer)) { offer = next; tell(next); }
-  if (next.channel === "dev" && next.behind) void installDev(next.sha);
+  // nothing new (the ten-minute ask): the faces have it. A release still behind is tried again: its last try may have
+  // been refused (a dirty tree since cleaned). Both channels since #1615
+  if (!offer || JSON.stringify(next) !== JSON.stringify(offer)) { offer = next; tellShown(); }
+  if (next.behind) void installRelease(next.sha);
 }
 /** a pin (#426): the standing offer goes, every face hears there is none; unpinned, GitHub is asked again at once */
 export function pinChanged(pinned: boolean) {
-  if (pinned) { offer = null; tell({ type: "team.stable", sha: null }); return; }
+  if (pinned) { offer = null; tellShown(); return; }
   void askOrigin().catch(() => {});
 }
 /** after an update: the offer stands answered, every face hears it is no longer behind */
@@ -661,10 +720,10 @@ export function answered(sha: string) {
   if (!offer) return;
   const { back: _, ...rest } = offer;
   offer = { ...rest, mine: sha, behind: false };
-  tell(offer);
+  tellShown();
 }
 
-/** the waits of a dev release that installs itself (#1566): no turn in flight for QUIET_MS (background agents do not
+/** the waits of a release that installs itself (#1566, beta too since #1615): no turn in flight for QUIET_MS (background agents do not
  *  count, busy.ts), at most one install every EVERY_MS, and past CAP_MS of waiting one breath between turns is enough */
 export const QUIET_MS = 5000, EVERY_MS = 30 * 60_000, CAP_MS = 30 * 60_000, CAPPED_QUIET_MS = 1000;
 const nap = (ms: number) => new Promise<void>((r) => { setTimeout(r, Math.max(0, ms)).unref?.(); });
@@ -674,29 +733,69 @@ const lastInstall = (at: string) => { try { return Number(readFileSync(at, "utf8
 // while that install is fresh; 0 otherwise
 let installedFrom = 0, installedAt = 0;
 let failed = "";   // the release whose aside build failed: not built again every ten minutes, said build again
+let clashed = "";  // #1615: the beta release a */mine Sol's own changes clash with: not tried again by itself, Update carries it
+// (kept in sol-next.clash too, so a restart does not try it on the live folder again)
 export const releaseWaitFrom = () => (installedAt && Date.now() - installedAt < CAP_MS ? installedFrom : 0);
 
-/** a dev release installs itself (#418, #1566): it is fetched and built aside at once (`prepare`), then swapped in as if
- * Update were pressed, between two turns: no turn in flight for quietMs, background agents not counted. At most one
- * install every everyMs, the newest (a rollback, #638, does not wait for that); a wait past capMs needs only a breath
- * between turns; pause updates holds the swap. One worker at a time, following the newest word: a word during a build
- * or a wait builds the newest. A Sol on its own `<you>/mine` branch too (#1150): its own commits go on top, and a clash
- * leaves it where it was while the carry takes it over, with no press (carry.ts `auto`). One that fails (a dirty tree, a
- * branch of its own) keeps the offer, and its Update says why. Either way the Sol says what it runs after, with the
- * reason when it did not install (runs.ts): busy (turns in flight), paused, clash, changes, build (its new code did not
- * build aside or install) */
-export async function installDev(sha: string): Promise<boolean> {
+/** #1615: whether launchd or systemd brings this engine back after the renew an install ends with. A beta Sol whose
+ *  engine runs bare (setup's background start on a Linux or WSL with no systemd user session) would stop at that renew
+ *  with nothing to start it again, so it is offered the release, with Update, as before. launchd: the job
+ *  com.marco.sol-engine is this engine's keeper (its PID our parent); systemd: a service sets INVOCATION_ID. Asked once */
+let keptAnswer: Promise<boolean> | null = null;
+export function keptNow(): Promise<boolean> {
+  return keptAnswer ??= (async () => {
+    if (process.env.INVOCATION_ID) return true;
+    if (process.platform !== "darwin") return false;
+    const out = await run("launchctl", ["list", "com.marco.sol-engine"], { timeout: 5000 }).then((r) => r.stdout, () => "");
+    return Number(/"PID" = (\d+);/.exec(out)?.[1] ?? 0) === process.ppid;
+  })();
+}
+
+/** the release this Sol went back from (#1576, the keeper's .skip), or one under it: the keeper names the commit that
+ *  did not start, which on a `<you>/mine` Sol is the release with the person's own commits on top, never the release itself, so
+ *  a release is skipped when .skip holds it. A rollback (dev went back, #638) is skipped only when it is that commit: it
+ *  is older than what runs, so it is under any later .skip */
+async function skipped(d: Ship, sha: string, back?: true): Promise<boolean> {
+  const skip = skippedIn(d.root);
+  if (!skip) return false;
+  if (skip === sha) return true;
+  if (back || !/^[0-9a-f]{40}$/.test(skip)) return false;
+  return (await tryGit(d, ["merge-base", "--is-ancestor", sha, skip])) !== null;
+}
+
+/** a release installs itself (#418, #1566; beta too since #1615): it is fetched and built aside at once (`prepare`), then
+ * swapped in as if Update were pressed, between two turns: no turn in flight for quietMs, background agents not counted.
+ * At most one install every everyMs, the newest (a rollback, #638, does not wait for that); a wait past capMs needs only a
+ * breath between turns; pause updates holds the swap. One worker at a time, following the newest word: a word during a
+ * build or a wait builds the newest. A Sol on its own `<you>/mine` branch too (#1150): its own commits go on top. On dev
+ * a clash leaves it where it was while the carry takes it over, with no press (carry.ts `auto`); on beta a clash leaves
+ * it where it was with the release still offered, and Update starts the carry (a stranger's Sol never opens a session by
+ * itself). One that fails (a dirty tree, a branch of its own) keeps the offer, and its Update says why. Either way the
+ * Sol says what it runs after, with the reason when it did not install (runs.ts): busy (turns in flight), paused, clash,
+ * changes, build (its new code did not build aside or install) */
+export async function installRelease(sha: string): Promise<boolean> {
   const d = D;
   if (!d || d.auto === false || installing || pinNow()) return false;   // one under way follows the newest word itself
+  const first = offer;
+  if (!first || first.sha !== sha || !first.behind) return false;   // only the standing offer's release, while behind
+  const ch = first.channel;
   const branch = (await tryGit(d, ["branch", "--show-current"])) ?? "";
   if (branch === "live") return false;   // the release runner promotes the live Sol
   const mine = /\/mine$/.test(branch);
   // a carry under way has this Sol's own changes in hand: it moves when that is done, never twice at once
   if (mine && carryNow()) { d.runs?.("clash"); return false; }
   if (failed && failed === sha) { d.runs?.("build"); return false; }   // the same release again: it did not build
+  if (clashed && clashed === sha) { d.runs?.("clash"); return false; }   // #1615: beta, its clash waits for Update
+  if (ch === "beta" && !(await (d.kept ?? keptNow)().catch(() => false))) return false;   // #1615: nothing would start it again
+  // a branch Update refuses (not main, the channel's, stable or */mine): nothing is built aside for it every ten minutes
+  if (!mine && branch !== "main" && branch !== BRANCH[ch] && branch !== "stable") return false;
   // the release this Sol went back from (#1576, the keeper's .skip): it did not start here, so it waits for a newer one
-  if (skippedIn(d.root) === sha) { d.runs?.("build"); return false; }
-  if (installing) return false;   // another began during the read above
+  if (await skipped(d, sha, first.back)) { d.runs?.("build"); return false; }
+  // changes not kept: Update would refuse them, so nothing is built aside for it every ten minutes (#1615); the next
+  // ask after they are kept tries again
+  const dirty = await tryGit(d, ["status", "--porcelain", "--untracked-files=no"]);
+  if (dirty) { d.runs?.("changes"); return false; }
+  if (installing || D !== d) return false;   // another began during the reads above, or Ship started again (the tests)
   installing = sha;
   const heardAt = Date.now();
   const quiet = d.quietMs ?? QUIET_MS, every = d.everyMs ?? EVERY_MS, cap = d.capMs ?? CAP_MS, poll = d.pollMs ?? 1000;
@@ -706,22 +805,25 @@ export async function installDev(sha: string): Promise<boolean> {
   try {
     const aside = await asideIn(d).catch(() => null);
     if (!aside) return false;
+    // a beta clash heard before this engine started (#1615): not tried on the live folder at every start
+    if (ch === "beta" && textIn(aside.clash) === sha) { clashed = sha; d.runs?.("clash"); return false; }
     let ready: Prepared | null = null, from = heardAt;
     const said = new Set<string>();
     const say = (why: Why) => { if (!said.has(why)) { said.add(why); d.runs?.(why); } };   // the team sees why, once each
     for (;;) {
       const o = offer;
-      if (D !== d || !o || o.channel !== "dev" || !o.behind) return false;   // answered meanwhile, or not this Sol's now
+      if (D !== d || !o || o.channel !== ch || !o.behind) return false;   // answered meanwhile, or not this Sol's now
       installing = o.sha;
       if (ready?.sha !== o.sha) {
         ready = null;
-        const p = await prepare(d, o.sha);
+        if (o.sha !== sha && await skipped(d, o.sha, o.back)) { d.runs?.("build"); return false; }   // a newer word, the one that went back
+        const p = await prepare(d, o.sha, ch);
         if (D !== d) return false;
         if ("error" in p) {
           if (offer?.sha !== o.sha) continue;   // a newer word came while this one built: that one is built now
-          // offline, or a word that is not GitHub's dev (an old one, or one nobody released): nothing is built or said
+          // offline, or a word that is not GitHub's branch (an old one, or one nobody released): nothing is built or said
           if (p.silent) { console.log(`ship: ${p.error}; nothing built`); return false; }
-          console.log(`ship: the dev release ${short(o.sha)} was not built aside: ${p.error}`);
+          console.log(`ship: the ${ch} release ${short(o.sha)} was not built aside: ${p.error}`);
           failed = o.sha;
           d.runs?.("build");
           return false;
@@ -733,6 +835,7 @@ export async function installDev(sha: string): Promise<boolean> {
       if (!o.back && Date.now() < free) { await nap(Math.min(poll, free - Date.now())); continue; }
       from = Math.max(heardAt, Math.min(free, Date.now()));   // the cap counts from when it could first install
       if (paused()) { calm = 0; say("paused"); await nap(poll); continue; }
+      if (pinNow()) return false;   // pinned while it waited (#426): the pin dropped the offer too
       if (!betweenTurns() || updating) {
         calm = 0; say("busy");
         await nap(poll);   // and the newest word looked at again
@@ -743,26 +846,38 @@ export async function installDev(sha: string): Promise<boolean> {
       if (Date.now() - calm < (capped ? CAPPED_QUIET_MS : quiet)) { await nap(Math.min(poll, (capped ? CAPPED_QUIET_MS : quiet) - (Date.now() - calm))); continue; }
       if (betweenTurns() && !updating && offer?.sha === ready.sha) break;
     }
-    if ((await d.channel().catch(() => "beta")) !== "dev") return false;   // switched to beta meanwhile (#1150)
-    const r = await update(d, "dev", true, ready);
+    if ((await d.channel().catch((): Channel => "beta")) !== ch) return false;   // switched channel meanwhile (#1150)
+    // #1615: a beta Sol never opens a carry session by itself; its clash stays offered, and Update carries it
+    const r = await update(ch === "beta" ? { ...d, carry: undefined } : d, ch, true, ready);
     rmSync(ready.dir, { recursive: true, force: true });
     if (D !== d) return !!r.ok;   // Ship started again meanwhile (the tests): the offer standing now is not this one's
     if (!r.ok) {
-      console.log(`ship: the dev release ${short(ready.sha)} did not install by itself: ${r.error}`);
+      console.log(`ship: the ${ch} release ${short(ready.sha)} did not install by itself: ${r.error}`);
+      if (ch === "beta" && r.why === "clash") {
+        clashed = ready.sha;
+        try { writeFileSync(aside.clash, `${ready.sha}\n`); } catch { /* the next start tries it once more: no harm */ }
+      } else if (!r.carry && r.why !== "changes" && !/already running|pinned|moving over/.test(r.error)) {
+        // #1615: a refusal the same release would meet again (its own commits on main, a file in the way, npm ci): not
+        // built aside again every ten minutes; a newer release tries again, and Update still can
+        failed = ready.sha;
+      }
       d.runs?.(r.carry ? "clash" : r.why);
       return false;
     }
     const at = Date.now();
     try { writeFileSync(aside.at, `${at}\n`); } catch { /* the next install may come sooner: no harm */ }
     installedFrom = from; installedAt = at;
-    console.log(`ship: the dev release ${short(ready.sha)} installed by itself, ${Math.round((at - from) / 60_000)} min after it could${r.renews ? "; Sol renews between turns" : ""}`);
+    console.log(`ship: the ${ch} release ${short(ready.sha)} installed by itself, ${Math.round((at - from) / 60_000)} min after it could${r.renews ? "; Sol renews between turns" : ""}`);
     answered(r.sha);
     d.updated?.();
     d.runs?.();
     return true;
   } finally { off(); if (D === d) installing = ""; }
 }
+/** the name before #1615, when only a dev release installed itself */
+export const installDev = installRelease;
 const short = (s: string) => s.slice(0, 7);
+const textIn = (path: string) => { try { return readFileSync(path, "utf8").trim(); } catch { return ""; } };
 
 /** how often the engine asks GitHub itself (#353): a release whose relay word this Sol missed reaches it within the hour;
  * ten minutes since #1561, because dev moves on green from GitHub's machines, which have no voice on the relay (#1559) */
@@ -807,7 +922,7 @@ export async function channelCheck(): Promise<Channel | null> {
   noteChannel(versionChannelOf(getTeam().channel, ch === "beta" ? "" : (await d.origin?.().catch(() => "")) ?? ""));
   if (was === null || was === ch) return null;
   console.log(`ship: this Sol follows ${ch} now (was ${was})`);
-  if (offer) { offer = null; tell({ type: "team.stable", sha: null }); }
+  if (offer) { offer = null; tellShown(); }
   d.runs?.();   // the count names each Sol's channel: say the new one
   await askOrigin().catch(() => {});   // beta → dev: dev installs at the next quiet minute; dev → beta: offered only when ahead
   return ch;
@@ -857,11 +972,12 @@ export function startShip(root: string, everyone: (m: object) => void, over: Par
   tell = everyone;
   offer = null;
   installing = "";
-  installedFrom = 0; installedAt = 0; failed = "";
+  installedFrom = 0; installedAt = 0; failed = ""; clashed = "";
   if (!listening) {
     listening = true;
     onRelay("stable", (m) => void hear(m as { sha?: unknown }));
     onTeam(() => void channelCheck());   // the switch in Settings › me (#1150), read live
+    onWindow(() => { noteUiNext(); tellShown(); });   // an old Sol.app seen or gone (ticket K): the line, and the new face's switch
   }
   lastChannel = null;
   void channelCheck();
@@ -871,4 +987,6 @@ export function startShip(root: string, everyone: (m: object) => void, over: Par
     if (asking) clearInterval(asking);   // startShip again (the tests): one clock, never two
     asking = setInterval(ask, ASK_EVERY_MS).unref();
   }
+  // a tester's Sol as the version reads it (versionChannelOf: an unclear origin is beta too), quiet or not (ticket K)
+  if (!process.env.SOL_NO_SHIP_CHECK) startWindow({ channel: async () => versionChannelOf(getTeam().channel, (await D?.origin?.()) ?? "") });
 }

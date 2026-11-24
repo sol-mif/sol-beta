@@ -13,7 +13,7 @@ import { ringSpots, toldLines, proofSteps } from "./marks.ts";
 import "./agent.css";
 
 export default function Agent(p: SlotProps) {
-  useNext((d) => [d.told, d.rings, d.headlines]);
+  useNext((d, s) => [d.told, d.rings, d.headlines, p.part ? 0 : s.cam]);   // the rings stand on the plane: a pan too (#1615 S32)
   if (p.part === "told") return <Told region={p.region} />;
   if (p.part === "proof") return <Proof />;
   return <Rings />;

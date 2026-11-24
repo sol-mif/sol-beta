@@ -19,9 +19,11 @@ export function KindMark({ kind, small }: { kind: TableView["kind"]; small?: boo
 
 export type Menu = { copy: () => void; rename: () => void; quiet: () => void; leave: () => void; code: string; quietOn: boolean };
 
-export function Side({ tables, me, at, lo, menuFor, onHome, onOpen, onMenu, onStart, onCode, menu }: {
+export function Side({ tables, me, at, lo, menuFor, onHome, onOpen, onMenu, onStart, onCode, menu, onRoom, inRoom = false }: {
   tables: TableView[]; me: string; at: string; lo: "start" | "code" | ""; menuFor: string;
   onHome: () => void; onOpen: (id: string) => void; onMenu: (id: string) => void; onStart: () => void; onCode: () => void; menu?: Menu & { close: () => void };
+  /** the Agents' room, while its switch is on (gate one q2 q6, #1740): one row under all tables */
+  onRoom?: () => void; inRoom?: boolean;
 }) {
   const menuEl = useRef<HTMLDivElement>(null);
   // the menu closes on a press anywhere else, or Esc
@@ -35,6 +37,7 @@ export function Side({ tables, me, at, lo, menuFor, onHome, onOpen, onMenu, onSt
   return (
     <aside className="gh-card gh-side" data-place="groups-side">
       <button type="button" className="gh-gr home" data-go="home" onClick={onHome}><span className="gh-k"><svg viewBox="0 0 16 16" style={{ transform: "scaleX(-1)" }}><path d="M6.5 4.5l3.5 3.5-3.5 3.5" /></svg></span><span className="gh-gn">all tables</span><span className="gh-num" style={{ marginLeft: "auto", color: "var(--dim)" }}>{tables.length}</span></button>
+      {onRoom && <button type="button" className={`gh-gr${inRoom ? " on" : ""}`} data-go="room" onClick={onRoom}><span className="gh-gn">the agents' room<small>you, your ai{tables.length ? ", and the table you sit at" : ""}</small></span></button>}
       {tables.map((t) => (
         <div key={t.id} className="gh-grw">
           <button type="button" className={`gh-gr${t.id === at ? " on" : ""}${menuFor === t.id ? " held" : ""}`} data-go={`table/${t.id}`} data-table={t.id}

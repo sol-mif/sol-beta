@@ -271,6 +271,12 @@ test("the urgent fix: off-cycle dev-YYYYMMDD-HHMM, only for a folded PR the day'
   assert.equal(u.told.length, 0);
   checks = { total_count: 2, workflow_runs: [{ id: 4, name: "ci", status: "completed", conclusion: "success", run_attempt: 2 }, { id: 2, name: "pages", status: "completed", conclusion: "skipped" }] };
 
+  // an urgent fix at 00:00 would be dev-20261030-0000, the same app version as the day's dev-20261030 (0.20261030.0), and
+  // its feed is refused (sol/mac/release/feed.mjs): it waits a minute instead
+  const midnight = deps(f.runner, "2026-10-30T04:00:00Z", { gh: u.d.gh });   // 00:00 in New York
+  assert.equal((await release(midnight.d, U) as any).error, "an urgent release at 00:00 would share the day's version with dev-20261030; try again in a minute");
+  assert.equal(git(f.origin, "rev-parse", "refs/heads/dev"), main1, "nothing moved at midnight");
+
   const r = await release(u.d, U);
   assert.deepEqual(r, { ok: true, tag: "dev-20261030-1442", sha: fix, told: true });
   assert.equal(git(f.origin, "rev-parse", "refs/heads/dev"), fix);

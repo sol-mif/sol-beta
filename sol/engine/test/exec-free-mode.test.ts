@@ -50,3 +50,19 @@ test("a session that is not live is not followed; a plan switch is handed to nob
   assert.deepEqual(modeFollowers("orch", "acceptEdits", ["c1"], marks, []), ["c1"]);
   assert.deepEqual(modeFollowers("orch", "plan", ["c1", "c2"], marks, tickets), []);
 });
+
+const { baseModeFrom } = await import("../src/work/runs.ts");
+
+test("a bypass Work default wins over the opener's mode: an auto orchestrator's executors run unasked (#29)", () => {
+  assert.equal(baseModeFrom("auto", "bypassPermissions"), "bypassPermissions");
+  assert.equal(modeFor("edits", baseModeFrom("auto", "bypassPermissions")), "bypassPermissions");
+  assert.equal(modeFor("ask", baseModeFrom("acceptEdits", "bypassPermissions")), "bypassPermissions");
+});
+
+test("with any other default the opener's mode is the base, as before", () => {
+  assert.equal(modeFor("edits", baseModeFrom("acceptEdits", "default")), "acceptEdits");
+  assert.equal(modeFor("edits", baseModeFrom("bypassPermissions", "default")), "bypassPermissions");
+  assert.equal(baseModeFrom("auto", "default"), "auto");
+  assert.equal(baseModeFrom("plan", "acceptEdits"), "acceptEdits");
+  assert.equal(baseModeFrom(undefined, "default"), "default");
+});

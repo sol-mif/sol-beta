@@ -7,7 +7,13 @@
 // Pause, resume and stop (#15) are pressed here, as data-act, so voice and keys reach the same moves.
 // Signed: marcocyl04-ux's agent, the port's slice 1 (#1615).
 import type { Ask, Piece } from "../cv/index.ts";
-import { asksOn, open } from "../cv/index.ts";
+import { asksOn, isFolderDiary, open, regionOf } from "../cv/index.ts";
+import { Slot } from "../slots.ts";   // BR1 slots (#1615): an automation's piece and a folder's Diary are their slices'
+import { PREFIX as AUTO } from "../auto/model.ts";
+import { titleOf } from "./layout.ts";   // a session by its task and its folder, never an agent (Marco, 2026-11-21)
+import { JobFace, LeadFold, LeadSay, PartsSum, folds } from "../lead/views.tsx";   // slice R7: render points (requests/lead.md)
+import { multi, talkWords } from "../lead/rules.ts";
+import { formOf, lineSays, wordsShown } from "../form.ts";
 
 const STATE_ORDER = ["uncommitted", "behind main", "other app", "merged", "clean"];
 const TAG: Record<string, string> = { working: "working", asks: "asks you", "asks you": "asks you", done: "done", paused: "paused", stopped: "stopped", "taken back": "taken back", waiting: "waiting", idle: "idle", failed: "failed" };
@@ -75,18 +81,18 @@ function RunActs({ p }: { p: Piece }) {
 
 function Session({ p }: { p: Piece }) {
   const st = stateOf(p), split = !!(p.parts && p.parts.length), asks = asksOn(p.id).filter((a) => !a.part);   // a part's ask sits under its part
-  const box = `talk · change ${p.files} files\nterminal · ${p.term?.waiting ? "waiting for input" : p.term?.stateWord ?? ""}`;
+  const box = `${talkWords(p.files)}\nterminal · ${p.term?.waiting ? "waiting for input" : p.term?.stateWord ?? ""}`;
   return (
     <>
-      <div className="pl-h"><span className={`nx-aura${st === "working" ? "" : " still"}`} /><b>{p.ai}</b>
-        <span className="pl-s">in {p.copy} · {split ? `${money(costOf(p) * (1 + p.parts!.length))} so far` : p.branch}</span></div>
-      <p className="pl-say" data-say>{sentence(p)}</p>
-      {split ? (
+      <div className="pl-h"><span className={`nx-aura${st === "working" ? "" : " still"}`} /><b>{titleOf(p)}</b>
+        <span className="pl-s">in {String(regionOf(p.region)?.name || p.region).replace(/ \(.*\)$/, "")} · {split ? `${money(costOf(p) * (1 + p.parts!.length))} so far` : p.branch}</span></div>
+      {multi(p) ? <LeadSay p={p} /> : <p className="pl-say" data-say>{sentence(p)}</p>}
+      {folds(p) ? <PartsSum p={p} /> : split ? (
         <div className="pl-parts" role="list">
           {p.parts!.map((x) => {
             const as = partAsks(x), xs = as.length ? "asks" : String(x.state);
             return <div key={x.id} role="listitem">
-              <div className="pl-part" data-partrow={x.id}><span className="nx-aura still" /><span className="pl-partn"><b>{x.ai}</b> {x.name}</span><span className={`pl-tag st-${xs.replace(/ /g, "-")}`}>{TAG[xs] || xs}</span></div>
+              <div className="pl-part" data-partrow={x.id}><span className="nx-aura still" /><span className="pl-partn"><b>{titleOf(x)}</b></span><span className={`pl-tag st-${xs.replace(/ /g, "-")}`}>{TAG[xs] || xs}</span></div>
               {as.map((a) => <AskRow key={a.id} a={a} />)}
             </div>;
           })}
@@ -125,20 +131,29 @@ function Page({ p }: { p: Piece }) {
 export function Face({ p }: { p: Piece }) {
   if (p.kind === "session") return <Session p={p} />;
   if (p.kind === "copies") return <Copies p={p} />;
+  if (p.kind === "job") return <JobFace p={p} />;
+  if (p.id.startsWith(AUTO)) return <Slot name="automation" id={p.id} band="middle" />;
+  if (p.kind === "diary" && isFolderDiary(p.id)) return <Slot name="diary" scope={p.region} band="far" part="piece" />;
   return <Page p={p} />;
 }
 
-/** a piece's one line, for one at the edge of its band (shell.js foldLine) */
-export function FoldLine({ p }: { p: Piece }) {
-  const a = asksOn(p.id).length;
-  const st = p.kind === "session" ? (p.term?.waiting ? "waiting" : a ? "asks you" : stateOf(p)) : a ? "asks you"
-    : p.kind === "copies" ? `${(p.copies || []).length} copies` : p.kind === "arrivals" ? "arrivals" : p.kind === "list" ? "a list" : "a page";
+/** a session's line keeps room for its dot (the aura and its gap, the scale's --s3 and --s2) */
+const AURA = 20;
+/** a piece's one line, for one not drawn whole (shell.js foldLine), in its form at `w` screen px (form.ts): near, its
+ *  name and its state; far, its name; smaller, its dot alone, the name on the line's title. A name wraps, never cut */
+export function FoldLine({ p, w = Infinity }: { p: Piece; w?: number }) {
+  if (p.kind === "job" || multi(p)) return <LeadFold p={p} />;
+  const a = asksOn(p.id).length, s = p.kind === "session";
+  const st = s ? (p.term?.waiting ? "waiting" : a ? "asks you" : stateOf(p)) : a ? "asks you"
+    : p.kind === "copies" ? `${(p.copies || []).length} copies` : p.kind === "arrivals" ? "arrivals" : p.kind === "list" ? "a list"
+    : p.kind === "diary" ? "what happened here" : p.id.startsWith(AUTO) ? "an automation" : "a page";
+  const name = s ? titleOf(p) : String(p.name ?? ""), says = lineSays(name, st), room = w - (s ? AURA : 0);
+  const form = formOf(says, room, Infinity, Infinity), words = form === "near" || wordsShown(says, room) > 0;
   return (
     <>
-      {p.kind === "session" ? <span className="nx-aura still" /> : null}
-      <b>{p.kind === "session" ? p.ai : p.name}</b>
-      <span className="pl-fs">{p.kind === "session" ? p.copy : ""}</span>
-      <span className={`pl-fst${a ? " pl-asks" : ""}`}>{st}</span>
+      {s ? <span className="nx-aura still" /> : null}
+      {words ? <b>{name}</b> : <span className="pl-fdot" title={`${name}: ${st}`} aria-label={name} />}
+      {form === "near" || (!words && a) ? <span className={`pl-fst${a ? " pl-asks" : ""}`} data-form={form}>{form === "near" ? st : ""}</span> : null}
     </>
   );
 }

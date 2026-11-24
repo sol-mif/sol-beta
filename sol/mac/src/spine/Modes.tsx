@@ -1,11 +1,11 @@
 // The views that have no insides yet (Marco 2026-11-07): Social today. Each is a side and a core, empty, so a function
 // can land in it one at a time (mine/look/functions/board.html). Home is Home's folders (home/folders/FolderHome.tsx),
 // Build is home/Home.tsx, Cowork is cowork/CoworkApp.tsx.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Frame, Head } from "../kit/Chrome";
 import "./spine.css";
 
-export function EmptyView({ name, side, cards }: { name: string; side: { h: string; rows: string[] }[]; cards: { k: string; t: string }[] }) {
+export function EmptyView({ name, side, cards, core, where, sideNode }: { name: string; side: { h: string; rows: string[] }[]; cards: { k: string; t: string }[]; core?: ReactNode; where?: string; sideNode?: ReactNode /* fr-31: a view with insides (social/Social.tsx) brings its own side, core and head word */ }) {
   const key = `sol.side.${name}`;
   const [open, setOpen] = useState(() => localStorage.getItem(key) !== "0");
   const flip = () => setOpen((o) => { localStorage.setItem(key, o ? "0" : "1"); return !o; });
@@ -16,16 +16,16 @@ export function EmptyView({ name, side, cards }: { name: string; side: { h: stri
     return () => window.removeEventListener("keydown", down);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Frame className="ev" open={open} head={<Head side={{ open, onFlip: flip }} title={name} where="nothing here yet" />}
-      side={<div className="ev-side">
+    <Frame className="ev" open={open} head={<Head side={{ open, onFlip: flip }} title={name} where={where ?? "nothing here yet"} />}
+      side={sideNode ?? <div className="ev-side">
         {side.map((g) => (
           <div key={g.h}><div className="ev-h">{g.h}</div>{g.rows.length === 0 && <div className="ev-none">none yet</div>}{g.rows.map((r) => <div key={r} className="ev-row"><i /> {r}</div>)}</div>
         ))}
       </div>}>
-      <section className="ev-core" data-place="talk">
+      {core ?? <section className="ev-core" data-place="talk">
         <p className="ev-lead">This view is empty on purpose. Each of its functions lands alone, then gets its piece of UI.</p>
         <div className="ev-cards">{cards.map((c) => <div key={c.k} className="ev-card"><b>{c.k}</b>{c.t}</div>)}</div>
-      </section>
+      </section>}
     </Frame>
   );
 }

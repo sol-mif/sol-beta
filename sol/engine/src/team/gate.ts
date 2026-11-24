@@ -308,20 +308,71 @@ export function lookValues(text: string, code = false): { line: number; decl: st
   return out.sort((a, b) => a.line - b.line);
 }
 
+// the new face's files that held typed values when BR1 joined main (#1615, 2026-11-24): its move-in and "what Sol knows"
+// pages were drawn to Marco's stills pixel for pixel before the scale and the material held them. They are held apart
+// from the layout and look lint as GOO_LEGACY is from the goo rule, and the list only shrinks: a listed file with no
+// typed value left, or gone, fails until it is taken off, so a file made right never slips back. Every other file under
+// next/ is held as before. Its own issue clears it, file by file (status: docs/br1-backend-sort-2026-11-22/status/F.md).
+export const TOKENS_LEGACY: readonly string[] = [
+  "sol/mac/src/next/Next.tsx",
+  "sol/mac/src/next/atwork/atwork.css",
+  "sol/mac/src/next/auto/auto.css",
+  "sol/mac/src/next/auto/fixture.ts",
+  "sol/mac/src/next/because/because.css",
+  "sol/mac/src/next/because/dev.tsx",
+  "sol/mac/src/next/cv/wire/social.ts",
+  "sol/mac/src/next/cv/wire/stable.ts",
+  "sol/mac/src/next/dev.tsx",
+  "sol/mac/src/next/diary/diary.css",
+  "sol/mac/src/next/fitmode/Customize.tsx",
+  "sol/mac/src/next/fitmode/fitmode.css",
+  "sol/mac/src/next/fits/fits.css",
+  "sol/mac/src/next/folder/setup/setup.css",
+  "sol/mac/src/next/markup/dev.ts",
+  "sol/mac/src/next/movein/Startup.tsx",
+  "sol/mac/src/next/movein/migration.css",
+  "sol/mac/src/next/movein/movein.css",
+  "sol/mac/src/next/movein/startup.css",
+  "sol/mac/src/next/movein/you/Circle.tsx",
+  "sol/mac/src/next/movein/you/Lens.tsx",
+  "sol/mac/src/next/movein/you/You.tsx",
+  "sol/mac/src/next/movein/you/circle-state.ts",
+  "sol/mac/src/next/movein/you/dev.tsx",
+  "sol/mac/src/next/movein/you/fixture.ts",
+  "sol/mac/src/next/movein/you/icons.ts",
+  "sol/mac/src/next/movein/you/known.css",
+  "sol/mac/src/next/movein/you/model.ts",
+  "sol/mac/src/next/movein/you/store.ts",
+  "sol/mac/src/next/movein/you/you.css",
+  "sol/mac/src/next/next.css",
+  "sol/mac/src/next/plane/folder.css",
+  "sol/mac/src/next/plane/landed.css",
+  "sol/mac/src/next/plane/plane.css",
+  "sol/mac/src/next/settings/settings.css",
+  "sol/mac/src/next/slots.ts",
+  "sol/mac/src/next/tips/tips.css",
+];
 /** the lint's findings on a set of files (pure on its inputs): ids `lint:<rule>:<file>` with a line to show */
-export function lintFiles(files: string[], read: (f: string) => Buffer | null, betaKept: (f: string) => boolean, offence: (f: string, b: Buffer) => string | null): { id: string; line: string }[] {
+export function lintFiles(files: string[], read: (f: string) => Buffer | null, betaKept: (f: string) => boolean, offence: (f: string, b: Buffer) => string | null, tokensLegacy: readonly string[] = []): { id: string; line: string }[] {
   const out: { id: string; line: string }[] = [];
+  const held = new Set(tokensLegacy), have = new Set(files);
+  for (const f of tokensLegacy) if (!have.has(f)) out.push({ id: `lint:tokens-legacy-gone:${f}`, line: `${f}: gone; take it off TOKENS_LEGACY (sol/engine/src/team/gate.ts), the list only shrinks` });
   for (const f of files) {
     if (/(^|\/)node_modules\//.test(f)) { out.push({ id: `lint:node-modules:${f.split("/node_modules/")[0] || f}`, line: `${f}: node_modules is committed` }); continue; }
     const isTest = TEST_FILE.test(f), kept = betaKept(f), laid = LAYOUT_FILES.test(f), looked = LOOK_FILES.test(f) && !isTest;
-    if (!isTest && !kept && !laid && !looked) continue;
+    if (!isTest && !kept && !laid && !looked && !held.has(f)) continue;
     const b = read(f);
     if (!b) continue;
-    if (laid) {
+    if (held.has(f)) {
+      const text = b.toString("utf8");
+      const any = (laid && layoutValues(text).length > 0) || (LOOK_FILES.test(f) && lookValues(text, !f.endsWith(".css")).length > 0);
+      if (!any) out.push({ id: `lint:tokens-legacy-gone:${f}`, line: `${f}: no typed value left; take it off TOKENS_LEGACY (sol/engine/src/team/gate.ts), the list only shrinks` });
+    }
+    if (laid && !held.has(f)) {
       const v = layoutValues(b.toString("utf8"));
       if (v.length) out.push({ id: `lint:layout-value:${f}`, line: `${f}:${v[0].line}: a typed number where the scale goes (${v[0].decl})${v.length > 1 ? `, and ${v.length - 1} more` : ""}; the layout skill, .claude/skills/layout` });
     }
-    if (looked) {
+    if (looked && !held.has(f)) {
       const v = lookValues(b.toString("utf8"), !f.endsWith(".css"));
       if (v.length) out.push({ id: `lint:look-value:${f}`, line: `${f}:${v[0].line}: a typed colour, shadow, duration or curve where a token goes (${v[0].decl})${v.length > 1 ? `, and ${v.length - 1} more` : ""}; values only from sol/design/system/tokens.json (palette: material, motion), the root's one material system, sol/design/root.md` });
     }
@@ -420,7 +471,7 @@ async function lintStep(root: string, base: string | null, say: (s: string) => v
   const { BETA_KEEP, exportOffence } = await import("./ship.js");
   const kept = (p: string) => BETA_KEEP.some((k) => p === k || p.startsWith(k + "/"));
   const read = (f: string) => { try { return readFileSync(join(root, f)); } catch { return null; } };
-  const found = [...lintFiles(files, read, kept, exportOffence), ...sameNameTwice(files), ...gooFindings(files, read)];
+  const found = [...lintFiles(files, read, kept, exportOffence, TOKENS_LEGACY), ...sameNameTwice(files), ...gooFindings(files, read)];
   for (const f of files.filter((x) => META_FILES.test(x) && !TEST_FILE.test(x))) {
     const miss = metaMissing(read(f)?.toString("utf8") ?? "");
     if (miss.length) found.push({ id: `lint:no-meta:${f}`, line: `${f}: ${miss.join(", ")} ${miss.length > 1 ? "have" : "has"} no meta: say its job, flow, states, keys and what it listens to beside it (sol/mac/src/home/meta.ts)` });

@@ -1,0 +1,25 @@
+{
+  "pos": {
+    "w:/Users/someone/studio/site": {
+      "x": 120,
+      "y": 80,
+      "w": 320,
+      "h": 200,
+      "by": "person",
+      "touched": false,
+      "folded": false,
+      "at": 1795338000021
+    },
+    "w:/Users/someone/calm/journal": {
+      "x": 520,
+      "y": 80,
+      "w": 320,
+      "h": 200,
+      "by": "person",
+      "touched": false,
+      "folded": false,
+      "at": 1795338000022,
+      "in": null
+    }
+  }
+}

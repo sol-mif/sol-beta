@@ -1,0 +1,115 @@
+/* The notes on the canvas and the opened folder (notes/Layer.tsx, folder/index.tsx; BR1 frame.html parts 5 and 6). Roles
+   only: the next set's colours and corners and the scale's spaces, sizes and heights. A note is cream (the warm accent
+   over the paper), its folder's colour as a mark, dashed while loose; a session is its folder's mark and its task.
+   Signed: marcocyl04-ux's agent, BR1 parts 5 and 6 (#1615). */
+[data-face="next"] .nt-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+[data-face="next"] .nt-card, [data-face="next"] .nt-line { pointer-events: auto; }
+[data-face="next"] .nt-card { position: absolute; transform-origin: 0 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border-radius: var(--r); background: color-mix(in srgb, var(--a2) 16%, var(--paper)); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+[data-face="next"] .nt-k { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); cursor: grab; user-select: none; }
+[data-face="next"] .nt-fc { display: inline-block; flex: none; width: var(--s3); height: var(--s2); border-radius: var(--r-chip); background: var(--tint, var(--ink4)); }
+[data-face="next"] .nt-fc.loose { background: none; box-shadow: inset 0 0 0 1px var(--ink3); outline: 1px dashed var(--ink3); outline-offset: -1px; }
+[data-face="next"] .nt-words { flex: 1; min-height: 0; width: 100%; box-sizing: border-box; padding: 0; border: 0; background: none; resize: none; color: var(--ink); font: inherit; font-size: var(--t-read); line-height: var(--t-read-line); }
+[data-face="next"] .nt-words:focus { outline: none; }
+[data-face="next"] .nt-acts { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+[data-face="next"] .nt-card button, [data-face="next"] .nt-menu button, [data-face="next"] .fv button { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--side); color: var(--ink); border: 0; font: inherit; cursor: pointer; }
+[data-face="next"] .nt-card button.y, [data-face="next"] .fv button.y { background: var(--ink); color: var(--card); }
+/* a fact's line is its words and where they came from, two lines: never one row's height, so "what Sol read" is not cut (scope (c), try 5) */
+[data-face="next"] .fv button.kn-press { display: flex; align-items: flex-start; height: auto; padding: 0; border-radius: 0; background: none; }
+[data-face="next"] .nt-card button:disabled, [data-face="next"] .nt-menu button:disabled, [data-face="next"] .fv button:disabled { opacity: 0.45; cursor: default; }
+[data-face="next"] .nt-more { margin-left: auto; }
+[data-face="next"] .nt-menu { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s1); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); }
+[data-face="next"] .nt-menu button { justify-content: flex-start; background: none; }
+[data-face="next"] .nt-menu button:hover:not(:disabled) { background: var(--hover); }
+[data-face="next"] .nt-size { position: absolute; right: 0; bottom: 0; width: var(--s4); height: var(--s4); cursor: nwse-resize; }
+[data-face="next"] .nt-line { position: absolute; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--a2) 16%, var(--paper)); box-shadow: var(--shadow); font-size: var(--t-label); white-space: nowrap; cursor: grab; }
+
+/* the opened folder: what every session here knows on the left, its sessions on shelves */
+/* the opened folder is .fv and its parts .fv-*: .fo is the canvas's folder card (plane/folder.css), which this grid clipped (BR1, #1615; classes.test.ts) */
+[data-face="next"] .fv { box-sizing: border-box; height: 100%; display: grid; grid-template-columns: minmax(220px, 26%) 1fr; align-content: start; gap: var(--s6); padding: var(--s6) var(--s8); overflow: auto; }
+[data-face="next"] .fv-head { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+[data-face="next"] .fv-head h1 { margin: 0; font-family: var(--serif); font-weight: var(--display-w); letter-spacing: var(--display-k); font-size: var(--t-display); line-height: var(--t-display-line); }
+[data-face="next"] .fv-head .fv-sum { color: var(--ink3); }
+/* the folders inside the opened one (H3, BR1 #1615): one row under the head, each a card that opens its folder (.fv .fv-sub outranks .fv button's one-row height) */
+[data-face="next"] .fv-in { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s2); }
+[data-face="next"] .fv .fv-sub { display: flex; flex-direction: column; align-items: flex-start; gap: 0; height: auto; min-width: 0; max-width: 100%; padding: var(--s2) var(--s3); border: 0; border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+[data-face="next"] .fv .fv-sub:hover { background: color-mix(in srgb, var(--hover) 100%, var(--card)); }
+[data-face="next"] .fv-sub .fv-sn { display: flex; align-items: center; gap: var(--s2); font-weight: 600; }
+[data-face="next"] .fv-sub small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); overflow-wrap: anywhere; }
+[data-face="next"] .fv-ctx { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); border-radius: var(--r); background: var(--side); align-self: start; }
+[data-face="next"] .fv-ctx h2, [data-face="next"] .fv-shelf h2 { margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--ink3); }
+[data-face="next"] .fv-ctx .fv-it { display: flex; flex-direction: column; gap: 0; color: var(--ink); overflow-wrap: anywhere; }
+[data-face="next"] .fv-ctx > small, [data-face="next"] .fv-ctx .fv-it small, [data-face="next"] .fv-card small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .fv-ctx textarea, [data-face="next"] .fv-new textarea { width: 100%; box-sizing: border-box; padding: var(--s2); border-radius: var(--r-row); background: var(--card); color: var(--ink); border: 0; box-shadow: inset 0 0 0 1px var(--line); font: inherit; resize: vertical; }
+/* the rules row: its rules on one line, a press unfolds each one (BR1 conform #3) */
+[data-face="next"] .fv-ctx .fv-rl { display: flex; flex-direction: column; align-items: flex-start; gap: 0; background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+[data-face="next"] .fv-ctx .fv-rl small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .fv-tx {background: none; border: 0; padding: 0; font: inherit; color: var(--ink2); text-align: left; cursor: pointer; }
+[data-face="next"] .fv-main { position: relative; min-height: 0; }
+[data-face="next"] .fv-shelves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); align-items: start; }
+[data-face="next"] .fv-shelf { display: flex; flex-direction: column; gap: var(--s2); min-height: var(--s12); padding: var(--s2); border-radius: var(--r); }
+[data-face="next"] .fv-shelf.over { background: var(--hover); }
+[data-face="next"] .fv-done { grid-column: 1 / -1; }
+/* the finished sessions as rows (holders.css .hd-r), one under the other, the older ones one count line (walk note item 4) */
+[data-face="next"] .co.fv-rows { gap: 0; }
+[data-face="next"] .co.fv-rows .co-its { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+[data-face="next"] .co.fv-rows .co-count, [data-face="next"] .co.fv-rows .co-hist { margin-top: var(--s2); }
+[data-face="next"] .fv-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+[data-face="next"] .fv-none { margin: 0; font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink3); }   /* an empty Needs you, said */
+[data-face="next"] .fv-card { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); cursor: grab; }
+[data-face="next"] .fv-card.ask { box-shadow: var(--shadow), inset 0 0 0 1px var(--ink); }
+[data-face="next"] .fv-card .fv-hd { display: flex; align-items: center; gap: var(--s2); }
+[data-face="next"] .fv-card .fv-hd b { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: break-word; }
+[data-face="next"] .fv-lbl { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); padding: 0 var(--s2); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+[data-face="next"] .fv-card .fv-last { color: var(--ink2); overflow-wrap: break-word; }
+[data-face="next"] .fv-chip { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); border: 0; font: inherit; cursor: grab; }
+[data-face="next"] .fv-new { border: 1px dashed var(--ink4); background: none; box-shadow: none; cursor: default; }
+[data-face="next"] .fv-row { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+/* calm per screen (design-br1.md 03:10): an opened folder's session card shows Open and Move to… while the pointer or the keys
+   are on it */
+[data-face="next"] .fv[data-folder] .fv-card:not(.fv-new) > .fv-row { transition: opacity var(--d-turn) var(--ease); }
+[data-face="next"] .fv[data-folder] .fv-card:not(.fv-new):not(:hover):not(:focus-within) > .fv-row { opacity: 0; }   /* the row itself, so its ground never covers the title at rest */
+[data-face="next"] .fv select { height: var(--h-row); border-radius: var(--r-row); background: var(--paper); color: var(--ink); border: 0; box-shadow: inset 0 0 0 1px var(--line); font: inherit; padding: 0 var(--s2); }
+/* a drop target armed after the pause (drop.ts): a session takes a solid ring, a folder a dashed outline; what letting go
+   there does sits under the pointer. Neither takes the pointer, so the drag goes on under them */
+[data-face="next"] .nt-arm { position: absolute; pointer-events: none; border-radius: var(--r-card); }
+[data-face="next"] .nt-arm.session { outline: 2px solid var(--ink); outline-offset: var(--s1); }
+[data-face="next"] .nt-arm.folder { outline: 2px dashed var(--ink); outline-offset: var(--s1); }
+[data-face="next"] .nt-tip { position: absolute; pointer-events: none; transform: translate(var(--s3), var(--s4)); padding: var(--s1) var(--s3); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+
+/* BR1 2+Q2 (frame.html part 5): a folder opened in place sits on the canvas's own ground, as its own shape: its tab with
+   the name, the head and ⤢ ×; inside, what every session here knows on the left and the shelves on the right. Its
+   sessions are white cards on the folder's tint with its mark, so they never read as the loose ones on the canvas */
+[data-face="next"] .fv.fv-place { display: block; padding: var(--s12) var(--s6) var(--s6); background-color: var(--paper);
+  background-image: radial-gradient(circle, var(--ink4) 1px, transparent 1px); background-size: var(--s6) var(--s6); }
+[data-face="next"] .fv-of { position: relative; box-sizing: border-box; min-height: 100%; display: grid; grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); align-content: start; gap: var(--s4);
+  padding: var(--s8) var(--s4) var(--s4); border-radius: 0 var(--r-card) var(--r-card) var(--r-card); background: color-mix(in oklab, var(--tint) 42%, var(--card));
+  animation: fv-grow var(--d-land) var(--e-arrive); transform-origin: 20% 0; }
+[data-face="next"] .fv-of::before { content: ""; position: absolute; left: 0; top: calc(1px - var(--s6)); width: min(40%, 320px); height: var(--s6); border-radius: var(--r-row) var(--r-card) 0 0; background: inherit; }
+@keyframes fv-grow { from { opacity: 0; transform: scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { [data-face="next"] .fv-of { animation: none; } }
+[data-face="next"] .fv-oh { position: absolute; left: var(--s4); right: var(--s4); top: calc(0px - var(--s4)); flex-wrap: nowrap; min-width: 0; }
+[data-face="next"] .fv-oh h1 { flex: none; font-family: inherit; font-size: var(--t-title); line-height: var(--t-title-line); font-weight: var(--display-w); letter-spacing: var(--title-k); }
+[data-face="next"] .fv-oh .fv-sum { min-width: 0; flex: 0 1 auto; overflow-wrap: anywhere; font-size: var(--t-label); line-height: var(--t-label-line); }   /* wraps beside the name, never cut (next-form) */
+/* the name and its sum keep to the tab (::before, min(40%, 320px) from the folder's left): a long sum wraps on the tab, never runs past it onto the canvas (BR1, builder E8) */
+[data-face="next"] .fv-oh .fv-tt { display: flex; align-items: center; gap: var(--s3); flex: 0 1 auto; min-width: 0; max-width: calc(min(40%, 320px) - var(--s6)); }
+[data-face="next"] .fv-oh .fv-acts { margin-left: auto; display: flex; gap: var(--s1); flex: none; }
+[data-face="next"] .fv .fv-ic { width: var(--h-row); justify-content: center; padding: 0; background: color-mix(in oklab, var(--card) 70%, transparent); }
+[data-face="next"] .fv .fv-ic:hover { background: var(--card); }
+[data-face="next"] .fv-place .fv-in { grid-column: 1 / -1; }
+[data-face="next"] .fv-place .fv-ctx { background: color-mix(in oklab, var(--card) 70%, transparent); }
+[data-face="next"] .fv-place .fv-ctx h2, [data-face="next"] .fv-place .fv-shelf h2 { text-transform: uppercase; letter-spacing: 0.06em; }
+[data-face="next"] .fv-place .fv-shelf { padding: 0; }
+/* a session inside a folder: its status dot and its last line; on the page too, a wash of the folder's tint */
+[data-face="next"] .fv-card .fv-st { display: flex; align-items: center; gap: var(--s1); }
+[data-face="next"] .fv-card p.fv-last { margin: 0; font-size: var(--t-label); line-height: var(--t-label-line); overflow-wrap: anywhere; }   /* the whole last line, at its own height (next-form) */
+[data-face="next"] .fv-card.ask { box-shadow: var(--shadow); outline: 2px solid var(--asks); outline-offset: 0; }
+[data-face="next"] .fv-page .fv-card { background: color-mix(in oklab, var(--tint) 14%, var(--card)); }
+[data-face="next"] .fv-page .fv-chip { background: color-mix(in oklab, var(--tint) 14%, var(--card)); }
+/* ＋ New session in <folder>: a dashed card that says it starts knowing what the folder knows */
+[data-face="next"] .fv .fv-draft { display: flex; flex-direction: column; align-items: flex-start; gap: 0; height: auto; padding: var(--s3); border-radius: var(--r); background: none; box-shadow: none; outline: 1px dashed var(--ink3); outline-offset: -1px; color: var(--ink2); text-align: left; }
+[data-face="next"] .fv .fv-draft small { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .fv .fv-draft:hover { background: color-mix(in oklab, var(--card) 50%, transparent); }
+/* a card's Open and Move to… float at its top right while the pointer or the keys are on it, so the card at rest is only its
+   words, with no empty band where they wait (2+Q2) */
+[data-face="next"] .fv-card:not(.fv-new) { position: relative; }
+[data-face="next"] .fv[data-folder] .fv-card:not(.fv-new) > .fv-row { position: absolute; top: var(--s2); right: var(--s2); padding-left: var(--s2); background: inherit; }

@@ -1,0 +1,160 @@
+{
+  "v": 1,
+  "pending": [],
+  "done": [
+    {
+      "token": "V-egCwEFJcgg",
+      "at": 1795338000017,
+      "undo": [
+        {
+          "op": "fit",
+          "knob": "folder.look",
+          "scope": "Users/someone/calm/journal"
+        }
+      ],
+      "log": [
+        {
+          "k": "fit:folder.look",
+          "place": "Users/someone/calm/journal",
+          "was": "workbench",
+          "now": "paper",
+          "source": "you picked it and kept it",
+          "at": "2026-11-22T09:00:00.017Z"
+        }
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "k": "fix:g_QksNSU-jQ6",
+      "place": null,
+      "was": "fact:fact-mwrlw2oc-283hi",
+      "now": null,
+      "source": "You hid fact:fact-mwrlw2oc-283hi",
+      "at": "2026-11-22T09:00:00.013Z"
+    },
+    {
+      "k": "fix:0M8ZyY_7uB3R",
+      "place": null,
+      "was": "fact:fact-mwrlw2oc-283hi",
+      "now": null,
+      "source": "You brought fact:fact-mwrlw2oc-283hi back",
+      "at": "2026-11-22T09:00:00.014Z"
+    },
+    {
+      "k": "fix:TzeLE-75Do0G",
+      "place": "w:/Users/someone/studio/site",
+      "was": "the studio's setup",
+      "now": null,
+      "source": "You kept the studio's setup",
+      "at": "2026-11-22T09:00:00.015Z"
+    },
+    {
+      "k": "fit:folder.look",
+      "place": "Users/someone/calm/journal",
+      "was": "workbench",
+      "now": "paper",
+      "source": "you picked it and kept it",
+      "at": "2026-11-22T09:00:00.017Z"
+    },
+    {
+      "k": "fix:NX9cFOyDpJB9",
+      "place": "w:/Users/someone/calm/journal",
+      "was": "Workbench: tight, made for working",
+      "now": null,
+      "source": "You kept “How it looks: Paper: calm, for reading”",
+      "at": "2026-11-22T09:00:00.017Z"
+    },
+    {
+      "k": "fix:8cE4464NVQ1a",
+      "place": "w:/Users/someone/studio/site",
+      "was": "“site's looks line”",
+      "now": null,
+      "source": "You hid “site's looks line” here",
+      "at": "2026-11-22T23:06:24.191Z"
+    }
+  ],
+  "left": {},
+  "sure": [],
+  "hidden": [],
+  "told": {},
+  "fixes": [
+    {
+      "id": "g_QksNSU-jQ6",
+      "how": "hide",
+      "what": "fact:fact-mwrlw2oc-283hi",
+      "place": null,
+      "reason": "fact:fact-mwrlw2oc-283hi",
+      "at": "2026-11-22T09:00:00.013Z"
+    },
+    {
+      "id": "0M8ZyY_7uB3R",
+      "how": "show",
+      "what": "fact:fact-mwrlw2oc-283hi",
+      "place": null,
+      "reason": "fact:fact-mwrlw2oc-283hi",
+      "at": "2026-11-22T09:00:00.014Z"
+    },
+    {
+      "id": "TzeLE-75Do0G",
+      "how": "keep",
+      "what": "the studio's setup",
+      "place": "w:/Users/someone/studio/site",
+      "reason": "setup:w:/Users/someone/studio/site",
+      "at": "2026-11-22T09:00:00.015Z"
+    },
+    {
+      "id": "NX9cFOyDpJB9",
+      "how": "keep",
+      "what": "“How it looks: Paper: calm, for reading”",
+      "place": "w:/Users/someone/calm/journal",
+      "reason": "setup:w:/Users/someone/calm/journal:looks",
+      "was": "Workbench: tight, made for working",
+      "at": "2026-11-22T09:00:00.017Z"
+    },
+    {
+      "id": "8cE4464NVQ1a",
+      "how": "hide",
+      "what": "“site's looks line”",
+      "place": "w:/Users/someone/studio/site",
+      "reason": "setup:w:/Users/someone/studio/site:looks",
+      "because": [
+        "seen:w:/Users/someone/studio/site:open"
+      ],
+      "at": "2026-11-22T23:06:24.191Z"
+    }
+  ],
+  "placed": [
+    {
+      "folder": "w:/Users/someone/studio/menus",
+      "name": "menus",
+      "to": "h:Experiments",
+      "from": null,
+      "why": "your AIs made it in a quick try, and nothing else of yours uses it",
+      "reading": "tries",
+      "batch": "movein-lq40tGEE",
+      "at": "2026-11-22T09:00:00.000Z"
+    },
+    {
+      "folder": "w:/Users/someone/calm/journal",
+      "name": "journal",
+      "to": "h:Experiments",
+      "from": null,
+      "why": "your AIs made it in a quick try, and nothing else of yours uses it",
+      "reading": "tries",
+      "batch": "movein-lq40tGEE",
+      "at": "2026-11-22T09:00:00.000Z"
+    },
+    {
+      "folder": "w:/Users/someone/calm/garden",
+      "name": "garden",
+      "to": "h:Experiments",
+      "from": null,
+      "why": "your AIs made it in a quick try, and nothing else of yours uses it",
+      "reading": "tries",
+      "batch": "movein-lq40tGEE",
+      "at": "2026-11-22T09:00:00.000Z"
+    }
+  ],
+  "rules": []
+}

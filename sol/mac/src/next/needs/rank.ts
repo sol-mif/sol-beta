@@ -8,8 +8,13 @@
 import type { Arrival, Ask, Data, Piece } from "../cv/types.ts";
 
 export const cap = (t: string) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
-/** who asks: the AI of its piece, else the first word of its source ("Mia", "landlord") */
-export const who = (d: Data, a: Ask) => (d.pieces[a.piece]?.ai as string | undefined) || String(a.source).split(" · ")[0];
+/** who asks: a session by its task (a session has no AI's name, Marco 2026-11-21), else the AI of its piece, else the first
+ *  word of its source ("Mia", "landlord") */
+export const who = (d: Data, a: Ask) => {
+  const p = d.pieces[a.piece];
+  if (p?.kind === "session" && (p.words || p.copy)) return cap(String(p.words || p.copy).replace(/[-_]+/g, " "));
+  return (p?.ai as string | undefined) || String(a.source).split(" · ")[0];
+};
 
 /** why it stands where it stands: the clean room's one ladder, worded from the ask itself. It never re-ranks */
 export function reason(d: Data, a: Ask): { rung: string; long: string } {

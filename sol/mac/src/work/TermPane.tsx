@@ -28,7 +28,9 @@ export function TermPane({ w, cwd, sub, want }: {
   const auto = useRef(false);
   useEffect(() => {
     if (tid && terms.some((t) => t.tid === tid)) return;
-    const here = [...terms].reverse().find((t) => t.cwd === cwd) ?? terms[terms.length - 1];
+    // never another folder's: a session whose folder has none opens its own (BR1 #1615, count 5: the second session's
+    // pane showed the first one's terminal)
+    const here = [...terms].reverse().find((t) => t.cwd === cwd) ?? (cwd ? undefined : terms[terms.length - 1]);
     if (want && want.n !== seen.current) return;   // an asked-for folder goes first (its effect below opens it)
     if (here) setTid(here.tid);
     else if (cwd && !err && !auto.current) { auto.current = true; void open(); }
@@ -55,9 +57,10 @@ export function TermPane({ w, cwd, sub, want }: {
 }
 
 // the paper's own colours, read from face.css: Work shares Life's charcoal paper and pearl ink, so the terminal does too;
-// a selection is the 1px line's colour laid flat (there never was a --line2: it fell to a pearl that hid the ink)
-function theme() {
-  const cs = getComputedStyle(document.documentElement);
+// a selection is the 1px line's colour laid flat (there never was a --line2: it fell to a pearl that hid the ink).
+// Read where the pane stands, so a view that maps the names (the new face's session tab, next/session/port.css) is followed
+function theme(at: Element = document.documentElement) {
+  const cs = getComputedStyle(at);
   const v = (k: string, d: string) => cs.getPropertyValue(k).trim() || d;
   return { background: v("--page", "#1a1a1a"), foreground: v("--ink", "#ebebe8"), cursor: v("--ink", "#ebebe8"), cursorAccent: v("--page", "#1a1a1a"), selectionBackground: v("--line", "#303030") };
 }
@@ -67,7 +70,7 @@ export function Xterm({ tid, w, sub }: { tid: string; w: Pick<Work, "ask" | "ter
   const [gone, setGone] = useState<number | null>(null);
   useEffect(() => {
     const el = host.current!;
-    const t = new Terminal({ fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 12, lineHeight: 1.25, cursorBlink: true, theme: theme(), scrollback: 5000, allowProposedApi: false });
+    const t = new Terminal({ fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 12, lineHeight: 1.25, cursorBlink: true, theme: theme(el), scrollback: 5000, allowProposedApi: false });
     const fit = new FitAddon();
     t.loadAddon(fit);
     t.open(el);

@@ -23,9 +23,9 @@ test("at Near every plain key reaches the pane; only the shell's ⌘ chords are 
   assert.equal(route({ code: "KeyL" }, at({ dist: "middle" })), "none");
 });
 
-test("⌘N opens a starter away from Near; the open starter takes the words; a split job takes the arrows", () => {
+test("⌘N opens a new session from anywhere (BR1 gate 1); the open starter takes the words; a split job takes the arrows", () => {
   assert.equal(route({ code: "KeyN", metaKey: true }, at({ dist: "far" })), "starter");
-  assert.equal(route({ code: "KeyN", metaKey: true }, at()), "none");
+  assert.equal(route({ code: "KeyN", metaKey: true }, at()), "starter");
   assert.equal(route({ code: "KeyA" }, at({ dist: "middle", starter: true })), "starter");
   assert.equal(route({ code: "Enter", metaKey: true }, at({ dist: "middle", starter: true })), "starter");
   assert.equal(route({ code: "KeyJ", metaKey: true }, at({ dist: "middle", starter: true })), "shell");

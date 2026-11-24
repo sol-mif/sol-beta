@@ -174,7 +174,7 @@ async function hasMessages(file: string) {
 // fell out of the side (2026-10-25: a pinned session gone). The folder is on the first message line instead; that
 // line can run to megabytes (pasted screenshots come before its cwd field), so the head is scanned for the field itself
 const CWD = /"cwd":"((?:[^"\\]|\\.)+)"/;
-const cwdIn = (text: string) => { const m = CWD.exec(text); return m ? JSON.parse(`"${m[1]}"`) as string : ""; };
+export const cwdIn = (text: string) => { const m = CWD.exec(text); return m ? JSON.parse(`"${m[1]}"`) as string : ""; };
 const deep = new Map<string, string>();   // found once per session: its first message's folder does not change
 async function cwdDeep(file: string, id: string): Promise<string> {
   const hit = deep.get(id);

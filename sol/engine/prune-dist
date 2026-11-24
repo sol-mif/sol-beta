@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Prune (#1837). tsc never deletes an output whose source is gone, and parts.ts loads every built part, so a .js left
+# behind by a deleted or renamed source (or by sources a branch switch put there for a moment: an Update's rebase on
+# 2026-11-24) is loaded at start and can kill the engine on an import that no longer exists. `keep` runs this on dist/
+# before every start and on dist.good/ before putting it back: each .js, .js.map and .d.ts under the folder whose
+# src/ counterpart (.ts, .tsx, .mts, .js) is gone is deleted, and each one is named in the log.
+#   bash prune-dist <built folder> [src folder]   (src defaults to src/ beside this script)
+# Only when the src folder is there: a build shipped without its sources is left as it is.
+set -u
+out="${1:?which built folder?}"
+src="${2:-$(dirname "$0")/src}"
+[ -d "$out" ] && [ -d "$src" ] || exit 0
+n=0
+while IFS= read -r -d '' f; do
+  rel=${f#"$out"/}
+  case $rel in
+    *.js.map) base=${rel%.js.map} ;;
+    *.d.ts) base=${rel%.d.ts} ;;
+    *.js) base=${rel%.js} ;;
+    *) continue ;;
+  esac
+  for e in ts tsx mts js; do [ -e "$src/$base.$e" ] && continue 2; done
+  rm -f "$f" && n=$((n + 1)) && echo "prune: $f has no source any more; removed"
+done < <(find "$out" -type f \( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' \) -print0)
+[ "$n" -gt 0 ] && echo "prune: $n file(s) with no source removed from $out"
+exit 0

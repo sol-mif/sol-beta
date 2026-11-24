@@ -1,0 +1,177 @@
+/* See it (see.js): the scene's look. index.html's inline rules for #see stay (the story, the desk's windows, the cursor,
+   the count); this file comes after them. The window the apps fold into is Home, Sol's own window
+   (as try.css draws it for Your turn): its title bar, side, talk, chat bar and blocks, from the app's own numbers (sol/mac/src/home, stage;
+   sol/design/system/tokens.json): glass in shades of one black (.78, blur 48), pearl, text ink .92 / dim .55 /
+   quiet .54, line .06, edge .10, continuous corners. On a desk the scene is scaled by about .97; compact, at 1:1. */
+#see {
+  --h-on:239 234 226; --h-ink:rgb(var(--h-on) / .92); --h-dim:rgb(var(--h-on) / .58); --h-quiet:rgb(var(--h-on) / .54);
+  --h-line:rgb(var(--h-on) / .06); --h-edge:rgb(var(--h-on) / .10); --h-pearl:#e6e1d8; --h-deep:#0a0a0b; --h-sun:#f4c82a; --h-green:#70df45;
+  --h-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  --h-nacre:radial-gradient(70% 120% at 18% 0%, rgb(255 255 255 / .55), transparent 70%), linear-gradient(180deg, rgb(255 255 255 / .35), transparent 60%),
+    repeating-linear-gradient(104deg, rgb(255 46 78 / .34) 0, rgb(255 72 136 / .34) 26px, rgb(251 113 41 / .34) 52px, rgb(248 155 42 / .34) 78px, rgb(244 200 42 / .34) 104px, rgb(112 223 69 / .34) 130px, rgb(255 46 78 / .34) 156px),
+    #e6e1d8;
+  --h-sheen:linear-gradient(115deg, rgb(246 243 236 / .14), rgb(228 220 240 / .08));
+  --h-turn:160ms; --h-pour:cubic-bezier(.3,1.12,.6,1);
+}
+#see .scene { height:680px; }
+
+/* the desk's eight windows: one title bar each, three dots, a gap, the name; they fade and sink (see.js, transform) */
+/* (index.html's old #see .chat rule, for the Sol window that is gone, also caught the chat apps; undone here) */
+/* --k was the old fold into chips (index.html's rules still read it); the windows no longer fold, so it is 0. Unset,
+   their glass, shadow and title bar were all dropped as invalid. */
+#see .aw { --k:0; display:block; right:auto; bottom:auto; transform-origin:50% 50%; will-change:transform, opacity; transition:box-shadow .3s; }
+#see .aw .tb { position:relative; z-index:1; gap:5px; padding:0 10px; }
+#see .aw .tb i { flex:none; background:rgba(255,255,255,.22); }
+#see .aw .nm { position:static; margin-left:7px; font-size:11.5px; color:rgba(255,255,255,.78); }
+#see .aw code { font-size:11px; }
+#see .count { color:var(--h-dim); }
+#see .cur .you, #see .cur .carry { font-size:11.5px; }
+#see .glow { background:radial-gradient(closest-side, rgba(255,72,136,.16), rgba(251,113,41,.06) 55%, transparent); }
+#see .hdots { position:absolute; inset:0; z-index:3; pointer-events:none; }
+#see .hbig { position:absolute; left:0; top:0; z-index:4; pointer-events:none; transform-origin:50% 50%; will-change:transform, opacity; visibility:hidden; }
+#see .hbig > .soljelly { display:block; }
+
+/* Home: the window */
+#see .hw { position:absolute; z-index:1; border-radius:16px; background:rgb(0 0 0 / .78); backdrop-filter:blur(48px) saturate(1.2); -webkit-backdrop-filter:blur(48px) saturate(1.2);
+           box-shadow:inset 0 0 0 1px var(--h-edge), inset 0 1px 0 rgb(var(--h-on) / .08), 0 40px 90px -20px rgba(0,0,0,.85);
+           opacity:0; transform-origin:50% 60%; will-change:transform, opacity; overflow:hidden;
+           font:14px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; color:var(--h-ink); text-align:left; }
+#see .hw svg { display:block; }
+#see .hw b { font-weight:600; }
+
+/* the title bar: three lights, the side's key, the title and where, the pearl naming what is on the
+   stage, the jelly mark */
+#see .htop { position:absolute; left:0; right:0; top:0; height:44px; display:flex; align-items:center; gap:10px; padding:0 12px 0 16px; white-space:nowrap; color:var(--h-dim); }
+#see .hl { flex:none; display:flex; gap:8px; margin-right:4px; }
+#see .hl i { width:12px; height:12px; border-radius:50%; background:#ff5f57; box-shadow:inset 0 0 0 .5px rgba(0,0,0,.25); }
+#see .hl i:nth-child(2) { background:#febc2e; } #see .hl i:nth-child(3) { background:#28c840; }
+#see .hkey { flex:none; width:24px; height:24px; display:grid; place-items:center; } #see .hkey svg { width:14px; height:14px; }
+#see .hti { color:var(--h-ink); font-size:14px; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+#see .hwhere { flex:none; color:var(--h-quiet); font-size:12px; }
+#see .hgrow { flex:1; }
+#see .hpill { flex:none; height:24px; line-height:24px; padding:0 12px; border-radius:999px; background:var(--h-pearl); color:var(--h-deep); font-size:12px; opacity:0; transition:opacity var(--h-turn); }
+#see .hpill.on { opacity:1; }
+#see .hmark { flex:none; position:relative; width:20px; height:20px; display:grid; place-items:center; opacity:0; }
+#see .hbody { position:absolute; left:0; right:0; top:44px; bottom:0; }
+
+/* the side: the home | cowork switch with the nacre thumb, then lines of one box (32), a 16 px mark
+   column, one type step */
+#see .hside { position:absolute; left:8px; top:0; bottom:8px; width:200px; display:flex; flex-direction:column; padding:4px 0 0; color:var(--h-dim); }
+#see .htog { flex:none; display:grid; grid-template-columns:1fr 1fr; height:28px; margin:0 0 10px; padding:2px; border-radius:999px; box-shadow:inset 0 0 0 1px var(--h-edge); }
+#see .htog span { display:grid; place-items:center; border-radius:999px; font-size:14px; color:var(--h-dim); }
+#see .htog .on { color:var(--h-deep); background:var(--h-nacre); box-shadow:inset 0 1px 0 rgb(255 255 255 / .5), 0 2px 8px -2px rgba(0,0,0,.5); }
+#see .hr, #see .hg { flex:none; display:flex; align-items:center; gap:8px; height:32px; padding:0 8px; border-radius:12px; white-space:nowrap; font-size:14px; }
+#see .hr { color:var(--h-ink); } #see .hr.act { color:var(--h-dim); }
+#see :is(.hr, .hg) .mk { flex:none; width:16px; height:16px; display:grid; place-items:center; font-size:15px; }
+#see :is(.hr, .hg) .mk svg { width:14px; height:14px; }
+#see :is(.hr, .hg) .tt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+#see :is(.hr, .hg) .ag { flex:none; min-width:24px; text-align:right; font-size:12px; color:var(--h-quiet); font-variant-numeric:tabular-nums; }
+#see .hg { color:var(--h-quiet); font-size:12px; letter-spacing:.02em; margin-top:8px; height:30px; }
+#see .hg .mk { transform:rotate(90deg); color:var(--h-quiet); } #see .hg .mk svg { width:12px; height:12px; }
+#see .hr.more { padding-left:32px; color:var(--h-quiet); font-size:12px; height:28px; }
+#see .hr.here { background:linear-gradient(180deg, rgb(var(--h-on) / .12), rgb(var(--h-on) / .06)); box-shadow:inset 0 1px 0 rgb(var(--h-on) / .14), inset 0 0 0 1px rgb(var(--h-on) / .07); }
+#see .hr.here .mk { opacity:0; transition:opacity var(--h-turn); } #see .hr.here .mk.on { opacity:1; }
+#see .hr.set { margin-top:auto; }
+#see .hside .drift { animation:see-drift 2.55s cubic-bezier(.45,0,.55,1) infinite alternate; }
+#see .hside .breathe { transform-box:fill-box; transform-origin:center; animation:see-breathe 1.7s cubic-bezier(.45,0,.55,1) infinite alternate; }
+@keyframes see-drift { to { transform:translateX(-10px); } }
+@keyframes see-breathe { from { transform:scale(.8); } to { transform:scale(1.1); } }
+
+/* the talk: what you said (the sheen bubble), the steps Sol takes, what it said; the chat bar at the foot */
+#see .htalk { position:absolute; left:216px; width:320px; top:0; bottom:0; will-change:transform; }
+#see .hchat { position:absolute; left:4px; right:4px; top:0; bottom:104px; display:flex; flex-direction:column; justify-content:flex-end; gap:10px; overflow:hidden;
+              -webkit-mask-image:linear-gradient(transparent, #000 32px); mask-image:linear-gradient(transparent, #000 32px); }
+#see .hm { flex:none; max-height:0; opacity:0; transform:translateY(10px); overflow:hidden; font-size:15px; line-height:1.55;
+           transition:max-height .5s var(--ease), opacity .3s, transform .85s var(--h-pour); }
+#see .hm.on { max-height:220px; opacity:1; transform:none; }
+#see .hm.u { align-self:flex-end; max-width:86%; padding:9px 14px; border-radius:14px 14px 4px 14px; background:var(--h-sheen); box-shadow:inset 0 1px 0 rgb(246 243 236 / .16); }
+#see .hm.u:not(.on) { padding-top:0; padding-bottom:0; }
+#see .hm.s { line-height:1.6; } #see .hm.s b { font-weight:600; }
+#see .hsteps { display:flex; flex-direction:column; gap:4px; }
+#see .hs { display:none; align-items:center; gap:9px; height:32px; padding:0 11px; border-radius:8px; background:rgb(0 0 0 / .4); box-shadow:inset 0 1px 0 var(--h-edge);
+           font-size:13px; color:var(--h-dim); white-space:nowrap; }
+#see .hs.on { display:flex; } #see .hs.on:not(.done) { color:var(--h-ink); }
+#see .hs .gl { flex:none; width:14px; height:14px; color:var(--h-quiet); } #see .hs .gl svg { width:14px; height:14px; }
+#see .hs .tx { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; } #see .hs .tx b { font-weight:500; color:var(--h-ink); }
+#see .hs .ct { flex:none; font:11.5px var(--h-mono); color:var(--h-quiet); } #see .hs .ct em { font-style:normal; color:var(--h-ink); margin-right:5px; }
+#see .hs .ok { flex:none; width:12px; height:12px; color:var(--h-green); opacity:0; } #see .hs.done .ok { opacity:1; } #see .hs .ok svg { width:12px; height:12px; }
+
+/* the chat bar: the box, its words, the row of pills under them */
+#see .hbar { position:absolute; left:0; right:0; bottom:12px; height:88px; border-radius:20px; background:rgb(0 0 0 / .55); box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); padding:12px 12px 0; }
+#see .hl1 { display:flex; align-items:center; gap:8px; height:26px; }
+#see .hplus { flex:none; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; background:rgb(var(--h-on) / .07); font-size:16px; color:var(--h-ink); }
+#see .hin { position:relative; flex:1; min-width:0; display:flex; align-items:center; height:24px; font-size:14px; white-space:nowrap; }
+#see .hin .tx { overflow:hidden; }
+#see .hin .ph { position:absolute; left:0; right:0; color:var(--h-dim); overflow:hidden; text-overflow:ellipsis; transition:opacity 120ms; }
+#see .hin .caret { flex:none; width:1.5px; height:16px; background:var(--h-pearl); margin-left:1px; animation:caret 1s steps(1) infinite; }
+#see .hstop { flex:none; display:none; font-size:12.5px; padding:3px 11px; border-radius:999px; background:rgb(var(--h-on) / .1); }
+#see .hbar.busy .hstop { display:block; } #see .hbar.busy .caret { display:none; }
+#see .hl2 { display:flex; align-items:center; gap:6px; margin-top:12px; color:var(--h-ink); }
+#see .hl2 .pl { flex:none; height:26px; display:inline-flex; align-items:center; gap:6px; padding:0 10px; border-radius:999px; font-size:12px; color:var(--h-dim); box-shadow:inset 0 0 0 1px var(--h-edge); white-space:nowrap; }
+#see .hl2 .mono { font-family:var(--h-mono); }
+/* the effort pill (EffortPill.tsx): the level as heat inside the capsule, medium the warm one,
+   high the yellow-to-brown; a shade under the word's half so it reads at 4.5:1, the droplet's half stays bright */
+#see .hl2 .heat { position:relative; isolation:isolate; overflow:hidden; color:#fff; font-family:var(--h-mono); box-shadow:none; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+#see .hl2 .heat::before, #see .hl2 .heat::after { content:""; position:absolute; inset:0; z-index:-1; }
+#see .hl2 .heat::after { background:linear-gradient(90deg, transparent 20px, rgb(0 0 0 / .42) 30px); }
+#see .hl2 .heat[data-lv="1"]::before { background:linear-gradient(90deg, #ff4888 0%, #c43a52 26%, #8a3417 60%, #5c300e 100%); }
+#see .hl2 .heat[data-lv="2"]::before { background:linear-gradient(90deg, #f4c82a 0%, #a39a1a 22%, #4f7416 44%, #6d3a10 72%, #5c300e 100%); }
+#see .hl2 .heat i { width:12px; height:12px; border-radius:50%; background:radial-gradient(circle at 34% 30%, rgb(255 255 255 / .45), transparent 45%), conic-gradient(#ff2e4e, #ff4888, #fb7129, #f89b2a, #f4c82a, #70df45, #ff2e4e); }
+#see .hl2 > svg { flex:none; width:14px; height:14px; margin-left:4px; }
+#see .hl2 .ring { flex:none; width:11px; height:11px; border-radius:50%; box-shadow:inset 0 0 0 1.3px rgb(var(--h-on) / .25); margin-left:4px; }
+
+/* the stage: what Sol makes lands here as blocks: the card step, the state dot, title, kind, where */
+#see .hstage { position:absolute; left:544px; right:8px; top:0; bottom:10px; will-change:transform; }
+#see .ha { position:absolute; left:0; right:0; display:flex; flex-direction:column; border-radius:18px; overflow:hidden; opacity:0; visibility:hidden; transform-origin:50% 0; will-change:transform, opacity;
+           background:linear-gradient(180deg, rgb(var(--h-on) / .045), rgb(var(--h-on) / .02)), rgb(0 0 0 / .25);
+           box-shadow:inset 0 0 0 1px var(--h-edge), inset 0 1px 0 rgb(var(--h-on) / .12), 0 16px 36px -20px rgba(0,0,0,.7); }
+#see .ha.week { top:0; height:calc(47% - 6px); } #see .ha.runs { top:calc(47% + 6px); bottom:0; }
+#see .hh { flex:none; display:flex; align-items:center; gap:8px; height:36px; padding:0 12px 0 14px; white-space:nowrap; font-size:14px; }
+#see .hh b { font-weight:500; } #see .hh .kd { flex:none; font-size:12px; color:var(--h-quiet); }
+#see .hh .mt { min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:12px; color:var(--h-dim); }
+#see .hh .dot { flex:none; width:8px; height:8px; border-radius:50%; background:var(--h-green); }
+#see .days { flex:1; min-height:0; display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:3px; padding:0 8px 8px; }
+#see .days > div { display:flex; flex-direction:column; gap:4px; min-width:0; padding:7px 4px 7px 5px; border-radius:6px; background:rgb(var(--h-on) / .035); box-shadow:inset 0 1px 0 rgb(var(--h-on) / .04); }
+#see .days b { font-size:13px; font-weight:400; line-height:17px; margin-bottom:2px; }
+#see .days .now b { color:var(--h-sun); }
+#see .days p { margin:0; font-size:12px; line-height:16px; letter-spacing:-.015em; color:var(--h-dim); overflow-wrap:break-word; hyphens:manual; }
+#see .days p.lead { color:var(--h-ink); font-weight:600; }
+#see .days p.added { display:none; color:var(--h-ink); } #see .days p.added.on { display:block; }
+#see .days p.added::before { content:"+ "; color:var(--h-green); }
+/* runs: a total, seven bars, the days, the goal in cells */
+#see .rb { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; padding:0 14px 14px; }
+#see .rtop { flex:none; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+#see .tot { font-size:30px; font-weight:600; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; }
+#see .tot small { margin-left:5px; font-size:13px; font-weight:400; letter-spacing:0; color:var(--h-dim); }
+#see .add { font-size:12.5px; padding:4px 12px; border-radius:999px; box-shadow:inset 0 0 0 1px var(--h-edge); color:var(--h-dim); }
+#see .bars { flex:1; min-height:34px; display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; padding-top:18px; }
+#see .bars > div { position:relative; display:flex; flex-direction:column; justify-content:flex-end; }
+#see .bars span { display:block; height:max(3px, calc(var(--v) * 100%)); border-radius:4px 4px 2px 2px; background:rgb(var(--h-on) / .78); }
+#see .bars .zero span { background:rgb(var(--h-on) / .1); }
+#see .bars .now span { background:linear-gradient(180deg, #f4c82a, #fb7129 55%, #ff4888); box-shadow:0 0 18px -2px rgba(251,113,41,.45); }
+#see .bars em { position:absolute; left:50%; translate:-50% 0; bottom:calc(var(--v) * 100% + 3px); font:11.5px var(--h-mono); font-style:normal; color:var(--h-dim); white-space:nowrap; }
+#see .rdl { flex:none; display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; font-size:12px; line-height:14px; color:var(--h-quiet); text-align:center; }
+#see .rdl .now { color:var(--h-ink); }
+#see .cells { flex:none; display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+#see .cells i { display:block; width:6px; height:6px; border-radius:1.5px; background:rgb(var(--h-on) / .1); } #see .cells i.got { background:var(--h-ink); }
+#see .cells small { margin-left:8px; font-size:12px; color:var(--h-quiet); }
+
+/* compact (see.js): the scene at 1:1 in the room it has; the windows in a grid, the count above them; Home without its
+   side, its talk and stage side by side (twin) or one at a time, slid by the scroll */
+#see.compact .count { left:0; right:auto; top:0; }
+#see.compact .hw { border-radius:16px; }
+#see.compact .htop { height:40px; gap:8px; padding:0 10px 0 12px; }
+#see.compact .hl { gap:6px; margin-right:0; } #see.compact .hl i { width:10px; height:10px; }
+#see.compact .hbody { top:40px; overflow:hidden; }
+#see.compact .hside { display:none; }
+#see.compact .htalk { left:8px; right:8px; width:auto; }
+#see.compact .hstage { left:8px; right:8px; }
+#see.compact.twin .htalk { right:calc(50% + 4px); }
+#see.compact.twin .hstage { left:calc(50% + 4px); }
+#see.compact:not(.twin) .hpill { display:none; }
+
+/* reduced motion: the finished scene, no flight, no cursor, nothing easing in */
+#see.still .aw, #see.still .cur, #see.still .count, #see.still .hdots, #see.still .hbig { display:none; }
+#see.still .hm, #see.still .hin .ph, #see.still .hr.here .mk, #see.still .hpill { transition:none; }
+#see.still .hin .caret, #see.still .hside :is(.drift, .breathe) { animation:none; }
+@media (prefers-reduced-motion: reduce) { #see .hm, #see .hin .ph { transition:none; } #see .hin .caret, #see .hside :is(.drift, .breathe) { animation:none; } }

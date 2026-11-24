@@ -118,26 +118,26 @@ export function agoOf(at: string | undefined, now: number): string {
   return m < 48 * 60 ? "yesterday" : `${Math.round(m / 1440)} days ago`;
 }
 
-/** the way in (#1461 step 1): a Sol on the team (a room kept in a GitHub org, or the team's own checkout running as
- *  concept) opens the team's shell; everyone else opens their own groups home (pure) */
-export function opensShell(_rooms: { org?: string }[] | undefined, version: string | null): boolean {
-  // the team's own Sol only (gate one q1, product/cowork): a table kept in a GitHub org is any person's, not the team's,
-  // so it no longer opens the team's pages, which name our people, our machine and our night (versionOf: concept is
-  // the team's own checkout running as concept, never a tester's Sol)
-  return version === "concept";
+/** the way in (#1461 step 1): the team's own Sol opens the team's shell; everyone else opens their own groups home
+ *  (pure). The team's own Sol is the team's checkout running as concept, or one whose own gh sign-in GitHub says is a
+ *  member of the team's own org (`onTeam`, #1541: the engine asks for that one org only, never an org a room names).
+ *  A table kept in any GitHub org is any person's, not the team's (gate one q1, product/cowork): it opens nothing more */
+export function opensShell(onTeam: boolean | null | undefined, version: string | null): boolean {
+  return version === "concept" || onTeam === true;
 }
 
 /** a table's code as the design shows it (pure): "K7Q2MX" → "k7q 2mx"; "" when it has none yet */
 export const codeShown = (code: string | undefined) => (code ? `${code.slice(0, 3)} ${code.slice(3)}`.toLowerCase().trim() : "");
 
-/** how far my AI goes, in the design's three words (pure), from the engine's permission mode */
+/** how far my AI goes at one table, in the design's three words (pure), from that room's own `level` (#1541): absent
+ *  is asks first. A table's level is its own; the machine's Work mode is never read or written here */
 export type Level = "asks first" | "does, then tells" | "just does";
 export const LEVELS: Level[] = ["asks first", "does, then tells", "just does"];
-export function levelOf(mode: string | undefined): Level {
-  return mode === "bypassPermissions" ? "just does" : mode === "acceptEdits" || mode === "auto" ? "does, then tells" : "asks first";
+export function levelOf(level: string | undefined): Level {
+  return level === "does" ? "just does" : level === "tells" ? "does, then tells" : "asks first";
 }
-/** the permission mode a level means (pure) */
-export const modeOf = (l: Level) => (l === "just does" ? "bypassPermissions" : l === "does, then tells" ? "acceptEdits" : "default");
+/** the room's `level` a level means (pure): undefined for asks first, so nothing is kept for the default */
+export const roomLevelOf = (l: Level): "tells" | "does" | undefined => (l === "just does" ? "does" : l === "does, then tells" ? "tells" : undefined);
 
 /** the table's people in words for the left column (pure): the others, "marco, isaac"; nobody else, "just you" */
 export const othersOf = (seats: { login: string; me: boolean }[], more: number) => {

@@ -1,0 +1,49 @@
+/* See what's at work (atwork/index.tsx, BR1 item 7): one column in time order, a row per thing at work, its kind a small
+   mark. Roles only, as Work for you (work/work.css) uses them: green while it runs (--a3), the Diary's yellow when it
+   waits on you (--a2), grey when held. ‖ and ■ show on the row under the pointer or in focus. Each part is its own box.
+   Signed: marcocyl04-ux's agent (builder F), BR1 item 7 (#1615). */
+[data-face="next"] .aw { max-width: 760px; margin: 0 auto; padding: var(--s8) var(--s8) calc(var(--s12) * 2); display: flex; flex-direction: column; gap: var(--s4); }
+[data-face="next"] .aw-top { display: flex; align-items: flex-end; gap: var(--s4); }
+[data-face="next"] .aw-title { flex: 1; min-width: 0; }
+[data-face="next"] .aw-title h1 { font-family: var(--serif); font-weight: var(--display-w); letter-spacing: var(--display-k); font-size: var(--t-display); line-height: var(--t-display-line); margin: 0; }
+[data-face="next"] .aw-sub { margin: var(--s1) 0 0; color: var(--ink2); }
+[data-face="next"] .aw-sec { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s4); }
+[data-face="next"] .aw-sec h2 { display: flex; justify-content: space-between; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; text-transform: uppercase; color: var(--ink3); margin: 0; }
+[data-face="next"] .aw-sec h2 small { font-size: var(--t-label); font-weight: 400; text-transform: none; color: var(--ink3); }
+/* Next, What your AI did and a quiet Now: one box, a hairline between its rows (at-work.html) */
+[data-face="next"] .aw-group { gap: 0; border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+[data-face="next"] .aw-group > .aw-row { background: none; box-shadow: none; border-radius: 0; }
+[data-face="next"] .aw-group > .aw-row + .aw-row { box-shadow: inset 0 1px 0 var(--line); }
+[data-face="next"] .aw-none b { font-weight: 600; }
+[data-face="next"] .aw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+[data-face="next"] .aw-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+[data-face="next"] .aw-asks { background: color-mix(in srgb, var(--a2) 8%, var(--card)); box-shadow: inset 3px 0 0 var(--a2), inset 0 0 0 1px var(--line); }
+[data-face="next"] .aw-head { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s3); padding: 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+[data-face="next"] .aw-mark { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--a3); }
+[data-face="next"] .aw-mark[data-kind="auto"] { border-radius: 2px; }
+[data-face="next"] .aw-asks .aw-mark { background: var(--a2); }
+[data-face="next"] .aw-held .aw-mark, [data-face="next"] .aw-due .aw-mark { background: var(--ink4); }
+[data-face="next"] .aw-what { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: break-word; }
+[data-face="next"] .aw-what b { font-weight: 600; }
+[data-face="next"] .aw-line, [data-face="next"] .aw-time, [data-face="next"] .aw-more { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
+[data-face="next"] .aw-time { flex: none; color: var(--ink3); white-space: nowrap; }
+[data-face="next"] .aw-acts { flex: none; display: inline-flex; gap: var(--s1); opacity: 0; }
+[data-face="next"] .aw-row:hover .aw-acts, [data-face="next"] .aw-row:focus-within .aw-acts { opacity: 1; }
+[data-face="next"] .aw-ic { width: var(--h-row); height: var(--h-row); border-radius: var(--r-row); border: 0; background: var(--side); color: var(--ink); font: inherit; font-size: var(--t-label); cursor: pointer; }
+[data-face="next"] .aw-ic:hover { background: var(--press); }
+[data-face="next"] .aw-btn { flex: none; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); border: 0; background: var(--side); color: var(--ink); font: inherit; white-space: nowrap; cursor: pointer; }
+[data-face="next"] .aw-btn:hover { background: var(--press); }
+[data-face="next"] .aw-pri { background: var(--ink); color: var(--card); }
+[data-face="next"] .aw-pri:hover { background: var(--ink); opacity: 0.9; }
+[data-face="next"] .aw-open { flex-basis: 100%; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2) 0 var(--s1) var(--s6); }
+[data-face="next"] .aw-tree { list-style: none; margin: 0; padding: 0 0 0 var(--s3); display: flex; flex-direction: column; gap: var(--s1); box-shadow: inset 1px 0 0 var(--line); }
+[data-face="next"] .aw-help { padding-left: var(--s4); }
+[data-face="next"] .aw-do { display: flex; flex-wrap: wrap; gap: var(--s2); }
+[data-face="next"] .aw-said { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); color: var(--ink2); }
+[data-face="next"] .aw-said > span { flex: 1; min-width: 0; }
+[data-face="next"] .aw-holds { padding: var(--s3); border-radius: var(--r-row); background: var(--side); color: var(--ink2); }
+[data-face="next"] .aw-holds b { color: var(--ink); }
+[data-face="next"] .aw-said-l { overflow-wrap: break-word; }
+[data-face="next"] .aw-quiet .aw-line { margin: 0; }
+[data-face="next"] .aw-link { align-self: flex-start; padding: 0; border: 0; background: none; font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+[data-face="next"] .aw :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

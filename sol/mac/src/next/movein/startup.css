@@ -1,0 +1,61 @@
+/* The first-launch start-up (Startup.tsx; mine/look/br1/startup.html, as drawn). Its colours are the drawing's own and
+   explicit, never the theme's tokens: the words stay ink on the move-in's paper whatever the theme (Marco's note on the
+   drawing: white words on white). No jelly, no brand colour. --k scales the drawing's 760 × 470 frame to the window. */
+body.starting .nx, body.starting .mvi { visibility: hidden; }
+.sup { position: fixed; inset: 0; z-index: var(--z-frame); background: #f6f4ef; color: #1d1c1a; color-scheme: light; }
+.sup[hidden] { display: none; }
+.sup-win { --k: 1; position: absolute; inset: 0; overflow: hidden; background: #f6f4ef; color: #1d1c1a; font: calc(14px * var(--k))/1.45 -apple-system, "SF Pro Text", system-ui, sans-serif; cursor: default; }
+.sup-pile { position: absolute; inset: 0; }
+.sup-pc { position: absolute; left: 0; top: 0; transform-origin: 0 0; opacity: 0; transition: transform 1.1s cubic-bezier(.2, .8, .2, 1), opacity .5s ease; }
+.sup-pc svg { display: block; }
+.sup-win.sup-looking .sup-pile { opacity: 0; transition: opacity .3s; }
+
+.sup-words { position: absolute; left: 0; right: 0; top: 41%; text-align: center; opacity: 0; transform: translateY(10px); transition: opacity .6s ease, transform .6s cubic-bezier(.2, .8, .2, 1); pointer-events: none; }
+.sup-win.sup-said .sup-words { opacity: 1; transform: none; pointer-events: auto; }
+.sup-win.sup-looking .sup-words { opacity: 0; pointer-events: none; }
+.sup-h { margin: 0; font: 900 calc(38px * var(--k))/1.02 "SF Pro Display", -apple-system, system-ui, sans-serif; letter-spacing: -.03em; color: #1d1c1a; }
+.sup-sub { margin: calc(8px * var(--k)) 0 0; font-size: calc(15px * var(--k)); color: #5f5b53; }
+.sup-promise { display: inline-flex; gap: calc(18px * var(--k)); margin: calc(22px * var(--k)) 0 0; text-align: left; opacity: 0; transition: opacity .6s ease .35s; }
+.sup-win.sup-said .sup-promise { opacity: 1; }
+.sup-promise > div { width: calc(168px * var(--k)); font-size: calc(12.5px * var(--k)); line-height: 1.35; color: #5f5b53; }
+.sup-promise b { display: block; margin-bottom: 2px; font-size: calc(13px * var(--k)); color: #1d1c1a; }
+.sup-promise svg { display: block; width: calc(22px * var(--k)); height: calc(22px * var(--k)); margin-bottom: calc(6px * var(--k)); }
+.sup-go { margin-top: calc(22px * var(--k)); opacity: 0; transition: opacity .5s ease .7s; }
+.sup-win.sup-said .sup-go { opacity: 1; }
+.sup-go button { all: unset; box-sizing: border-box; padding: calc(12px * var(--k)) calc(26px * var(--k)); border-radius: 999px; background: #1d1c1a; color: #f6f4ef; font: 600 calc(15px * var(--k)) -apple-system, system-ui, sans-serif; cursor: pointer; box-shadow: 0 6px 18px rgba(29, 28, 26, .18); }
+/* the press holds the focus from the words on (↩ presses it) without the ring the drawing does not have; Tab shows it */
+.sup-go button:focus-visible { outline: none; }
+.sup-win.sup-kb .sup-go button:focus-visible { outline: 2px solid #1d1c1a; outline-offset: 3px; }
+.sup-go small { display: block; margin-top: calc(9px * var(--k)); font-size: calc(11.5px * var(--k)); color: #5f5b53; }
+.sup-skip { position: absolute; right: 16px; bottom: 12px; font-size: calc(11.5px * var(--k)); color: #8a857b; }
+.sup-win.sup-said .sup-skip { display: none; }
+
+/* after the press, while the reads have not answered: one quiet line, never a progress screen (migration.html B) */
+.sup-next { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .5s ease .3s; }
+.sup-win.sup-looking .sup-next { opacity: 1; }
+.sup-next p { margin: 0; font-size: calc(15px * var(--k)); color: #5f5b53; }
+
+/* the first run's sign-in (BR1 lane G): one quiet line in the window's top right corner, out of the press's way, the press of its own a plain underlined word */
+.sup-sign { position: absolute; top: 18px; right: 24px; max-width: 46ch; display: flex; gap: 6px; justify-content: flex-end; align-items: baseline; flex-wrap: wrap; text-align: right; font: 12.5px/1.45 -apple-system, system-ui, sans-serif; color: #5f5b53; opacity: 0; transition: opacity .5s ease .9s; }
+.sup-sign { pointer-events: none; }
+.sup-win.sup-said .sup-sign { opacity: 1; pointer-events: auto; }
+.sup-sign b { color: #1d1c1a; font-weight: 600; }
+.sup-sign button { all: unset; cursor: pointer; color: #1d1c1a; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.sup-win.sup-kb .sup-sign button:focus-visible { outline: 2px solid #1d1c1a; outline-offset: 3px; border-radius: 3px; }
+@media (prefers-reduced-motion: reduce) { .sup-pc, .sup-words, .sup-promise, .sup-go, .sup-next, .sup-sign { transition: none; } }
+
+/* the first screen, "What do you do, day to day?" (Day.tsx; migration.html A, as drawn): the drawing's 680-wide column,
+   centred, its sizes scaled by --k as the beats' are */
+.sup-day { display: flex; align-items: center; justify-content: center; }
+.sd-col { box-sizing: border-box; width: 100%; max-width: calc(680px * var(--k)); padding: calc(40px * var(--k)) calc(30px * var(--k)) calc(30px * var(--k)); margin-top: calc(-24px * var(--k)); }
+.sd-step { margin: 0 0 calc(8px * var(--k)); font-size: calc(11px * var(--k)); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8a867d; }
+.sd-h { margin: 0 0 calc(6px * var(--k)); font: 900 calc(30px * var(--k))/1.15 "SF Pro Display", -apple-system, system-ui, sans-serif; letter-spacing: -.01em; color: #1d1c1a; }
+.sd-sub { margin: 0 0 calc(18px * var(--k)); max-width: calc(640px * var(--k)); font-size: calc(13px * var(--k)); color: #6b675e; }
+.sd-field { display: block; box-sizing: border-box; width: 100%; min-height: calc(110px * var(--k)); padding: calc(14px * var(--k)) calc(16px * var(--k)); border: 1.5px solid #1d1c1a; border-radius: calc(14px * var(--k)); background: #fff; color: #1d1c1a; font: calc(16px * var(--k))/1.5 -apple-system, "SF Pro Text", system-ui, sans-serif; resize: none; outline: none; caret-color: #1d1c1a; }
+.sd-note { margin: calc(10px * var(--k)) calc(2px * var(--k)) 0; font-size: calc(12.5px * var(--k)); color: #55524b; }
+.sd-note b { color: #1d1c1a; }
+.sd-foot { display: flex; align-items: center; gap: calc(12px * var(--k)); margin-top: calc(16px * var(--k)); font-size: calc(12.5px * var(--k)); color: #6b675e; }
+.sd-btn { border: 0; border-radius: calc(11px * var(--k)); padding: calc(10px * var(--k)) calc(18px * var(--k)); background: #1d1c1a; color: #fff; font: 600 calc(13.5px * var(--k)) -apple-system, system-ui, sans-serif; cursor: pointer; }
+.sd-ghost { border: 0; background: none; padding: calc(10px * var(--k)) calc(6px * var(--k)); color: #55524b; font: calc(13px * var(--k)) -apple-system, system-ui, sans-serif; cursor: pointer; }
+.sd-btn:focus-visible, .sd-ghost:focus-visible { outline: 2px solid #1d1c1a; outline-offset: 3px; }
+.sd-r { margin-left: auto; }

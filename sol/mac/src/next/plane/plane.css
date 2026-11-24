@@ -6,11 +6,23 @@
 
 /* the plane: edge to edge under the bar, its grain a dot moving with the camera; nothing on it ever scrolls the view */
 .pl-wrap { position: absolute; inset: 0; overflow: hidden; }
-.pl { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none;
+/* the plane's own box is .pl-plane, never .pl: today's face styles .pl as a 24px chip (folderPieces/front.css), and on a real
+   Sol, where both load, it clipped the whole canvas to 24px under the tab row (BR1, #1615) */
+.pl-plane { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none;
   background-image: radial-gradient(circle, var(--ink4) 1px, transparent 1px); }
-.pl > * { position: absolute; }
+/* the talk pill is part of the window's frame, as the sidebar is: the plane ends above it and fades out over 20px, so a
+   folder taller than the window never runs on under it. --pl-foot is measured after each draw (index.tsx frameFoot) */
+.pl-plane { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--pl-foot, -20px) - 20px), transparent calc(100% - var(--pl-foot, -20px)));
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--pl-foot, -20px) - 20px), transparent calc(100% - var(--pl-foot, -20px))); }
+.pl-plane > * { position: absolute; }
+/* at Far a folder wholly under the foot (index.tsx underFoot): not shown and no Tab until a pan lifts it into view */
+#pl .pl-card[data-under] { display: none; }   /* over folder.css .pl-card.fo and its forms */
+/* the camera (#1633): one transform moves and scales everything placed on the plane; what reads at screen size is
+   counter-scaled where it stands, from its own corner */
+.pl-cam { left: 0; top: 0; transform-origin: 0 0; }
+.pl-cam > * { position: absolute; transform-origin: 0 0; }
 .pl-back { position: static; display: contents; }
-.pl-back > * { position: absolute; }
+.pl-back > * { position: absolute; transform-origin: 0 0; }
 .pl-life:has(> .pl-board:not(:empty)) + .pl-back { display: none; }
 body.pl-dragging .pl { cursor: grabbing; }
 .pl-joins { left: 0; top: 0; pointer-events: none; stroke: var(--ink4); stroke-width: 1px; }
@@ -23,40 +35,50 @@ body.pl-dragging .pl { cursor: grabbing; }
 .pl-dot { display: inline-block; width: 8px; height: var(--s2); border-radius: var(--r-pill); background: var(--tint); flex: none; }
 
 /* the zones' labels, over the top of each zone */
-.pl-zone { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.pl-zhint { color: var(--ink4); }
 
 /* Far: a folder as its card */
 .pl-card { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); overflow: hidden; cursor: pointer; box-sizing: border-box; }
 .pl-card.pl-sel { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink4); }
 .pl-ph { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-.pl-pn { margin: 0; font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-pn { margin: 0; font-size: var(--t-big); line-height: var(--t-big-line); font-weight: 600; overflow-wrap: break-word; }
 .pl-why { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
-.pl-out { margin: 0; color: var(--ink2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.pl-out { margin: 0; color: var(--ink2); overflow-wrap: break-word; }
 .pl-rasks { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 .pl-g { width: 6px; height: var(--s1); border-radius: var(--r-pill); background: var(--ink); flex: none; }
-.pl-at { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-at { overflow-wrap: break-word; }
 .pl-tiles { display: flex; flex-wrap: wrap; gap: var(--s1); }
 .pl-tile { display: inline-grid; place-items: center; width: 14px; height: var(--s3); border-radius: var(--r-chip); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
 .pl-tile.pl-asks { background: var(--ink); }
 .pl-tile.pl-isnew { box-shadow: inset 0 0 0 1px var(--ink3); }
 .pl-tile .nx-aura { width: 6px; height: var(--s1); }
 
-/* Middle: a folder as an area, its name at the top */
-.pl-area { border-radius: var(--r-lg); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); }
-.pl-area.pl-here { background: var(--card); }
-.pl-lab { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4); font-weight: 600; white-space: nowrap; }
+/* Middle: a folder as an area, opened (BR1, #1615): a light-tint body, its tab carrying the name and the status chips
+   (Folder.tsx OpenTab) */
+.pl-area { border-radius: var(--s1) var(--r-lg) var(--r-lg) var(--r-lg); background: color-mix(in oklab, var(--tint) 18%, var(--side)); box-shadow: none; }
+.pl-area.pl-here { background: color-mix(in oklab, var(--tint) 40%, var(--card)); }
+/* the keys land on the folder after ↩ (BR1 item 5): the folder here is already drawn as the one you are in, no ring */
+.pl-area:focus { outline: none; }
+/* a folder opened with nothing on it (first-timer line 3): its parts, one line, the way in (plane/index.tsx Empty) */
+.pl-empty { display: flex; flex-direction: column; align-items: stretch; gap: var(--s3); padding: 0 var(--s4) var(--s4); font-weight: 400; }
+.pl-et { margin: 0; color: var(--ink2); }
+.pl-eb { align-self: flex-start; font: inherit; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; }   /* quiet: an empty folder needs nothing of the person */
+.pl-area::before { content: ""; position: absolute; left: 0; top: calc(1px - var(--s6)); width: min(60%, 280px); height: var(--s6); border-radius: var(--r-row) var(--r-card) 0 0; background: inherit; }
+.pl-lab { display: flex; flex-wrap: wrap; align-items: center; padding: var(--s3) var(--s4); font-weight: 600; position: relative; top: calc(var(--s3) * -1); gap: var(--s2); min-width: 0; }
+.fo-tn { font-weight: 800; flex: none; }
+.fo-chip { display: inline-flex; align-items: center; gap: var(--s1); min-height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: color-mix(in oklab, var(--card) 75%, transparent);
+  font-size: var(--t-head); line-height: var(--t-head-line); font-weight: 500; color: var(--ink); min-width: 0; overflow-wrap: break-word; }
+
 .pl-n { min-width: 18px; padding: 0 var(--s1); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); text-align: center; }
-.pl-sub { pointer-events: none; }
 .pl-nb { opacity: 0.45; }
 .pl-nb button, .pl-nb .nx-kbd { visibility: hidden; }
 
 /* a piece: a full face at plane size, scaled by the camera */
-.pl-piece { transform-origin: 0 0; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); overflow: hidden; box-sizing: border-box; cursor: pointer; }
+.pl-piece { transform-origin: 0 0; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); overflow: hidden; box-sizing: border-box; cursor: pointer;
+  font-size: var(--t-body); line-height: var(--t-body-line); }   /* its own base type, so the calm screen's floor (layout.ts textFloor) reaches the text that inherits */
 .pl-piece.pl-sel, .pl-fold.pl-sel { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); }
 .pl-new { align-self: flex-start; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--ink); color: var(--card); font-size: var(--t-label); line-height: var(--t-label-line); }
 .pl-h { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-.pl-s { color: var(--ink3); font-size: var(--t-head); line-height: var(--t-head-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pl-s { color: var(--ink3); font-size: var(--t-head); line-height: var(--t-head-line); min-width: 0; overflow-wrap: break-word; }
 .pl-say { margin: 0; font-size: var(--t-read); line-height: var(--t-read-line); }
 .pl-t { margin: 0; color: var(--ink2); font-size: var(--t-read); line-height: var(--t-read-line); white-space: pre-wrap; }
 .pl-st { color: var(--ink2); }
@@ -64,52 +86,70 @@ body.pl-dragging .pl { cursor: grabbing; }
 .pl-meta { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font-size: var(--t-head); line-height: var(--t-head-line); color: var(--ink3); }
 .pl-parts { display: flex; flex-direction: column; }
 .pl-part { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); min-width: 0; }
-.pl-partn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); }
+.pl-partn { flex: 1; min-width: 0; color: var(--ink2); overflow-wrap: break-word; }
 .pl-partn b { color: var(--ink); }
 .pl-tag { flex: none; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
 .pl-tag.st-asks, .pl-tag.st-uncommitted { background: var(--ink); color: var(--card); }
 .pl-rows { display: flex; flex-direction: column; overflow: auto; min-height: 0; }
 .pl-row { display: flex; align-items: center; justify-content: space-between; height: var(--h-chip); }
 .pl-acts { display: flex; gap: var(--s1); flex-wrap: wrap; }
-.pl .pl-btn { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-head); }
-.pl .pl-btn.pl-pri { background: var(--ink); color: var(--card); }
+.pl-plane .pl-btn { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-head); }
+.pl-plane .pl-btn.pl-pri { background: var(--ink); color: var(--card); }
 .pl-ask { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); }
 .pl-ask-t { flex: 1; min-width: 0; }
 .pl-ask-t small { display: block; color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
 
 /* a piece's one line */
-.pl-fold { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; overflow: hidden; box-sizing: border-box; cursor: pointer; font-size: var(--t-head); }
+.pl-fold { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s2); min-height: var(--h-row); padding: var(--s1) var(--s3); border-radius: var(--r-row); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); overflow-wrap: break-word; box-sizing: border-box; cursor: pointer; font-size: var(--t-head); }
 .pl-fold.pl-away { opacity: 0.6; }
-.pl-fs { color: var(--ink3); overflow: hidden; text-overflow: ellipsis; }
 .pl-fst { margin-left: auto; color: var(--ink3); }
 .pl-fst.pl-asks { color: var(--ink); font-weight: 600; }
+/* a line too narrow for its name (form.ts): its dot alone, the name on its title */
+.pl-fdot { flex: none; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink4); }
+.pl-fst.pl-asks:empty { width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--asks); }
 
 /* a life folder's board, at plane size */
-.pl-life { transform-origin: 0 0; overflow: hidden; }
+.pl-life { transform-origin: 0 0; overflow: hidden; font-size: var(--t-body); line-height: var(--t-body-line); }
 
 /* today's page, at its place */
 .pl-diary { position: absolute; overflow: auto; border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); box-sizing: border-box; }
 .pl-diary[hidden] { display: none; }
+/* its words fill the piece as wide as it stands (My day's wide Diary, or one pulled wide by hand), never its left half
+   (BR1 conform 1, narrow.html's My day); a page elsewhere keeps the reading width (.dy) */
+.pl-diary .dy { max-width: none; }
+/* its top strip is its handles' (Pieces.tsx DiaryHandles, BR1 conform 23): the words start under it, never under a control */
+.pl-diary .dy { padding-top: calc(var(--s2) * 2 + var(--s6)); }
 
 /* the chips at the edges: today's page, a zone not whole */
-.pl .pl-chip { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); white-space: nowrap; z-index: 2; }
+.pl .pl-chip { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); white-space: nowrap; z-index: var(--z-lift); }
 .pl-chip svg { width: 14px; height: var(--s4); fill: none; stroke: currentColor; stroke-width: 1.6px; }
 
 /* Middle's head over the plane */
-.pl-over { position: absolute; left: var(--s8); top: var(--s4); right: var(--s8); pointer-events: none; z-index: 3; }
+.pl-over { position: absolute; left: var(--s8); top: var(--s4); right: var(--s8); pointer-events: none; z-index: var(--z-lift); }
 .pl-mhead { display: inline-flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); pointer-events: auto; max-width: 100%; }
 .pl-mt { display: flex; align-items: center; gap: var(--s2); }
-.pl-h1 { margin: 0; font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: 600; }
+.pl-h1 { margin: 0; font-family: var(--serif); font-size: var(--t-title); line-height: var(--t-title-line); font-weight: var(--display-w); letter-spacing: var(--title-k); }
 .pl-msay { margin: 0; color: var(--ink2); }
 .pl-msay a { cursor: pointer; text-decoration: underline; }
 .pl-khint { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+/* Middle's head keeps its keys for a hover or focus, as the bar does: at rest it is one line and clears the folder's tab */
+@media (hover: hover) { .pl-mhead:not(:hover, :focus-within) > .pl-khint { display: none; } }
+/* the gather line (BR1 item 3, Gather.tsx): the asks on screen past the cap, one press; their list beside it */
+.nx .pl-gather { display: inline-flex; align-items: center; gap: var(--s2); height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--asks); color: var(--card);
+  font-size: var(--t-body); line-height: var(--t-body-line); font-weight: 600; cursor: pointer; }
+.nx .pl-gather:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.pl-gather .nx-aura { background: var(--card); }
+.pl-glist { width: 360px; max-height: 60vh; overflow: auto; padding: var(--s2); border-radius: var(--r-card); background: var(--card); box-sizing: border-box;
+  box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); z-index: var(--z-lift); }
+.pl-gi + .pl-gi { border-top: 1px solid var(--line); }
+.pl-gw { padding: var(--s1) var(--s2) 0; font-size: var(--t-label); line-height: var(--t-label-line); font-weight: 600; color: var(--ink3); overflow-wrap: break-word; }
 
 /* the coming-back summary: today's page until the diary draws it (it steps aside once the diary slot draws) */
-.pl-dy-slot:not(:empty) + .pl-sum { display: none; }
+.pl-dy-slot:not(:empty) ~ .pl-sum { display: none; }
 .pl-sum { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s6); }
 .pl-shead { display: flex; flex-direction: column; gap: var(--s2); }
 .pl-swho { display: flex; align-items: center; gap: var(--s2); color: var(--ink3); font-size: var(--t-head); line-height: var(--t-head-line); }
-.pl-headline { margin: 0; font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: 600; }
+.pl-headline { margin: 0; font-family: var(--serif); font-size: var(--t-display); line-height: var(--t-display-line); font-weight: var(--display-w); letter-spacing: var(--display-k); }
 .pl-askline { display: flex; align-items: center; gap: var(--s2); cursor: pointer; }
 .pl-askline.pl-none { cursor: default; }
 .pl-first { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
@@ -117,3 +157,14 @@ body.pl-dragging .pl { cursor: grabbing; }
 .pl-quiet { margin: 0; color: var(--ink3); }
 .pl-diary .pl-btn { height: var(--h-chip); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-head); }
 .pl-diary .pl-btn.pl-pri { background: var(--ink); color: var(--card); }
+/* the calm screen (BR1 item 3): a folder whose name another folder has carries its nearest differing parent, in grey (place.ts apartOf) */
+.fo-apart { color: var(--ink4); font-weight: 400; }
+
+/* the canvas while it opens (#1761, BR1 lane G): one quiet line in the middle, a dot breathing beside it; it fades in
+   after a beat, so a canvas that opens at once never flashes it */
+.pl-opening { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: var(--s2); pointer-events: none;
+  font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); opacity: 0; animation: pl-opening-in 240ms 400ms ease-out forwards; z-index: var(--z-canvas); }
+.pl-opening-dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--ink3); animation: pl-opening-breathe 1.6s ease-in-out infinite; }
+@keyframes pl-opening-in { to { opacity: 1; } }
+@keyframes pl-opening-breathe { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pl-opening { animation: none; opacity: 1; } .pl-opening-dot { animation: none; } }

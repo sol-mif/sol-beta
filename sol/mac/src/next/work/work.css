@@ -1,0 +1,39 @@
+/* Work for you (work/index.tsx, BR1 #1615): plans and automations as cards, their states in words. Roles only: the
+   next set's colours and corners, the scale's spaces, sizes and heights, as Your AIs (ais/ais.css) uses them. Scoped
+   under the new face's root. Signed: marcocyl04-ux's agent, BR1 "Sol works for you" (#1615). */
+[data-face="next"] .wk { max-width: 860px; margin: 0 auto; padding: var(--s8) var(--s8) var(--s12); }
+[data-face="next"] .wk h1 { font-family: var(--serif); font-weight: var(--display-w); letter-spacing: var(--display-k); font-size: var(--t-display); line-height: var(--t-display-line); margin: 0; }
+[data-face="next"] .wk h2 { font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 600; margin: 0 0 var(--s2); }
+[data-face="next"] .wk-say { margin: var(--s2) 0 var(--s4); color: var(--ink2); }
+[data-face="next"] .wk-sec { margin-top: var(--s8); display: flex; flex-direction: column; gap: var(--s3); }
+[data-face="next"] .wk-sec .wk-say { margin: 0; }
+[data-face="next"] .wk-ask, [data-face="next"] .wk-card { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); min-width: 0; }
+[data-face="next"] .wk-ask textarea, [data-face="next"] .wk-in { width: 100%; box-sizing: border-box; padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); color: var(--ink); border: 0; box-shadow: inset 0 0 0 1px var(--line); font: inherit; resize: vertical; }
+/* the example text in a field reads at ≥4.5:1 (the browser's own grey was 4.41 on paper; BR1 first-timer, builder F) */
+[data-face="next"] .wk-ask textarea::placeholder, [data-face="next"] .wk-in::placeholder { color: var(--ink2); opacity: 1; }
+[data-face="next"] .wk-in:disabled { color: var(--ink3); }
+[data-face="next"] .wk-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+[data-face="next"] .wk-gap { flex: 1; }
+[data-face="next"] .wk-h { display: flex; align-items: baseline; gap: var(--s3); }
+[data-face="next"] .wk-h b, [data-face="next"] .wk-h .wk-in { flex: 1; min-width: 0; font-weight: 600; }
+[data-face="next"] .wk-state, [data-face="next"] .wk-dot { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); white-space: nowrap; }
+[data-face="next"] .wk-state::before, [data-face="next"] .wk-dot::before { content: ""; width: var(--s2); height: var(--s2); border-radius: var(--r-pill); background: var(--ink4); }
+[data-face="next"] .st-running::before, [data-face="next"] .st-working::before { background: var(--a3); }
+[data-face="next"] .st-needs-you::before, [data-face="next"] .st-proposed::before, [data-face="next"] .st-held::before, [data-face="next"] .st-failed::before { background: var(--a2); }
+[data-face="next"] .st-done::before { background: var(--ink); }
+[data-face="next"] .wk-t3, [data-face="next"] .wk-none { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
+[data-face="next"] .wk-why, [data-face="next"] .wk-does { margin: 0; color: var(--ink2); white-space: pre-wrap; }
+[data-face="next"] .wk-steps { list-style: decimal; margin: 0; padding-left: var(--s6); display: flex; flex-direction: column; gap: var(--s2); }
+[data-face="next"] .wk-step { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+[data-face="next"] .wk-step .wk-row b { flex: 1; min-width: 0; font-weight: 600; }
+[data-face="next"] .wk-result { color: var(--ink); padding-top: var(--s1); box-shadow: inset 0 1px 0 var(--line); }
+[data-face="next"] .wk-yes { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink2); }
+[data-face="next"] .wk-btn { display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row); background: var(--side); color: var(--ink); border: 0; font: inherit; cursor: pointer; }
+[data-face="next"] .wk-btn:hover:not(:disabled) { background: var(--press); }
+[data-face="next"] .wk-btn.pri { background: var(--ink); color: var(--card); }
+[data-face="next"] .wk-btn:disabled { opacity: 0.45; cursor: default; }
+[data-face="next"] .wk-tx { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; align-self: flex-start; }
+[data-face="next"] .wk-tx:disabled { color: var(--ink3); cursor: default; }
+[data-face="next"] .wk-chip { height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); border: 0; font: inherit; font-size: var(--t-label); color: var(--ink2); cursor: pointer; }
+[data-face="next"] .wk-note { display: flex; align-items: center; gap: var(--s3); margin: var(--s2) 0; padding: var(--s2) var(--s3); border-radius: var(--r-row); background: var(--side); color: var(--ink2); }
+[data-face="next"] .wk select { height: var(--h-row); border-radius: var(--r-row); background: var(--paper); color: var(--ink); border: 0; box-shadow: inset 0 0 0 1px var(--line); font: inherit; padding: 0 var(--s2); }

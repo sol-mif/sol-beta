@@ -15,6 +15,8 @@ export function engineSaid(t: string): string | null {
   if (s.startsWith("<demoted>")) return "demoted: a normal session again; the sessions under it are loose";
   if (s.startsWith("<session joined>")) { const t = /^<session joined>\n"([^"\n]{1,80})"/.exec(s)?.[1]; return t ? `a session joined: ${t}` : "a session joined: its summary came in"; }
   if (s.startsWith("<reports from sessions under you>")) return "reports came in from the sessions under it";
+  // a session moved into a folder (engine next/folders.ts move; its folder context is split off first, work/folderContext.ts)
+  { const m = /^The person moved this session into the folder (.{1,80}?)\. From now on, work with what that folder knows/.exec(s); if (m) return `moved into ${m[1]}: it works with what that folder knows`; }
   if (s.startsWith("You are an orchestration session in Build (Sol)") && /\nYou are renewal \d+ of this session/.test(s)) return "renewed: a fresh copy carries on from its own handover, with the sessions under it";
   return null;
 }

@@ -25,6 +25,7 @@ const MEANT = new Set([
   // marco/mine joined to main (#1146), each a variant drawn on its base on purpose
   "ha-row+hs-folder", "ha-row+hs-rest", "ha-row+hs-ses",   // every session (sideAll.tsx) is the artifacts card's rows, side.css's .hs-* on .ha-row
   "pc+st-room", "st-room+st-stage",   // one space (pieces/Space.tsx): the stage's room drawn as a piece (pieces.css .pc.st-room.whole)
+  "bc-open+fp-part",   // BR1 (#1615): a folder's part opens as the because card's open line (folder/parts/parts.css)
 ]);
 
 const root = new URL(".", import.meta.url).pathname;
@@ -79,4 +80,39 @@ test("a part's own box is not worn by another part", () => {
       clash.add(`.${box} (its own box in ${home}, sized in ${sized.get(box)}) is worn with .${o} in ${at}`);
   }
   assert.deepEqual([...clash], [], "give the one that is not the box its own name (or, if the pair is meant, add it to MEANT)");
+});
+
+// The next face (BR1, #1615): its rules are mostly scoped by the face ([data-face="next"] .x), which the test above does not
+// read as a part's own box, so two parts there could share a name unseen: the folder page's .fo (notes.css: a padded grid that
+// scrolls) landed on the canvas's folder card (.pl-card.fo, plane/folder.css) and clipped its caption, and the two drew
+// their own .fo-chip and .fo-lbl. A part is its CSS file's folder.
+const nextCss = files.filter((f) => f.endsWith(".css") && relative(root, f).startsWith("next" + "/")).map((f) => ({ at: relative(root, f), src: readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "") }));
+const partOf = (at: string) => at.slice(0, at.lastIndexOf("/"));
+// each name the next face sizes alone, bare or scoped by the face, and every part that does
+const boxes = new Map<string, string[]>();
+for (const { at, src } of nextCss) for (const m of src.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  if (!LAYOUT.test(m[2])) continue;
+  for (const sel of m[1].split(",")) {
+    const b = sel.trim().match(/^(?:\[[^\]]+\]\s+)?\.([\w-]+)(?::[\w-]+(?:\([^)]*\))?)*$/);
+    if (b && !(boxes.get(b[1]) ?? []).includes(at)) boxes.set(b[1], [...(boxes.get(b[1]) ?? []), at]);
+  }
+}
+// sized by two parts before this test (2026-11-22), each to be given its own name when its part is next touched
+const TWICE = new Set(["nx-right", "ld-said", "ld-foot"]);
+
+test("the next face: one name is one part's box", () => {
+  const two = [...boxes].filter(([n, at]) => !TWICE.has(n) && new Set(at.map(partOf)).size > 1).map(([n, at]) => `.${n} is a box in ${at.join(" and ")}`);
+  assert.deepEqual(two, [], "give one of them its own name");
+});
+
+// what a :has(), :not(), :is() or :where() names is another element (or none), never the one the compound is on
+const INNER = /:(?:has|not|is|where)\((?:[^()]|\([^()]*\))*\)/g;
+test("the next face: no rule puts two parts' boxes on one element", () => {
+  const both = new Set<string>();
+  for (const { at, src } of nextCss) for (const m of src.matchAll(/([^{}]+)\{/g)) for (const sel of m[1].split(",")) for (const one of sel.replace(INNER, "").trim().split(/[\s>+~]+/)) {
+    const cs = [...one.matchAll(/\.([\w-]+)/g)].map((c) => c[1]).filter((c) => boxes.has(c));
+    for (const a of cs) for (const b of cs) if (a < b && partOf(boxes.get(a)![0]) !== partOf(boxes.get(b)![0]) && !MEANT.has(`${a}+${b}`))
+      both.add(`.${a}.${b} in ${at}: .${a} is ${boxes.get(a)![0]}'s box, .${b} ${boxes.get(b)![0]}'s`);
+  }
+  assert.deepEqual([...both], [], "give the one that is not the box its own name (or, if the pair is meant, add it to MEANT)");
 });

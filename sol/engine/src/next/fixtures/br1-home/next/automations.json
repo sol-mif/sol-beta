@@ -1,0 +1,17 @@
+{
+  "autos": [
+    {
+      "id": "auto-0f0bbae4",
+      "name": "Weekly menu",
+      "does": "Send the weekly menu to the regulars",
+      "when": "every day at 08:00",
+      "on": false,
+      "made": 1795338000026,
+      "model": null,
+      "cwd": null,
+      "region": null,
+      "runs": 0,
+      "fired": []
+    }
+  ]
+}

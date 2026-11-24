@@ -12,6 +12,7 @@ import { HandInCard } from "./HandIn";
 import { CheckpointCard } from "./Checkpoint";
 import { UsedMark } from "../cowork/Used";   // the used-Cowork mark (#431)
 import { engineSaid } from "../one/engineSaid";
+import { splitContext } from "./folderContext";   // the folder context before his first words is one quiet line (BR1 gate 3)
 
 export { toolLine } from "./WorkSteps";
 
@@ -75,12 +76,15 @@ export function WorkTalk({ items, busy, w, view, onFresh, onLink, onBox }: {
         if (m) out.push(<SessionCard key={`ss${t.id}`} id={m[1]} w={w} lead={/hand_off$/.test(String(t.name)) ? "handed to" : "started"} />);
         else if (t.input?.initiation === "proposal" && t.ok !== false) out.push(<Proposal key={`pp${t.id}`} it={t} w={w} old={old} />);
       }
-    } else if (it.kind === "me" && engineSaid(txt)) {
+    } else if (it.kind === "me" && engineSaid(splitContext(txt).rest)) {
       // what the engine tells an orchestration session is not his (one/engineSaid.ts): one quiet line, its words on hover
-      out.push(<p key={it.id} data-item={it.id} className="wline" title={txt.slice(0, 1200)}>{engineSaid(txt)}</p>);
+      out.push(<p key={it.id} data-item={it.id} className="wline" title={txt.slice(0, 1200)}>{engineSaid(splitContext(txt).rest)}</p>);
     } else if (it.kind === "me") {
       if (it.dropped) continue;   // queued, then forgotten before it was read (#51)
-      const text = String(it.text ?? "") + (it.images ? `\n[${it.images} image${it.images > 1 ? "s" : ""}]` : "");
+      const { context, rest } = splitContext(txt);
+      if (context) out.push(<p key={`${it.id}:ctx`} className="wline" title={context.slice(0, 1200)}>folder context</p>);
+      const text = rest + (it.images ? `\n[${it.images} image${it.images > 1 ? "s" : ""}]` : "");
+      if (!text.trim() && !it.files?.length) continue;
       out.push(
         <div key={it.id} data-item={it.id} className={`wme ${it.queued ? "queued" : ""}`}>
           {onOf(it).length > 0 && <p className="wsent-on">on {onOf(it).join(" · ")}</p>}

@@ -1,0 +1,84 @@
+/* The tab row on top of the canvas (#1615 BR1; tabs/Tabs.tsx, frame part 1 and 4): the Canvas tab first, then a tab per
+   piece taken out; the one in front joins the view below it. Under the row, Sol's offer and an AI's Undo line float over
+   the view's top right. Every space, size and corner is the scale's (palette.css), every colour and shadow the next set's
+   (kit/next.css) or the material's; the gate's layout and look lints hold this file.
+   Signed: marcocyl04-ux's agent, BR1 tabs (#1615). */
+
+.tbar { position: relative; flex: none; z-index: var(--z-frame); }
+/* .tbar before .tb-row: Cowork's tables (cowork/tables/tables.css) has a .tb-row of its own, with a hover fill, a grid and a pointer */
+.tbar .tb-row, .tbar .tb-row:hover { flex: 1; display: flex; align-items: flex-end; gap: var(--s1); height: calc(var(--h-row) + var(--s2)); padding: 0 var(--s3); background: var(--side); border-bottom: 1px solid var(--line); overflow: hidden; min-width: 0; cursor: default; }
+/* a tab keeps its task whole up to frame.html's width (.tab max-width), never squeezed; a crowded row folds its last tabs into "+N" */
+.tb-tab { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-row) var(--r-row) 0 0; color: var(--ink2); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; cursor: pointer; flex: none; max-width: 200px; user-select: none; touch-action: none; border: 1px solid transparent; border-bottom: 0; box-sizing: border-box; }
+.tb-tab[hidden] { display: none; }
+/* the Canvas tab is always there (frame.html): its words are the crumb, so it takes what the crumb needs, up to a third */
+.nx .tb-tab.tb-canvas { flex: 0 1 auto; min-width: calc(var(--s12) * 2); max-width: 33%; padding: 0 var(--s3); border: 1px solid transparent; border-bottom: 0; color: var(--ink2); cursor: default; }
+.nx .tb-tab.tb-canvas:not(.on) { cursor: pointer; }
+.tb-canvas .nx-crumb { flex: 0 1 auto; }
+.tb-canvas .nx-crumb a:not([aria-current]) { color: var(--ink3); font-weight: 400; }
+.tb-canvas .nx-crumb a:not([aria-current]):hover { color: var(--ink); }
+.tb-tab:hover { background: var(--hover); color: var(--ink); }
+.nx .tb-tab.tb-canvas.on:hover { background: var(--paper); }
+/* "+N": the tabs a narrow window cannot hold, and ＋, a new session (frame.html .tab.plus) */
+.nx .tb-tab.tbar-more { flex: none; min-width: 0; color: var(--ink3); }
+.nx .tb-new { flex: none; align-self: center; display: inline-grid; place-items: center; width: var(--h-row); height: var(--h-row); border-radius: var(--r-row); color: var(--ink3); font-size: var(--t-body); }
+.nx .tb-new:hover { background: var(--hover); color: var(--ink); }
+.tb-menu { display: flex; flex-direction: column; min-width: 220px; max-width: 320px; padding: var(--s1); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); }
+.tb-menu .nx-mv { display: flex; align-items: center; gap: var(--s2); }
+/* the keys for here and Shortcuts: the row's right end, shown on its hover or focus (the calm screen). They keep their
+   room at rest, so on hover they never cover a tab or ＋; a crowded row folds its tabs into "+N" first */
+.nx-top .nx-right { margin-left: 0; padding: 0 var(--s3); background: var(--side); border-bottom: 1px solid var(--line); }
+@media (hover: hover) {
+  .nx-top .nx-right > * { transition: opacity var(--d-turn) var(--e-arrive); }
+  .nx-top:not(:hover, :focus-within) .nx-right:not(:has(#movesbtn[aria-expanded="true"], .ft-more[aria-expanded="true"])) > * { opacity: 0; pointer-events: none; }
+}
+.nx .tb-tab.on { background: var(--paper); color: var(--ink); font-weight: 600; border-color: var(--line); position: relative; top: 1px; }
+.tb-mark { color: var(--ink3); }
+/* the calm screen (BR1 item 3): the Canvas tab's mark is a drawn grid, a 16px box on the row's centre line */
+.tb-icon { width: var(--s4); height: var(--s4); flex: none; fill: none; stroke: currentColor; }
+.tb-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* a folder's mark (tabs/Label.tsx, also in Near's head): a small tab shape in the folder's colour, the canvas's four in its
+   order; dashed and empty when the session is loose. A pill only for an automation or a seat */
+.fmark { display: inline-block; width: var(--s3); height: calc(var(--s2) + var(--s1) / 2); flex: none; box-sizing: border-box; border-radius: 1px calc(var(--s1) - 1px) calc(var(--s1) - 1px) calc(var(--s1) - 1px); background: var(--tint, var(--ink4)); }
+.fmark.t0 { --tint: var(--a1); }
+.fmark.t1 { --tint: var(--a2); }
+.fmark.t2 { --tint: var(--a3); }
+.fmark.t3 { --tint: var(--ink4); }
+.fmark.loose { background: none; border: 1px dashed var(--ink3); }
+.tb-tab .tb-name { flex: 0 1 auto; }
+.tb-tab .fpill { flex: 1 1 0; min-width: var(--s3); max-width: max-content; overflow: hidden; text-overflow: ellipsis; }   /* the task first: the pill takes only what the task leaves */
+.nr-title .fmark { margin-right: var(--s2); vertical-align: middle; }
+.nr-title .fpill { display: inline-block; margin-left: var(--s2); vertical-align: middle; font-family: var(--sans); letter-spacing: normal; }
+.fpill { flex: none; height: var(--s4); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font-size: var(--t-label); line-height: var(--s4); font-weight: 400; white-space: nowrap; }
+.tb-ai { color: var(--ink2); flex: none; }
+.tb-tab.fresh .tb-name { color: var(--ink); }
+.tb-dot { width: 8px; height: var(--s2); border-radius: var(--r-pill); flex: none; background: var(--ink4); }
+.tb-dot.ask { background: var(--a2); }
+.tb-dot.run { background: var(--a1); }
+.tb-dot.bad { background: var(--c-removed); }
+.nx .tb-x { display: inline-grid; place-items: center; width: 16px; height: var(--s4); flex: none; border-radius: var(--r-chip); color: var(--ink4); }
+.nx .tb-x:hover { background: var(--press); color: var(--ink); }
+
+/* a panel beside the canvas (Settings, next.css .nx-panel) starts under the row: the row stays whole and the panel's
+   top (its search) is never under it */
+.tbar ~ .nx-panel { top: calc(var(--h-row) + var(--s2) + 1px); }   /* the row and its hairline */
+
+/* a piece dragged from the plane over the row, or a tab dragged down onto the canvas */
+.pl-dragging .tbar .tb-row { background: var(--hover); box-shadow: inset 0 0 0 1px var(--ink4); }
+.tb-dropping #view { box-shadow: inset 0 0 0 1px var(--ink4); }
+
+/* Sol's offer, and an AI's Undo line */
+.tb-offer { position: absolute; top: calc(100% + var(--s2)); right: var(--s4); width: 360px; max-width: calc(100% - var(--s8)); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s4); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); font-size: var(--t-body); line-height: var(--t-body-line); color: var(--ink); }
+.tb-undo { top: calc(100% + var(--s2)); }
+.tb-offer + .tb-undo { top: calc(100% + var(--s12) + var(--s12)); }
+/* over a session view, under its bar and at its left: clear of the bar's buttons and the panes at the right */
+.tb-offer.tb-low { top: calc(100% + var(--s12) + var(--s2)); left: var(--s4); right: auto; }
+.tb-low + .tb-undo.tb-low { top: calc(100% + var(--s12) + var(--s12) + var(--s12)); }
+.tb-btns { display: flex; gap: var(--s2); }
+.nx .tb-btns button { height: var(--h-row); padding: 0 var(--s3); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-label); line-height: var(--t-label-line); }
+.nx .tb-btns button:hover { background: var(--hover); }
+.nx .tb-btns .tb-yes { background: var(--ink); color: var(--paper); box-shadow: none; }
+.nx .tb-btns .tb-yes:hover { background: var(--ink2); }
+
+/* ⤢ on an opened piece (Near's head) */
+.nx .nr-tabout { height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-row); color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); white-space: nowrap; }
+.nx .nr-tabout:hover { background: var(--hover); color: var(--ink); }

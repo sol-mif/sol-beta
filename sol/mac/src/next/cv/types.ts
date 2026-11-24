@@ -3,8 +3,9 @@
 // here (each slice's own fields: parts, made, checked, arrivals…), so every shape stays open.
 // Signed: marcocyl04-ux's agent, the port's prep (#1615).
 
-/** a folder on the plane (engine.js calls it a region): code, life or mixed, as it was made */
-export type Region = { id: string; name: string; kind: "code" | "life" | "mixed"; [more: string]: unknown };
+/** a folder on the plane (engine.js calls it a region): code, life or mixed, as it was made; parent: the folder it sits
+ *  in (BR1, folders in folders), none at the top of the canvas; parentBy: who put it there, as Pos.by */
+export type Region = { id: string; name: string; kind: "code" | "life" | "mixed"; parent?: string; parentBy?: "person" | "ai" | "rule"; [more: string]: unknown };
 /** a terminal's face: its last lines, what it waits for, its state in words */
 export type Term = { lines: string[]; waiting: string | null; stateWord: string };
 /** a side copy in a copies piece */
@@ -23,23 +24,34 @@ export type Piece = {
 export type Ask = {
   id: string; rank: number; piece: string; kind: "code" | "life"; source: string; text: string; how: "inplace" | "near";
   answered: boolean; serious?: boolean; same?: string; part?: string;
+  /** the keys of the facts the session that asked knew (the engine's next.needs): its because… (because/Because.tsx) */
+  because?: string[];
+  /** the engine's judgment (next.raises, wire/raises.ts): the most its folder's raise says at rest (0 silence, 1 dot,
+   *  2 line, 3 question) and why, one sentence, the because… */
+  care?: { level: 0 | 1 | 2 | 3; why: string };
   [more: string]: unknown;
 };
 /** an AI and the piece it works in */
 export type Ai = { name: string; piece: string; [more: string]: unknown };
 /** what an AI does on its own, on a clock */
 export type Routine = { ai: string; what: string; when: string };
-/** where a thing sits on the plane, in plane units, and who put it there */
-export type Pos = { x: number; y: number; w: number; h: number; by: "person" | "ai" | "rule"; touched: boolean; at: number; cols?: number; fresh?: boolean };
-/** the three zones side by side (Diary, Build, Life), today's page, the foot, the zoom that fits it all at Far */
-export type Zones = { diary: { x: number; w: number }; build: { x: number; w: number }; life: { x: number; w: number }; page: { x: number; y: number; w: number; h: number }; bottom: number; fit: number };
+/** where a thing sits on the plane, in plane units, and who put it there. A folder inside a folder (BR1) is drawn in one of
+ *  its folder's cells at scale `s` (its pieces too); `in` is the folder the person put it in (null: the person took it to
+ *  the top), kept by the engine (pos.ts). `hand: "fold"`: the person only folded it, where the rule put it; a fold is not an
+ *  arrangement, so it holds nothing (layout.ts byHand) */
+export type Pos = { x: number; y: number; w: number; h: number; by: "person" | "ai" | "rule"; touched: boolean; at: number; cols?: number; fresh?: boolean; folded?: boolean; s?: number; in?: string | null; hand?: "fold" };
+/** today's page on the canvas (BR1, #1615: no zones, only folders; the name is kept for the slices that read D.zones.page):
+ *  the Diary's span across x, its page, the page's foot, the zoom of the person's scale at Far */
+export type Zones = { diary: { x: number; w: number }; page: { x: number; y: number; w: number; h: number }; bottom: number; fit: number };
 
 /** D: everything the face draws. regions are the folders (the plan's "places"); sessions and stickies are pieces of
- *  their kind (sessions(), stickies()); pos and zones are written by the plane's layout (slice 1); diary is the diary's
+ *  their kind (sessions(), stickies()); pos and zones (today's page) are written by the plane's layout (slice 1); diary is the diary's
  *  book (slice 4). Views read it through useNext and never change it; moves and wires do */
 export type Data = {
   regions: Region[]; pieces: Record<string, Piece>; asks: Record<string, Ask>; ais: Ai[];
   routines?: Routine[]; pos?: Record<string, Pos>; zones?: Zones; diary?: unknown;
+  /** the move-in's answers the plane reads (BR1, #1615): `lead`, what the person sees first (next.movein.lead) */
+  movein?: { lead?: "day" | "work" | "both" | null };
   [more: string]: unknown;
 };
 

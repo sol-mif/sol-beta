@@ -54,6 +54,7 @@
     "allow-permit-state",
     "allow-permit-open",
     "allow-permit-back",
+    "allow-app-relaunch",
     "allow-places-copy",
     "allow-places-drop",
     {

@@ -82,7 +82,7 @@ test("back to the old Sol: a confirm first (nothing written), then back.json who
   assert.deepEqual(readBack(dir), { at: NOW, was: true });
   assert.deepEqual(b, { at: NOW, was: true });
   assert.deepEqual(readdirSync(join(dir, "next")), ["back.json"], "only under SOL_HOME/next/, no temp left");
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, "next", "back.json"), "utf8")), { at: NOW, was: true });
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, "next", "back.json"), "utf8")), { v: 1, at: NOW, was: true });
 });
 
 test("a broken back.json is not read and not thrown away", async () => {

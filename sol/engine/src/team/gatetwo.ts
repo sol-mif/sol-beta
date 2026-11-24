@@ -24,7 +24,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DIGEST_TITLE, REPO, oneLine, tryOf, clockIn, type Rhythm } from "./tonight.js";
-import { aDayOld, backupOf, devReleases, readVerdicts, MIN_AGE, type DevRelease, type Verdict } from "./beta.js";
+import { aDayOld, sameDayOnce, backupOf, devReleases, readVerdicts, MIN_AGE, type DevRelease, type Verdict } from "./beta.js";
 import { DEV_TAG, checksOn, fetchAll, firstLine, rev, runnerOf, type CheckRun, type ReleaseDeps, type PrComment } from "./release.js";
 import { ISSUE_TITLE as CATCHUP_TITLE } from "./catchup.js";
 import { whoHas, peopleOf, type Person, type RunsWord } from "./runs.js";
@@ -181,9 +181,11 @@ async function q3(d: GateTwoDeps, repo: string, rel: Rel): Promise<Answer> {
   return { n: 3, mark: got.every((x) => x.passed && x.tried) ? "pass" : "short", line: said };
 }
 
-async function q4(d: GateTwoDeps, rel: Rel, zone: string): Promise<Answer> {
-  const now = d.now(), hours = Math.floor((now.getTime() - rel.made) / HOUR);
-  const old = aDayOld(rel.made, now, zone);
+async function q4(d: GateTwoDeps, rel: Rel, rhythm: Rhythm): Promise<Answer> {
+  const zone = rhythm.zone, now = d.now(), hours = Math.floor((now.getTime() - rel.made) / HOUR);
+  // the pass's own rule, its one-time exception too (#1615), said plainly when it is what lets the release through
+  const waived = !aDayOld(rel.made, now, zone) && sameDayOnce(rel.made, now, rhythm);
+  const old = aDayOld(rel.made, now, zone) || waived;
   let who = "";
   if (d.runs) {
     try {
@@ -192,7 +194,10 @@ async function q4(d: GateTwoDeps, rel: Rel, zone: string): Promise<Answer> {
     } catch { who = "; who has it was not heard (this machine's engine did not answer)"; }
   }
   const age = rel.made ? `made ${clockIn(new Date(rel.made), zone).day}, ${plural(Math.max(0, hours), "hour")} ago` : "its date was not read";
-  return { n: 4, mark: old ? "pass" : "short", line: `${age} (the rule for now: an earlier day and ${MIN_AGE / HOUR} hours, #1559)${who}` };
+  const rule = waived
+    ? `not a day old: the one-time exception for ${rhythm.betaSameDay} in .sol/rhythm.json waives the day (#1615)`
+    : `the rule for now: an earlier day and ${MIN_AGE / HOUR} hours, #1559`;
+  return { n: 4, mark: old ? "pass" : "short", line: `${age} (${rule})${who}` };
 }
 
 async function q5(d: GateTwoDeps, repo: string, rel: Rel): Promise<Answer> {
@@ -299,7 +304,7 @@ export async function gateTwo(d: GateTwoDeps, o: { repo: string; rhythm: Rhythm;
 
   const v = await lastProduct(d, rel);
   const seven = await q7(d, o.repo, rel, v);
-  const answers = [await q1(d, rel), q2(d, rel), await q3(d, o.repo, rel), await q4(d, rel, o.rhythm.zone), await q5(d, o.repo, rel), await q6(d, rel, v), seven.answer];
+  const answers = [await q1(d, rel), q2(d, rel), await q3(d, o.repo, rel), await q4(d, rel, o.rhythm), await q5(d, o.repo, rel), await q6(d, rel, v), seven.answer];
   let press: GateTwo["press"] = "none yet";
   try { press = pressOf((await readVerdicts(d, o.repo, o.rhythm.beta, backupOf(o.rhythm))).get(rel.tag), rel.made); }
   catch (e) { d.say(`gate two: Frank's press was not read (${firstLine(String((e as Error)?.message ?? e))})`); }

@@ -40,6 +40,9 @@ export type Room = { id: string; name: string; provider: "github" | "drive" | "c
   /** "show my room sessions" off for this room (#238, the studio PRD §5): my room sessions do not stream to it, and my
    *  roster entry there says so. Absent: on, the default (#189, option 2) */
   quiet?: true;
+  /** how far my AI goes at this group's table (#1541): "tells" (does, then tells) or "does" (just does). Absent: asks
+   *  first, the default. This group's alone: the machine's own Work mode (settings.json defaults.mode) is never touched */
+  level?: "tells" | "does";
   /** a cloud group's repos of mine my own gh checked as their admin (#320's check, kept with `repos`): its connectors
    *  row says `admin`. Always a part of `repos` */
   admins?: string[];
@@ -274,7 +277,7 @@ export function cleanRoom(v: unknown): Room | null {
     // connected repositories (#320): GitHub's shape only, each once, at most CONNECTED_MAX
     const repos = Array.isArray(v.repos) ? [...new Set(v.repos.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(isRepo))].slice(0, CONNECTED_MAX) : [];
     const admins = Array.isArray(v.admins) ? repos.filter((x) => (v.admins as unknown[]).some((y) => typeof y === "string" && y.trim().toLowerCase() === x.toLowerCase())) : [];
-    return { id, name, provider, org: "", repos, hub, key: "", code, gate: "github", folder: "", mine: v.mine === true, joined: v.joined === true, ...(v.quiet === true ? { quiet: true as const } : {}), ...(admins.length ? { admins } : {}) };
+    return { id, name, provider, org: "", repos, hub, key: "", code, gate: "github", folder: "", mine: v.mine === true, joined: v.joined === true, ...(v.quiet === true ? { quiet: true as const } : {}), ...levelIn(v.level), ...(admins.length ? { admins } : {}) };
   }
   const o = str(v.org), org = LOGIN.test(o) ? o : "";
   const all = Array.isArray(v.repos) ? v.repos.filter((x): x is string => typeof x === "string").map((x) => x.trim()) : [];
@@ -294,8 +297,11 @@ export function cleanRoom(v: unknown): Room | null {
   // which is public and knows people by their accounts alone; it meets there as who I am (codex, #227). A key never
   // meets the cloud at all, moved or not. A move to another hub (a self-hoster's) takes the key along, as before
   const moving = hub !== before.hub, bare = isCloud(hub);
-  return { id, name, provider, org, repos, hub, key: bare ? "" : before.key, code, gate: bare ? "github" : before.gate, folder: folderOf(v.folder), mine: v.mine === true, joined: v.joined === true, ...(v.quiet === true ? { quiet: true as const } : {}), ...(provider === "github" && isRepo(v.record) ? { record: v.record } : {}), ...(moving || (bare && before.key) ? { was: before } : {}) };
+  return { id, name, provider, org, repos, hub, key: bare ? "" : before.key, code, gate: bare ? "github" : before.gate, folder: folderOf(v.folder), mine: v.mine === true, joined: v.joined === true, ...(v.quiet === true ? { quiet: true as const } : {}), ...levelIn(v.level), ...(provider === "github" && isRepo(v.record) ? { record: v.record } : {}), ...(moving || (bare && before.key) ? { was: before } : {}) };
 }
+
+/** a room's level as kept (pure): one of the two words, else nothing, which is asks first */
+const levelIn = (l: unknown): { level?: "tells" | "does" } => (l === "tells" || l === "does" ? { level: l } : {});
 
 /** the repositories a room's board reads (#320, pure): a GitHub room's own repos, a cloud room's connected ones, none for
  *  a Drive room (its "repos" are folders) */

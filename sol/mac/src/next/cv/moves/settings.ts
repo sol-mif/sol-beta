@@ -4,14 +4,19 @@
 // and what Settings keeps is D.prefs (its S, H, U, OWN, WAYS); the rules are settings/model.ts. Named st* so none
 // meets a shared move (back is the canvas's). Live, the rows whose engine row is "no" (map.md: the settings' history,
 // the spend limit per AI, the ways) answer { ok: false, why: "not yet" }; the fixture runs them all.
+// BR1 (#1615): live, a kept take on a knob not per AI goes to the engine as a fit in the scope the reach names
+// (next.fit.set), ⌘Z takes it back there (next.fit.back), and "Let Sol fit it again" lets a hold go.
 // Signed: marcocyl04-ux's agent, slice 6 (#1615).
 import { D, MODE, S, M, done, hooks, notYet, render, type Done, type Moves } from "../core.ts";
 import {
-  C, K, NOT_LIVE, PLACES, TUNE, aiOf, defaults, findAll, keepLabel, kk, parseAsk, pointAt, takeOf, trail, tuneKey, freshUi,
-  type Prefs, type Res, type Ui, type World,
+  C, K, NOT_LIVE, PLACES, TUNE, aiOf, applyFits, defaults, findAll, fitKnob, keepLabel, kk, parseAsk, pointAt, nestingOf, reachScope, scopeOfRegion, takeOf, upward, trail, tuneKey, freshUi,
+  type Here, type Prefs, type Res, type Ui, type World,
 } from "../../settings/model.ts";
 import { samWorld } from "../../settings/seed.ts";
+import { forgettable, learnedId } from "../../known.ts";
 import { link, send } from "../../settings/link.ts";
+import { clean, type Worked } from "../../settings/worked-read.ts";
+import { sampleTraces } from "../../settings/worked-seed.ts";
 
 // ---------------------------------------------------------------- where Settings' state lives
 
@@ -32,6 +37,14 @@ function syncAis(w: World) {
   w.ais = D.ais.map((a, i) => ({ id: String(a.id ?? a.name), n: a.name, hue: (i % 5) + 1, spent: 0, m: [] }));
   for (const a of w.ais) for (const k of Object.values(K)) if (k.per && !(kk(k, a.id) in w.prefs.kept)) w.prefs.kept[kk(k, a.id)] = k.def;
 }
+/** the folder and the session under Settings: where the person was on the canvas when it opened */
+function hereNow(): Here {
+  const p = S.piece ? D.pieces[S.piece] : undefined;
+  const rid = S.region ?? p?.region ?? null, r = rid ? D.regions.find((x) => x.id === rid) : undefined;
+  const fs = r ? scopeOfRegion(r.id) : null, sid = p && p.kind === "session" ? String(p.sessionId ?? p.id) : null;
+  const nest = nestingOf(D.regions), up = fs ? upward(fs, (s) => nest.get(s)) : undefined;
+  return { folder: fs && r ? { scope: fs, name: r.name, up } : null, session: sid && p ? { scope: "session:" + sid, name: p.name } : null };
+}
 /** the panel's state (S.st), made when first read */
 export function U(): Ui { if (!S.st) S.st = freshUi(W()); return S.st as Ui; }
 const live = () => MODE === "live";
@@ -39,6 +52,7 @@ const live = () => MODE === "live";
 hooks.onLoad.push((d) => {
   d.prefs = samWorld();
   d.settings = { ui: { next: true } };   // the fixture's switch is on: the dev page is the new face
+  d.worked = { day: null, state: "here", t: clean(sampleTraces()), sample: true } satisfies Worked;   // How Sol worked: a sample
 });
 
 // ---------------------------------------------------------------- changing what Settings keeps
@@ -47,20 +61,25 @@ const stamp = () => { const d = new Date(); return `Today, ${String(d.getHours()
 const flash = (t: string) => hooks.flash?.(t);
 /** autonomy's takes as the engine's agents.mode (off · watch · do), live */
 const MODE_OF: Record<string, string> = { only: "off", asks: "watch", small: "do", ahead: "do" };
-/** live: what changed between two snapshots goes to the engine as today's messages */
-function sendChanges(a: Prefs, b: Prefs) {
+/** live: what changed between two snapshots goes to the engine as today's messages; a knob not per AI as a fit in
+ *  `scope`, set, or taken back when `back` */
+function sendChanges(a: Prefs, b: Prefs, o: { scope?: string; back?: boolean; source?: string } = {}) {
   if (!live()) return;
   for (const key of Object.keys(b.kept)) if (a.kept[key] !== b.kept[key] && key.startsWith("autonomy:")) send({ type: "agents.mode", id: key.slice(9), mode: MODE_OF[b.kept[key]] ?? "watch" });
-  for (const l of a.learned) if (!b.learned.some((x) => x.id === l.id)) send({ type: "home.learned.drop", id: l.id });
+  for (const key of Object.keys(b.kept)) if (a.kept[key] !== b.kept[key] && fitKnob(K[key])) {
+    const scope = o.scope ?? "~";
+    send(o.back ? { type: "next.fit.back", knob: key, scope } : { type: "next.fit.set", knob: key, scope, take: b.kept[key], ...(o.source ? { source: o.source } : {}) });
+  }
+  for (const l of a.learned) if (!b.learned.some((x) => x.k === l.k)) send({ type: "home.learned.drop", id: learnedId(l.k) });
 }
 /** one change: a snapshot before, the change, a new row at the top of the history (ui.html mut) */
 function mut(label: string, how: string, f: (p: Prefs) => Prefs | void, keepTry = false): Done {
-  const w = W(), u = U(), prev = C(w.prefs);
+  const w = W(), u = U(), prev = C(w.prefs), scope = reachScope(w, u.reach);
   if (!keepTry) u.trying = null;
   const r = f(w.prefs); if (r) w.prefs = r;
-  w.undo.push({ prev, label });
+  w.undo.push({ prev, label, scope });
   w.hist.push({ when: stamp(), label, how, snap: C(w.prefs) });
-  sendChanges(prev, w.prefs);
+  sendChanges(prev, w.prefs, { scope, source: `Settings: ${how}` });
   flash(label); render();
   return done(true, label, () => { undo(); });
 }
@@ -72,7 +91,7 @@ function undo(): Done {
   if (!last) { flash("Nothing to turn back yet"); return done(false); }
   const was = w.prefs; w.prefs = C(last.prev);
   w.hist.push({ when: stamp(), label: "Turned back: " + last.label, how: "you turned it back", snap: C(w.prefs) });
-  sendChanges(was, w.prefs);
+  sendChanges(was, w.prefs, { scope: last.scope, back: true });
   flash("Turned back: " + last.label); render();
   return done(true, last.label);
 }
@@ -132,7 +151,7 @@ function pick(i: number): Done {
 }
 function place(id: string): Done {
   const P = PLACES.find((x) => x.id === id); if (!P) return done(false);
-  if (live() && (id === "history" || id === "ways")) return notYet();
+  if (live() && id === "ways") return notYet();
   const u = U(); u.filter = null; u.page = P.page; u.hx = null; render();
   return done(true, P.anchor ?? id);
 }
@@ -190,6 +209,25 @@ function replay(i: number): Done {
   return mut("Back to how it was on " + h.when, "you turned all of Settings back", () => C(h.snap));
 }
 
+// ---------------------------------------------------------------- How Sol worked (#1615, the engine's next.traces)
+
+/** how long the engine has to answer before the panel says it did not */
+export const WORKED_WAIT = 15_000;
+let workedTimer: ReturnType<typeof setTimeout> | null = null;
+/** read one day's runs (today when unsaid): live, next.traces is asked and its answer comes through the wire
+ *  (cv/wire/settings.ts); with no engine, or none answering in time, the panel says so. The fixture reads its sample */
+function worked(day?: string | null): Done {
+  const d = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+  if (!live()) { D.worked = { day: d, state: "here", t: clean(sampleTraces(d)), sample: true } satisfies Worked; render(); return done(true, d ?? "today"); }
+  const was = D.worked as Worked | undefined;
+  if (!send(d ? { type: "next.traces", day: d } : { type: "next.traces" })) { D.worked = { day: d, state: "off", t: was?.t ?? null } satisfies Worked; render(); return done(false); }
+  D.worked = { day: d, state: "asking", t: was?.t ?? null } satisfies Worked; render();
+  if (workedTimer) clearTimeout(workedTimer);
+  workedTimer = setTimeout(() => { workedTimer = null; const w = D.worked as Worked | undefined; if (w?.state === "asking") { w.state = "silent"; render(); } }, WORKED_WAIT);
+  (workedTimer as { unref?: () => void }).unref?.();   // node (the tests): the wait never holds the process open
+  return done(true, d ?? "today");
+}
+
 // ---------------------------------------------------------------- the switch: back to the old Sol
 
 /** the "Back to the old Sol" row: ui.next off (live, settings.set), and when, beside (next/back.json is slice 7's: kept in
@@ -227,20 +265,21 @@ function act(a: string, x?: string, y?: string): Done {
     case "own-save": { if (!x) return done(false); const k = K[x], ai = aiFor(x), base = takeOf(w, k, P.kept[kk(k, ai)]), name = (y || "").trim() || "My take", id = "own" + Date.now();
       (w.own[k.id] = w.own[k.id] || []).push({ id, n: name, base: base.base || base.id, mine: true, fresh: true, s: "Like “" + base.n + "”, named by you.", sets: base.sets }); u.own = null;
       return mut(`${ai ? aiOf(w, ai).n + ": " : k.n + ": "}${name} (your own)`, "you made your own from “" + base.n + "”", (s) => { s.kept[kk(k, ai)] = id; }); }
-    case "offer-try": u.open = "size"; return tryTake("size", "eve", true);
-    case "offer-no": return mut("No more offers about text size", "you said no, never again", (s) => { s.offerGone = true; });
-    case "offer-keep": return keepTry("you accepted an offer");
-    case "offer-back": return ui(() => { u.trying = null; });
     case "way-new": if (live()) return notYet(); return ui(() => { u.saveWay = true; });
     case "way-x": return ui(() => { u.saveWay = false; });
     case "way-save": { if (live()) return notYet(); const n = (x || "").trim(); if (!n) return done(false); w.ways.push({ id: "w" + Date.now(), n, sum: `All ${Object.keys(P.kept).length} choices as they are now.`, takes: C(P.kept) }); u.saveWay = false; flash(`“${n}” is kept as a way of working`); render(); return done(true, n); }
     case "l-edit": if (live()) return notYet(); return ui(() => { u.edit = x ?? null; });
     case "l-x": return ui(() => { u.edit = null; });
     case "l-save": { const t = (y || "").trim(); u.edit = null; if (!t) { render(); return done(false); }
-      return mut("Changed what I know: “" + t + "”", "you edited a line", (s) => { const f = s.learned.find((l) => String(l.id) === x); if (f) { f.t = t; f.from = "your own words, today"; } }); }
-    case "l-rm": { const f = P.learned.find((l) => String(l.id) === x); if (!f) return done(false);
-      return mut("Removed what I knew: “" + f.t + "”", "you removed a line; it stops applying now", (s) => { s.learned = s.learned.filter((l) => String(l.id) !== x); }); }
-    case "l-keep": { if (!live()) return done(false); const f = P.learned.find((l) => String(l.id) === x); if (!f) return done(false); send({ type: "home.learned.keep", id: f.id }); flash("Now a sentence in your policy"); return done(true, x); }
+      return mut("Changed what I know: “" + t + "”", "you edited a line", (s) => { const f = s.learned.find((l) => l.k === x); if (f) { f.fact = t; f.source = "your own words, today"; } }); }
+    case "l-rm": { const f = P.learned.find((l) => l.k === x); if (!f) return done(false);
+      return mut("Removed what I knew: “" + f.fact + "”", "you removed a line; it stops applying now", (s) => { s.learned = s.learned.filter((l) => l.k !== x); }); }
+    // Privacy's ledger (BR1, #1615): any line Sol holds, forgotten; a home.sources line as l-rm, the engine's own facts
+    // (fact:, tool:) by next.you.fact.forget, whose answer is next.you without it; Back sends it back
+    case "k-rm": { if (!x || !forgettable(x)) return done(false); if (x.startsWith("learned:")) return act("l-rm", x);
+      if (!live()) return done(false);
+      send({ type: "next.you.fact.forget", k: x }); return done(true, x, () => { send({ type: "next.you.fact.forget", k: x, back: true }); }); }
+    case "l-keep": { if (!live()) return done(false); const f = P.learned.find((l) => l.k === x); if (!f) return done(false); send({ type: "home.learned.keep", id: learnedId(f.k) }); flash("Now a sentence in your policy"); return done(true, x); }
     case "learn": return mut(P.learn ? "I stopped learning from what you do" : "I may learn from what you pick and do", "you turned learning " + (P.learn ? "off" : "on"), (s) => { s.learn = !s.learn; });
     case "persona-open": return ui(() => { u.persona = true; });
     case "persona-x": return ui(() => { u.persona = false; });
@@ -259,6 +298,9 @@ function act(a: string, x?: string, y?: string): Done {
     case "tool-x": return ui(() => { u.tool = null; });
     case "tool-ok": { const t = x ? w.tools[x] : undefined; u.tool = null; if (!t) return done(false); return mut(`${t.n} connected. It works as if it were built in.`, "you connected your own tool", (s) => { s.tools[t.kind] = x!; }); }
     case "tool-off": { const t = x ? w.tools[x] : undefined; if (!t) return done(false); return mut(`Back to my own ${t.kind === "dictation" ? "speech" : "meeting notes"}`, "you turned your tool off", (s) => { s.tools[t.kind] = "built"; }); }
+    case "reach": return ui(() => { u.trying = null; u.reach = x === "session" || x === "folder" ? x : "~"; });
+    case "fitback": { if (!live() || !x || !y) return done(false); send({ type: "next.fit.back", knob: x, scope: y }); flash(`Took back ${K[x]?.n ?? x}`); return done(true, x); }
+    case "release": { if (!live() || !x || !y) return done(false); send({ type: "next.fit.set", knob: x, scope: y, held: false }); flash("Sol may fit it again"); return done(true, x); }
     case "hsee": return ui(() => { u.hsee = u.hsee === Number(x) ? null : Number(x); });
     case "hdef": if (live()) return notYet(); u.hx = null; return mut("Everything back to the default", "you turned all of Settings back to the default", () => defaults(w.ais, w.hist[0]?.snap.learned ?? []));
     case "tune": { const t = TUNE.find((z) => z.id === x); if (!t || P.tune === x) return done(false); return mut("When I see a better fit: " + t.n, "you chose it", (s) => { s.tune = x!; }); }
@@ -278,6 +320,7 @@ const moves: Moves = {
   stOpen(where?: string) {
     const w = W(); const keep = S.st ? U().ai : null;
     S.st = freshUi(w); if (keep) U().ai = keep;
+    if (w.live) { w.here = hereNow(); applyFits(w); if (live()) send({ type: "next.fits" }); }   // Sol's own fits since: read again
     const u = U();
     if (where === "voice" || where === "data") u.page = where;
     else if (where && K[where]) { u.open = where; if (where.startsWith("v-")) u.page = "voice"; }
@@ -303,6 +346,8 @@ const moves: Moves = {
   stReplay(i: number) { return replay(Number(i)); },
   stPlace(id: string) { return place(id); },
   stWay(id: string) { return way(id); },
+  /** How Sol worked: read a day's runs (today when unsaid) */
+  stWorked(day?: string | null) { return worked(day); },
   stAct(a: string, x?: string, y?: string) { return act(a, x, y); },
   /** "Back to the old Sol": ui.next off */
   oldSol() { return oldSol(); },
@@ -323,7 +368,8 @@ hooks.keys.push((e: KeyboardEvent) => {
   if (e.key === "Escape") {
     if (u.trying) { moves.stLeave(); return true; }
     if (t?.id === "st-find" && u.q) { moves.stFind(""); return true; }
-    if (inField) { t!.blur(); return true; }
+    // a field gives the keys back to the find field, so they stay in the panel; the empty find field closes it (BR1 item 5, #1615)
+    if (inField && t?.id !== "st-find") { const f = document.getElementById("st-find"); if (f) f.focus(); else t!.blur(); return true; }
     if (u.filter) { act("unfilter"); return true; }
     moves.stClose(); return true;
   }

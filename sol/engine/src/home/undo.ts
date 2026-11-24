@@ -12,7 +12,7 @@
 import { UndoAsk } from "../contract/home/today.js";
 import { putThing, verOf } from "./items.js";
 import { YOU, type HomeEv } from "./log.js";
-import { sendToday } from "./today.js";
+import { noteNeed, sendToday } from "./today.js";
 import type { Ctx, Handler, Reverser } from "./unit.js";
 
 let REVERSE: ReadonlyMap<string, Reverser> = new Map();
@@ -45,6 +45,7 @@ export const undoAnswer: Reverser = (ctx, face, ev) => {
   // refused, nothing written: the answer changed nothing of the Thing (a hook took it), or the Thing changed since
   if (!cur || !was || verOf(cur) !== v?.ver) return sendToday(ctx, face);
   putThing(ctx, was, { cause: ev.id, undo: true, by: YOU });
+  noteNeed(ctx, was, "undo");   // one store (#1615): the Undo is the person's fix too
   ctx.pushToday();
 };
 
@@ -52,5 +53,7 @@ export const undoAnswer: Reverser = (ctx, face, ev) => {
 export const undoLater: Reverser = (ctx, face, ev) => {
   if (isUndone(ctx, ev.id) || !ev.item) return sendToday(ctx, face);
   ctx.log.write({ kind: "today.later", item: ev.item, value: { undo: true }, cause: ev.id, by: YOU });
+  const t = ctx.items.get(ev.item);
+  if (t) noteNeed(ctx, t, "undo");
   ctx.pushToday();
 };

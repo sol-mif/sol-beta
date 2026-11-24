@@ -10,6 +10,10 @@ export { say, CHAIN } from "./say/index.ts";
 export { attach } from "./wire/index.ts";
 
 Object.assign(M, merged());
+// the carry (slice S26, requests/carry.md 1): where you were in each place, given back when you come again; no runtime import, no ring
+import * as core from "./core.ts";
+import { install } from "./carry.ts";
+export const carry = install(core);
 
 // The join (#1615, docs/port/join-notes.md): the seams the slices hung on hooks get the mockup's names (CV.zones, CV.plane,
 // CV.life, CV.diary, CV.agent, CV.voice), and the AI's call path places and touches through the plane's own put.

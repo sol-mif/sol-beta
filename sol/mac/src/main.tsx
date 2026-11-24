@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { Site, Tape } from "./Site";
 import { start } from "./renovation";
 import "./hot";
+import { installFaceBack } from "./faceBack";
 import "./face.css";
 
 // the app itself is loaded after the fence has mounted: a cold load with a broken edit in it shows the boundary, not a blank page (#16 blocker 5)
@@ -23,6 +24,7 @@ if (wrongWindow) {
 // the press animation comes from a seat-editable file: loaded after the mount, so a broken edit there cannot stop the page
 void import("./motion").then((m) => m.installPress()).catch(() => {});
 start();
+void installFaceBack().catch(() => {});   // the folder's face stopped: said over the face this app came with (#1822)
 document.documentElement.dataset.face = "";   // this page is the face: it alone draws the glass (face.css)
 if ("__TAURI_INTERNALS__" in window) document.documentElement.dataset.app = "";
 // #891: behind either run switch, the window and its words are the readable set (face.css [data-whole], tokens.json shade.read)

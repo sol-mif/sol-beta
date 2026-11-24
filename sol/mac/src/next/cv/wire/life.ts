@@ -8,6 +8,7 @@
 import { D, change, done, notYet, regionOf, subscribe, type Done, type Piece } from "../core.ts";
 import { parseWhen } from "../../life/rules.ts";
 import { asker } from "../../../agents/model.ts";
+import { stampFrom } from "../moves/workspace.ts";
 import type { Engine } from "./types.ts";
 
 /** an item of a folder's stickies.md, as the engine answers it (home/folders/stickies.ts Made) */
@@ -36,6 +37,7 @@ function take(rid: string, items: Item[] | undefined): void {
   change((d) => {
     for (const p of Object.values(d.pieces)) if (p.kind === "sticky" && p.region === rid) delete d.pieces[p.id];
     for (const it of items) { const p = toSticky(rid, it); d.pieces[p.id] = p; }
+    stampFrom(d);   // a sticky a friend's setup made says whose (BR1, #1615)
   });
 }
 const pad = (n: number) => String(n).padStart(2, "0");

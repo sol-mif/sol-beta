@@ -8,6 +8,7 @@ import { D, M, S, answer, looked, open, regionOf, useNext, type Ai, type Data } 
 import type { SlotProps } from "../slots.ts";
 import { onWhat, routinesOf, sayLine, stateOf } from "./rules.ts";
 import "./ais.css";
+import { LeadsTag, Team, aisSay, grouped, tops } from "../lead/views.tsx";   // slice R7: render points at 80 (requests/lead.md)
 
 /** a piece dropped on an AI: a run is passed to it; anything else is given to a new run of it */
 export function dropOn(ai: string, pieceId: string): void {
@@ -24,12 +25,12 @@ function followAi(name: string, n: number): void {
 
 export default function Ais(_p: SlotProps) {
   const { d, s, o } = useNext((d, s) => ({ d, s, o: open() }));
-  const states = d.ais.map((a) => stateOf(d, o, a));
+  const ais = tops(d.ais), states = ais.map((a) => stateOf(d, o, a));
   return (
     <div className="ais">
       <h1 data-m1="what">Your AIs</h1>
-      <p className="ais-say" data-m1="needs">{sayLine(states)}</p>
-      <div className="ais-grid">{d.ais.map((a, i) => <Card key={a.name} d={d} ai={a} i={i} follow={s.follow === a.name} />)}</div>
+      <p className="ais-say" data-m1="needs">{grouped(d.ais) ? aisSay() : sayLine(states)}</p>
+      <div className="ais-grid">{ais.map((a, i) => <Card key={a.name} d={d} ai={a} i={i} follow={s.follow === a.name} />)}</div>
     </div>
   );
 }
@@ -40,8 +41,9 @@ function Card({ d, ai, i, follow }: { d: Data; ai: Ai; i: number; follow: boolea
   const drop = (e: DragEvent) => { const id = e.dataTransfer.getData("text/sol-piece"); if (!id) return; e.preventDefault(); dropOn(ai.name, id); };
   return (
     <div className={`ais-card hue${i % 5}`} data-front data-ai={ai.name} data-ai-drop={ai.name} onDragOver={over} onDrop={drop}>
-      <div className="ais-h"><span className="nx-aura still ais-aura" /><b>{ai.name}</b></div>
+      <div className="ais-h"><span className="nx-aura still ais-aura" /><b>{ai.name}</b><LeadsTag name={ai.name} /></div>
       {on ? <div className="ais-on">{on.where ? <>On <b>{on.what}</b> in {on.where}{on.tail ? ` · ${on.tail}` : ""}</> : on.what}</div> : null}
+      <Team name={ai.name} />
       <span className={`ais-state ${st.cls}`}><i /><b>{st.say}</b></span>
       {st.asks.length ? <div className="ais-asks">{st.asks.map((a) => {
         const look = !!a.serious && !looked(a), near = a.how === "near";

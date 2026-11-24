@@ -42,7 +42,11 @@
   "log.kinds": {
     "station": "concept",
     "side": "engine",
-    "id": "engine/log"
+    "id": "engine/log",
+    "offers": [
+      "log_erase",
+      "log_find"
+    ]
   },
   "look.shown": {
     "station": "concept",
@@ -106,17 +110,17 @@
     "id": "engine/mcp-tools/from-cards"
   },
   "ui.next": {
-    "station": "hand",
+    "station": "product",
     "side": "engine",
     "id": "product/ui-next"
   },
   "view.cowork": {
-    "station": "product",
+    "station": "complete",
     "side": "window",
     "id": "product/cowork"
   },
   "view.home": {
-    "station": "product",
+    "station": "complete",
     "side": "window",
     "id": "product/home"
   },

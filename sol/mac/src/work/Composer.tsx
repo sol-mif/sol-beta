@@ -28,6 +28,7 @@ import { forcedState } from "../creature/state";
 import type { Mode, Work } from "./useWork";
 import { HELD } from "./WorkSidebar";
 import { StableLine } from "../cowork/StableLine";   // Ship (#33): a new stable is out, over the composer
+import { ShellLine } from "../cowork/ShellLine";   // the app updates itself (#1824): Restart Sol, over the composer
 import { FileLine } from "../FileLine";               // File it (#119): the field and the receipt, over the composer
 import { Plus } from "./Plus";
 import { textW, useSize } from "../kit/paint";
@@ -514,6 +515,7 @@ export function Composer({ w, e, busy, working, cwd, asideOn, setAsideOn, box, o
     <div className="ask">
       <div className="ask-col">
         <StableLine />
+        <ShellLine />
         {v3On(e.settings) && <V3Stage w={w} e={e} />}
         <FileLine mode={cowork ? "cowork" : "work"} page={`${cowork ? "Cowork" : "Home"} · ${w.live ? "session" : "new session"} · ${cwd ? base(cwd) : "~"}`} conversation={w.live} />
         <BarMoment live={w.live} onOpen={(id) => window.dispatchEvent(new CustomEvent("sol:open-work", { detail: id }))} />
