@@ -2,6 +2,7 @@ mod feedback;
 mod haptic;
 mod hot;
 mod link;
+mod other;
 mod pause;
 mod permit;
 mod places;
@@ -35,7 +36,7 @@ const fn port_of(s: Option<&str>) -> u16 {
     n as u16
 }
 
-fn engine_is_up() -> bool {
+pub(crate) fn engine_is_up() -> bool {
     TcpStream::connect_timeout(
         &format!("127.0.0.1:{ENGINE_PORT}").parse().unwrap(),
         Duration::from_millis(300),
@@ -171,18 +172,25 @@ pub fn run() {
         .manage(hot::Hot::default())
         .manage(thing::Tabs::default())
         .manage(link::Waiting::default())
-        .invoke_handler(tauri::generate_handler![engine_port, engine_phase, engine_start, idle_seconds, face_mode, face_state,
-            welcome::install_run, welcome::claude_login, welcome::claude_status, welcome::codex_login, welcome::codex_status, welcome::claude_install, welcome::welcome_done,
+        .invoke_handler(tauri::generate_handler![engine_port, engine_phase, other::another_sol, engine_start, idle_seconds, face_mode, face_state,
+            welcome::install_run, welcome::claude_login, welcome::claude_status, welcome::codex_login, welcome::codex_status, welcome::claude_install, welcome::welcome_done, welcome::first_run_state, welcome::first_run_again,
             permit::permit_state, permit::permit_open, permit::permit_back, permit::app_relaunch, places::places_copy, places::places_drop,
             thing::thing_open, thing::thing_show, thing::thing_bounds, thing::thing_close, thing::thing_nav, thing::thing_outside, thing::sites_sign_out, thing::sites_clear, thing::block_view_open, thing::block_view_bounds, thing::block_view_hide_all, thing::block_view_nav, thing::block_view_close, pop::block_pop, pop::block_pop_close, screens::screens, screens::screen_window_open, screens::screen_window_close, screens::screens_off, link::sol_url_take, haptic::haptic, update::app_update_apply, update::app_update_state])
         .setup(|app| {
-            start_engine_if_needed(app.handle());
+            // another Sol already on the port, not this app's own (a downloaded app beside a team engine, #1852): the window
+            // says so in one line and dials nothing, and no engine is started; the other one is left running
+            let other = other::check(root::root(app.handle()), root::team_build());
+            if other.is_none() { start_engine_if_needed(app.handle()); }
+            *other::OTHER.lock().unwrap() = other.clone();
             link::init(app.handle());   // the link that launched Sol, then every sol:// link (#327)
 
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
             hot::init(app.handle());
-            // no checkout to run (a downloaded app, before its install): the face on its first run, which installs (#169, #134)
-            if root::root(app.handle()).is_none() { if let Err(e) = welcome::show_page(app.handle(), "/?firstrun=1") { eprintln!("first run: {e}"); } }
+            // no checkout to run (a downloaded app, before its install): the shell installs it itself and the face shows one
+            // line of it (welcome::first_run, the face's first_run_state); done, it opens Sol on the new face (#1854). Another
+            // Sol on the port comes first: its one line, and nothing installed beside it (#1852)
+            if other.is_some() { if let Err(e) = welcome::show_page(app.handle(), "/another.html") { eprintln!("another sol: {e}"); } }
+            else if root::root(app.handle()).is_none() { welcome::first_run(app.handle()); }
             let face_item = MenuItem::with_id(app, "face", hot::tray_text(hot::wanted(app.handle())), true, None::<&str>)?;
             app.state::<hot::Hot>().0.lock().unwrap().tray = Some(face_item.clone());
             // a beta tester says what broke, no GitHub account needed (#294, feedback.rs)

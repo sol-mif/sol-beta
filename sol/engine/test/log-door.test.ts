@@ -5,7 +5,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
 import { request } from "node:http";
-import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { freePort, ownHealth } from "./test-engine.ts";
@@ -37,7 +37,10 @@ test("GET /log: a foreign page is refused, by its Origin or by its hostname; Sol
       SOL_NO_RENEW: "1", SOL_NO_SHIP_CHECK: "1", SOL_TEAM_OFFLINE: "1", SOL_TRACK: "off", SOL_TONIGHT: "off", SOL_FACE: "",
     },
   });
-  await ownHealth(engine, PORT);
+  const h = await ownHealth(engine, PORT);
+  // /health, which a program reads with no Origin, names the checkout the engine runs from: Sol.app tells its own engine
+  // from another Sol on the port by it (#1852, sol/mac/src-tauri/src/other.rs)
+  assert.equal(h.root, realpathSync(join(ENGINE, "..", "..")));
   const here = `127.0.0.1:${PORT}`;
   const foreign = await knock({ host: here, origin: "https://evil.example", "sec-fetch-site": "cross-site", "sec-fetch-mode": "cors" });
   assert.equal(foreign.status, 403);

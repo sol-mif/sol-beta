@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-another-sol"
+description = "Enables the another_sol command without any pre-configured scope."
+commands.allow = ["another_sol"]
+
+[[permission]]
+identifier = "deny-another-sol"
+description = "Denies the another_sol command without any pre-configured scope."
+commands.deny = ["another_sol"]

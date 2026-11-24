@@ -90,7 +90,7 @@ export default defineConfig(() => ({
   // the pages: the desktop face, the phone doorway (served by the engine at /away); the first run is the face itself (#134)
   build: {
     rollupOptions: {
-      input: { index: "index.html", away: "away.html" },
+      input: { index: "index.html", away: "away.html", another: "another.html" },   // another: the one line beside another Sol (#1852)
       // the new face's dev page (next.html, #1604) is built alone, and only when asked (SOL_NEXT_DEV=1, sol/test/e2e/next/run.mjs):
       // it carries the fixture, which must never reach a real Sol's build. `vite` serves it at /next.html like any dev page
       ...(process.env.SOL_NEXT_DEV === "1" ? { input: { next: "next.html" } } : {}),

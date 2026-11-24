@@ -5,9 +5,11 @@
 // Offered for 30 days from the first turn on (movein.json.on, slice 7's): until that lands, always offered.
 // Signed: marcocyl04-ux's agent, slice 6 (#1615).
 import { M, useNext } from "../cv/index.ts";
+import { isDownload } from "../flag.ts";   // a download has no previous version to go back to (#94, Sol ticket #96)
 
 export function Back() {
   const on = useNext((d) => (d.settings as { ui?: { next?: boolean } } | undefined)?.ui?.next !== false);
+  if (isDownload()) return null;
   return (
     <section className="st-back-old" aria-label="Previous version">
       <h2 className="st-gh">Previous version</h2>

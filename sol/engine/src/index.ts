@@ -908,7 +908,7 @@ const http = createServer(async (req, res) => {
     // quiet before it goes back to the NucBox (One Sol, #62)
     const origin = req.headers.origin;
     res.writeHead(200, { "content-type": "application/json", ...(typeof origin === "string" ? { "access-control-allow-origin": origin, vary: "origin" } : {}) });
-    res.end(JSON.stringify({ ok: true, engine: "sol", pid: process.pid, port: PORT, since: STARTED, busy: busyList(), version: versionNow(), release: versionLine(versionNow()), contract: contractNow(), data: conversions, ...(v3Health() ? { trail: v3Health() } : {}) }));   // the v3 trail only once it is loaded (fr-30)
+    res.end(JSON.stringify({ ok: true, engine: "sol", pid: process.pid, port: PORT, root: realOr(resolve(HERE, "..", "..", "..")), since: STARTED, busy: busyList(), version: versionNow(), release: versionLine(versionNow()), contract: contractNow(), data: conversions, ...(v3Health() ? { trail: v3Health() } : {}) }));   // the v3 trail only once it is loaded (fr-30); root: the checkout it runs from, so Sol.app tells its own engine from another on the port (#1852)
     return;
   }
   if (path === "/blocks" && req.method === "GET") {

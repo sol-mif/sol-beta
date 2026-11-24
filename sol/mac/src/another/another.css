@@ -1,0 +1,6 @@
+/* the one line (#1852): the window's glass, the words centred, nothing to press */
+html, body { height: 100%; margin: 0; background: var(--base); color: var(--ink); }
+body { -webkit-font-smoothing: antialiased; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+.another { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 48px; text-align: center; }
+.another-line { margin: 0; max-width: 32em; font-size: 15px; line-height: 1.45; }
+.another-where { margin: 0; font-size: 12.5px; color: var(--dim); }

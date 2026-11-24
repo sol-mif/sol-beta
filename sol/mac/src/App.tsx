@@ -40,7 +40,8 @@ import { useBuildRuns } from "./flag";
 import { RunsDoor } from "./runs/Door";
 import { useDoorDot } from "./runs/doorDot";
 import { VersionSwitch } from "./VersionSwitch";   // #1295: concept, complete, product, at the top of the team's window
-import { nextOn, waitsFirst } from "./next/flag";   // #1604: the new face behind ui.next; nothing else under next/ loads while it is off
+import { invoke } from "@tauri-apps/api/core";   // the shell's first run (#96)
+import { demoFirstRun, firstScreen, nextOn, noteBuild, waitsFirst, watchFirstRun, type FirstRun } from "./next/flag";   // #1604: the new face behind ui.next; nothing else under next/ loads while it is off
 
 // the new face (#1604, docs/port/switch.md): loaded only when ui.next is on
 const Next = lazy(() => import("./next/Next"));
@@ -57,6 +58,11 @@ const NO_WAITS = new Set<View>();
 // the one onboarding (#1088, onboard/One.tsx), the default since #1223: a new person meets Sol inside the real window,
 // and Home is the record it writes (OneHome); the first run, the walk and the folders' Home went with it
 const One = lazy(() => import("./onboard/One"));
+// the first run (#94, Sol ticket #96): with no root the shell installs Sol itself and this draws its one line (next/flag.ts
+// firstScreen); a download never draws the old face, its onboarding included (next/flag.ts noteBuild)
+const Setup = lazy(() => import("./next/movein/Setup"));
+const IN_APP = "__TAURI_INTERNALS__" in window;
+const DEMO_SETUP = !IN_APP && new URLSearchParams(location.search).get("firstrun") === "setup";
 const Visit = lazy(() => import("./onboard/Visit").then((m) => ({ default: m.Visit })));   // Build's and Cowork's first visit, one card each
 // #1637: where Home is not on (a tester's Sol), a small start takes the onboarding's place: set up, sign in, Build
 const Start = lazy(() => import("./onboard/Start"));
@@ -84,6 +90,12 @@ const modeOf = (v: View): AppMode => (v === "cowork" ? "cowork" : "home");
 
 export default function App() {
   const e = useEngine();
+  // the shell's first run, asked before anything is drawn (undefined: not answered yet; null: no shell, a browser)
+  const [first, setFirst] = useState<FirstRun | null | undefined>(IN_APP || DEMO_SETUP ? undefined : null);
+  useEffect(() => (IN_APP || DEMO_SETUP) && !SOLO && !POP
+    ? watchFirstRun(DEMO_SETUP ? demoFirstRun(new URLSearchParams(location.search).has("fail")) : () => invoke<FirstRun>("first_run_state"),
+      (f) => { if (f) noteBuild(f.download); setFirst(f); })
+    : undefined, []);
   const views = useViews(e.settings);   // the views this Sol shows (#1637): Build always; Home, Cowork, Social by their cards
   const viewsNow = useRef(views); viewsNow.current = views;
   const [started, setStarted] = useState(false);   // the start (#1637) ended in this load: signed in, or no cloud
@@ -216,6 +228,9 @@ export default function App() {
   if (SOLO) return <WorkApp e={e} onMode={() => {}} solo={SOLO} />;
   // until the engine's settings come the window is the first frame (index.html's paper), never the old face: only an
   // answer of off draws it (next/flag.ts waitsFirst, BR1 #1615)
+  const firstNow = firstScreen(first);
+  if (firstNow === "wait") return <div className="first-frame" data-first-frame aria-busy="true" />;
+  if (firstNow === "setup" && first) return <Suspense fallback={<div className="first-frame" data-first-frame aria-busy="true" />}><Setup f={first} onAgain={() => { void invoke("first_run_again").catch(() => {}); }} /></Suspense>;
   if (waitsFirst(e.settings)) return <div className="first-frame" data-first-frame aria-busy="true" />;
   if (nextOn(e.settings)) return <Suspense fallback={null}><Next e={e} /></Suspense>;
   return (

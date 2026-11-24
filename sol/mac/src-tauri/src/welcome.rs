@@ -1,6 +1,7 @@
-// The first run's three commands (#169 the download's door, #134 the first run). A Sol.app with no root (root.rs)
-// shows the face at /?firstrun=1 (the one onboarding, sol/mac/src/onboard, #1223): it asks about their life and runs the bundled sol/install behind the
-// scenes (the same file the one line runs, with SOL_SKIP_APP=1: the app is already here), streaming its lines to the
+// The first run's commands (#169 the download's door, #134 the first run). A Sol.app with no root (root.rs) runs the
+// bundled sol/install itself at launch (first_run, #94, Sol ticket #96) while the face shows one line of it (first_run_state),
+// then opens Sol; the old onboarding (sol/mac/src/onboard, #1223) still calls install_run where the team's build shows it,
+// running it behind the scenes (the same file the one line runs, with SOL_SKIP_APP=1: the app is already here), streaming its lines to the
 // page; the sign-ins (Claude, ChatGPT) open each one's own page in the browser, with no Terminal; welcome_done reads
 // the root again, starts the engine and loads the face.
 use std::io::{BufRead, BufReader};
@@ -12,6 +13,75 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::root;
 
 static RUNNING: Mutex<bool> = Mutex::new(false);
+
+/// The first run of an app with no root (#94, Sol ticket #96): the shell runs the install itself at launch, never waiting
+/// for a page to ask, keeps what it says here for the face (first_run_state: one line and its progress), and when it ends
+/// with a root written opens Sol as welcome_done does. What stops it is kept as `error`, for the face to say.
+#[derive(Clone, serde::Serialize)]
+pub struct FirstRun { active: bool, download: bool, lines: Vec<String>, code: Option<i32>, error: Option<String> }
+static FIRST: Mutex<FirstRun> = Mutex::new(FirstRun { active: false, download: false, lines: Vec::new(), code: None, error: None });
+
+/// how a first run's install ended (pure): Ok to open Sol, else what to say. Ok when a root is written and the engine
+/// answers, whatever the code (a soft MISS in sol/setup, Claude Code not reached, ends nonzero with Sol working); else
+/// the reason is the install's last MISS line, else its code
+pub fn first_run_end(code: i32, rooted: bool, engine_up: bool, lines: &[String]) -> Result<(), String> {
+    if rooted && engine_up { return Ok(()); }
+    let miss = lines.iter().rev().find_map(|l| l.trim_start().strip_prefix("MISS").map(|m| m.trim().to_string()));
+    if let Some(m) = miss { return Err(m); }
+    if rooted { return Err("Sol is installed, but its engine does not answer; try again".into()); }
+    if code == 0 { return Err("the install ended without a Sol for this app to run".into()); }
+    Err(format!("the install stopped (code {code}) without saying why"))
+}
+
+/// Start the first run: called at launch when there is no root, and again by the face's Try again.
+pub fn first_run(app: &AppHandle) {
+    {
+        let mut f = FIRST.lock().unwrap();
+        *f = FirstRun { active: true, download: !root::team_build(), lines: Vec::new(), code: None, error: None };
+    }
+    if let Err(e) = install_run(app.clone(), String::new(), String::new()) {
+        let mut f = FIRST.lock().unwrap();
+        f.error = Some(e);
+    }
+}
+
+/// the install ended: open Sol (the root read again, node found again, the engine started, "/" loaded), or keep why not
+fn first_run_ended(app: &AppHandle, code: i32) {
+    let lines = { let f = FIRST.lock().unwrap(); if !f.active { return; } f.lines.clone() };
+    let rooted = root::root(app).is_some();
+    if rooted {
+        root::node_again();
+        crate::start_engine_if_needed(app);
+        // the engine the install's login job started answers at once; one this app started gets a few seconds
+        let t = std::time::Instant::now();
+        while !crate::engine_is_up() && t.elapsed() < std::time::Duration::from_secs(20) { std::thread::sleep(std::time::Duration::from_millis(250)); }
+    }
+    match first_run_end(code, rooted, crate::engine_is_up(), &lines) {
+        Ok(()) => match show_page(app, "/") {
+            Ok(()) => FIRST.lock().unwrap().active = false,
+            Err(e) => { let mut f = FIRST.lock().unwrap(); f.code = Some(code); f.error = Some(e); }
+        },
+        Err(e) => { let mut f = FIRST.lock().unwrap(); f.code = Some(code); f.error = Some(e); }
+    }
+}
+
+/// The first run as it stands, for the face: `active` while the app has no root and is setting itself up (or stopped:
+/// `error`), `download` when this app was not built on this Mac, and the install's lines so far.
+#[tauri::command]
+pub fn first_run_state() -> FirstRun {
+    let mut f = FIRST.lock().unwrap().clone();
+    if !f.active { f.download = !root::team_build(); f.lines.clear(); }
+    f
+}
+
+/// Try again, after the first run stopped: the install from the start (it goes on from what it did before).
+#[tauri::command]
+pub fn first_run_again(app: AppHandle) -> Result<(), String> {
+    if !FIRST.lock().unwrap().active { return Err("Sol is set up already".into()); }
+    if *RUNNING.lock().unwrap() { return Ok(()); }
+    first_run(&app);
+    Ok(())
+}
 
 /// the install script: bundled as a resource (tauri.conf.json), else the build folder's sol/install (a dev run)
 fn script(app: &AppHandle) -> Option<PathBuf> {
@@ -49,11 +119,13 @@ pub fn install_run(app: AppHandle, name: String, gemini: String) -> Result<(), S
     std::thread::spawn(move || {
         if let Some(out) = out {
             for line in BufReader::new(out).lines().map_while(Result::ok) {
+                { let mut f = FIRST.lock().unwrap(); if f.active { f.lines.push(line.clone()); } }
                 let _ = app.emit_to("main", "install-line", serde_json::json!({ "line": line }));
             }
         }
         let code = child.wait().ok().and_then(|s| s.code()).unwrap_or(-1);
         *RUNNING.lock().unwrap() = false;
+        first_run_ended(&app, code);
         let _ = app.emit_to("main", "install-done", serde_json::json!({ "code": code }));
     });
     Ok(())
@@ -221,7 +293,21 @@ pub fn show_page(app: &AppHandle, path: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{find_in, logged_in};
+    use super::{find_in, first_run_end, logged_in};
+
+    #[test]
+    fn a_first_run_opens_only_with_a_root_and_an_engine() {
+        let l = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(first_run_end(0, true, true, &l(&["  ok    Sol is in ~/Sol"])), Ok(()));
+        // a soft MISS in sol/setup (Claude Code not reached) ends nonzero with Sol working: Sol opens
+        assert_eq!(first_run_end(1, true, true, &l(&["  MISS  Claude Code is not installed"])), Ok(()));
+        // "Sol is already here" with no root for this app (#94): never done
+        assert!(first_run_end(0, false, true, &l(&["  ok    Sol is already here: ~/x. Nothing to install."])).is_err());
+        assert_eq!(first_run_end(1, false, false, &l(&["  MISS  could not fetch Node", "  MISS  another Sol runs on this Mac (~/x, a job)"])),
+            Err("another Sol runs on this Mac (~/x, a job)".into()));
+        assert_eq!(first_run_end(0, true, false, &l(&[])), Err("Sol is installed, but its engine does not answer; try again".into()));
+        assert_eq!(first_run_end(1, false, false, &l(&[])), Err("the install stopped (code 1) without saying why".into()));
+    }
     use std::os::unix::fs::PermissionsExt;
 
     #[test]

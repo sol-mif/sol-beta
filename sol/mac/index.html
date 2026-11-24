@@ -8,7 +8,7 @@
     <!-- the first frame (BR1, #1615): unless the new face was last read off (next/flag.ts keeps it), the window is its paper
          (#fbfaf7, tokens.json next.colour.paper) from the first paint, never the old face's dark glass; last read off, nothing
          changes. The new face's own set loads later with it, so the colour is said here once -->
-    <script>try { if (localStorage.getItem("sol.ui.next") !== "0") document.documentElement.dataset.nextFirst = ""; } catch (e) {}</script>
+    <script>try { if (localStorage.getItem("sol.ui.next") !== "0" || localStorage.getItem("sol.build") === "download") document.documentElement.dataset.nextFirst = ""; } catch (e) {}</script>
     <style>:root[data-next-first], :root[data-next-first][data-face] body { background: #fbfaf7; }</style>
     <!-- while the engine's settings have not come, App.tsx draws only [data-first-frame] (next/flag.ts waitsFirst): from the
          frame's mount, quiet for 1 s (was 4 s: a first-timer read the blank as broken, BR1 lane G), then one quiet line, "Sol is

@@ -4,7 +4,8 @@
 //   A project on this Mac   the macOS folder picker (next.folder.pick, the engine's), then work.folder add: a folder here
 //   Talk to an AI           a few words, then a loose session (work.say { fresh }, no folder)
 //   Something in my life    a Life folder, its name in edit first
-// and "Your AI:" with Claude Code and Codex, each "signed in" or "sign in" (Sol.app's own sign-in page; only in Sol.app). The card goes
+// and "Your AI:" with Claude Code and Codex, each "signed in" or "sign in" (Sol.app's own sign-in page; only in Sol.app);
+// Claude Code not on this Mac yet is got first (claude_install, #1854). The card goes
 // once a folder or a session exists, and it ends above the talk pill. Signed: marcocyl04-ux's agent, BR1 (#1615).
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { D, M, MODE, change, hooks, useNext } from "../cv/core.ts";
@@ -35,6 +36,11 @@ function useAis(): [Ai[], (id: Ai["id"]) => void] {
     if (!inApp()) return;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
+      // Claude Code not on this Mac (the first run's install could not bring it): Anthropic's installer first (#1854)
+      if (id === "claude" && ais.find((a) => a.id === "claude")?.st === "missing") {
+        hooks.flash?.("Getting Claude Code first, a minute.");
+        await invoke("claude_install");
+      }
       await invoke(id === "claude" ? "claude_login" : "codex_login");
       hooks.flash?.(`${id === "claude" ? "Claude" : "ChatGPT"}’s page is open in your browser; sign in there and come back.`);
     } catch (err) { hooks.flash?.(String(err)); }
@@ -109,7 +115,8 @@ export default function Welcome() {
         {ais.every((a) => a.st === "?") ? null : <div className="wl-ai">Your AI:{ais.map((a) => a.st === "in"
           ? <span key={a.id} className="wl-chip in" data-ai={a.id}>{a.n} · signed in</span>
           : a.st === "?" ? null
-          : a.st === "missing" ? <span key={a.id} className="wl-chip" data-ai={a.id}>{a.n} · not on this Mac</span>
+          : a.st === "missing" && a.id !== "claude" ? <span key={a.id} className="wl-chip" data-ai={a.id}>{a.n} · not on this Mac</span>
+          : a.st === "missing" ? <button key={a.id} type="button" className="wl-chip" data-ai={a.id} onClick={() => sign(a.id)}>{a.n} · get it and sign in</button>
           : <button key={a.id} type="button" className="wl-chip" data-ai={a.id} onClick={() => sign(a.id)}>{a.n} · sign in</button>)}</div>}
       </section>
     </div>

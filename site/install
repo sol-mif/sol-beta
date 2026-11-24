@@ -102,6 +102,12 @@ sol_install() {
   if [ -z "$here" ] && [ -f "$DIR/sol/setup" ]; then
     if [ -n "$mac" ] && [ -d "$DIR/sol/engine" ]; then half=1; else here=$DIR; how="the folder holds a checkout"; fi
   fi
+  # Sol.app runs this with no root of its own (#94, Sol ticket #96): another Sol on this Mac is not this one installed.
+  # Its own folder (a run cut short after the login job) goes on from there; any other Sol stops it, said, never "ok"
+  if [ -n "$here" ] && [ -n "${SOL_SKIP_APP:-}" ] && [ -n "$mac" ]; then
+    if [ -d "$DIR/sol/engine" ] && [ "$(cd "$here" 2>/dev/null && pwd -P)" = "$(cd "$DIR" && pwd -P)" ]; then here=""; half=1
+    else miss "another Sol runs on this Mac ($(tilde "$here"), $how); Sol.app cannot set itself up beside it yet"; return 1; fi
+  fi
   if [ -n "$here" ]; then
     ok "Sol is already here: $(tilde "$here") ($how). Nothing to install."
     echo "        to update it: cd $(tilde "$here") && bash sol/mine/rebase   (on a branch of your own; else git pull)"
@@ -123,7 +129,13 @@ sol_install() {
     else
       say "git needs Apple's developer tools: click Install in the window Apple opened (a few minutes), this waits"
       xcode-select --install >/dev/null 2>&1
-      while ! xcode-select -p >/dev/null 2>&1; do sleep 5; done
+      # Apple's window closed with Not Now is asked again every two minutes; never more than an hour, then said (#1854)
+      waited=0
+      while ! xcode-select -p >/dev/null 2>&1; do
+        [ "$waited" -lt 3600 ] || { miss "Apple's developer tools did not arrive in an hour; try again, and click Install in Apple's window"; return 1; }
+        sleep 5; waited=$((waited + 5))
+        [ $((waited % 120)) -ne 0 ] || xcode-select --install >/dev/null 2>&1
+      done
       ok "Apple's developer tools"
     fi
   elif command -v git >/dev/null 2>&1; then ok "git"

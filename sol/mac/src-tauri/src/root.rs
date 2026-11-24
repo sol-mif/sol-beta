@@ -2,8 +2,8 @@
 // from (CARGO_MANIFEST_DIR), and one node, whatever PATH gave; a downloaded Sol.app has neither. The root is the
 // checkout, the folder that holds `sol/`: first the path in the root file (`<app config dir>/root`, one line, written
 // by sol/install), then the build folder when it still holds sol/engine, so Marco's and the team's own builds keep
-// working with no file. No root: the main window shows the face on its first run (/?firstrun=1, the one onboarding, src/onboard), which runs
-// the bundled install and whose last button comes back here. node is the install's own (~/.sol/node/bin/node), else a login shell's
+// working with no file. No root: the shell runs the bundled install itself (welcome.rs first_run) while the face shows one
+// line of it, and opens Sol when the install has written the root (#94, Sol ticket #96). node is the install's own (~/.sol/node/bin/node), else a login shell's
 // (what a terminal would run; an app opened from Finder has no Homebrew PATH), else `node` and PATH's luck.
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -36,6 +36,9 @@ pub fn root_file(app: &AppHandle) -> Option<PathBuf> {
 
 /// The folder this app was built from: three up from src-tauri (sol/mac/src-tauri)
 fn build_dir() -> PathBuf { Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("..") }
+
+/// Built from a checkout (the team's own builds): its build folder still holds Sol. A downloaded app's does not (#1852).
+pub fn team_build() -> bool { valid(&build_dir()) }
 
 /// The root for this app, read every time it is asked (the welcome page writes the file, then asks again).
 pub fn root(app: &AppHandle) -> Option<PathBuf> { resolve_root(root_file(app).as_deref(), &build_dir()) }

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-first-run-again"
+description = "Enables the first_run_again command without any pre-configured scope."
+commands.allow = ["first_run_again"]
+
+[[permission]]
+identifier = "deny-first-run-again"
+description = "Denies the first_run_again command without any pre-configured scope."
+commands.deny = ["first_run_again"]

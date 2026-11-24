@@ -8,7 +8,7 @@ const COMMANDS: &[&str] = &["engine_port", "face_mode", "face_state", "permit_st
     // a block popped out to its own window (#701, pop.rs)
     "block_pop", "block_pop_close",
     // the first run (welcome.rs) and the engine's plug (lib.rs): missing here, the bundled app refused them all ("not allowed by ACL", the first run of 29 Oct)
-    "install_run", "claude_login", "claude_status", "codex_login", "codex_status", "claude_install", "welcome_done", "engine_start", "engine_phase", "idle_seconds",
+    "install_run", "claude_login", "claude_status", "codex_login", "codex_status", "claude_install", "welcome_done", "first_run_state", "first_run_again", "engine_start", "engine_phase", "idle_seconds",
     // a seat's tick on the trackpad (#1024, haptic.rs): pieces that snap
     "haptic",
     // the tour's places finder through Sol's own Full Disk Access (#1069, places.rs)
@@ -16,7 +16,9 @@ const COMMANDS: &[&str] = &["engine_port", "face_mode", "face_state", "permit_st
     // the windows of Jelly on other screens (#1090, screens.rs)
     "screens", "screen_window_open", "screen_window_close", "screens_off",
     // the app's own update (#1824, update.rs): the version waiting, and the press that swaps it in and restarts; the bundled face only
-    "app_update_state", "app_update_apply"];
+    "app_update_state", "app_update_apply",
+    // the one line beside another Sol on the port (#1852, other.rs): where that Sol runs from
+    "another_sol"];
 
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)))
