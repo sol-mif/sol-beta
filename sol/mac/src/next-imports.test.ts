@@ -27,8 +27,8 @@ test("nothing outside src/next imports next/ but App.tsx", () => {
   assert.deepEqual(offenders, []);
   const app = imports(join(SRC, "App.tsx")).filter(isNext).map((p) => p.replace(/\.tsx?$/, ""));
   // and the first run's line (Sol ticket #96), lazy too, loaded only while the shell installs Sol
-  assert.deepEqual([...new Set(app)].sort(), ["next/Next", "next/flag", "next/movein/Setup"], "App.tsx names the flag, the lazy shell and the first run's setup, nothing else");
-  assert.match(readFileSync(join(SRC, "App.tsx"), "utf8"), /lazy\(\(\) => import\("\.\/next\/movein\/Setup"\)\)/, "the setup is loaded lazily");
+  assert.deepEqual([...new Set(app)].sort(), ["next/Next", "next/flag", "next/movein/firstrun/Steps", "next/movein/firstrun/left"], "App.tsx names the flag, the lazy shell, the first run's steps and their mark (#97), nothing else");
+  assert.match(readFileSync(join(SRC, "App.tsx"), "utf8"), /lazy\(\(\) => import\("\.\/next\/movein\/firstrun\/Steps"\)\)/, "the steps are loaded lazily");
   assert.match(readFileSync(join(SRC, "App.tsx"), "utf8"), /lazy\(\(\) => import\("\.\/next\/Next"\)\)/, "the shell is loaded lazily");
 });
 

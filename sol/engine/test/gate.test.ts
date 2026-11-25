@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, TOKENS_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, type GateResult, type Step } from "../src/team/gate.ts";
+import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, TOKENS_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, coveredCheck, partOf, e2eOnly, type GateResult, type Step } from "../src/team/gate.ts";
 
 const EVAL = (status: string, body = "") => `# fr-12 · Open Sol: evals
 
@@ -409,4 +409,89 @@ test("the e2e cap grows with the suite: 15 s a path, never under 15 minutes, 25 
   const all = JSON.parse(execFileSync(process.execPath, [run, "--count"], { encoding: "utf8" }).trim()).count;
   assert.ok(Number.isInteger(all) && all > 50, `run.mjs --count said ${all}`);
   assert.equal(JSON.parse(execFileSync(process.execPath, [run, "--count", "--only", "open-sol"], { encoding: "utf8" }).trim()).count, 1);
+});
+
+test("run.mjs --part k/n: the n shares take every path once between them (#1862)", () => {
+  const run = join(import.meta.dirname, "../../test/e2e/run.mjs");
+  const count = (...a: string[]) => JSON.parse(execFileSync(process.execPath, [run, "--count", ...a], { encoding: "utf8" }).trim()).count;
+  const all = count();
+  for (const n of [1, 2, 3, 4]) {
+    const shares = Array.from({ length: n }, (_, i) => count("--part", `${i + 1}/${n}`));
+    assert.equal(shares.reduce((a, b) => a + b, 0), all, `${n} parts: ${shares.join(" + ")}`);
+    assert.ok(Math.max(...shares) - Math.min(...shares) <= 1, `${n} parts are even: ${shares.join(", ")}`);
+  }
+  assert.equal(count("--only", "open-sol", "--part", "1/3"), 1, "--only first, then the share");
+  assert.equal(count("--only", "open-sol", "--part", "2/3"), 0);
+  for (const bad of ["0/3", "4/3", "1", "a/b"]) assert.throws(() => execFileSync(process.execPath, [run, "--count", "--part", bad], { stdio: "pipe" }), undefined, bad);
+});
+
+test("partOf: SOL_GATE_PART is k/n, unset is the whole run, anything else is could not run (#1862)", () => {
+  assert.equal(partOf(undefined), null);
+  assert.equal(partOf(""), null);
+  assert.deepEqual(partOf("2/3"), { k: 2, n: 3 });
+  assert.deepEqual(partOf("1/1"), { k: 1, n: 1 });
+  for (const bad of ["0/3", "4/3", "3", "two/three", " 1/3"]) assert.throws(() => partOf(bad), /SOL_GATE_PART/, bad);
+});
+
+test("coveredCheck: only slices of the engine's or face's unit tests, or e2e paths, are what CI's other jobs already ran (#1862)", () => {
+  // fr-07's lines, as they are written
+  assert.ok(coveredCheck("cd sol/engine && npx tsx --test --test-name-pattern 'a run the list does not know yet shows at once' test/sidebar-folders.test.ts && npx tsx --test --test-name-pattern 'GPT rows file like' test/gpt-rows.test.ts"));
+  assert.ok(coveredCheck("(cd sol/mac && node --test --test-name-pattern 'a|b' src/seats.test.ts) && (cd sol/engine && npx tsx --test test/one-renew.test.ts)"));
+  assert.ok(coveredCheck("cd sol/engine && npx tsx --test test/one-renew.test.ts && cd ../mac && node --test --test-name-pattern \"x\" src/layouts.test.ts"));
+  assert.ok(coveredCheck("(cd sol/mac && node --test src/refuse.test.ts) && node sol/test/e2e/run.mjs --dist .sol-gate/face --only open-sol,first-message"));
+  assert.ok(coveredCheck("node sol/test/e2e/run.mjs --dist .sol-gate/face --only open-sol"));
+  assert.ok(coveredCheck("cd sol/engine && npx tsx --test src/next/said.test.ts"));
+  // anything else runs as before
+  for (const c of [
+    "curl -fsSL https://sol.matterfold.tech/ | cmp - site/index.html",
+    "cd sol/glossary && node --test test/words.test.ts",                                     // not a job's npm test
+    "cd sol/engine && npx tsx --test test/sub/x.test.ts",                                    // not under the glob
+    "cd sol/engine && npx tsx --test src/team/gate.test.ts",
+    "cd sol/mac && node --test src/a/b.test.ts",
+    "npx tsx --test test/x.test.ts",                                                         // from the root: not the engine's
+    "cd sol/engine && npx tsx --test test/x.test.ts; rm -rf /tmp/x",
+    "cd sol/engine && npx tsx --test test/x.test.ts | tee out",
+    "cd sol/engine && npx tsx --test --test-name-pattern \"$(whoami)\" test/x.test.ts",
+    "cd sol/engine && npx tsx --test test/x.test.ts && node sol/test/e2e/run.mjs --dist .sol-gate/face --only a",   // e2e from the wrong folder
+    "(cd sol/engine && npx tsx --test test/x.test.ts",                                       // unbalanced
+    "cd sol/engine && npx tsx --test test/x.test.ts)",
+    "cd ../mac && node --test src/a.test.ts",
+    "node sol/test/e2e/run.mjs --dist sol/mac/dist --only open-sol",
+    "python3 -c \"import json\"",
+  ]) assert.equal(coveredCheck(c), false, c);
+});
+
+test("every approved eval line is one CI's other jobs cover, or runs (#1862)", () => {
+  // not a rule on what an eval may say: it shows what a PR's gate leaves to the engine, face and e2e jobs today
+  const root = join(import.meta.dirname, "../../..");
+  const lines = evalFiles(root).map((f) => parseEval(readFileSync(f.path, "utf8"))).filter((d) => d.approved).flatMap((d) => d.lines);
+  assert.ok(lines.every((l) => typeof l.check !== "string" || typeof coveredCheck(l.check) === "boolean"));
+});
+
+test("summary: a part or a covered run says it wrote nothing, and where its evals went (#1862)", () => {
+  const base: GateResult = { sha: "a".repeat(40), green: true, steps: [], evals: [], dirty: false, feature: null, at: "", known: [], fixed: [], drafts: [], manual: [], base: null };
+  assert.match(summary(base), /result: \.sol-gate\/a+\.json/);
+  assert.match(summary(base), /evals: none approved yet/);
+  const two = summary({ ...base, part: "2/3", partial: true });
+  assert.match(two, /evals: part 1 runs them, not this part \(2\/3\)/);
+  assert.match(two, /result: not written/);
+  const one = summary({ ...base, part: "1/3", partial: true, covered: ["fr-07:E1", "fr-07:E2"] });
+  assert.match(one, /evals: none run here · 2 covered by this CI run's other jobs/);
+  assert.match(one, /result: not written/);
+});
+
+test("e2eOnly: the paths a check names; a path the baseline excuses keeps its eval line running on a PR (#1862)", async () => {
+  assert.deepEqual(e2eOnly("node sol/test/e2e/run.mjs --dist .sol-gate/face --only open-sol,first-message"), ["open-sol", "first-message"]);
+  assert.deepEqual(e2eOnly("(cd sol/mac && node --test src/a.test.ts) && node sol/test/e2e/run.mjs --dist .sol-gate/face --only open-session"), ["open-session"]);
+  assert.deepEqual(e2eOnly("cd sol/engine && npx tsx --test test/x.test.ts"), []);
+  // an approved feature whose two lines are each only an e2e path: on a PR the one the baseline excuses still runs
+  const root = mkdtempSync(join(tmpdir(), "gate-covered-"));
+  mkdirSync(join(root, "specs/features/fr-41-x"), { recursive: true });
+  writeFileSync(join(root, "specs/features/fr-41-x/eval.md"), [
+    "# fr-41", "Status: Approved by someone on 2026-11-24", "", "## Ways to use it",
+    "- [E1] a · check: `node sol/test/e2e/run.mjs --dist .sol-gate/face --only kept-path`",
+    "- [E2] b · check: `node sol/test/e2e/run.mjs --dist .sol-gate/face --only excused-path`", ""].join("\n"));
+  const r = await evalStep(root, null, () => {}, true, new Set(["excused-path"]));
+  assert.deepEqual(r.covered, ["fr-41:E1"]);
+  assert.deepEqual(r.evals.map((e) => e.id), ["E2"], "the excused path's line ran (and fails here: no run.mjs in this tree)");
 });

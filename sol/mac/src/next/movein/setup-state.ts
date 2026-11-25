@@ -1,9 +1,9 @@
 // The first run on the new face (#94, Sol ticket #96). A downloaded Sol.app with no root installs itself: the shell runs the
 // bundled install at launch (welcome.rs first_run) and, once it ends with a root written and the engine up, loads "/" on
 // its own (what welcome_done did). The face never waits on the engine for it: it asks the shell (first_run_state) and,
-// while the shell is setting up, draws one line, its progress, and the reason when it stops (Setup.tsx). After that the
+// while the shell is setting up, draws one line, its progress, and the reason when it stops (firstrun/Steps.tsx). After that the
 // new face's own start-up and welcome card take over (Google there, Claude and Codex on the card). Plain, so the test
-// reads it (next-firstrun.test.ts); the view is Setup.tsx, and when it is drawn is flag.ts (firstScreen, watchFirstRun),
+// reads it (next-firstrun.test.ts); the view is firstrun/Steps.tsx, and when it is drawn is flag.ts (firstScreen, watchFirstRun),
 // which App.tsx reads before anything under next/ loads.
 
 import type { FirstRun } from "../flag.ts";

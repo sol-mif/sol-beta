@@ -25,6 +25,16 @@
 //           run with bash from the repo root; a line with none is a step in a person's own Sol, listed, never run;
 //           fewer than three lines is red. Ids `check:<n>` (the line's place in the section) and `check:missing`,
 //           never excused. The result then has `checks` too. With no body the run is the four steps it always was.
+// Two settings, for CI (#1862). SOL_GATE_PART=k/n runs the k-th of n shares of the e2e paths (run.mjs --part), so n
+// runners side by side run every path once between them: part 1 runs every step on its share, the other parts only
+// the face's build and their share. A part's result is never written (it is not the commit's whole run). And
+// SOL_GATE_COVERED=1 (ci.yml sets it on a pull request) skips an eval line whose check is only slices of the engine's
+// or the face's unit tests (their `npm test`, which the engine and face jobs run on the same commit) or e2e paths
+// (this gate's own e2e step), unless the baseline excuses one of those paths (the line would not have been). Such a
+// line is listed under `covered`, never run. The typechecks still run: the face job typechecks after regenerating its
+// tokens, not the committed files. A push to main, the morning run and `bash sol/gate` on a person's own machine set
+// neither, so there every eval line runs, and one whose test or name pattern matches nothing is red (#1540); on a PR
+// that is no longer caught.
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -41,6 +51,9 @@ export type GateResult = {
   manual: string[];     // eval lines whose check is manual (the first-timer's): listed, not run
   base: string | null;  // the commit whose specs/baseline.md was read (null: none found, nothing was excused)
   checks?: { ran: CheckRun[]; manual: number[] };   // only when a PR body was handed in (#837): its check lines, by number
+  covered?: string[];   // SOL_GATE_COVERED (#1862): eval lines another job of the same CI run already ran, listed, not run
+  part?: string;        // SOL_GATE_PART (#1862): the share of the e2e paths this run took, "k/n"
+  partial?: true;       // a part, or SOL_GATE_COVERED: not the commit's whole run, so no result file was written
 };
 
 export const RESULT_DIR = ".sol-gate";
@@ -190,6 +203,42 @@ export function judge(steps: Step[], baseline: Set<string>): { green: boolean; k
   const judged = steps.map((s) => ({ ...s, ok: s.failed.every(ok) }));
   return { green: judged.every((s) => s.ok), known, fixed, steps: judged };
 }
+/** SOL_GATE_PART read (pure): "k/n" with 1 <= k <= n is that share; unset or empty is the whole run (null); anything
+ * else throws, so a mistyped part is "could not run", never a whole run by accident */
+export function partOf(v: string | undefined): { k: number; n: number } | null {
+  if (v === undefined || v === "") return null;
+  const m = /^(\d+)\/(\d+)$/.exec(v), k = Number(m?.[1]), n = Number(m?.[2]);
+  if (!m || n < 1 || k < 1 || k > n) throw new Error(`SOL_GATE_PART is k/n with 1 <= k <= n, not "${v}"`);
+  return { k, n };
+}
+// what the engine's and the face's `npm test` run (sol/engine/package.json: test/*.test.ts src/next/*.test.ts;
+// sol/mac/package.json: src/*.test.ts), and the gate's own e2e paths. A pattern in quotes, a file name with no folder.
+const QUOTED = String.raw`(?:'[^']*'|"[^"$\`\\]*")`;   // in double quotes the shell would still expand $, ` and \
+const ENGINE_SLICE = new RegExp(String.raw`^npx tsx --test(?: --test-name-pattern ${QUOTED})? (?:test|src/next)/[\w.-]+\.test\.ts$`);
+const FACE_SLICE = new RegExp(String.raw`^node --test(?: --test-name-pattern ${QUOTED})? src/[\w.-]+\.test\.ts$`);
+const E2E_SLICE = /^node sol\/test\/e2e\/run\.mjs --dist \.sol-gate\/face --only [a-z0-9-]+(?:,[a-z0-9-]+)*$/;
+const CD: Record<string, string> = { " cd sol/engine": "engine", " cd sol/mac": "face", "engine cd ../mac": "face", "face cd ../engine": "engine" };
+/** an eval check that only runs what CI's other jobs run on the same commit (pure, #1862): commands joined by `&&`,
+ * each a slice of the engine's unit tests (in sol/engine), of the face's (in sol/mac) or e2e paths (from the root),
+ * with `cd` and `( … )` only to move between them. Anything else (a pipe, a `;`, a curl, a script, another folder) is
+ * not covered and runs as before. */
+export function coveredCheck(check: string): boolean {
+  const stack: string[] = [];
+  let dir = "";
+  for (const seg of check.split("&&")) {
+    let s = seg.trim(), close = 0;
+    while (s.startsWith("(")) { stack.push(dir); s = s.slice(1).trim(); }
+    while (s.endsWith(")")) { close++; s = s.slice(0, -1).trim(); }
+    if (/[;|<>`$\n]/.test(s.replace(new RegExp(QUOTED, "g"), ""))) return false;
+    const to = CD[`${dir} ${s}`];
+    if (to) dir = to;
+    else if (!((dir === "" && E2E_SLICE.test(s)) || (dir === "engine" && ENGINE_SLICE.test(s)) || (dir === "face" && FACE_SLICE.test(s)))) return false;
+    for (; close > 0; close--) { if (!stack.length) return false; dir = stack.pop()!; }
+  }
+  return !stack.length;
+}
+/** the e2e paths a check names with run.mjs --only (pure) */
+export const e2eOnly = (check: string): string[] => [...check.matchAll(/run\.mjs\b[^&|;]*--only ([a-z0-9,-]+)/g)].flatMap((m) => m[1].split(",").filter(Boolean));
 const stepOfId = (id: string) => ({ lint: "lint", build: "build", e2e: "e2e", eval: "evals", [CHECKS.id]: CHECKS.step } as Record<string, string>)[id.split(":")[0]] ?? "";
 
 // ---- running things ----
@@ -492,15 +541,18 @@ async function lintStep(root: string, base: string | null, say: (s: string) => v
 }
 
 // ---- build ----
-async function buildStep(root: string, say: (s: string) => void): Promise<Step> {
+async function buildStep(root: string, say: (s: string) => void, typecheck = true): Promise<Step> {
   const t0 = Date.now(), failed: string[] = [];
   const eng = join(root, "sol/engine"), face = join(root, "sol/mac");
   const parts: [string, string, string[], string][] = [
-    ["engine-typecheck", join(eng, "node_modules/.bin/tsc"), ["--noEmit", "-p", "."], eng],
-    ["face-typecheck", join(face, "node_modules/.bin/tsc"), ["-p", "."], face],
+    ...(typecheck ? [
+      ["engine-typecheck", join(eng, "node_modules/.bin/tsc"), ["--noEmit", "-p", "."], eng],
+      ["face-typecheck", join(face, "node_modules/.bin/tsc"), ["-p", "."], face],
+    ] as [string, string, string[], string][] : []),
     // the production build, beside the result files: sol/mac/dist may be what a running Sol.app serves
     ["face-build", join(face, "node_modules/.bin/vite"), ["build", "--outDir", join(root, RESULT_DIR, "face"), "--emptyOutDir", "--logLevel", "warn"], face],
   ];
+  if (!typecheck) say("  build: the typechecks are part 1's, not run here");
   // an old build never stands in for this one: a failed build leaves nothing for the paths to open
   rmSync(join(root, RESULT_DIR, "face"), { recursive: true, force: true });
   for (const [name, cmd, args, cwd] of parts) {
@@ -519,27 +571,28 @@ export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").r
 // again for a loaded machine. A count that cannot be read falls back to 25 minutes, the flat cap this replaced.
 export const E2E_MS_PER_PATH = 15_000, E2E_FLOOR_MS = 900_000, E2E_FALLBACK_MS = 1_500_000;
 export const e2eCapMs = (paths: number | null) => paths && paths > 0 ? Math.max(E2E_FLOOR_MS, paths * E2E_MS_PER_PATH) : E2E_FALLBACK_MS;
-async function e2eStep(root: string, say: (s: string) => void): Promise<Step> {
+async function e2eStep(root: string, say: (s: string) => void, part: { k: number; n: number } | null = null): Promise<{ step: Step; ran: string[] }> {
   const t0 = Date.now();
   const dist = join(root, RESULT_DIR, "face");
-  if (!existsSync(join(dist, "index.html"))) { say("  e2e: no production build of the face to open (the build step failed)"); return { name: "e2e", ok: false, ms: 0, failed: ["e2e:face-build-missing"] }; }
-  const run = join(root, "sol/test/e2e/run.mjs");
+  if (!existsSync(join(dist, "index.html"))) { say("  e2e: no production build of the face to open (the build step failed)"); return { step: { name: "e2e", ok: false, ms: 0, failed: ["e2e:face-build-missing"] }, ran: [] }; }
+  const run = join(root, "sol/test/e2e/run.mjs"), share = part ? ["--part", `${part.k}/${part.n}`] : [];
   let count: number | null = null;
-  try { count = JSON.parse((await sh(process.execPath, [run, "--count"], root, 60_000)).out.trim().split("\n").filter((l) => l.startsWith("{")).pop() ?? "").count ?? null; } catch { /* the fallback cap */ }
+  try { count = JSON.parse((await sh(process.execPath, [run, "--count", ...share], root, 60_000)).out.trim().split("\n").filter((l) => l.startsWith("{")).pop() ?? "").count ?? null; } catch { /* the fallback cap */ }
+  if (part) say(`  e2e: part ${part.k} of ${part.n}, ${count ?? "an uncounted number of"} paths`);
   const cap = e2eCapMs(count);
-  const r = await sh(process.execPath, [run, "--dist", dist, "--json"], root, cap);
+  const r = await sh(process.execPath, [run, "--dist", dist, "--json", ...share], root, cap);
   let paths: { name: string; ok: boolean; ms: number; error?: string }[] = [];
   try { paths = JSON.parse(r.out.trim().split("\n").filter((l) => l.startsWith("{")).pop() ?? "").paths; } catch { /* below */ }
   if (!Array.isArray(paths) || !paths.length) {
     const why = r.ms >= cap ? `stopped at the cap, ${Math.round(cap / 1000)} s for ${count ?? "an uncounted number of"} paths` : "the paths did not run";
     say(`  e2e: ${why}:\n` + tail(r.out).replace(/^/gm, "    "));
-    return { name: "e2e", ok: false, ms: Date.now() - t0, failed: ["e2e:did-not-run"] };
+    return { step: { name: "e2e", ok: false, ms: Date.now() - t0, failed: ["e2e:did-not-run"] }, ran: [] };
   }
   for (const p of paths) say(`  e2e: ${p.name} ${p.ok ? "ok" : `FAILED: ${p.error ?? ""}`} (${(p.ms / 1000).toFixed(1)} s)`);
   // a path's failure is keyed by where it failed, so a listed one never hides a new failure of the same path
   const failed = paths.filter((p) => !p.ok).map((p) => `e2e:${p.name}:${slug(p.error ?? "failed")}`);
   if (!r.ok && !failed.length) { failed.push("e2e:exit-code"); say("  e2e: the paths passed but run.mjs did not exit 0:\n" + tail(r.out).replace(/^/gm, "    ")); }
-  return { name: "e2e", ok: !failed.length, ms: Date.now() - t0, failed };
+  return { step: { name: "e2e", ok: !failed.length, ms: Date.now() - t0, failed }, ran: paths.map((p) => p.name) };
 }
 
 // ---- evals ----
@@ -555,8 +608,8 @@ export function ranNoTest(out: string): boolean {
   return false;
 }
 const CHECK_MS = Number(process.env.SOL_GATE_CHECK_TIMEOUT ?? 300) * 1000;
-export async function evalStep(root: string, feature: string | null, say: (s: string) => void): Promise<{ step: Step; evals: EvalRun[]; drafts: string[]; manual: string[] }> {
-  const t0 = Date.now(), evals: EvalRun[] = [], drafts: string[] = [], manual: string[] = [], failed: string[] = [];
+export async function evalStep(root: string, feature: string | null, say: (s: string) => void, skipCovered = false, excusedPaths: ReadonlySet<string> = new Set()): Promise<{ step: Step; evals: EvalRun[]; drafts: string[]; manual: string[]; covered: string[] }> {
+  const t0 = Date.now(), evals: EvalRun[] = [], drafts: string[] = [], manual: string[] = [], covered: string[] = [], failed: string[] = [];
   const files = evalFiles(root, feature);
   if (feature && !files.length) { failed.push(`eval:${feature}:no-eval`); say(`  evals: ${feature} has no eval.md under specs/features/`); }
   for (const f of files) {
@@ -573,6 +626,7 @@ export async function evalStep(root: string, feature: string | null, say: (s: st
       const id = `eval:${f.feature}:${l.id}`;
       if (l.manual) { manual.push(`${f.feature}:${l.id}`); continue; }
       if (!l.check) { evals.push({ feature: f.feature, id: l.id, ok: false }); failed.push(id); say(`  evals: ${f.feature} ${l.id} has no check an agent can run`); continue; }
+      if (skipCovered && coveredCheck(l.check) && !e2eOnly(l.check).some((p) => excusedPaths.has(p))) { covered.push(`${f.feature}:${l.id}`); continue; }
       const r = await sh("bash", ["-c", l.check], root, CHECK_MS);
       const empty = r.ok && ranNoTest(r.out), ok = r.ok && !empty;
       evals.push({ feature: f.feature, id: l.id, ok });
@@ -581,7 +635,8 @@ export async function evalStep(root: string, feature: string | null, say: (s: st
       else if (!ok) { failed.push(id); say(tail(r.out, 6).replace(/^/gm, "    ")); }
     }
   }
-  return { step: { name: "evals", ok: !failed.length, ms: Date.now() - t0, failed }, evals, drafts, manual };
+  if (covered.length) say(`  evals: ${covered.length} line${covered.length > 1 ? "s" : ""} only run unit tests or e2e paths this CI run's other jobs ran (SOL_GATE_COVERED), not run again: ${covered.join(", ")}`);
+  return { step: { name: "evals", ok: !failed.length, ms: Date.now() - t0, failed }, evals, drafts, manual, covered };
 }
 
 // ---- a PR's check lines (#837) ----
@@ -647,34 +702,44 @@ export async function checksStep(root: string, body: string, say: (s: string) =>
 }
 
 // ---- the run ----
-export async function runGate(root: string, opts: { feature?: string | null; body?: string | null; say?: (s: string) => void } = {}): Promise<GateResult> {
+export async function runGate(root: string, opts: { feature?: string | null; body?: string | null; say?: (s: string) => void; env?: NodeJS.ProcessEnv } = {}): Promise<GateResult> {
   const say = opts.say ?? (() => {});
+  const env = opts.env ?? process.env, part = partOf(env.SOL_GATE_PART), skip = env.SOL_GATE_COVERED === "1";
+  // part 1 runs every step on its share of the paths; another part only builds the face and runs its share
+  const whole = !part || part.k === 1;
   const sha = git(root, "rev-parse", "HEAD");
   // uncommitted changes, or new files not yet added (ignored ones aside): the run is not the commit's
   const status0 = git(root, "status", "--porcelain");
   const base = baseOf(root);
   say(base ? `baseline: ${BASELINE} as of ${base.slice(0, 8)} (where this commit leaves main)` : `baseline: no main to read ${BASELINE} from, so nothing is excused`);
   const steps: Step[] = [];
-  say("lint…"); steps.push(await lintStep(root, base, say));
-  say("build…"); steps.push(await buildStep(root, say));
-  say("e2e…"); steps.push(await e2eStep(root, say));
-  say("evals…");
-  const ev = await evalStep(root, opts.feature ?? null, say);
-  steps.push(ev.step);
+  if (whole) { say("lint…"); steps.push(await lintStep(root, base, say)); }
+  say("build…"); steps.push(await buildStep(root, say, whole));
+  say("e2e…");
+  const e2e = await e2eStep(root, say, part);
+  steps.push(e2e.step);
+  const listed = base ? baselineIds(baselineAt(root, base)) : new Set<string>();
+  // a path the baseline excuses still has its eval lines run: their failure was never excused
+  const excusedPaths = new Set([...listed].filter((id) => excusable(id) && id.startsWith("e2e:")).map((id) => id.split(":")[1]));
+  const ev = whole ? (say("evals…"), await evalStep(root, opts.feature ?? null, say, skip, excusedPaths)) : null;
+  if (ev) steps.push(ev.step);
   // a PR's check lines, only when its body was handed in (#837): with none, the run is the four steps it always was
   let ck: Awaited<ReturnType<typeof checksStep>> | null = null;
-  if (typeof opts.body === "string") { say("checks…"); ck = await checksStep(root, opts.body, say); steps.push(ck.step); }
-  const listed = base ? baselineIds(baselineAt(root, base)) : new Set<string>();
+  if (whole && typeof opts.body === "string") { say("checks…"); ck = await checksStep(root, opts.body, say); steps.push(ck.step); }
   for (const id of listed) if (!excusable(id)) say(`  baseline: "${id}" is listed but never excused (only an e2e path's failure point or an eval line can be)`);
   const j = judge(steps, listed);
+  // a part ran only its share of the paths: a listed path another part runs is not "fixed" here
+  if (part) { const ran = new Set(e2e.ran); j.fixed = j.fixed.filter((id) => stepOfId(id) !== "e2e" || ran.has(id.split(":")[1])); }
   // the commit or the tree moved while it ran: the result is not that commit's
   let moved = true;
   try { moved = git(root, "rev-parse", "HEAD") !== sha || git(root, "status", "--porcelain") !== status0; } catch { /* moved */ }
   if (moved) say("  the commit or the files changed during the run: this result does not count for the commit");
-  const r: GateResult = { sha, green: j.green, steps: j.steps, evals: ev.evals, dirty: status0 !== "" || moved, feature: opts.feature ?? null, at: new Date().toISOString(),
-    known: j.known, fixed: j.fixed, drafts: ev.drafts, manual: ev.manual, base, ...(ck ? { checks: { ran: ck.ran, manual: ck.manual } } : {}) };
-  // only a full run is the commit's result; a run narrowed to one feature is printed, never written
-  if (!r.feature) {
+  const r: GateResult = { sha, green: j.green, steps: j.steps, evals: ev?.evals ?? [], dirty: status0 !== "" || moved, feature: opts.feature ?? null, at: new Date().toISOString(),
+    known: j.known, fixed: j.fixed, drafts: ev?.drafts ?? [], manual: ev?.manual ?? [], base, ...(ck ? { checks: { ran: ck.ran, manual: ck.manual } } : {}),
+    ...(ev?.covered.length ? { covered: ev.covered } : {}), ...(part ? { part: `${part.k}/${part.n}` } : {}), ...(part || skip ? { partial: true as const } : {}) };
+  // only a full run is the commit's result; a run narrowed to one feature, a part or one that skipped what CI's other
+  // jobs ran is printed, never written
+  if (!r.feature && !part && !skip) {
     mkdirSync(join(root, RESULT_DIR), { recursive: true });
     writeFileSync(resultPath(root, sha), JSON.stringify(r, null, 2) + "\n");
   }
@@ -689,15 +754,18 @@ export function summary(r: GateResult): string {
     const fresh = s.failed.filter((id) => !r.known.includes(id)), old = s.failed.length - fresh.length;
     out.push(`  ${s.ok ? "ok  " : "RED "} ${s.name} (${(s.ms / 1000).toFixed(1)} s)${fresh.length ? `: ${fresh.join(", ")}` : ""}${old ? ` · ${old} already broken` : ""}`);
   }
-  const ran = r.evals.length, passed = r.evals.filter((e) => e.ok).length;
-  out.push(`  evals: ${ran ? `${passed}/${ran} pass` : "none approved yet"}${r.drafts.length ? ` · not run (draft): ${r.drafts.join(", ")}` : ""}${r.manual.length ? ` · manual (the first-timer's): ${r.manual.join(", ")}` : ""}`);
+  const ran = r.evals.length, passed = r.evals.filter((e) => e.ok).length, covered = r.covered?.length ?? 0;
+  if (r.part && !r.part.startsWith("1/")) out.push(`  evals: part 1 runs them, not this part (${r.part})`);
+  else out.push(`  evals: ${ran ? `${passed}/${ran} pass` : covered ? "none run here" : "none approved yet"}${covered ? ` · ${covered} covered by this CI run's other jobs, not run again` : ""}${r.drafts.length ? ` · not run (draft): ${r.drafts.join(", ")}` : ""}${r.manual.length ? ` · manual (the first-timer's): ${r.manual.join(", ")}` : ""}`);
   if (r.checks) {
     const n = r.checks.ran.length, ok = r.checks.ran.filter((c) => c.ok).length;
     out.push(`  checks: ${n ? `${ok}/${n} pass` : "no command to run"}${r.checks.manual.length ? ` · a step in a person's own Sol, not run: ${r.checks.manual.join(", ")}` : ""}`);
   }
   if (r.known.length) out.push(`  already broken before this change (specs/baseline.md), not counted: ${r.known.join(", ")}`);
   if (r.fixed.length) out.push(`  fixed since the baseline, its line can go from specs/baseline.md: ${r.fixed.join(", ")}`);
-  out.push(r.feature ? "  result: not written (a run narrowed to one feature is never the commit's result)" : `  result: ${RESULT_DIR}/${r.sha}.json`);
+  out.push(r.feature ? "  result: not written (a run narrowed to one feature is never the commit's result)"
+    : r.partial ? "  result: not written (a part of the gate, or a run that left to CI's other jobs what they ran, is never the commit's whole result)"
+    : `  result: ${RESULT_DIR}/${r.sha}.json`);
   return out.join("\n");
 }
 

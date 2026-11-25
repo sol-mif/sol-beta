@@ -60,7 +60,7 @@ body.starting .nx, body.starting .mvi { visibility: hidden; }
 .sd-btn:focus-visible, .sd-ghost:focus-visible { outline: 2px solid #1d1c1a; outline-offset: 3px; }
 .sd-r { margin-left: auto; }
 
-/* the first run's setup (Setup.tsx, Sol ticket #96): Day's column, the install as one thin ink line */
+/* the first run's install line (firstrun/Steps.tsx, Sol tickets #96, #97): Day's column, the install as one thin ink line */
 .sd-bar { height: 3px; margin: calc(16px * var(--k)) 0 calc(14px * var(--k)); border-radius: 2px; background: #e4e0d7; overflow: hidden; }
 .sd-bar i { display: block; height: 100%; background: #1d1c1a; transform-origin: 0 50%; transition: transform .6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .sd-bar i { transition: none; } }

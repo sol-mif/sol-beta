@@ -1,0 +1,30 @@
+/* The first run, step by step (Steps.tsx, Sol ticket #97): Day's paper and ink (startup.css), the five steps as a quiet
+   list on the left, the one now in Day's column on the right. Sizes are the scale's, by --k as the start-up's screens
+   are scaled; colours are the page's own ink (currentColor, mixed lighter), the paper's pearl and the red token, never
+   a typed value (the gate's look and layout lint). */
+.fr .fr-cols { display: flex; gap: calc(var(--s12) * var(--k)); align-items: flex-start; width: 100%; max-width: calc(var(--s12) * 19 * var(--k)); padding: 0 calc(var(--s8) * var(--k)); box-sizing: border-box; }
+.fr-rail { list-style: none; margin: calc(var(--s8) * var(--k)) 0 0; padding: 0; flex: 0 0 calc(var(--s12) * 4 * var(--k)); }
+.fr-st { display: flex; align-items: center; gap: calc(var(--s3) * var(--k)); padding: calc(var(--s2) * var(--k)) 0; font-size: calc(var(--t-body) * var(--k)); color: color-mix(in srgb, currentColor 55%, transparent); }
+.fr-dot { flex: 0 0 auto; width: calc(var(--h-chip) * var(--k)); height: calc(var(--h-chip) * var(--k)); border-radius: var(--r-pill); display: grid; place-items: center; border: var(--hair) solid; font-size: calc(var(--t-label) * var(--k)); box-sizing: border-box; }
+.fr-dot b { font-weight: 600; }
+.fr-t small { display: block; font-size: calc(var(--t-label) * var(--k)); }
+.fr-st.doing, .fr-st.stopped { color: inherit; font-weight: 600; }
+.fr-st.done { color: inherit; }
+.fr-st.done .fr-t { color: color-mix(in srgb, currentColor 80%, transparent); }
+.fr-st.done .fr-dot { border-color: currentColor; background: currentColor; }
+.fr-st.done .fr-dot b, .fr-st.stopped .fr-dot b { color: var(--c-pearl); }
+.fr-st.stopped .fr-dot { border-color: var(--red-strong); background: var(--red-strong); }
+.fr-pane { flex: 1 1 auto; min-width: 0; padding-top: calc(var(--s8) * var(--k)); }
+.fr-path { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 700; font-size: inherit; letter-spacing: 0; }
+.fr-ask { color: inherit; font-weight: 600; }
+.fr-ais { display: grid; gap: calc(var(--s2) * var(--k)); margin: calc(var(--s1) * var(--k)) 0 0; }
+.fr-ai { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--s3) * var(--k)); padding: calc(var(--s3) * var(--k)) calc(var(--s4) * var(--k)); border: var(--hair) solid color-mix(in srgb, currentColor 22%, transparent); border-radius: calc(var(--r-card) * var(--k)); }
+.fr-ai.in { border-color: currentColor; }
+.fr-ai-n b { display: block; font-size: calc(var(--t-read) * var(--k)); }
+.fr-ai-n small, .fr-ai-q { font-size: calc(var(--t-label) * var(--k)); color: color-mix(in srgb, currentColor 55%, transparent); }
+.fr-ai-in { font-size: calc(var(--t-body) * var(--k)); font-weight: 600; }
+.fr-ai-in::before { content: "✓ "; }
+.fr-ai .sd-btn:disabled { opacity: .55; cursor: default; }
+.fr-skip { margin-top: calc(var(--s6) * var(--k)); }
+.fr-skip .sd-ghost { padding-left: 0; color: color-mix(in srgb, currentColor 55%, transparent); }
+@media (max-width: 640px) { .fr .fr-cols { flex-direction: column; gap: 0; } .fr-rail { flex-basis: auto; } }

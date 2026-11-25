@@ -1,6 +1,6 @@
 {
   "agents.mode": {
-    "station": "concept",
+    "station": "complete",
     "side": "window",
     "id": "product/agents"
   },
@@ -74,7 +74,7 @@
     ]
   },
   "reach.room": {
-    "station": "concept",
+    "station": "complete",
     "side": "engine",
     "id": "product/cowork/room",
     "offers": [

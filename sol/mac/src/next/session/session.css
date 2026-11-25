@@ -235,11 +235,13 @@
    codex/claude switch leave the row (the call and voice stay on the fn key and the canvas) */
 .sport .ask-col { width: var(--col); max-width: 100%; margin: 0 auto; padding: 0; }
 .sport .sport-asks { padding-left: 0; padding-right: 0; }
-.sport .ask-col > .ask-inner { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: var(--s2); min-height: calc(var(--s12) + var(--s1)); padding: var(--s1) var(--s2) var(--s1) var(--s3); border-radius: var(--r-card); }
-.sport .ask-line { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s2); }
+.sport .ask-col > .ask-inner { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--s2); min-height: calc(var(--s12) + var(--s1)); padding: var(--s1) var(--s2) var(--s1) var(--s3); border-radius: var(--r-card); }
+/* the box keeps room to type (Marco, 11:30 11/23: with To:, stop and the model chips in one row the textarea drew 0px wide);
+   short of room, the picker's chips wrap to a row of their own under it */
+.sport .ask-line { flex: 1 1 calc(var(--s12) * 7); min-width: 0; display: flex; align-items: center; gap: var(--s2); }
 .sport .ask-line > .wplus { order: 0; flex: none; }
-.sport .ask-line > textarea { order: 2; flex: 1; min-width: 0; }
-.sport .sport-to { order: 1; flex: none; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font-size: var(--t-label); white-space: nowrap; }
+.sport .ask-line > textarea { order: 2; flex: 1; min-width: calc(var(--s12) * 3); }
+.sport .sport-to { order: 1; flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: var(--s1); height: var(--h-chip); padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--hover); color: var(--ink2); font-size: var(--t-label); white-space: nowrap; }
 .sport .sport-to b { color: var(--ink); font-weight: 600; max-width: calc(var(--s12) * 4); overflow: hidden; text-overflow: ellipsis; }
 .sport .sport-fn { order: 9; flex: none; margin-left: var(--s1); color: var(--ink3); font-size: var(--t-label); white-space: nowrap; }
 .sport .sport-fn kbd { font: inherit; padding: 0 var(--s1); border-radius: var(--r-chip); background: var(--hover); }

@@ -102,6 +102,9 @@ const TODAY: Record<string, string> = { "stage.whole": "settled", "tools.cards":
   // view.home and view.cowork went to product on 2026-11-20 and came back to complete on 2026-11-22 (#1637, Frank): a
   // tester's Sol is Build only until the new interface's move-in; on for the team (concept) and at complete, off at product
   "view.home": "complete", "view.cowork": "complete",
+  // moved on by the station check of 2026-11-22 (#1786), to complete and not product while a tester's Sol is Build only
+  // (#1637): on for the team (concept) and at complete, off at product
+  "agents.mode": "complete", "reach.room": "complete",
   // the new face (#1615, BR1 join, Frank 2026-11-23): ring 3 of docs/port/switch.md, on for the team and a tester's Sol
   // unless they turned it off by hand
   "ui.next": "product" };
@@ -415,8 +418,8 @@ test("the window's block: its eight switches, each by its station in this mode; 
     for (const [mode, on] of [["concept", true], ["complete", false], ["product", false]] as const) {
       F.patchSettings({ version: mode });
       assert.deepEqual(Object.keys(F.readings().window).sort(), WINDOW, mode);
-      // view.home and view.cowork stand at complete (#1637): on in concept and complete, off at product
-      assert.deepEqual(F.readings().window, { ...W(on), "view.home": mode !== "product", "view.cowork": mode !== "product" }, `${mode}: the eight at concept`);
+      // view.home and view.cowork stand at complete (#1637), agents.mode too (#1786): on in concept and complete, off at product
+      assert.deepEqual(F.readings().window, { ...W(on), "view.home": mode !== "product", "view.cowork": mode !== "product", "agents.mode": mode !== "product" }, `${mode}: the eight at concept`);
     }
     table["cross"] = "product";
     table["build.snap"] = "complete";

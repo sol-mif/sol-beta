@@ -47,7 +47,7 @@ test("q6: moved to complete, the card reaches a complete-mode Sol and still not 
 });
 
 test("q6: the window is sent reach.room's reading wherever it differs from the bare setting, by mode, env and hand", () => {
-  assert.equal(table["reach.room"], "concept", "the card stands at concept today (stations.json)");
+  assert.equal(table["reach.room"], "complete", "the card stands at complete today (stations.json, #1786)");
   process.env.SOL_VERSION = "concept";
   assert.deepEqual(S.readings().reach, { room: true }, "concept: on, and the window hears it");
   process.env.SOL_VERSION = "product";

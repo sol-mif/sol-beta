@@ -42,7 +42,7 @@ export function noteBuild(isDl: boolean): void {
   download = isDl;
   try { globalThis.localStorage?.setItem(BUILD_KEY, isDl ? "download" : "team"); } catch { /* storage refused: asked again next load */ }
 }
-// ---- the first run (#94, Sol ticket #96): the shell installs, the face only asks it (movein/setup-state.ts, Setup.tsx)
+// ---- the first run (#94, Sol ticket #96): the shell installs, the face only asks it (movein/setup-state.ts, movein/firstrun/Steps.tsx)
 /** the shell's first_run_state (welcome.rs FirstRun) */
 export type FirstRun = { active: boolean; download: boolean; lines: string[]; code: number | null; error: string | null };
 
@@ -66,8 +66,9 @@ export function watchFirstRun(ask: () => Promise<FirstRun>, tell: (f: FirstRun |
 }
 /** a browser's still of the first run (?firstrun=setup, &fail=1 for the stopped one): the install's lines on a clock */
 export function demoFirstRun(fail: boolean, t0 = Date.now()): () => Promise<FirstRun> {
-  const feed: [number, string][] = [[300, "install: cloning Sol into ~/Sol"], [1500, "  ok    Sol is in ~/Sol"], [1800, "install: fetching Node v24.22.1"],
-    [3200, "  ok    Node v24.22.1 in ~/.sol/node, checksum verified"], [3500, "install: bash sol/setup"]];
+  // sol/install's own order: where Sol goes, Node, then the clone and sol/setup (Sol ticket #97)
+  const feed: [number, string][] = [[300, "  ok    Sol goes to ~/Sol"], [500, "  ok    Apple's developer tools"], [1500, "install: fetching Node v24.22.1 (nodejs.org, about 50 MB)"],
+    [3000, "  ok    Node v24.22.1 in ~/.sol/node, checksum verified"], [3300, "install: cloning Sol into ~/Sol"], [4200, "  ok    Sol is in ~/Sol, on you/mine"], [4500, "install: bash sol/setup (a few minutes: packages, the engine built, its job)"]];
   return async () => {
     const lines = feed.filter(([ms]) => Date.now() - t0 >= ms).map(([, l]) => l);
     const error = fail && lines.length >= 3 ? "could not fetch node-v24.22.1-darwin-arm64.tar.gz from nodejs.org; is the network up?" : null;
