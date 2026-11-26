@@ -1,0 +1,13 @@
+{
+  "fontPrint": 1818,
+  "states": [
+    "rest",
+    "box-open",
+    "more-live",
+    "tab-front",
+    "cmd-held",
+    "empty",
+    "heavy"
+  ],
+  "note": "written by SOL_STILLS_UPDATE=1 (kit-stills.test.ts): the pictures beside this file are the approved ones"
+}

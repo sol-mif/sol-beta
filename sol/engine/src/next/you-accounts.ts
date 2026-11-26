@@ -128,7 +128,7 @@ export const PERMS = [
 ] as const;
 
 /** next.you.perms { known? }: each permission granted, not, or null when nobody here can tell; Sol.app's own knowledge
- *  (`known`, from its permit_state) wins; Full Disk Access is also seen by the engine (whether a closed folder lists).
+ *  (`known`, from its permit_state: `files` is Full Disk Access) wins; Full Disk Access is also seen by the engine (whether a closed folder lists).
  *  A folder that lists says on. One the Mac refuses says off only when Sol.app started this engine (underSolApp): the
  *  Mac judges the process that asks, and an engine started by launchd or a terminal is not Sol, so its refusal says
  *  nothing of Sol's switch (null, "can't tell"; walk note w1, #1615) */
@@ -138,8 +138,10 @@ export function permsOf(user: string, known: unknown, closed: { what: string; pe
   const underApp = () => at.underApp ?? underSolApp();
   let disk: boolean | null = null;
   try { list(join(user, "Library", "Safari")); disk = true; } catch (e) { disk = (e as NodeJS.ErrnoException).code === "EPERM" && underApp() ? false : null; }
+  // Sol.app's permit_state names Full Disk Access `files` (#1828); the permission's own id, when sent, comes first
+  const word = (id: string) => typeof k[id] === "boolean" ? (k[id] as boolean) : id === "full-disk" && typeof k.files === "boolean" ? (k.files as boolean) : undefined;
   // `opens`: what the last read had to skip that this permission would open, by name ("Safari", "your calendar")
-  return PERMS.map((p) => ({ ...p, granted: typeof k[p.id] === "boolean" ? (k[p.id] as boolean) : p.id === "full-disk" ? disk : null, opens: [...new Set(closed.filter((c) => c.perm === p.id).map((c) => c.what))] }));
+  return PERMS.map((p) => ({ ...p, granted: word(p.id) ?? (p.id === "full-disk" ? disk : null), opens: [...new Set(closed.filter((c) => c.perm === p.id).map((c) => c.what))] }));
 }
 /** whether Sol.app is among this process's parents (its binary, …/Sol.app/Contents/MacOS/…), by `ps`, up to launchd;
  *  `ps` is given one pid at a time, so a process list is never read whole */

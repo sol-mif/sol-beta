@@ -131,8 +131,9 @@ test("the one-time exception to the day (#1615): only a release made on the name
 
 test("the exception is read only as one real day from .sol/rhythm.json (#1615)", () => {
   // the committed one: BR1's day, Frank's word (#1615; moved from 11-23 to 11-24 by Frank, 11/24 01:15 PST, when BR1
-  // slipped a day), or none once it is taken out; naming another day is a new decision, so it changes this line too
-  assert.ok(RHYTHM.betaSameDay === undefined || RHYTHM.betaSameDay === "2026-11-24", `.sol/rhythm.json names ${RHYTHM.betaSameDay}`);
+  // slipped a day; to 11-25 for the step-by-step first run, Frank's word on #97 relayed 11/24 23:0x PST), or none once
+  // it is taken out; naming another day is a new decision, so it changes this line too
+  assert.ok(RHYTHM.betaSameDay === undefined || RHYTHM.betaSameDay === "2026-11-25", `.sol/rhythm.json names ${RHYTHM.betaSameDay}`);
   const base = { dev: ["marcocyl04-ux"], beta: [FRANK], zone: "America/New_York" };
   assert.equal(parseRhythm(JSON.stringify({ ...base, betaSameDay: "2026-11-23" }))!.betaSameDay, "2026-11-23");
   for (const v of ["2026-02-30", "2026-13-01", "tomorrow", "2026-11-23T10:00", "", true, 20261123, ["2026-11-23"], { day: "2026-11-23" }]) {

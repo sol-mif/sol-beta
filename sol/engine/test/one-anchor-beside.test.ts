@@ -150,6 +150,7 @@ test("going back when the old anchor went on as an orchestration session (round 
   await one.promote("old-anchor");   // what the first start after #1469 made of it, by its kind mark
   mark("kid-1", { under: "old-anchor" });
   one.setTickets(true);
+  await new Promise((r) => setTimeout(r, 30));   // the switch is told once the sessions are read (#1808)
   said = [];
   const r = await one.openAnchor(dir);
   assert.deepEqual(r, { sessionId: "old-anchor", made: false, reconnected: true });

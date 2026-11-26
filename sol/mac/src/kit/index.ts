@@ -28,5 +28,15 @@ export { Circle, wordsIn, type CircleAct } from "./Circle";
 export { Block, BLOCK_STATES, type BlockState, type BlockTake } from "./Block";
 // the press at the foot of any artifact that asks (#1298)
 export { Press, type PressAnswer } from "./Press";
-export { Sticky, FolderCard, type StickyState } from "./Folder";
+export { Sticky, FolderCard as HomeFolderCard, type StickyState } from "./Folder";
 export { SETS, DEFAULT_SET, litOf, Pure, CUTS, CutSet, useCut, cutStyle, Display, BigNum, GROUNDS, type PaletteSet, type Cut, type CutId, type GroundId } from "./Yours";
+// the frame's parts (#1879 step 0): the sidebar's groups and cards, the tabs and the one icon module, tokens only
+// (kit/parts.css, tokens.json next); the decisions they follow: sol/design/decisions.md; how to use them: sol/skills/kit
+export { Group, GROUP_FIT } from "./Group";
+export { StickerCard } from "./StickerCard";
+export { BoxIcon, BoxCard } from "./BoxIcon";
+export { Key, type KeyState } from "./Key";
+export { FolderCard, runningLine } from "./FolderCard";
+export { Tab, Tabs, useCmdHeld, type TabItem } from "./Tab";
+export { Mark, Dot, Count, PAINTS, paintAt, windowOf, markOf, type Paint } from "./Signs";
+export { Icon, ICONS, ICON_USE, BoxGlyph, BOX_INSIDE, Progress, type IconName, type BoxInside } from "./icons";

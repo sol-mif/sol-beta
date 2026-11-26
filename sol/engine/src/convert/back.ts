@@ -14,7 +14,7 @@
 // back, and the plan says so. A step whose copy should be there and is not cannot be gone back over: refused.
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { BACKUP_DIR, readVersion, writeVersion, type Ctx, type Manifest } from "./run.js";
+import { BACKUP_DIR, readVersion, writeVersion, type ConvertState, type Ctx, type Manifest } from "./run.js";
 
 export type BackStep = { id: number; step: string; at: string | null; files: { path: string; existed: boolean }[] };
 export type BackPlan = { from: number; to: number; steps: BackStep[]; error?: string };
@@ -115,4 +115,22 @@ export function latestIn(names: string[]): number {
   let n = 0;
   for (const x of names) { const m = /(?:^|\/)(\d{4})-[a-z0-9-]+\.ts$/.exec(x); if (m) n = Math.max(n, Number(m[1])); }
   return n;
+}
+
+/** the keeper's mark that it took the whole Sol back to an older release (engine/keep swap_back: from, to); index.ts
+ *  reads it after this and takes it away */
+export const WENT_BACK = ".went-back";
+
+/** At engine start (#1820, row 3's prerequisite): the data is ahead of this build and the keeper has just gone back to
+ *  it, so a newer release ran its steps and did not start. This (older, trusted) release puts its data back to the
+ *  newest step it knows, the way the pin does (planBack, then backTo, which copies the files as they are first). The
+ *  steps past this build are not in its list, so a step with no copy reads as one that touched nothing; a store it
+ *  changed whose copy is gone stays newer and read-only (next/file.ts). Data ahead with no mark (an older Sol run by
+ *  hand) is left alone. Never throws */
+export function backAtStart(c: Ctx, state: ConvertState): ConvertState {
+  if (!state.ahead || !existsSync(join(c.engine, WENT_BACK))) return state;
+  const plan = planBack(c, state.latest);
+  const r = backTo(c, plan);
+  if (!r.ok) return { ...state, back: { from: plan.from, to: plan.to, error: r.error } };
+  return { ...state, ahead: false, version: plan.to, back: { from: plan.from, to: plan.to, kept: r.kept } };
 }

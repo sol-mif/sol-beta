@@ -6,7 +6,7 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "test": "tsx --test test/*.test.ts src/next/*.test.ts"
+    "test": "tsx --test test/*.test.ts src/next/*.test.ts src/convert/*.test.ts"
   },
   "keywords": [],
   "author": "",

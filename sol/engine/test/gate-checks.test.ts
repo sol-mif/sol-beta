@@ -10,7 +10,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseChecks, checksStep, excusable, judge, gateGreen, runGate, summary, GOO_LEGACY, TOKENS_LEGACY, type GateResult, type Step } from "../src/team/gate.ts";
+import { parseChecks, checksStep, excusable, judge, gateGreen, runGate, summary, GOO_LEGACY, TOKENS_LEGACY, SVG_LEGACY, FONT_LEGACY, type GateResult, type Step } from "../src/team/gate.ts";
 
 // the PR template as PR #868 writes it (.github/PULL_REQUEST_TEMPLATE.md on marco/base-base-chore-three-841), with the
 // three lines of its Checks section handed in
@@ -164,7 +164,11 @@ const greenRepo = (baseline = "") => {
   tool(root, "sol/mac/node_modules/.bin/tsc", "exit 0");
   tool(root, "sol/mac/node_modules/.bin/vite", `mkdir -p "$3" && : > "$3/index.html"`);   // vite build --outDir <dir> …
   for (const f of GOO_LEGACY) put(root, f, "export const b = Ban" + "ds;\n");
-  for (const f of TOKENS_LEGACY) put(root, f, f.endsWith(".css") ? ".a { margin: 6px; }\n" : "export const c = \"#fff\";\n");   // each still typed, so none is gone (#1615)
+  // each listed file still breaks its rule, so none is gone: typed values (#1615), an inline svg, a typed font (#1879)
+  for (const f of new Set([...TOKENS_LEGACY, ...SVG_LEGACY, ...FONT_LEGACY])) {
+    const css = f.endsWith(".css"), held = TOKENS_LEGACY.includes(f), svg = SVG_LEGACY.includes(f), font = FONT_LEGACY.includes(f);
+    put(root, f, css ? `.a { ${held ? "margin: 6px; " : ""}${font ? "font-weight: 600; " : ""}}\n` : `${held ? "export const c = \"#fff\";\n" : ""}${svg ? "export const s = \"<svg/>\";\n" : ""}`);
+  }
   put(root, "x", "1"); sh(root, "add", "-A"); sh(root, "commit", "-qm", "a change");
   return { root, sha: sh(root, "rev-parse", "HEAD") };
 };

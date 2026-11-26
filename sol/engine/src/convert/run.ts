@@ -32,6 +32,11 @@ export type ConvertState = {
   ahead?: boolean;      // the data is newer than this build: nothing ran
   skipped?: string;     // why nothing was looked at (no home folder)
   failed?: { step: string; error: string; restored: boolean };
+  /** the data was ahead and the keeper had gone back (engine/.went-back): put back to `to` at start (back.ts
+   *  backAtStart), `kept` the copy taken first; or why it could not be, and the data stays ahead */
+  back?: { from: number; to: number; kept: string } | { from: number; to: number; error: string };
+  /** stores under next/ newer than this engine knows: read-only here, and `say` is what Sol tells the person */
+  newer?: { stores: string[]; say: string };
   ms: number;
 };
 

@@ -307,7 +307,7 @@ test("the probe runs the guard through the exported settings' own hook: settings
 test("sol/home is the neutral one: a team note or sol-dev's own instructions are refused", () => {
   assert.equal(NEUTRAL_HOME["sol/home/CLAUDE.md"], HOME_TEXT);
   assert.equal(NEUTRAL_HOME["sol/home/AGENTS.md"], HOME_TEXT, "the same text for both seats");
-  assert.deepEqual(Object.keys(NEUTRAL_HOME).sort(), ["sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/life/.keep", "sol/home/memory/.keep"]);
+  assert.deepEqual(Object.keys(NEUTRAL_HOME).sort(), ["sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/memory/.keep"]);
   assert.doesNotMatch(HOME_TEXT, /Marco|\bhis\b|\bhe\b|LA245|kimi/i, "no name, no person's class, no one machine's skill");
   assert.match(leakIn([f("sol/home/team-notes.md", "who does what\n")]) ?? "", /^sol\/home\/team-notes\.md: not the neutral home/);
   assert.equal(leakIn([f("sol/home/CLAUDE.md", "You are Sol, someone's own surface.\n")]), "sol/home/CLAUDE.md: not the neutral home's text");
@@ -430,7 +430,7 @@ function house() {
   put(repo, ".claude/settings.json", SETTINGS);
   put(repo, "sol/home/CLAUDE.md", "You are Sol, Robin's own surface.\n");
   put(repo, "sol/home/AGENTS.md", "You are Sol, Robin's own surface.\n");
-  put(repo, "sol/home/life/.keep", ""); put(repo, "sol/home/memory/.keep", "");
+  put(repo, "sol/home/memory/.keep", "");
   put(repo, "sol/home/team-notes.md", "who holds what tonight\n");
   put(repo, "docs/people/robin.md", PERSON);
   put(repo, "sol/skills/sol/SKILL.md", "---\nname: sol\n---\nChange how Sol looks.\n");
@@ -443,7 +443,7 @@ test("the export writes the neutral home, never sol-dev's, and refuses a planted
   const { commit } = await exportTree(join(repo, "sol"), git(repo, "rev-parse", "HEAD"), "dev-20261031");
   const files = git(repo, "ls-tree", "-r", "--name-only", commit).split("\n").sort();
   assert.deepEqual(files, [".claude/settings.json", "README.md", "sol/engine/src/index.ts", ...HARNESS_PATHS,
-    "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/life/.keep", "sol/home/memory/.keep", "sol/skills/sol/SKILL.md"].sort());
+    "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/memory/.keep", "sol/skills/sol/SKILL.md"].sort());
   assert.equal(git(repo, "show", `${commit}:sol/home/CLAUDE.md`), HOME_TEXT.trim(), "the neutral home, not Robin's");
   assert.equal(git(repo, "show", `${commit}:sol/home/AGENTS.md`), HOME_TEXT.trim());
   assert.equal(git(repo, "show", `${commit}:sol/harness/guard`), GUARD.trim(), "the guard goes as it is: its own check switches the team off");

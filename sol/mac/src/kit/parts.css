@@ -1,0 +1,120 @@
+/* The frame's kit parts (#1879 step 0): Group, StickerCard, BoxIcon, Key, FolderCard, Tab and the icons, as the frame
+   drawing has them (decisions.md 2026-11-25: the sidebar, both states). Every value is a token from
+   sol/design/system/tokens.json (next, written to kit/next.css under [data-face="next"]) or the palette's scale; the gate
+   holds this file to it (LOOK_FILES, LAYOUT_FILES). Only transform and opacity move (decisions.md 2026-11-25, motion). */
+
+/* ---- type: Allo pop, names at the display weight and roundness 100, reading text at 50 ---- */
+.kp-part { --icon-cut: var(--card); font-family: var(--family); font-weight: var(--weight-read); font-variation-settings: "ROND" var(--round-read); color: var(--text); }
+.kp-label { font-size: var(--label-size); font-weight: var(--weight-ui); letter-spacing: var(--label-track); text-transform: var(--label-case); color: var(--text3); }
+.kp-name { font-weight: var(--weight-display); font-variation-settings: "ROND" var(--round-name); letter-spacing: var(--name-k); }
+
+/* ---- icons ---- */
+.kp-icon { width: var(--icon); height: var(--icon); flex: none; display: block; overflow: visible; }
+.kp-icon-s { width: var(--icon-s); height: var(--icon-s); }
+.kp-icon-day { font-family: var(--family); font-weight: var(--weight-display); font-size: var(--label-size); font-variation-settings: "ROND" var(--round-name); fill: currentColor; }
+.kp-ring { width: var(--text-name); height: var(--text-name); flex: none; display: block; }
+.kp-ring-s { width: var(--text-line); height: var(--text-line); }
+.kp-ring-track { stroke: var(--hairline); }
+.kp-ring-run { stroke: var(--signal-good); }
+
+/* ---- signs: a folder's mark, the asks dot, a count ---- */
+.kp-mark { width: var(--mark); height: var(--mark); border-radius: var(--r-mark); flex: none; display: inline-block; box-shadow: var(--mark-edge); }
+.kp-mark-s { width: var(--mark-s); height: var(--mark-s); border-radius: var(--r-mark-s); }
+.kp-mark-tiny { width: var(--mark-tiny); height: var(--mark-tiny); border-radius: var(--r-mark-tiny); }
+.kp-dot { width: var(--dot); height: var(--dot); border-radius: 50%; display: inline-block; flex: none; background: var(--signal-asks); }
+.kp-count { font-style: normal; font-size: var(--label-size); font-weight: var(--weight-display); font-variant-numeric: var(--figures); color: var(--text); background: var(--signal-asks-soft);
+  border-radius: var(--r-pill); min-width: var(--count-h); height: var(--count-h); display: inline-grid; place-items: center; padding: 0 var(--s1); box-sizing: border-box; }
+
+/* ---- Group: white, a hairline, its label inside, at most 4 in a 2×2 grid, then "N more" ---- */
+.kp-group { background: var(--card); border-radius: var(--r-group); padding: 0 var(--group-pad) var(--group-pad); box-shadow: var(--group-edge); flex: none; }
+.kp-group + .kp-group { margin-top: var(--group-gap); }
+.kp-group-head { display: flex; justify-content: space-between; align-items: center; padding: var(--group-head) var(--s1) var(--s2); }
+.kp-group-head em { font-style: normal; color: var(--text2); margin-left: var(--s1); }
+.kp-group-aside { display: flex; align-items: center; gap: var(--s1); font-size: var(--text-line); color: var(--text3); }
+.kp-group-aside b { color: var(--text2); font-weight: var(--weight-display); }
+.kp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--grid-gap); }
+.kp-grid > * { min-width: 0; }
+.kp-more { all: unset; box-sizing: border-box; cursor: pointer; display: flex; width: 100%; align-items: center; gap: var(--s2); margin-top: var(--group-pad); padding: var(--s2) var(--s1) 0;
+  font-family: var(--family); font-size: var(--text-more); font-weight: var(--weight-ui); color: var(--text2); }
+.kp-more:hover { color: var(--text); }
+.kp-more > span:first-child { white-space: nowrap; }
+.kp-more-marks { display: flex; gap: var(--s1); margin-left: auto; }
+.kp-more-go { color: var(--text3); }
+.kp-group-quiet { padding: 0 var(--s1) var(--s2); font-size: var(--text-line); color: var(--text3); }
+
+/* ---- StickerCard: pressed onto the page, a white cut edge and a tight shadow; hover peels it, a press presses it flat ---- */
+.kp-card { all: unset; box-sizing: border-box; position: relative; display: block; background: var(--card); border-radius: var(--r-sticker); box-shadow: var(--depth-rest), var(--rim);
+  cursor: pointer; transform: rotate(0deg); transform-origin: var(--peel-origin); transition: transform var(--move-time) var(--move), opacity var(--fade-time) var(--fade); }
+.kp-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: var(--depth-peel); opacity: 0; pointer-events: none; transition: opacity var(--move-time) var(--fade); }
+.kp-peel:hover, .kp-peel.kp-is-hover { transform: var(--peeled); z-index: 5; }
+.kp-peel:hover::after, .kp-peel.kp-is-hover::after { opacity: 1; }
+.kp-peel:active { transform: var(--pressed); transition-duration: var(--snap-time); transition-timing-function: var(--snap); }
+.kp-flat:hover, .kp-flat.kp-is-hover { transform: var(--nudged); z-index: 4; }
+.kp-flat:active { transform: var(--squeezed); transition-duration: var(--snap-time); }
+/* a card dealt in: from above, big and tilted, landing on the land spring one after another (--n, its place) */
+.kp-deal .kp-card { transition: transform var(--land-time) var(--land), opacity var(--fade-time) var(--fade); transition-delay: calc(var(--n, 0) * var(--land-gap) + var(--land-wait)); }
+.kp-dealt-out .kp-card { opacity: 0; transform: var(--land-from) rotate(var(--tilt, 0deg)); }
+
+/* ---- BoxIcon: the lid lifts ajar on hover, swings open on a press, with an overshoot; the glyph rises under it ---- */
+.kp-check-box { display: inline-block; }
+.kp-box { width: var(--icon-box); height: var(--icon-box); }
+.kp-box .kp-lid { transform-box: view-box; transform-origin: var(--lid-hinge); transition: transform var(--lid-time) var(--overshoot); }
+.kp-box .kp-glyph { transform-box: view-box; transform-origin: var(--glyph-pivot); transition: transform var(--lid-time) var(--overshoot) var(--lid-lag); }
+.kp-check:hover .kp-lid, .kp-check.kp-is-hover .kp-lid, .kp-check-box:hover .kp-lid { transform: var(--lid-ajar); }
+.kp-check:hover .kp-glyph, .kp-check.kp-is-hover .kp-glyph, .kp-check-box:hover .kp-glyph { transform: var(--glyph-rise); }
+.kp-check:active .kp-lid, .kp-open .kp-lid { transform: var(--lid-open); transition-duration: var(--lid-snap); }
+.kp-check:active .kp-glyph, .kp-open .kp-glyph { transform: var(--glyph-out); transition-duration: var(--lid-snap); transition-delay: initial; }
+.kp-check { height: var(--check-h); padding: var(--s2) var(--card-pad); display: flex; flex-direction: column; justify-content: space-between; }
+.kp-check-top { display: flex; align-items: center; justify-content: space-between; color: var(--text); }
+.kp-check-top b { font-weight: var(--weight-display); font-size: var(--text-count); line-height: 1; font-variation-settings: "ROND" var(--round-name); font-variant-numeric: var(--figures); letter-spacing: var(--title-k); }
+.kp-check-name { font-size: var(--t-pill); font-weight: var(--weight-ui); color: var(--text2); white-space: nowrap; }
+.kp-check.kp-zero { color: var(--text3); }
+.kp-check.kp-zero .kp-check-top { color: var(--text3); }
+.kp-tip { position: absolute; left: 50%; bottom: 100%; margin-bottom: var(--s2); transform: translateX(-50%) translateY(var(--s1)); white-space: nowrap; background: var(--solid); color: var(--on-solid);
+  font-size: var(--text-line); font-weight: var(--weight-ui); padding: var(--s1) var(--s2); border-radius: var(--r-tip); opacity: 0; pointer-events: none;
+  transition: opacity var(--fade-time) var(--fade), transform var(--move-time) var(--move); z-index: 6; }
+.kp-check:hover .kp-tip, .kp-check.kp-is-hover .kp-tip { opacity: 1; transform: translateX(-50%); }
+
+/* ---- Key: a live session's round key, its folder's window as a band, one state line, the question on a slip ---- */
+.kp-key { padding: var(--key-top) var(--card-pad) var(--card-pad); }
+.kp-band { position: absolute; left: 0; right: 0; top: 0; height: var(--band-h); border-radius: var(--r-sticker) var(--r-sticker) 0 0; background-size: 100% var(--paint-h); }
+.kp-key-name { display: block; font-size: var(--text-name); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kp-state { display: flex; align-items: center; gap: var(--s1); font-size: var(--text-line); color: var(--text2); margin-top: var(--s1); font-variant-numeric: var(--figures); white-space: nowrap; }
+.kp-state .kp-count { margin-left: auto; }
+.kp-slip { position: absolute; left: calc(100% + var(--slip-off)); top: 0; width: var(--slip-w); box-sizing: border-box; background: var(--card); border-radius: var(--r-slip); padding: var(--card-pad) var(--s3);
+  box-shadow: var(--depth-float), var(--rim); opacity: 0; pointer-events: none; transform: var(--slip-from); transform-origin: 0 30%;
+  transition: transform var(--land-time) var(--land), opacity var(--fade-time) var(--fade); z-index: 7; }
+.kp-slip .kp-label { display: flex; align-items: center; gap: var(--s1); }
+.kp-slip p { margin: var(--s1) 0 0; font-size: var(--t-head); line-height: var(--t-label-line); color: var(--text); font-weight: var(--weight-read); white-space: normal; }
+.kp-grid > .kp-key:nth-child(odd) .kp-slip { left: calc(200% + var(--grid-gap) + var(--slip-off)); }
+.kp-key:hover .kp-slip, .kp-key.kp-is-hover .kp-slip { opacity: 1; transform: var(--slip-tilt); }
+
+/* ---- FolderCard: a folder with sessions, wearing its folder's window; the window opens a little on hover ---- */
+.kp-folder { display: flex; flex-direction: column; height: var(--folder-h); padding: var(--folder-top) var(--card-pad) var(--s2); overflow: hidden; }
+.kp-window { position: absolute; left: 0; right: 0; top: 0; height: var(--window-h); background-size: 100% var(--paint-h); transform-origin: 50% 0;
+  transition: transform var(--move-time) var(--move); }
+.kp-folder:hover .kp-window, .kp-folder.kp-is-hover .kp-window { transform: scaleY(calc(var(--window-lift) / var(--window-h))); }
+.kp-folder-name { font-size: var(--text-name); }
+.kp-folder .kp-state { margin-top: var(--hair); }
+.kp-folder .kp-run { display: flex; align-items: center; gap: var(--s1); margin-left: var(--s1); }
+
+/* ---- Tab: an icon slot, the tab in front on the ground; while ⌘ is held the slot shows its digit ---- */
+.kp-tabs { height: var(--tabs-h); display: flex; align-items: flex-end; gap: var(--hair); padding: 0 var(--s3); background: var(--sidebar); border-bottom: var(--hair) solid var(--hairline); }
+.kp-tab { all: unset; box-sizing: border-box; height: var(--tab-h); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--tab-pad); border-radius: var(--r-tab) var(--r-tab) 0 0;
+  font-family: var(--family); font-size: var(--text-tab); font-weight: var(--weight-ui); color: var(--text2); cursor: pointer; position: relative; transition: background var(--snap-time) var(--snap); }
+.kp-tab:hover { background: var(--hover-tint); }
+.kp-tab.kp-front { --icon-cut: var(--ground); background: var(--ground); color: var(--text); box-shadow: var(--tab-edge); clip-path: inset(-50% -50% 0 -50%); }
+.kp-tab-slot { position: relative; width: var(--icon-s); height: var(--icon-s); flex: none; display: grid; place-items: center; }
+.kp-tab-slot > .kp-icon, .kp-tab-slot > .kp-mark { transition: opacity var(--fade-quick) var(--fade); }
+.kp-digit { position: absolute; left: 50%; top: 50%; min-width: var(--digit-w); height: var(--digit-w); box-sizing: border-box; display: grid; place-items: center; translate: -50% -50%;
+  font-style: normal; font-size: var(--label-size); font-weight: var(--weight-display); line-height: 1; font-variant-numeric: var(--figures);
+  color: var(--on-solid); background: var(--solid); border-radius: var(--r-digit); opacity: 0; pointer-events: none; transform: var(--digit-from);
+  transition: opacity var(--fade-quick) var(--fade), transform var(--move-time) var(--move); }
+.kp-held .kp-tab .kp-digit { opacity: 1; transform: none; }
+.kp-held .kp-tab:has(.kp-digit) .kp-tab-slot > .kp-icon, .kp-held .kp-tab:has(.kp-digit) .kp-tab-slot > .kp-mark { opacity: 0; }
+.kp-tab-close { color: var(--text3); opacity: 0; transition: opacity var(--fade-time) var(--fade); }
+.kp-tab:hover .kp-tab-close, .kp-tab.kp-front .kp-tab-close { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kp-card, .kp-card::after, .kp-box .kp-lid, .kp-box .kp-glyph, .kp-slip, .kp-window, .kp-digit, .kp-tip { transition-property: opacity; }
+}

@@ -38,7 +38,7 @@ export type Free = "ask" | "edits";
 export type Renewal = { at: number; from: string; to: string; why: "full" | "asked"; context: number; window: number; file: string; carried: string[]; dropped: string[]; sessions: number };
 
 /** for the tests: forget what was read, so the next read is the file's */
-export const _reload = () => { orch = null; reopening.clear(); };
+export const _reload = () => { orch = null; reopening.clear(); owed.clear(); heardTickets = undefined; };
 
 // ---- what the engine gives this file (wire.ts sets it: the bus, the runs, the list), so nothing here imports wire.ts
 export type RunLike = { /** the folder it runs in (a side copy when the engine made one) */ cwd?: string; busy: boolean; perms: { size: number }; tasks: unknown[]; working: boolean; since?: number; stop: () => Promise<void> | void; items: { list: { id?: string; kind: string; text?: unknown; tool?: unknown; name?: unknown; state?: unknown; input?: unknown }[] };
@@ -226,8 +226,49 @@ export function setTickets(on: boolean) {
   if (was === on) return { changed: false };
   if (on) f.tickets = true; else delete f.tickets;
   saveOrch();
-  for (const o of f.orchestrators) { if (o.anchor) continue; giveOrchestrationTools(o.sessionId); void reopen(o.sessionId, on ? TICKETS_ON : TICKETS_OFF).catch(() => {}); }
+  const told = f.orchestrators.filter((o) => !o.anchor);
+  for (const o of told) giveOrchestrationTools(o.sessionId);
+  // only the awake ones get the switch as a turn (#1808): the first sync after an update flipped it and woke six idle ones.
+  // Turned several times while the sessions are read, only the last counts, and only when it differs from what was said
+  heardTickets ??= was;
+  const gen = ++switchGen;
+  void awake(told).then((up) => {
+    if (gen !== switchGen || ticketsOn() === heardTickets) return;
+    heardTickets = ticketsOn();
+    for (const o of told) if (orchOf(o.sessionId) && !isAnchor(o.sessionId)) void tellOrOwe(o.sessionId, heardTickets ? TICKETS_ON : TICKETS_OFF, up.has(o.sessionId)).catch(() => {});
+  }).catch(() => {});
   return { changed: true };
+}
+
+// ---- a switch reaches the awake sessions only (#1808): an update's first sync, or a press, never wakes the idle ones.
+//  An idle one gets its tools at once (giveOrchestrationTools) and the words with the person's next message to it (owed).
+//  Kept in memory only: after a restart an owed word is gone, and its tools still say the way it works now.
+/** awake: its run is open, or it had a turn (or its promote) within WAKE_MS */
+let WAKE_MS = 3 * 3_600_000;
+export const _wakeMs = (ms: number) => { WAKE_MS = ms; };   // for the tests
+const owed = new Map<string, string>();
+/** the switch as the sessions were last told it (said or owed), and which turn of it is the latest */
+let heardTickets: boolean | undefined, switchGen = 0;
+async function awake(os: { sessionId: string; at?: number }[]): Promise<Set<string>> {
+  const rows = os.length ? await deps?.sessions().catch(() => [] as SessionLike[]) ?? [] : [];
+  const last = new Map(rows.map((s) => [s.id, s.updatedAt]));
+  const now = Date.now();
+  return new Set(os.filter((o) => deps?.run(o.sessionId) || now - Math.max(last.get(o.sessionId) ?? 0, o.at ?? 0) < WAKE_MS).map((o) => o.sessionId));
+}
+const TICKETS_HEAD = /^<tickets (on|off)>/;
+/** said now as a turn when awake; else owed. A switch owed and then turned back is nothing owed (it never heard either) */
+async function tellOrOwe(id: string, text: string, now: boolean) {
+  if (now) { owed.delete(id); return reopen(id, text); }
+  const was = owed.get(id)?.match(TICKETS_HEAD)?.[1], is = text.match(TICKETS_HEAD)?.[1];
+  if (was && is && was !== is) owed.delete(id); else owed.set(id, text);
+}
+/** what a session is owed, taken: it goes with the person's next message to it, before their words and never in their
+ *  own line (wire.ts work.say sets it as WorkSay.owed, runs.ts reads it as `here`) */
+export function owedTo(id: string): string {
+  const t = owed.get(id);
+  if (!t) return "";
+  owed.delete(id);
+  return `(Sol, while you were idle) ${t.replace(/\s*Answer with one line: ready\.$/, "")}`;
 }
 export const ticketsOn = () => !!orchFile().tickets;
 /** an orchestration session with tickets on: it routes the person's words to tickets and starts or messages no session itself */
@@ -478,6 +519,7 @@ export async function promote(id: string): Promise<{ promoted: boolean; adopted?
   saveOrch();
   mark(id, { kind: "orchestration" });
   giveOrchestrationTools(id);
+  owed.delete(id);   // the promote's words say the way it works now
   await reopen(id, promoted());
   tellKept();
   return { promoted: true, ...(adopted.length ? { adopted } : {}) };
@@ -485,7 +527,7 @@ export async function promote(id: string): Promise<{ promoted: boolean; adopted?
 /** demote: a normal session again; its tools taken back, its renewal stopped, the sessions under it let loose */
 export async function demote(id: string): Promise<{ demoted: boolean; loose: string[] }> {
   if (isAnchor(id)) return { demoted: false, loose: [] };   // the anchor is no orchestration session: nothing to take off
-  const o = orchFile(), was = o.orchestrators.length;
+  const o = orchFile(), was = o.orchestrators.length, rec = orchOf(id);
   o.orchestrators = o.orchestrators.filter((x) => x.sessionId !== id);
   if (o.orchestrators.length !== was) saveOrch();
   const kind = workState().marks[id]?.kind === "orchestration";
@@ -496,7 +538,8 @@ export async function demote(id: string): Promise<{ demoted: boolean; loose: str
   const loose = Object.entries(workState().marks).filter(([, v]) => (v as { under?: string } | undefined)?.under === id).map(([k]) => k);
   for (const k of loose) mark(k, { under: null });
   for (const [k, v] of heard) if (v === id) heard.delete(k);
-  await reopen(id, DEMOTED(loose.length));
+  // an idle one is not woken for it (#1808): its tools are gone already, the words wait for the person's next message
+  await tellOrOwe(id, DEMOTED(loose.length), (await awake([{ sessionId: id, at: rec?.at }])).has(id));
   tellKept();
   return { demoted: true, loose };
 }

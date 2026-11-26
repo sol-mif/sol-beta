@@ -4,7 +4,6 @@
 # script is one function called on its last line, so a download cut short runs nothing.
 #
 # What it does, one line printed per step (ok, or what is missing and the one thing to do; run again, a done step skips):
-#   0. Mac: stops, fetching nothing, below macOS 13.5 (#1912); on 13.x one line says what needs 14
 #   1. stops, changing nothing, when a Sol is already here (a root file, an engine job, the folder holding a checkout)
 #   2. the folder, ~/Sol (SOL_DIR)
 #   3. Mac: Apple's developer tools when missing (git needs them); Linux: git
@@ -20,8 +19,8 @@
 #      /Applications (SOL_APP_DIR), and opened (SOL_NO_OPEN=1 skips the open; SOL_SKIP_APP=1 skips the step)
 #  10. Linux and WSL: no app; the face is in the browser (sol/setup's own end)
 # Questions are asked on /dev/tty (piped from curl, stdin is this script). `--check` says what it finds and what it
-# would do, and changes nothing. Test overrides: SOL_NODE_SHA256 (the expected checksum), SOL_MACOS_VERSION (the Mac's
-# macOS, step 0), SOL_PORT (a spare engine, no job; sol/setup's own rule).
+# would do, and changes nothing. Test overrides: SOL_NODE_SHA256 (the expected checksum), SOL_PORT (a spare engine,
+# no job; sol/setup's own rule).
 sol_install() {
   set -u
   NODE_V=24.22.1   # the LTS of 2026-10 (Krypton); the checksums are nodejs.org's SHASUMS256.txt for this version
@@ -53,24 +52,6 @@ sol_install() {
     x86_64|amd64) arch=x64 ;;
     *) echo "install: no Node build for $(uname -m)" >&2; return 2 ;;
   esac
-  # the oldest macOS Sol runs on (#1912): Node $NODE_V is built for macOS 13.5 and later, so on an older Mac the engine
-  # never starts and Sol.app opens on nothing; stopped here, before anything is fetched. 13.x runs, with two things off
-  # (pages inside Sol need 14, thing.rs; the browser Sol drives has no Playwright build below 14). SOL_MACOS_VERSION: tests
-  macos=""; macos13=""
-  if [ -n "$mac" ]; then
-    macos=${SOL_MACOS_VERSION:-$(sw_vers -productVersion 2>/dev/null)}
-    mj=${macos%%.*}; mn=${macos#"$mj"}; mn=${mn#.}; mn=${mn%%.*}
-    case $mn in ''|*[!0-9]*) mn=0 ;; esac
-    case $mj in
-      ''|*[!0-9]*) ;;   # no version read: no guess, the install goes on
-      *) if [ "$mj" -lt 13 ] || { [ "$mj" -eq 13 ] && [ "$mn" -lt 5 ]; }; then
-           # one MISS line on stdout: Sol.app's first run shows a MISS line as the reason it stopped (onboard/install.ts)
-           echo "  MISS  Sol needs macOS 13.5 or later (14 or later for all of it), and this Mac has macOS $macos: update macOS in Software Update, then run this again (a Mac that cannot update to 13.5 cannot run Sol)"
-           return 2
-         fi
-         [ "$mj" -eq 13 ] && macos13=1 ;;
-    esac
-  fi
   tty=""; { : </dev/tty; } 2>/dev/null && [ -z "${SOL_NO_TTY:-}" ] && tty=1   # a person at a terminal: only then is anything asked
 
   ok()   { echo "  ok    $*"; }
@@ -100,7 +81,6 @@ sol_install() {
   tilde() { case $1 in "$HOME"/*) echo "~${1#"$HOME"}" ;; *) echo "$1" ;; esac; }
 
   echo "== Sol"
-  [ -n "$macos13" ] && ok "macOS $macos runs Sol; on macOS 14 or later, pages also open inside Sol and Sol can drive its own browser"
   # ---- 1. a Sol already here: nothing moves ----
   here=""; how=""
   if [ -n "$mac" ] && [ -f "$CFG/root" ]; then

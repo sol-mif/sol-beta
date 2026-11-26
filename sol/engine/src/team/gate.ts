@@ -283,7 +283,8 @@ const ONLY_SKIP = /\b(?:test|it|describe|suite|context|t)\.(?:only|skip|todo)\s*
 // is a variable from the scale (sol/design/system/tokens.json, palette → palette.css), never a typed number. 0 and a 1px hairline stay
 // allowed, and so does anything relative (%, fr, vw, vh). Widen LAYOUT_FILES as each area is rebuilt.
 // The new face (#1604, sol/mac/src/next) is held by both, at any depth, from its first file (#1615).
-export const LAYOUT_FILES = /^sol\/mac\/src\/(?:home\/[^/]+|next\/.+)\.css$/;
+// The frame's kit parts' style sheet (#1879, kit/parts.css) is held too: a part is tokens only.
+export const LAYOUT_FILES = /^sol\/mac\/src\/(?:home\/[^/]+|next\/.+|kit\/parts)\.css$/;
 const LAYOUT_PROPS = /^(?:padding|margin|gap|row-gap|column-gap|inset|top|right|bottom|left|border-radius|border-[a-z]+-radius|font-size|line-height|height|min-height|max-height|font)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?$/;
 /** the typed numbers in a css file's layout declarations, each with its line (pure) */
 export function layoutValues(css: string): { line: number; decl: string }[] {
@@ -307,7 +308,8 @@ export function layoutValues(css: string): { line: number; decl: string }[] {
 // A mask's colour is only its alpha, so masks are left alone. In code: the same inside a string, a timer's typed delay
 // (setTimeout(f, 160)), and a typed duration, delay or corner in an object (`duration: 200`, `borderRadius: 4`).
 // Widen LOOK_FILES as each area is rebuilt.
-export const LOOK_FILES = /^sol\/mac\/src\/(?:home\/[^/]+|next\/.+)\.(?:css|tsx?)$/;
+// The frame's kit parts (#1879: KIT_PARTS and the icon module) are held too.
+export const LOOK_FILES = /^sol\/mac\/src\/(?:home\/[^/]+|next\/.+)\.(?:css|tsx?)$|^sol\/mac\/src\/kit\/(?:parts\.css|icons\.tsx|Signs\.tsx|Group\.tsx|StickerCard\.tsx|BoxIcon\.tsx|Key\.tsx|FolderCard\.tsx|Tab\.tsx)$/;
 const COLOUR = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|(?<![\w-])(?:black|white|red|green|blue|gray|grey|yellow|orange|purple|pink|silver)(?![\w-])/;
 const DURATION = /(?<![\w.#-])\d*\.?\d+m?s(?![\w-])/;
 const EASING = /(?<![\w-])(?:ease(?:-in-out|-in|-out)?|linear|step-start|step-end)(?![\w-])|\b(?:cubic-bezier|steps|linear)\(/;
@@ -514,13 +516,173 @@ export function gooFindings(files: string[], read: (f: string) => Buffer | null,
   return out;
 }
 
+// the kit enforced (#1879 step 0, sol/skills/kit): the new face draws from the kit's parts, its tokens and its one icon
+// module, so the look a person sees is the one decided (sol/design/decisions.md). Refused under sol/mac/src/next (code
+// and css, tests aside) and in the frame's kit parts (KIT_PARTS):
+//   an inline <svg> outside the icon module (sol/mac/src/kit/icons.tsx): an icon is drawn once, there, and named;
+//   a typed font family or weight: font-family, font-weight and the font shorthand take var(--family), var(--weight-ui) …
+//   (tokens.json next.font), or inherit; in code fontFamily and fontWeight the same, as a "var(--…)" string.
+// The files that broke a rule when it landed (2026-11-25) are SVG_LEGACY and FONT_LEGACY. Like TOKENS_LEGACY they only
+// shrink: a listed file that no longer breaks it, or is gone, fails until it is taken off, and a name added to any of the
+// three lists that main's gate.ts does not hold is refused (legacyGrown), so a list grows only by a change to main itself.
+export const ICON_MODULE = "sol/mac/src/kit/icons.tsx";
+export const KIT_PARTS = /^sol\/mac\/src\/kit\/(?:parts\.css|Signs\.tsx|Group\.tsx|StickerCard\.tsx|BoxIcon\.tsx|Key\.tsx|FolderCard\.tsx|Tab\.tsx)$/;
+const KIT_HELD = /^sol\/mac\/src\/next\/.+\.(?:css|tsx?|jsx?)$/;
+const kitHeld = (f: string) => (KIT_HELD.test(f) || KIT_PARTS.test(f)) && !TEST_FILE.test(f);
+/** comments blanked, lines kept (pure): css's block comments, and in code the line comments too */
+function uncomment(text: string, code: boolean): string {
+  const blank = (c: string) => c.replace(/[^\n]/g, " ");
+  const t = text.replace(/\/\*[\s\S]*?\*\//g, blank);
+  return code ? t.replace(/(^|[^:"'`\\])\/\/[^\n]*/g, (c, pre) => pre + blank(c.slice(pre.length))) : t;
+}
+/** the first inline <svg in a file, its line, or 0 (pure) */
+export function svgLine(text: string, code = true): number {
+  const t = uncomment(text, code), i = t.search(/<svg\b/i);
+  return i < 0 ? 0 : t.slice(0, i).split("\n").length;
+}
+const FONT_KEYWORD = /^(?:inherit|initial|unset|revert)$/;
+const WEIGHT_WORD = /^(?:[1-9]00|bold|bolder|lighter|normal)$/;
+const SIZE_WORD = /^(?:-?[\d.]+(?:px|em|rem|%)?)?(?:\/[\d.]+(?:px|em|rem|%)?)?$/;   // a size, a /line-height, or both
+const noVar = (v: string) => v.replace(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g, " ").trim();
+/** the typed font families and weights in one file, each with its line (pure); `code` for tsx and ts */
+export function fontValues(text: string, code = false): { line: number; decl: string }[] {
+  const out: { line: number; decl: string }[] = [], t = uncomment(text, code);
+  const lineOf = (i: number) => t.slice(0, i).split("\n").length;
+  if (!code) {
+    for (let re = /(^|[{;\s])(font-family|font-weight|font)\s*:\s*([^;{}]+)/g, m; (m = re.exec(t)); ) {
+      const bare = noVar(m[3].replace(/!important/, "")), words = bare.split(/[\s,]+/).filter(Boolean);
+      if (!bare || FONT_KEYWORD.test(bare)) continue;
+      const typed = m[2] !== "font" ? true : words.some((w) => WEIGHT_WORD.test(w)) || !SIZE_WORD.test(words[words.length - 1]) && !/^(?:italic|normal|small-caps)$/.test(words[words.length - 1]);
+      if (typed) out.push({ line: lineOf(m.index + m[1].length), decl: `${m[2]}: ${m[3].trim()}`.slice(0, 80) });
+    }
+    return out;
+  }
+  for (let re = /\b(fontFamily|fontWeight|font-family|font-weight)\s*[:=]\s*\{?\s*("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\d+)/g, m; (m = re.exec(t)); ) {
+    const v = /^\d/.test(m[2]) ? m[2] : m[2].slice(1, -1), bare = noVar(v);
+    if (bare && !FONT_KEYWORD.test(bare)) out.push({ line: lineOf(m.index), decl: `${m[1]}: ${m[2]}`.slice(0, 80) });
+  }
+  // css written inside a string (a style sheet in code): its declarations too
+  for (let re = /(font-family|font-weight)\s*:\s*([^;"'`}\n]+)/g, m; (m = re.exec(t)); ) {
+    if (out.some((o) => o.line === lineOf(m!.index))) continue;
+    const bare = noVar(m[2]);
+    if (bare && !FONT_KEYWORD.test(bare) && !/^\$\{/.test(bare)) out.push({ line: lineOf(m.index), decl: `${m[1]}: ${m[2].trim()}`.slice(0, 80) });
+  }
+  return out.sort((a, b) => a.line - b.line);
+}
+// the files under next/ that held an inline <svg or a typed font when the kit was enforced (2026-11-25, #1879)
+export const SVG_LEGACY: readonly string[] = [
+  "sol/mac/src/next/add/Add.tsx",
+  "sol/mac/src/next/auto/index.tsx",
+  "sol/mac/src/next/bar/Bar.tsx",
+  "sol/mac/src/next/because/Because.tsx",
+  "sol/mac/src/next/cowork/Cowork.tsx",
+  "sol/mac/src/next/diary/index.tsx",
+  "sol/mac/src/next/fits/views.tsx",
+  "sol/mac/src/next/markup/Attach.tsx",
+  "sol/mac/src/next/markup/MarkBar.tsx",
+  "sol/mac/src/next/movein/Lead.tsx",
+  "sol/mac/src/next/movein/Startup.tsx",
+  "sol/mac/src/next/movein/index.tsx",
+  "sol/mac/src/next/movein/parts.tsx",
+  "sol/mac/src/next/movein/you/Circle.tsx",
+  "sol/mac/src/next/movein/you/You.tsx",
+  "sol/mac/src/next/near/index.tsx",
+  "sol/mac/src/next/needs/Row.tsx",
+  "sol/mac/src/next/pieces/Page.tsx",
+  "sol/mac/src/next/pieces/Seen.tsx",
+  "sol/mac/src/next/plane/index.tsx",
+  "sol/mac/src/next/session/Port.tsx",
+  "sol/mac/src/next/social/Social.tsx",
+  "sol/mac/src/next/tabs/Tabs.tsx",
+];
+export const FONT_LEGACY: readonly string[] = [
+  "sol/mac/src/next/agent/agent.css",
+  "sol/mac/src/next/ais/ais.css",
+  "sol/mac/src/next/atwork/atwork.css",
+  "sol/mac/src/next/auto/auto.css",
+  "sol/mac/src/next/bar/bar.css",
+  "sol/mac/src/next/because/because.css",
+  "sol/mac/src/next/collection.css",
+  "sol/mac/src/next/cowork/cowork.css",
+  "sol/mac/src/next/diary/diary.css",
+  "sol/mac/src/next/fitmode/fitmode.css",
+  "sol/mac/src/next/fits/fits.css",
+  "sol/mac/src/next/folder/parts/parts.css",
+  "sol/mac/src/next/folder/setup/setup.css",
+  "sol/mac/src/next/kept/kept.css",
+  "sol/mac/src/next/lead/lead.css",
+  "sol/mac/src/next/learn/learn.css",
+  "sol/mac/src/next/life/life.css",
+  "sol/mac/src/next/markup/markup.css",
+  "sol/mac/src/next/movein/migration.css",
+  "sol/mac/src/next/movein/movein.css",
+  "sol/mac/src/next/movein/startup.css",
+  "sol/mac/src/next/movein/you/known.css",
+  "sol/mac/src/next/movein/you/you.css",
+  "sol/mac/src/next/near/near.css",
+  "sol/mac/src/next/needs/needs.css",
+  "sol/mac/src/next/next.css",
+  "sol/mac/src/next/notes/notes.css",
+  "sol/mac/src/next/people/people.css",
+  "sol/mac/src/next/pieces/pieces.css",
+  "sol/mac/src/next/plane/folder.css",
+  "sol/mac/src/next/plane/group.css",
+  "sol/mac/src/next/plane/pieces.css",
+  "sol/mac/src/next/plane/plane.css",
+  "sol/mac/src/next/plane/raise.css",
+  "sol/mac/src/next/session/port.css",
+  "sol/mac/src/next/session/session.css",
+  "sol/mac/src/next/settings/seats/seats.css",
+  "sol/mac/src/next/settings/settings.css",
+  "sol/mac/src/next/social/social.css",
+  "sol/mac/src/next/tabs/tabs.css",
+  "sol/mac/src/next/tips/tips.css",
+  "sol/mac/src/next/work/work.css",
+  "sol/mac/src/next/workspace/workspace.css",
+];
+/** the kit's findings over the tree (pure on its inputs): ids `lint:inline-svg:<file>`, `lint:font-value:<file>`, and
+ *  `lint:svg-legacy-gone:<file>` / `lint:font-legacy-gone:<file>` for a listed file now clean or gone */
+export function kitFindings(files: string[], read: (f: string) => Buffer | null, svgLegacy: readonly string[] = SVG_LEGACY, fontLegacy: readonly string[] = FONT_LEGACY): { id: string; line: string }[] {
+  const out: { id: string; line: string }[] = [], svgKept = new Set(svgLegacy), fontKept = new Set(fontLegacy), have = new Set(files);
+  for (const f of files) {
+    if (!kitHeld(f) && !svgKept.has(f) && !fontKept.has(f)) continue;
+    const b = read(f);
+    if (!b) continue;
+    const text = b.toString("utf8"), code = !f.endsWith(".css");
+    const svg = f === ICON_MODULE ? 0 : svgLine(text, code), font = fontValues(text, code);
+    if (svgKept.has(f)) { if (!svg) out.push({ id: `lint:svg-legacy-gone:${f}`, line: `${f}: no inline <svg> left; take it off SVG_LEGACY (sol/engine/src/team/gate.ts), the list only shrinks` }); }
+    else if (svg) out.push({ id: `lint:inline-svg:${f}`, line: `${f}:${svg}: an inline <svg>; draw icons from the icon module, ${ICON_MODULE} (<Icon name="…" />), and add a new one there (sol/skills/kit)` });
+    if (fontKept.has(f)) { if (!font.length) out.push({ id: `lint:font-legacy-gone:${f}`, line: `${f}: no typed font left; take it off FONT_LEGACY (sol/engine/src/team/gate.ts), the list only shrinks` }); }
+    else if (font.length) out.push({ id: `lint:font-value:${f}`, line: `${f}:${font[0].line}: a typed font family or weight (${font[0].decl})${font.length > 1 ? `, and ${font.length - 1} more` : ""}; take var(--family), var(--weight-read), var(--weight-ui) or var(--weight-display) from tokens.json next.font (sol/skills/kit)` });
+  }
+  for (const f of svgLegacy) if (!have.has(f)) out.push({ id: `lint:svg-legacy-gone:${f}`, line: `${f}: gone; take it off SVG_LEGACY (sol/engine/src/team/gate.ts), the list only shrinks` });
+  for (const f of fontLegacy) if (!have.has(f)) out.push({ id: `lint:font-legacy-gone:${f}`, line: `${f}: gone; take it off FONT_LEGACY (sol/engine/src/team/gate.ts), the list only shrinks` });
+  return out;
+}
+/** the names of one exemption list as written in a gate.ts source (pure): `export const NAME…= [ "…", … ];` */
+export function listIn(src: string, name: string): string[] | null {
+  const m = new RegExp(`export const ${name}\\b[^=]*=\\s*\\[([\\s\\S]*?)\\];`).exec(src);
+  return m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : null;
+}
+export const SHRINK_ONLY = { TOKENS_LEGACY, SVG_LEGACY, FONT_LEGACY } as const;
+/** the names this tree's shrink-only lists hold that main's gate.ts does not (pure): ids `lint:legacy-grown:<list>:<file>` */
+export function legacyGrown(baseSrc: string, lists: Record<string, readonly string[]> = SHRINK_ONLY): { id: string; line: string }[] {
+  const out: { id: string; line: string }[] = [];
+  for (const [name, now] of Object.entries(lists)) {
+    const was = listIn(baseSrc, name);
+    if (!was) continue;   // main has no such list yet: the change that brings it sets it
+    for (const f of now.filter((x) => !was.includes(x))) out.push({ id: `lint:legacy-grown:${name}:${f}`, line: `${name} gains ${f}, which main's does not hold; the list only shrinks: make the file keep the rule instead` });
+  }
+  return out;
+}
+
 async function lintStep(root: string, base: string | null, say: (s: string) => void): Promise<Step> {
   const t0 = Date.now();
   const files = git(root, "ls-files", "-z").split("\0").filter(Boolean);
   const { BETA_KEEP, exportOffence } = await import("./ship.js");
   const kept = (p: string) => BETA_KEEP.some((k) => p === k || p.startsWith(k + "/"));
   const read = (f: string) => { try { return readFileSync(join(root, f)); } catch { return null; } };
-  const found = [...lintFiles(files, read, kept, exportOffence, TOKENS_LEGACY), ...sameNameTwice(files), ...gooFindings(files, read)];
+  const found = [...lintFiles(files, read, kept, exportOffence, TOKENS_LEGACY), ...sameNameTwice(files), ...gooFindings(files, read), ...kitFindings(files, read)];
   for (const f of files.filter((x) => META_FILES.test(x) && !TEST_FILE.test(x))) {
     const miss = metaMissing(read(f)?.toString("utf8") ?? "");
     if (miss.length) found.push({ id: `lint:no-meta:${f}`, line: `${f}: ${miss.join(", ")} ${miss.length > 1 ? "have" : "has"} no meta: say its job, flow, states, keys and what it listens to beside it (sol/mac/src/home/meta.ts)` });
@@ -531,6 +693,8 @@ async function lintStep(root: string, base: string | null, say: (s: string) => v
     if (!r.ok) found.push({ id: "lint:atlas-stale", line: `sol/design/atlas/graph.html: ${tail(r.out, 3).replace(/\n/g, "; ")}` });
   }
   if (base) {
+    // the shrink-only lists against main's (#1879): a list grows only by a change to main itself
+    try { found.push(...legacyGrown(quiet(root, "show", `${base}:sol/engine/src/team/gate.ts`))); } catch { /* main has no gate.ts: nothing to hold to */ }
     let tree = "";
     try { tree = readFileSync(join(root, BASELINE), "utf8"); } catch { /* none */ }
     for (const id of baselineAdded(baselineAt(root, base), tree))

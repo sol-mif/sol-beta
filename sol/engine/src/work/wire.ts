@@ -279,6 +279,7 @@ export async function handleWork(w: Wire, m: any) {
       const s = m as WorkSay;
       s.sessionId = sid(s.sessionId);
       s.person = true;   // #1521: the window's own message is the person's words
+      s.owed = one.owedTo(s.sessionId) || undefined;   // a switch it slept through (#1808), read before the words
       me.viewing = s.sessionId;
       await workSay(s, bus);
       if (s.fresh) invalidate();

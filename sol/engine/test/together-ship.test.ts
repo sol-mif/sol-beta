@@ -92,7 +92,7 @@ test("the beta repo (#79): an export of what runs, on the previous export, never
   assert.notEqual(main1, head, "an export, not the commit itself");
   assert.deepEqual(git(beta, "ls-tree", "-r", "--name-only", main1).split("\n").sort(),
     [".gitignore", "README.md", "sol/HELP.md", "sol/design/tempo.json", "sol/engine/src/index.ts",
-      "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/life/.keep", "sol/home/memory/.keep",   // the neutral home (#479)
+      "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/memory/.keep",   // the neutral home (#479)
       "sol/mac/src/App.tsx", "sol/setup"],
     "only what runs and the README: no now.md, no docs, no memo in design");
   assert.equal(git(beta, "rev-list", "--count", main1), "1", "the full mirror is replaced; no history of the house");

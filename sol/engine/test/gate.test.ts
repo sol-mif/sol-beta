@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, TOKENS_LEGACY, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, coveredCheck, partOf, e2eOnly, type GateResult, type Step } from "../src/team/gate.ts";
+import { parseEval, baselineIds, baselineAdded, baseOf, excusable, judge, lintFiles, sameNameTwice, gooFindings, GOO_LEGACY, TOKENS_LEGACY, SVG_LEGACY, FONT_LEGACY, kitFindings, fontValues, svgLine, legacyGrown, listIn, ICON_MODULE, layoutValues, lookValues, LOOK_FILES, gateGreen, resultPath, evalFiles, evalStep, ranNoTest, runGate, summary, slug, e2eCapMs, E2E_FLOOR_MS, E2E_FALLBACK_MS, RESULT_DIR, coveredCheck, partOf, e2eOnly, type GateResult, type Step } from "../src/team/gate.ts";
 
 const EVAL = (status: string, body = "") => `# fr-12 · Open Sol: evals
 
@@ -388,6 +388,83 @@ test("lint: the new face's files that held typed values at the BR1 join are held
     "lint:tokens-legacy-gone:sol/mac/src/next/gone.css",
   ]);
   assert.ok(TOKENS_LEGACY.every((f) => /^sol\/mac\/src\/next\//.test(f)), "only the new face's files");
+});
+
+// the kit enforced (#1879 step 0): an inline svg outside the icon module, a typed font family or weight
+test("lint: an inline <svg> under next/ is refused, the icon module's is not, and a word in a comment is not one", () => {
+  const files: Record<string, string> = {
+    "sol/mac/src/next/a/Icon.tsx": `export const I = () => <svg viewBox="0 0 24 24"><path d="M0 0" /></svg>;\n`,
+    "sol/mac/src/next/a/html.ts": `export const s = '<svg width="10"></svg>';\n`,
+    "sol/mac/src/next/a/said.tsx": `// draws no <svg>, it takes <Icon /> from the kit\n/* nor <svg here */\nexport const x = 1;\n`,
+    "sol/mac/src/next/a/uses.tsx": `import { Icon } from "../../kit/icons";\nexport const U = () => <Icon name="done" />;\n`,
+    "sol/mac/src/next/a/svg.test.tsx": `const s = "<svg/>";\n`,
+    [ICON_MODULE]: `export const I = () => <svg viewBox="0 0 24 24" />;\n`,
+    "sol/mac/src/kit/Other.tsx": `export const O = () => <svg />;\n`,   // the rest of the kit is not held (yet)
+    "sol/mac/src/kit/Key.tsx": `export const K = () => <svg />;\n`,     // a frame kit part is
+  };
+  const ids = kitFindings(Object.keys(files), (f) => Buffer.from(files[f]), [], []).map((x) => x.id).sort();
+  assert.deepEqual(ids, ["lint:inline-svg:sol/mac/src/kit/Key.tsx", "lint:inline-svg:sol/mac/src/next/a/Icon.tsx", "lint:inline-svg:sol/mac/src/next/a/html.ts"]);
+  assert.ok(LOOK_FILES.test("sol/mac/src/kit/Key.tsx") && LOOK_FILES.test("sol/mac/src/kit/parts.css") && LOOK_FILES.test(ICON_MODULE) && !LOOK_FILES.test("sol/mac/src/kit/Pill.tsx"), "the frame's kit parts keep the look lint");
+  assert.equal(svgLine("const a = 1;\nconst b = <svg />;\n"), 2, "the line it is on");
+});
+
+test("lint: a font family or weight under next/ comes from the tokens, in css and in code", () => {
+  const css = (d: string) => fontValues(`.a { ${d} }`).map((x) => x.decl);
+  for (const ok of ["font-family: var(--family);", "font-weight: var(--weight-ui);", "font-weight: inherit;", "font: var(--weight-display) var(--text-name)/1 var(--family);",
+    "font: inherit;", "font-size: 13px; font-variant-numeric: var(--figures);", "font-weight: var(--weight-ui) !important;"]) assert.deepEqual(css(ok), [], ok);
+  for (const bad of ["font-family: Allo, sans-serif;", "font-weight: 600;", "font-weight: bold;", "font: 600 13px/1 var(--family);", "font: 13px Allo;", "font-family: var(--x), sans-serif;"])
+    assert.equal(css(bad).length, 1, bad);
+  assert.deepEqual(fontValues(".a { /* font-weight: 600 */ color: red; }"), [], "a comment is words");
+  const code = (src: string) => fontValues(src, true).map((x) => x.decl);
+  assert.deepEqual(code(`const s = { fontWeight: "var(--weight-ui)", fontFamily: "var(--family)" };`), []);
+  assert.deepEqual(code(`const s = { fontWeight: w, fontFamily: fam };`), [], "a name is not a typed value");
+  assert.equal(code(`const s = { fontWeight: 600 };`).length, 1);
+  assert.equal(code(`const s = { fontFamily: "Allo, sans-serif" };`).length, 1);
+  assert.equal(code(`const t = <text fontWeight="900">25</text>;`).length, 1);
+  assert.equal(code("const sheet = `.a { font-weight: 700; }`;").length, 1, "css written in a string");
+  const files: Record<string, string> = { "sol/mac/src/next/b/b.css": ".a { font-weight: 600; }", "sol/mac/src/next/b/ok.css": ".a { font-weight: var(--weight-ui); }", "sol/mac/src/kit/parts.css": ".a { font-family: Allo; }" };
+  assert.deepEqual(kitFindings(Object.keys(files), (f) => Buffer.from(files[f]), [], []).map((x) => x.id).sort(), ["lint:font-value:sol/mac/src/kit/parts.css", "lint:font-value:sol/mac/src/next/b/b.css"]);
+});
+
+test("lint: the svg and font exemption lists hold what broke the rule when it landed, and only shrink", () => {
+  const files: Record<string, string> = {
+    "sol/mac/src/next/c/Old.tsx": `export const O = () => <svg />;\n`,       // listed, still drawn inline: let through
+    "sol/mac/src/next/c/Fixed.tsx": `export const F = () => <Icon name="done" />;\n`,   // listed, now clean: must come off
+    "sol/mac/src/next/c/old.css": ".a { font-weight: 600; }",                   // listed, still typed: let through
+    "sol/mac/src/next/c/fixed.css": ".a { font-weight: var(--weight-ui); }",    // listed, now clean: must come off
+  };
+  const ids = kitFindings(Object.keys(files), (f) => (f in files ? Buffer.from(files[f]) : null),
+    ["sol/mac/src/next/c/Old.tsx", "sol/mac/src/next/c/Fixed.tsx", "sol/mac/src/next/c/Gone.tsx"], ["sol/mac/src/next/c/old.css", "sol/mac/src/next/c/fixed.css"]).map((x) => x.id).sort();
+  assert.deepEqual(ids, ["lint:font-legacy-gone:sol/mac/src/next/c/fixed.css", "lint:svg-legacy-gone:sol/mac/src/next/c/Fixed.tsx", "lint:svg-legacy-gone:sol/mac/src/next/c/Gone.tsx"]);
+  assert.ok([...SVG_LEGACY, ...FONT_LEGACY].every((f) => /^sol\/mac\/src\/next\//.test(f)), "only the new face's files");
+});
+
+test("the exemption lists only shrink: each is pinned at its length when the kit was enforced (#1879), and may not grow", () => {
+  // lower a number when its list shrinks; raising one is the thing this test is here to stop
+  const PINNED = { TOKENS_LEGACY: 37, SVG_LEGACY: 23, FONT_LEGACY: 43 };
+  assert.ok(TOKENS_LEGACY.length <= PINNED.TOKENS_LEGACY, `TOKENS_LEGACY grew to ${TOKENS_LEGACY.length}; the list only shrinks`);
+  assert.ok(SVG_LEGACY.length <= PINNED.SVG_LEGACY, `SVG_LEGACY grew to ${SVG_LEGACY.length}; the list only shrinks`);
+  assert.ok(FONT_LEGACY.length <= PINNED.FONT_LEGACY, `FONT_LEGACY grew to ${FONT_LEGACY.length}; the list only shrinks`);
+  for (const l of [TOKENS_LEGACY, SVG_LEGACY, FONT_LEGACY]) assert.equal(new Set(l).size, l.length, "no name twice");
+});
+
+test("the exemption lists only shrink against main: a name main's gate.ts does not hold is refused (legacyGrown)", () => {
+  const main = `export const TOKENS_LEGACY: readonly string[] = [\n  "a.css",\n  "b.css",\n];\nexport const SVG_LEGACY: readonly string[] = [\n  "x.tsx",\n];\n`;
+  assert.deepEqual(listIn(main, "TOKENS_LEGACY"), ["a.css", "b.css"]);
+  assert.equal(listIn(main, "FONT_LEGACY"), null);
+  assert.deepEqual(legacyGrown(main, { TOKENS_LEGACY: ["a.css"], SVG_LEGACY: ["x.tsx"] }), [], "shrinking is fine");
+  assert.deepEqual(legacyGrown(main, { TOKENS_LEGACY: ["a.css", "c.css"], SVG_LEGACY: ["x.tsx", "y.tsx"], FONT_LEGACY: ["new.css"] }).map((x) => x.id),
+    ["lint:legacy-grown:TOKENS_LEGACY:c.css", "lint:legacy-grown:SVG_LEGACY:y.tsx"], "a list main has not got yet is set by the change that brings it");
+  const self = readFileSync(join(import.meta.dirname, "../src/team/gate.ts"), "utf8");
+  assert.deepEqual(listIn(self, "TOKENS_LEGACY"), [...TOKENS_LEGACY], "the reader reads this gate.ts's own list");
+  assert.deepEqual(legacyGrown(self), [], "this tree against itself");
+});
+
+test("the face as it stands: no inline svg or typed font off the lists (#1879)", () => {
+  const root = join(import.meta.dirname, "../../..");
+  const files = execFileSync("git", ["ls-files", "sol/mac/src"], { cwd: root, encoding: "utf8" }).split("\n").filter(Boolean);
+  const read = (f: string) => { try { return readFileSync(join(root, f)); } catch { return null; } };
+  assert.deepEqual(kitFindings(files, read).map((x) => x.line), []);
 });
 
 test("the face as it stands: no file off the legacy list draws from the old goo kit (#1824's ShellLine, #674)", () => {

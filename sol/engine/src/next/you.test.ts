@@ -1083,6 +1083,12 @@ test("Full Disk Access is off only when Sol.app started the engine: a refusal to
   assert.equal(fda({ list: eperm, underApp: true }), false, "under Sol.app and the Mac refuses: off");
   assert.equal(fda({ list: eperm, underApp: false }), null, "not under Sol.app and the Mac refuses: can't tell");
   assert.equal(permsOf("/Users/lucy", { "full-disk": true }, [], { list: eperm, underApp: false }).find((p) => p.id === "full-disk")!.granted, true, "Sol.app's own word wins");
+  // Sol.app's permit_state names it `files` (#1828): its answer wins either way, and a not-yet word is still no word
+  const said = (known: unknown, at: Parameters<typeof permsOf>[3]) => permsOf("/Users/lucy", known, [], at).find((p) => p.id === "full-disk")!.granted;
+  assert.equal(said({ accessibility: true, files: true }, { list: eperm, underApp: false }), true, "permit_state's files: on, whatever the engine sees");
+  assert.equal(said({ accessibility: true, files: false }, { list: () => [], underApp: false }), false, "permit_state's files: off, whatever the engine sees");
+  assert.equal(said({ files: "yes" }, { list: eperm, underApp: false }), null, "not a yes or no: the engine's own look");
+  assert.equal(said({ "full-disk": true, files: false }, { list: eperm, underApp: false }), true, "the permission's own id first");
   // the parents, one pid at a time: node ← bash ← launchd is not Sol; node ← Sol.app's binary is
   const chain = (rows: Record<number, string>) => (pid: number) => rows[pid] ?? "";
   const me = process.ppid;

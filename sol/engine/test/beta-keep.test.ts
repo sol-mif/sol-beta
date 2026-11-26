@@ -41,7 +41,7 @@ test("the user's door goes to testers, the dev's door stays home", async () => {
   for (const f of userDoor) assert.ok(files.includes(f), `${f} goes to testers`);
   for (const f of devDoor) assert.ok(!files.includes(f), `${f} stays home`);
   assert.deepEqual(files.sort(), [".claude/settings.json", "README.md", "sol/engine/src/index.ts", ...Object.keys(harness),
-    "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/life/.keep", "sol/home/memory/.keep",   // the neutral home (#479)
+    "sol/home/AGENTS.md", "sol/home/CLAUDE.md", "sol/home/memory/.keep",   // the neutral home (#479)
     "sol/mine/hooks/commit-msg", "sol/mine/rebase", "sol/mine/setup", "sol/setup"].sort());
   // the list names the user's door by path, never sol/mine whole (the stage and live are the dev's)
   assert.ok(!BETA_KEEP.includes("sol/mine") && !BETA_KEEP.includes(".claude"));

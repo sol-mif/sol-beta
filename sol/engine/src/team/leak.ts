@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 export type ExportFile = { path: string; body: Buffer };
 
 /** the home a Sol tester gets, whatever sol-dev's sol/home holds: the instructions every seat reads at start (the
- * same text as CLAUDE.md and AGENTS.md, no name, no team), and the two folders the engine writes into. Nothing else. */
+ * same text as CLAUDE.md and AGENTS.md, no name, no team), and the memory folder. No life folder (#1776). Nothing else. */
 export const HOME_TEXT = `# Sol, Home side
 
 You are Sol, this person's own surface, running on their own computer. Your name is Sol.
@@ -88,7 +88,6 @@ group once with suggest_group; never twice in a conversation.
 export const NEUTRAL_HOME: Record<string, string> = {
   "sol/home/CLAUDE.md": HOME_TEXT,
   "sol/home/AGENTS.md": HOME_TEXT,
-  "sol/home/life/.keep": "",
   "sol/home/memory/.keep": "",
 };
 

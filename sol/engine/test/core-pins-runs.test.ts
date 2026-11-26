@@ -78,19 +78,35 @@ test("Read now joins the running turn with priority now; a drop forgets it; an u
   run.end();
 });
 
-test("Stop: idle at once, the counter let go, what waited dropped with a note; a second Stop does nothing", async () => {
+test("Stop: idle at once, the counter let go; a second Stop does nothing", async () => {
   const { run, q, told } = open();
   await run.say({ sessionId: run.id, text: "long job" });
   q.push(turnStarts); await flush();
-  await run.say({ sessionId: run.id, text: "after that" });
   await run.stop();
   assert.equal(run.busy, false);
   assert.equal(B.busyCount(), 0);
-  assert.match(run.items.list.at(-1).text, /stopped · the queued message was dropped with it/);
+  assert.equal(run.items.list.at(-1).text, "stopped");
   const notes = run.items.list.length;
   await run.stop();
   assert.equal(run.items.list.length, notes);
   assert.ok(told.some((m) => m.type === "work.run" && m.busy === false));
+  run.end();
+});
+
+test("Stop with a message waiting: it begins the next turn with a note, holding the counter until that turn ends (#1764)", async () => {
+  const { run, q } = open();
+  await run.say({ sessionId: run.id, text: "long job" });
+  q.push(turnStarts); await flush();
+  await run.say({ sessionId: run.id, text: "after that" });
+  await run.stop();
+  assert.match(run.items.list.at(-1).text, /stopped · the queued message goes next/);
+  assert.equal(run.busy, true);
+  assert.equal(B.busyCount(), 1);
+  await flush();
+  assert.deepEqual(q.got.map((m: any) => m.message.content), ["long job", "after that"]);
+  q.push(turnStarts); q.push(result()); await flush();
+  assert.equal(run.busy, false);
+  assert.equal(B.busyCount(), 0);
   run.end();
 });
 

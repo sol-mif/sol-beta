@@ -76,6 +76,7 @@ export type WorkSay = {
   person?: boolean;     // #1521: said by the person in their own window (wire.ts work.say), never by Sol, a session or an agent
   place?: unknown;      // #1615: where the new face put a new session ("dev/api"), read by "you, here"
   here?: string;        // #1615: "you, here", set by workSay only (never the face's), read before the words
+  owed?: string;        // a switch the session slept through (one.ts owedTo, #1808): set by wire.ts only, read as `here`
   purpose?: unknown;    // #1615 birth.html row 5: what Add made the session for ("automation"), told before the words
 };
 export type Answer = { allow: boolean; always?: boolean; note?: string; answers?: Record<string, string>; mode?: PermissionMode };
@@ -197,7 +198,6 @@ export class Run {
   private unlock = () => {};                   // its hold on the session, one writer (busy.ts)
   private uses = new Map<string, { name: string; file?: string; agent: boolean }>();   // every tool_use, for the log's step when its result comes
   private turnOpen = false;                    // a turn is on the log (seatlog.ts) and not yet ended there
-  private stops = 0;                           // Stop pressed so far: a say() in the picker's round trip reads it (#900)
   private over = () => {};
   /** resolves when the run has ended: its loop is over and it is off `runs` (workSay waits on it, #895) */
   readonly gone = new Promise<void>((r) => (this.over = r));
@@ -545,7 +545,7 @@ export class Run {
     const images = saved.filter((f) => f.isImage);
     const uuid = typeof s.id === "string" && UUID.test(s.id) && !this.items.has(s.id) ? s.id : randomUUID();
     if (s.person) this.paused = false;   // the person's own words go on a held session (BR1 item 7)
-    const queued = this.busy, stops = this.stops;
+    const queued = this.busy;
     this.items.put({ id: uuid, kind: "me", text: s.text, ...(on ? { on } : {}), at: Date.now(), ...(saved.length ? { files: saved.map((f) => ({ name: f.name, path: f.path })) } : {}), ...(queued ? { queued: true } : {}) });
     await this.adjust(s);
     const msg = {
@@ -560,8 +560,8 @@ export class Run {
     // the run takes no more: the idle close, or the CLI's end, came first (#895). Nobody would read it from the inbox,
     // so it is not left looking sent
     if (this.inbox.closed) return this.lost(uuid, queued);
-    // Stop, pressed during the picker's round trip above, took what waited behind the turn: this one waited too (#900)
-    if (queued && stops !== this.stops) return this.unqueue(uuid, true);
+    // Stop, pressed during the picker's round trip above, ended the turn it waited behind: it begins the next one below,
+    // as what waited when Stop was pressed does (#900, #1764)
     // said while the main thread works: the run keeps it until the turn ends (#51), the face shows it queued. The turn
     // can end during the picker's round trip above (#900): nothing is left to wait behind, so it goes in now
     this.words.set(uuid, s.person ? s.text : null);   // #1521: whose words these are, told as the message reaches the turn (toInbox)
@@ -677,11 +677,15 @@ export class Run {
     if (this.turnOpen) { this.turnOpen = false; turnEnded("work", this.id, { ok: false }); }   // on the log: the turn ended here, stopped (a late result adds no second line)
     this.setTasks([]);
     for (const [, r] of this.perms) r({ allow: false, note: "stopped" });
-    this.stops++;
-    const held = this.held.release();   // what waited behind the turn goes with it (#51): a stop means nothing more runs
-    for (const m of held) this.unqueue(String(m.uuid), true);
-    this.items.put({ id: `stop:${randomUUID()}`, kind: "note", text: held.length ? `stopped · ${held.length === 1 ? "the queued message was" : `${held.length} queued messages were`} dropped with it` : "stopped" });
+    // what waited behind the turn is the next turn, its images with it (#1764: until then a stop dropped it, fr-07 E6, and
+    // seven pasted screenshots with the person's feedback were gone). It goes in after the interrupt is through, the way
+    // a turn's end lets it go (release): the next turn holds the busy counter from here, so a renew never lands before
+    // the CLI begins it, and a turn carrying another's message holds no yes of the person's (#1521). A held session keeps
+    // it until Go on; to drop one, × before Stop
+    const next = this.paused ? 0 : this.held.size;
+    this.items.put({ id: `stop:${randomUUID()}`, kind: "note", text: next ? `stopped · ${next === 1 ? "the queued message goes" : `${next} queued messages go`} next` : "stopped" });
     this.items.settle(false);
+    this.release();
     this.tell();
   }
 
@@ -776,6 +780,7 @@ export async function workSay(s: WorkSay, bus: Bus, open = openRun): Promise<Run
   // the facts it told are kept by its id, as index.ts's say does for the old face's (#1615)
   s.here = s.fresh && s.person && uiNext() ? hereFor(s) : undefined;
   if (s.fresh && s.person && uiNext() && s.purpose === "automation") s.here = [s.here, AUTOMATION_PURPOSE].filter(Boolean).join("\n\n");   // Add's Automation (birth.html row 5)
+  if (!s.fresh && s.owed) s.here = s.owed;   // before the person's words, never in their line (the item keeps s.text only)
   let run = runs.get(s.sessionId);
   if (!run) {
     let p = starting.get(s.sessionId);

@@ -3,7 +3,7 @@
 // opens a new run, which resumes the session, so the message is read; when the CLI is too slow to end, the message is
 // marked not read, never left looking sent.
 // #900: whether a message waits behind the turn is decided after the picker's round trip. A Stop pressed during it
-// takes the message with it; a run that ends during it marks the message not read; a turn still running keeps it.
+// lets the message begin the next turn (#1764); a run that ends during it marks the message not read; a turn still running keeps it.
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { T, wait, fakeQuery } from "./n10-fake.ts";
@@ -161,14 +161,18 @@ test("#900: the turn ended during the round trip: the message begins a turn, and
   run.end();
 });
 
-test("#900: Stop pressed during the round trip takes the waiting message with it: never read, the run idle", async () => {
+test("#900: Stop pressed during the round trip: the waiting message begins the next turn (#1764), and its end lets the counter go", async () => {
   const { run, q, said, item, model } = await midRoundTrip("round-3");
   await run.stop();
+  assert.equal(busyCount(), 0, "the stopped turn let the counter go");
   model(); await said;
   await wait(20);
-  assert.deepEqual(read(q), ["do the long thing"]);
-  assert.equal(item().dropped, true);
+  assert.deepEqual(read(q), ["do the long thing", "switch to opus and go on"]);
+  assert.ok(!item().dropped);
   assert.equal(item().queued, false);
+  assert.equal(run.busy, true);
+  q.push(turnStarts); q.push({ type: "result", subtype: "success", uuid: "r2" });
+  await wait(20);
   assert.equal(run.busy, false);
   assert.equal(busyCount(), 0);
   run.end();

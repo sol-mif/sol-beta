@@ -9,7 +9,8 @@
 //                               (cowork.v3, ui.next), a view's switch, and the mode a new session starts in
 //                               (defaults.mode, only ever stricter: a looser one the person turns in Settings, #36): Frank
 //                               2026-11-20, Sol ticket #21, so the AI the person talks to can turn what they ask for and
-//                               says which one is on; and (the door on #1718) the two reach switches, off only. Never the version, the other engine switches or the tracking
+//                               says which one is on; (the door on #1718) the two reach switches, off only; and (#1788) the three engine cards'
+//                               switches work.liveContext, log.kinds, map.grown. Never the version, the other engine switches or the tracking
 //                               Every answer carries a line on what is on now (nowLine), so the AI never guesses
 // The window is told { type: "open.for", what, drawer | button } (the face, openFor.ts); nothing leaves the Mac.
 import { z } from "zod";
@@ -24,10 +25,11 @@ export const DRAWERS = ["work", "look", "voice", "microphone", "defaults", "noti
 export const PANES = ["changes", "files", "browser", "terminal", "page", "pr", "plan", "tasks", "thread", "overview",
   "dashboard", "helpers", "show", "shared", "action-board", "group-chat"] as const;
 /** the settings a seat may change for the person: how Sol looks and sounds to them, and (#21) cowork { v3 }, ui { next },
- *  defaults { mode }, own { perDay } (#1476) and switches { <a view's switch> }, each only in that shape (settablePatch). Not the rest of
- *  defaults (seat, model, effort), nor mic, frame, stage, home, onboarding, log, reach, open, version, morning, nor track
+ *  defaults { mode }, own { perDay } (#1476), switches { <a view's switch> } and (#1788) work { liveContext }, log { kinds }, map { grown },
+ *  each only in that shape (settablePatch). Not the rest of
+ *  defaults (seat, model, effort), nor mic, frame, stage, home, onboarding, reach, open, version, morning, nor track
  *  (counting stays a hand's choice) */
-export const SETTABLE = ["voice", "voiceVendor", "elevenVoice", "patienceMs", "language", "look", "notify", "lens", "cowork", "ui", "defaults", "switches", "own"] as const;
+export const SETTABLE = ["voice", "voiceVendor", "elevenVoice", "patienceMs", "language", "look", "notify", "lens", "cowork", "ui", "defaults", "switches", "own", "work", "log", "map"] as const;
 /** the switches a seat may turn by name in `switches`: the views', and Cowork's and the face's by their names */
 /** the window switches whose screen follows the person's settings today: the three views (mac/src/spine/views.ts reads
  *  settings.window) and agents.mode (mac/src/agents/flag.ts reads it the same way, #18). The other window cards read the
@@ -41,7 +43,12 @@ export const SEAT_WINDOW_SWITCHES = WINDOW_SWITCHES.filter((n) => n.startsWith("
  *  only: back on widens what an AI may do (their words leave again), and like a looser mode (#36) that is never a seat's
  *  to do on quoted words; the person turns it back on by hand */
 export const SPOKEN_REACH = { "reach.tools": "tools", "reach.room": "room" } as const;
-export const SPOKEN_SWITCHES = ["cowork.v3", "ui.next", ...Object.keys(SPOKEN_REACH) as (keyof typeof SPOKEN_REACH)[], ...SEAT_WINDOW_SWITCHES] as const;
+/** the engine cards' switches a seat turns on the person's word (#1788, gate one question 4 on product/build/context-ring):
+ *  each reads the setting at every call (settings.ts liveContext, logKinds, mapGrown), so the change holds at once. Both
+ *  ways, as their own Settings row would: none of them lets an AI do more or sends words anywhere (reach does, above) */
+export const SPOKEN_ENGINE = { "work.liveContext": ["work", "liveContext"], "log.kinds": ["log", "kinds"], "map.grown": ["map", "grown"] } as const;
+export const SPOKEN_SWITCHES = ["cowork.v3", "ui.next", ...Object.keys(SPOKEN_REACH) as (keyof typeof SPOKEN_REACH)[],
+  ...Object.keys(SPOKEN_ENGINE) as (keyof typeof SPOKEN_ENGINE)[], ...SEAT_WINDOW_SWITCHES] as const;
 /** how much a mode lets a session do without asking, least first. A seat only ever makes it stricter: an AI never widens
  *  what an AI may do on its own, whatever words it quotes, so a looser mode is the person's own press in Settings (#36,
  *  the security review on #1708; it replaced a second yes that was a keyword match the AI's own quote could satisfy) */
@@ -72,6 +79,8 @@ export const OPEN_TOOLS = [
       "{ switches: { \"<name>\": true | false | null } } (null: back to its default), the names " + SEAT_WINDOW_SWITCHES.join(", ") +
       "; asking a teammate's agent and the agents' room, which send the person's words to their teammates: " +
       "{ switches: { \"reach.tools\": false, \"reach.room\": false } } (off only: asked to turn one on, Settings opens at its switch for the person's press)" +
+      "; the context ring counted live, the log's narrow look and the map grown from the team: { switches: { \"work.liveContext\" | \"log.kinds\" | " +
+      "\"map.grown\": true | false } } (on only where this Sol has that card)" +
       " (the other cards' switches are turned by the person in Settings: open_settings switches)" +
       ". Every answer says which Cowork, which face and which mode are on now: say it in your reply, so the person never " +
       "wonders which one they are on. `yes` is the person's own words from this turn that ask for it " +
@@ -120,6 +129,7 @@ export function saidThisTurn(turn: TurnCtx, yes: string): boolean {
   return false;
 }
 
+const notYet = (name: string) => `${name} is not part of this Sol yet: say in a line that their Sol does not have it yet, and offer no way to turn it on`;
 /** a patch the seat may make (pure): only SETTABLE keys; the reason when nothing of it is */
 export function settablePatch(patch: unknown): { patch: Record<string, unknown> } | { why: string; opens?: (typeof DRAWERS)[number] } {
   if (!patch || typeof patch !== "object" || Array.isArray(patch)) return { why: "patch is not an object of settings" };
@@ -136,7 +146,8 @@ export function settablePatch(patch: unknown): { patch: Record<string, unknown> 
   };
   const bool = (v: unknown) => typeof v === "boolean";
   const why = only("cowork", "v3", bool, "{ v3: true | false }") ?? only("ui", "next", bool, "{ next: true | false }") ??
-    only("defaults", "mode", (v) => (WORK_MODES as unknown[]).includes(v), `{ mode: ${WORK_MODES.join(" | ")} }: the rest of the defaults stay by hand in Settings`);
+    only("defaults", "mode", (v) => (WORK_MODES as unknown[]).includes(v), `{ mode: ${WORK_MODES.join(" | ")} }: the rest of the defaults stay by hand in Settings`) ??
+    Object.values(SPOKEN_ENGINE).reduce<string | null>((w, [k, key]) => w ?? only(k, key, bool, `{ ${key}: true | false }`), null);
   if (why) return { why };
   if ("switches" in out) {
     const sw = out.switches;
@@ -150,11 +161,17 @@ export function settablePatch(patch: unknown): { patch: Record<string, unknown> 
       else if (name in SPOKEN_REACH) {
         // a switch whose card stands short of this Sol's version (reach.room at concept on a tester's): this Sol has none
         // of it yet, so no way to turn it on is offered (the door on #1718, question 4)
-        if (v !== false && !standsOn(stageOf(name), versionMode())) return { why: `${name} is not part of this Sol yet: say in a line that their Sol does not have it yet, and offer no way to turn it on` };
+        if (v !== false && !standsOn(stageOf(name), versionMode())) return { why: notYet(name) };
         // back on is the person's own press: Settings opens on its switch (Settings › me), as a looser mode opens defaults (#36)
         if (v !== false) return { opens: "me", why: `${name} only turns off by asking: back on sends the person's words to their teammates again, so an AI never turns it on (#36). ` +
           "Settings is open on me in the person's window, at its switch: say in a line that the switch is there and one press turns it on" };
         out.reach = { ...(out.reach as object | undefined), [SPOKEN_REACH[name as keyof typeof SPOKEN_REACH]]: v };
+      }
+      else if (name in SPOKEN_ENGINE) {
+        if (typeof v !== "boolean") return { why: `${name} takes true or false` };
+        const [k, key] = SPOKEN_ENGINE[name as keyof typeof SPOKEN_ENGINE];
+        if (k in out && (out[k] as Record<string, unknown>)[key] !== v) return { why: `${name} is asked both on and off: ask the person which` };
+        out[k] = { [key]: v };
       }
       else {
         // agents.mode (#18): its card short of this Sol's version (concept on a tester's) has no way on by word, as reach
@@ -164,13 +181,18 @@ export function settablePatch(patch: unknown): { patch: Record<string, unknown> 
     }
     if (Object.keys(kept).length) out.switches = kept; else delete out.switches;
   }
+  // an engine card short of this Sol's version (all three at concept, on a tester's at product): nothing to turn on (#1788)
+  for (const [name, [k, key]] of Object.entries(SPOKEN_ENGINE))
+    if ((out[k] as Record<string, unknown> | undefined)?.[key] === true && !standsOn(stageOf(name), versionMode())) return { why: notYet(name) };
   return { patch: out };
 }
 
 /** what is on now, one line every answer of set_setting and open_settings carries (#21): so the AI says which Cowork and
  *  which face the person is on, and never guesses */
 export function nowLine(): string {
-  const set = getSettings().switches ?? {}, own = Object.entries(set).map(([k, v]) => `${k} ${v ? "on" : "off"}`);
+  const s = getSettings() as Record<string, unknown>;
+  const engine = Object.entries(SPOKEN_ENGINE).flatMap(([n, [k, key]]) => { const v = (s[k] as Record<string, unknown> | undefined)?.[key]; return typeof v === "boolean" ? [[n, v]] : []; });
+  const own = [...Object.entries(getSettings().switches ?? {}), ...engine].map(([k, v]) => `${k} ${v ? "on" : "off"}`);
   return `Now: Cowork is the ${coworkV3() ? "new one (v3)" : "old one"}, the face is the ${uiNext() ? "new one (ui.next)" : "old one"}, ` +
     `new sessions start in ${getSettings().defaults.mode}, asking teammates' agents is ${reachTools() ? "on" : "off"}, ` +
     `the agents' room is ${reachRoom() ? "on" : "off"}${own.length ? `; the person set ${own.join(", ")}` : ""}. Say this in your reply.`;

@@ -138,7 +138,7 @@ test("set_setting: only on the person's words from this very turn", async () => 
   assert.equal(r.isError, true);
 });
 
-test("set_setting never changes an engine switch, the version, the counting or the rest of defaults, even when asked", async () => {
+test("set_setting never changes the other engine switches, the version, the counting or the rest of defaults, even when asked", async () => {
   for (const patch of [{ version: "concept" }, { track: { usage: false } }, { reach: { tools: true } }, { open: { for: false } },
     { defaults: { model: { claude: "x" } } }, { defaults: { mode: "auto", seat: "claude" } }, { defaults: { mode: "anything" } },
     { cowork: { v3: "yes" } }, { ui: { next: true, other: 1 } }, { switches: { "open.for": true } }, { switches: { "reach.tools": null } }, { switches: { "reach.room": "off" } }, { switches: { "reach.tools": true } },
@@ -325,6 +325,63 @@ test("a seat makes the mode new sessions start in stricter, never looser, whatev
     assert.equal(S.getSettings().defaults.mode, mode);
   }
   S.patchSettings({ defaults: { mode: "default" } });
+});
+
+test("the engine cards' switches turn on the person's word, and the reading follows at once (#1788, gate one q4)", async () => {
+  const was = process.env.SOL_VERSION;
+  process.env.SOL_VERSION = "concept";
+  for (const e of ["SOL_LIVE_CONTEXT", "SOL_LOG_KINDS", "SOL_MAP_GROWN"]) delete process.env[e];
+  const reads = () => [S.liveContext(), S.logKinds(), S.mapGrown()];
+  assert.deepEqual(reads(), [true, true, true], "the team's Sol: all three on unset (concept)");
+  // by name, all three off in one ask
+  O.heard("e1", "turn off the live context ring, the narrow log and the grown map please");
+  let r = await T.runSolTool("set_setting", { patch: { switches: { "work.liveContext": false, "log.kinds": false, "map.grown": false } }, yes: "the grown map please" }, { sessionId: "e1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.deepEqual([S.getSettings().work, S.getSettings().log, S.getSettings().map], [{ liveContext: false }, { kinds: false }, { grown: false }]);
+  assert.deepEqual(reads(), [false, false, false], "read again at once, no restart");
+  // by its own key, back on
+  O.heard("e1", "turn the live context ring back on");
+  r = await T.runSolTool("set_setting", { patch: { work: { liveContext: true } }, yes: "context ring back on" }, { sessionId: "e1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.liveContext(), true);
+  assert.match(txt(r), /the person set work\.liveContext on, log\.kinds off, map\.grown off/, "the answer says where they stand");
+  // asked on and off at once: refused, never one quietly over the other
+  r = await T.runSolTool("set_setting", { patch: { work: { liveContext: false }, switches: { "work.liveContext": true } }, yes: "context ring back on" }, { sessionId: "e1" });
+  assert.equal(r.isError, true);
+  assert.equal(S.liveContext(), true);
+  // the env still wins over the person's setting, as for every switch
+  process.env.SOL_LIVE_CONTEXT = "off";
+  assert.equal(S.liveContext(), false, "env wins");
+  delete process.env.SOL_LIVE_CONTEXT;
+  // never without the person's words this turn
+  O.heard("e1", "thanks");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "map.grown": true } }, yes: "grown map on" }, { sessionId: "e1" });
+  assert.equal(r.isError, true);
+  assert.equal(S.mapGrown(), false);
+  r = await T.runSolTool("set_setting", { patch: { log: { kinds: true } }, yes: "narrow log on" }, { sessionId: "nobody-said" });
+  assert.equal(r.isError, true);
+  assert.equal(S.logKinds(), false);
+  // only the one key, only true or false: nothing else in those objects, and no other engine switch by the same road
+  O.heard("e1", "turn it on");
+  for (const patch of [{ work: { liveContext: true, other: 1 } }, { log: { kinds: true, since: 3 } }, { map: { grown: "on" } }, { map: {} },
+    { switches: { "map.grown": null } }, { switches: { "log.kinds": "on" } }, { work: { liveContext: null } },
+    { switches: { "open.for": false } }, { switches: { "pause.signal": true } }, { switches: { "onboarding.reads": false } }, { open: { for: false } }, { pause: { signal: true } }]) {
+    r = await T.runSolTool("set_setting", { patch, yes: "turn it on" }, { sessionId: "e1" });
+    assert.equal(r.isError, true, JSON.stringify(patch));
+  }
+  assert.deepEqual(reads(), [true, false, false]);
+  assert.equal(S.getSettings().open?.for, true);
+  // a tester's Sol (product) has none of the three cards yet: off goes through, on is not offered
+  process.env.SOL_VERSION = "product";
+  O.heard("e1", "turn the grown map on");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "map.grown": true } }, yes: "grown map on" }, { sessionId: "e1" });
+  assert.equal(r.isError, true);
+  assert.match(txt(r), /not part of this Sol yet/);
+  O.heard("e1", "turn the live context ring off");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "work.liveContext": false } }, yes: "context ring off" }, { sessionId: "e1" });
+  assert.equal(r.isError, undefined, txt(r));
+  assert.equal(S.liveContext(), false);
+  process.env.SOL_VERSION = was;
 });
 
 test("the panes named are the buttons that open one, and the drawers are Settings' own", () => {
