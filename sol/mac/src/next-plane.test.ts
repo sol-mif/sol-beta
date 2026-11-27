@@ -23,7 +23,7 @@ test("the first layout: today's page on the left, then every folder in one flow,
     assert.deepEqual(Object.keys(Z).filter((k) => k !== "page0").sort(), ["bottom", "diary", "fit", "page"], `${name}: D.zones holds today's page only, no Build or Life`);
     for (const r of CV.D.regions) assert.ok(CV.D.pos![r.id].x >= Z.page.x + Z.page.w, `${name}: ${r.id} right of today's page`);
     const rs = CV.D.regions.map((r) => CV.D.pos![r.id]);
-    for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) assert.ok(!L.overlaps(rs[i], rs[j]), `${name}: folders ${i} and ${j} apart`);
+    for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) assert.ok(!L.overlaps(L.caseRect(rs[i]), L.caseRect(rs[j])), `${name}: folders ${i} and ${j} apart (their cases at rest; an opened area may lean a gap into the next row)`);
     for (const p of Object.values(CV.D.pieces)) {
       const q = CV.D.pos![p.id];
       if (!q) { assert.ok(p.inside || p.kind === "arrivals", `${name}: ${p.id} has a place`); continue; }

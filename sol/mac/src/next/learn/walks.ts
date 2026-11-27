@@ -15,7 +15,7 @@ export type Step = { head: string; line: string; at: string[]; did?: (h: Here) =
 export type Walk = { id: WalkId; n: string; m: string; steps: Step[] };
 
 /** a folder card on the canvas, else its row in the sidebar */
-const FOLDER = ["#pl .pl-card[data-region]", "#pl .pl-area[data-area]", "#sideregions .nx-reg[data-region]"];
+const FOLDER = ["#pl .pl-card[data-region]", "#pl .pl-area[data-area]"];
 const BAR_IN = ["#talk"];
 const SETTINGS = ["#side [data-go=settings]"];
 

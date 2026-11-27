@@ -125,7 +125,7 @@ export function addScen(name: string, s: Scen): void { SCEN[name] = s; }
 export function fresh(): State {
   return {
     dist: "far", region: null, piece: null, pane: "change", beside: null, part: null, keysSide: "main", sel: 0, cam: { x: 0, y: 0, z: 0.3 }, page: null,
-    hist: [], fwd: [], marks: {}, recent: [], askHere: null, askLine: null, peek: null, pending: [], pendAt: {}, calm: false, fix: null, follow: null,
+    hist: [], fwd: [], recent: [], askHere: null, askLine: null, peek: null, pending: [], pendAt: {}, calm: false, fix: null, follow: null,
     term: {}, doc: {},
     sig: { lastResult: -99, lastCmdEnd: -99, lastScroll: -99, lastKey: -99, lastType: -99, paraStart: null, paraEnd: -99, lastMove: -99, away: false, hold: false, lastSave: -99, lastPane: -99, lastCmdStart: -99, lastAct: -99 },
     c: { moves: 0, presses: 0, answers: 0, order: [], secs: 0, crossings: [], peeks: 0, wrong: 0, demoted: 0, sent: 0, recv: 0, stolen: 0, delayed: 0, tooMuch: 0, mapPath: 0, log: [] },
@@ -371,7 +371,7 @@ const camOf = (k: string): Cam => { const [x, y, z] = k.split(",").map(Number); 
 
 // ---------------------------------------------------------------- moving: a spot, history, the tally
 
-/** where the person is, as one string (engine.js snap): history, marks and recent keep these */
+/** where the person is, as one string (engine.js snap): history and recent keep these */
 export const snap = () => JSON.stringify({ dist: S.dist, region: S.region, piece: S.piece, pane: S.pane, beside: S.beside, part: S.part, page: S.page, cam: camKey() });
 export function apply(js: string): void {
   const o = JSON.parse(js);
@@ -461,7 +461,6 @@ export function answer(id: string, how: "yes" | "later" = "yes"): boolean {
 
 // ---------------------------------------------------------------- the moves every slice shares (engine.js M, the canvas's)
 
-const flash = (t: string) => hooks.flash?.(t);
 /** M: these, and each slice's moves merged over them by index.ts (cv/moves/<slice>.ts). Every move answers Done */
 const moves: Moves = {
   back() { if (!S.hist.length) return done(false); const before = snap(); S.fwd.push(before); apply(S.hist.pop()!); S.askHere = null; track("back", before); render(); return done(true, undefined, () => { apply(before); render(); }); },
@@ -486,8 +485,6 @@ const moves: Moves = {
     }
     return done(false);
   },
-  markSet(n: number) { S.marks[n] = snap(); S.c.presses++; flash(`mark ${n} set`); return done(true, String(n), () => { delete S.marks[n]; }); },
-  markGo(n: number) { return S.marks[n] ? go(JSON.parse(S.marks[n]), "mark") : done(false); },
   recent(i = 1) { const t = S.recent[i - 1]; return t ? go(JSON.parse(t), "recent") : done(false); },
   goto(id?: string) {
     if (!id) { hooks.find?.(); return done(!!hooks.find); }
@@ -554,7 +551,6 @@ export const M: Moves = new Proxy(moves, {
 export function act(s: string): Done {
   const i = s.indexOf(":"), f = i < 0 ? s : s.slice(0, i), arg = i < 0 ? undefined : s.slice(i + 1);
   if (f === "goto") return M.goto(arg);
-  if (f === "markSet" || f === "markGo") return M[f](Number(arg));
   if (f === "answer") return arg ? done(answer(arg), arg) : done(false);
   if (f === "later") return arg ? done(answer(arg, "later"), arg) : done(false);
   return M[f] ? M[f](arg) : done(false);

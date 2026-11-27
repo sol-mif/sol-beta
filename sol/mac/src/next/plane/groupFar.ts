@@ -12,7 +12,7 @@ import { ladder, placesNow, type Place } from "./cull.ts";
 import { GAP, apartZ, around, group, walk, type Group } from "./group.ts";
 import { SIZE, held, type Rect } from "./size.ts";
 import { roomUnder } from "./raise-state.ts";
-import { DIARY, R_GAP, ZMAX, isOff, safe, viewSize } from "./layout.ts";
+import { DIARY, R_GAP, caseRect, ZMAX, isOff, safe, viewSize } from "./layout.ts";
 
 /** a group's card on screen, px: as wide as a card at its smallest and no wider than its members' span, as tall as a
  *  count line; its words wrap inside, never cut (the CSS lets it grow) */
@@ -30,7 +30,7 @@ function groupsAt(whole: (id: string) => boolean, z: number): Kept {
   const P = new Map<string, Place>(placesNow().map((p) => [p.id, p])), q = new Map<string, Rect>();
   const boxes = ids.map((id) => {
     // a folder folded to its tab is one line (its name and its state), held as a line, never widened to a card
-    const b = held(D.pos![id], z, D.pos![id].folded ? "line" : "card");
+    const b = held(D.pos![id].folded ? D.pos![id] : caseRect(D.pos![id]), z, D.pos![id].folded ? "line" : "card");
     q.set(id, { x: b.x, y: b.y, w: b.w, h: b.h });
     return { id, r: { x: b.x * z, y: b.y * z, w: b.w * z, h: b.h * z }, name: regionOf(id)?.name ?? id, asks: P.get(id)?.asks ?? 0 };
   });
@@ -53,7 +53,7 @@ function groupsAt(whole: (id: string) => boolean, z: number): Kept {
 /** a group's press: the camera on its folders, at the smallest zoom where they stand apart (the largest when none does),
  *  their middle at the middle of what the bars leave free, or the first of them when they do not fit there */
 export function apart(g: Pick<Group, "ids">): void {
-  const qs = g.ids.map((id) => D.pos?.[id]).filter((q): q is NonNullable<typeof q> => !!q);
+  const qs = g.ids.map((id) => D.pos?.[id]).filter((q): q is NonNullable<typeof q> => !!q).map((q) => (q.folded ? q : { ...q, ...caseRect(q) }));
   if (!qs.length) return;
   const z = apartZ(qs, "card", S.cam.z, ZMAX) ?? ZMAX, sa = safe("far"), { w, h } = viewSize();
   // all of them when they fit in what the bars leave free; otherwise the first, what needs the person most, the rest a pan away

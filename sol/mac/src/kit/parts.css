@@ -32,7 +32,7 @@
 .kp-group-head em { font-style: normal; color: var(--text2); margin-left: var(--s1); }
 .kp-group-aside { display: flex; align-items: center; gap: var(--s1); font-size: var(--text-line); color: var(--text3); }
 .kp-group-aside b { color: var(--text2); font-weight: var(--weight-display); }
-.kp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--grid-gap); }
+.kp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--grid-gap); }
 .kp-grid > * { min-width: 0; }
 .kp-more { all: unset; box-sizing: border-box; cursor: pointer; display: flex; width: 100%; align-items: center; gap: var(--s2); margin-top: var(--group-pad); padding: var(--s2) var(--s1) 0;
   font-family: var(--family); font-size: var(--text-more); font-weight: var(--weight-ui); color: var(--text2); }
@@ -98,23 +98,240 @@
 .kp-folder .kp-state { margin-top: var(--hair); }
 .kp-folder .kp-run { display: flex; align-items: center; gap: var(--s1); margin-left: var(--s1); }
 
-/* ---- Tab: an icon slot, the tab in front on the ground; while ⌘ is held the slot shows its digit ---- */
+/* ---- FolderCase (#1879 step 4): a white sticker case, its lid the folder's paint, a slip in the pocket; hover peels it ---- */
+.kp-case { position: relative; display: block; box-sizing: border-box; width: var(--case-w); height: var(--case-h); transform: rotate(0deg); transform-origin: var(--peel-origin);
+  transition: transform var(--move-time) var(--move), opacity var(--fade-time) var(--fade); }
+.kp-case::before { content: ""; position: absolute; inset: 0; border-radius: var(--r-case); background: var(--case); box-shadow: var(--depth-rest), var(--rim); }
+.kp-case::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-case); box-shadow: var(--depth-peel); opacity: 0; pointer-events: none; transition: opacity var(--move-time) var(--fade); }
+.kp-case-in { position: absolute; inset: var(--case-pad); border-radius: var(--r-case-in); overflow: hidden; isolation: isolate; }
+.kp-case-mesh { position: absolute; inset: 0; background-size: 100% 100%; transition: transform var(--move-time) var(--move); }
+.kp-case-slip { position: absolute; left: var(--case-slip-left); right: var(--case-slip-right); top: var(--case-slip-top); height: var(--case-slip-h); border-radius: var(--r-slip-s); background: var(--card);
+  box-shadow: var(--slip-shadow); transform: var(--case-slip); transition: transform var(--slip-time) var(--land); }
+.kp-case-slip::after { content: ""; position: absolute; left: var(--case-slip-pad); right: var(--s6); top: var(--card-pad); height: var(--case-slip-line); border-radius: var(--r-mark-tiny); background: var(--slip-line); box-shadow: var(--slip-lines); }
+.kp-case-pocket { position: absolute; inset: 0; width: 100%; height: 100%; }
+.kp-case-pocket path { fill: var(--pocket); }
+.kp-case-txt { position: absolute; inset: var(--case-lid) 0 0 0; padding: var(--s2) var(--case-side) var(--case-foot); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.kp-case-name { font-size: var(--text-case-name); letter-spacing: var(--title-k); line-height: var(--lh-case-name); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kp-case-sub { font-size: var(--text-line); color: var(--text2); margin-top: var(--hair); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kp-case-ft { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.kp-case-big { font-size: var(--text-case-big); letter-spacing: var(--title-k); line-height: var(--lh-case-big); font-variant-numeric: var(--figures); white-space: nowrap; }
+.kp-case-big small { font-size: var(--text-line); font-weight: var(--weight-ui); letter-spacing: 0; font-variation-settings: "ROND" var(--round-read); margin-left: var(--s1); color: var(--text2); }
+.kp-case-q { color: var(--text3); }
+.kp-case-nx { font-size: var(--text-case-nx); font-weight: var(--weight-ui); color: var(--text); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.kp-case-mo { position: absolute; top: var(--case-foot); right: var(--case-foot); width: var(--case-chip-size); height: var(--case-chip-size); border-radius: 50%; background: var(--case-chip); backdrop-filter: blur(8px);
+  display: grid; place-items: center; color: var(--text); z-index: 2; }
+.kp-case-mo .kp-icon { width: var(--case-chip-icon); height: var(--case-chip-icon); }
+.kp-case-mo .pc-more { all: unset; cursor: pointer; width: 100%; height: 100%; display: grid; place-items: center; border-radius: 50%; line-height: 1; }
+.kp-case-lid { position: absolute; top: var(--case-foot); left: var(--case-foot); z-index: 2; display: flex; align-items: center; gap: var(--s1); }
+.kp-case-run { display: flex; align-items: center; gap: var(--s1); font-size: var(--text-case-nx); font-weight: var(--weight-ui); background: var(--run-chip); color: var(--on-solid); border-radius: var(--r-pill); padding: var(--hair) var(--s2) var(--hair) var(--s2); }
+.kp-case-run i { width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--on-solid); animation: kp-blink var(--turn-time) var(--ease) infinite alternate; }
+.kp-case-quiet .kp-case-in { opacity: 0.55; }
+.kp-case:hover, .kp-case.kp-is-hover { transform: var(--peeled); z-index: 5; }
+.kp-case:hover::after, .kp-case.kp-is-hover::after { opacity: 1; }
+.kp-case:hover .kp-case-slip, .kp-case.kp-is-hover .kp-case-slip { transform: var(--case-slip-peel); }
+.kp-case:hover .kp-case-mesh, .kp-case.kp-is-hover .kp-case-mesh { transform: var(--case-mesh-peel); }
+.kp-case:active { transform: var(--pressed); transition-duration: var(--snap-time); transition-timing-function: var(--snap); }
+@keyframes kp-blink { from { opacity: 0.3; } to { opacity: 1; } }
+
+/* ---- DiaryCard (#1879 step 4): the day as a white sticker; its lines as rows, newest first, then "+N more" ---- */
+.kp-diary { position: relative; box-sizing: border-box; width: 100%; min-width: var(--dy-w); background: var(--card); border-radius: var(--r-lg); box-shadow: var(--depth-rest), var(--rim); padding: var(--dy-pad) var(--dy-pad) var(--dy-pad-foot); overflow: hidden; }
+.kp-diary-hd { display: flex; align-items: center; gap: var(--s2); color: var(--text); }
+.kp-diary-date { font-size: var(--text-dy-name); font-weight: var(--weight-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-diary-nv { margin-left: auto; display: flex; gap: var(--s1); }
+.kp-diary-nv button { all: unset; box-sizing: border-box; cursor: pointer; width: var(--dy-nav); height: var(--dy-nav); border-radius: var(--r-item); background: var(--field); display: grid; place-items: center; color: var(--text2); font-size: var(--text-head); }
+.kp-diary-nv button:disabled { cursor: default; opacity: 0.5; }
+.kp-diary-wait { margin: var(--s3) 0 var(--hair); display: flex; align-items: center; gap: var(--s2); background: var(--field); border-radius: var(--r-wait); padding: var(--s2) var(--card-pad); font-size: var(--t-label); color: var(--text2); }
+.kp-diary-wait b { font-size: var(--text-dy-count); font-variant-numeric: var(--figures); color: var(--text); }
+.kp-diary-none b { color: var(--text3); }
+.kp-diary-away { margin: var(--s3) 0 var(--s1); font-size: var(--text-dy-away); color: var(--text3); display: flex; align-items: center; gap: var(--s2); }
+.kp-diary-head { font-size: var(--text-dy-head); line-height: var(--lh-dy-head); letter-spacing: var(--title-k); margin: var(--hair) 0 var(--s3); overflow-wrap: anywhere; }
+.kp-diary-row { display: grid; grid-template-columns: var(--dy-time) minmax(0, 1fr) var(--mark-s); gap: var(--s2); padding: var(--dy-row-pad) var(--s1); border-top: var(--hair) solid var(--hairline); align-items: start; }
+.kp-diary-tm { font-size: var(--text-line); color: var(--text3); font-variant-numeric: var(--figures); padding-top: var(--hair); }
+.kp-diary-row b { font-size: var(--text-dy-row); font-weight: var(--weight-ui); overflow-wrap: anywhere; }
+.kp-diary-row p { margin: var(--hair) 0 0; font-size: var(--text-dy-detail); color: var(--text2); line-height: var(--lh-dy-detail); overflow-wrap: anywhere; }
+.kp-diary-row .kp-mark { margin-top: var(--s1); }
+.kp-diary-more { font-size: var(--text-dy-detail); color: var(--text2); padding: var(--s2) var(--s1) 0; border-top: var(--hair) solid var(--hairline); }
+
+/* ---- Tab: an icon slot with its corner, the tab in front on the ground; while ⌘ is held the glyph is its number ---- */
 .kp-tabs { height: var(--tabs-h); display: flex; align-items: flex-end; gap: var(--hair); padding: 0 var(--s3); background: var(--sidebar); border-bottom: var(--hair) solid var(--hairline); }
 .kp-tab { all: unset; box-sizing: border-box; height: var(--tab-h); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--tab-pad); border-radius: var(--r-tab) var(--r-tab) 0 0;
   font-family: var(--family); font-size: var(--text-tab); font-weight: var(--weight-ui); color: var(--text2); cursor: pointer; position: relative; transition: background var(--snap-time) var(--snap); }
 .kp-tab:hover { background: var(--hover-tint); }
 .kp-tab.kp-front { --icon-cut: var(--ground); background: var(--ground); color: var(--text); box-shadow: var(--tab-edge); clip-path: inset(-50% -50% 0 -50%); }
 .kp-tab-slot { position: relative; width: var(--icon-s); height: var(--icon-s); flex: none; display: grid; place-items: center; }
-.kp-tab-slot > .kp-icon, .kp-tab-slot > .kp-mark { transition: opacity var(--fade-quick) var(--fade); }
-.kp-digit { position: absolute; left: 50%; top: 50%; min-width: var(--digit-w); height: var(--digit-w); box-sizing: border-box; display: grid; place-items: center; translate: -50% -50%;
-  font-style: normal; font-size: var(--label-size); font-weight: var(--weight-display); line-height: 1; font-variant-numeric: var(--figures);
-  color: var(--on-solid); background: var(--solid); border-radius: var(--r-digit); opacity: 0; pointer-events: none; transform: var(--digit-from);
-  transition: opacity var(--fade-quick) var(--fade), transform var(--move-time) var(--move); }
-.kp-held .kp-tab .kp-digit { opacity: 1; transform: none; }
-.kp-held .kp-tab:has(.kp-digit) .kp-tab-slot > .kp-icon, .kp-held .kp-tab:has(.kp-digit) .kp-tab-slot > .kp-mark { opacity: 0; }
+.kp-tab-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-fill { width: 100%; height: 100%; }
+.kp-num { display: none; }
+.kp-held .kp-has-num .kp-what { display: none; }
+.kp-held .kp-has-num .kp-num { display: inline; }
+.kp-icon-num { font-family: var(--family); font-weight: var(--weight-display); font-size: var(--num-size); font-variation-settings: "ROND" var(--round-name); fill: currentColor; }
+.kp-corner { position: absolute; top: calc(var(--corner) * -0.4); right: calc(var(--corner) * -0.4); width: var(--corner); height: var(--corner); box-shadow: 0 0 0 var(--corner-ring) var(--sidebar); }
+.kp-front .kp-corner { box-shadow: 0 0 0 var(--corner-ring) var(--ground); }
+.kp-corner-ask { border-radius: 50%; background: var(--signal-asks); }
+.kp-corner-run { border-radius: 50%; box-shadow: none; background: conic-gradient(var(--signal-good) 0 72%, transparent 0); mask: radial-gradient(circle, transparent calc(var(--corner-hole) - 0.3px), #000 var(--corner-hole)); animation: kp-turn var(--turn-time) var(--spin) infinite; }
+.kp-corner-bad { background: var(--signal-bad); transform: rotate(45deg); border-radius: var(--r-diamond); }
+@keyframes kp-turn { to { transform: rotate(1turn); } }
+.kp-crumb { display: inline-flex; align-items: center; gap: var(--s1); color: var(--text); }
+.kp-crumb-sep { color: var(--text3); }
+.kp-pill { display: inline-flex; align-items: center; gap: var(--s1); flex: none; font-size: var(--text-pill); font-weight: var(--weight-ui); background: var(--field); border-radius: var(--r-pill); padding: 0 var(--s2) 0 var(--s1); box-shadow: var(--well); color: var(--text2); }
+.kp-pill-i { width: var(--pill-icon); height: var(--pill-icon); }
+.kp-ai { width: var(--pill-icon); height: var(--pill-icon); color: var(--text); flex: none; }
+.kp-more-tab { padding: 0 var(--s3); color: var(--text2); font-variant-numeric: var(--figures); }
 .kp-tab-close { color: var(--text3); opacity: 0; transition: opacity var(--fade-time) var(--fade); }
 .kp-tab:hover .kp-tab-close, .kp-tab.kp-front .kp-tab-close { opacity: 1; }
+.kp-held .kp-tab .kp-tab-close { display: none; }
+
+/* ---- the bar's tools (#1879 step 5): one white row, buttons with a glyph and a word; Add and a pressed tool are the solid one ---- */
+.kp-tool { --icon-cut: var(--card); box-sizing: border-box; display: flex; align-items: center; gap: var(--tool-gap); padding: var(--tool-pad); border-radius: var(--r-tool); background: var(--card); box-shadow: var(--depth-float), var(--rim); }
+.kp-tool .kp-tool-b { all: unset; box-sizing: border-box; cursor: pointer; height: var(--tool-h); padding: 0 var(--tool-px); border-radius: var(--r-tool-btn); display: flex; align-items: center; gap: var(--tool-in);
+  font-family: var(--family); font-size: var(--text-tool); font-weight: var(--weight-ui); line-height: 1; color: var(--text2); transition: background var(--snap-time) var(--snap), transform var(--snap-time) var(--snap); }
+.kp-tool .kp-tool-b:hover:not(:disabled) { background: var(--hover-tint); color: var(--text); }
+.kp-tool .kp-tool-b:active:not(:disabled) { transform: var(--pressed); }
+.kp-tool .kp-tool-b:disabled { cursor: default; opacity: 0.4; }
+.kp-tool .kp-tool-b:focus-visible { outline: 2px solid var(--solid); outline-offset: 1px; }
+.kp-tool-ic { width: var(--tool-icon); height: var(--tool-icon); color: var(--text); }
+.kp-tool .kp-tool-solid, .kp-tool .kp-tool-b[aria-pressed="true"], .kp-tool .kp-tool-solid:hover:not(:disabled), .kp-tool .kp-tool-b[aria-pressed="true"]:hover:not(:disabled) { background: var(--solid); color: var(--on-solid); box-shadow: var(--relief); --icon-cut: var(--solid); }
+.kp-tool .kp-tool-solid .kp-tool-ic, .kp-tool .kp-tool-b[aria-pressed="true"] .kp-tool-ic { color: var(--on-solid); }
+.kp-tool-zm { display: flex; align-items: center; gap: var(--zoom-gap); padding: var(--zoom-pad); border-radius: var(--r-tool-btn); background: var(--field); box-shadow: var(--well); }
+.kp-tool .kp-tool-zm .kp-tool-b { height: var(--zoom-h); padding: 0 var(--zoom-px); border-radius: var(--r-zoom-btn); }
+.kp-tool-zl { box-sizing: border-box; min-width: var(--zoom-w); padding: 0 var(--zoom-lx); text-align: center; white-space: nowrap; font-size: var(--text-zoom); font-weight: var(--weight-display); font-variation-settings: "ROND" var(--round-name); color: var(--text); }
+.kp-tool-sep { width: var(--hair); height: var(--sep-h); background: var(--hairline); margin: 0 var(--sep-mx); flex: none; }
+
+/* ---- the canvas's pieces (decided 2026-11-25, sol/mine/look/canvas-pieces/canvas-kit.html draft 4, #1910):
+   one unit (the folder case's footprint) at four sizes, a bigger size shows another kind of thing, never the same stretched.
+   No glow on the canvas: every state is a sign, a ring or a lift. A piece's outline is its own box; nothing here assumes
+   the shape beyond border-radius, so later shapes change the part, not the canvas. ---- */
+.kp-ground { position: relative; background: var(--ground) radial-gradient(var(--ground-dots) var(--hair), transparent var(--ground-dot)) 0 0 / var(--ground-grid) var(--ground-grid); overflow: hidden; }
+.kp-ground.kp-inside { background-color: var(--pocket); }
+.kp-ground .kp-icon { color: var(--text); }
+.kp-u-f { width: var(--unit-w); height: var(--fold-h); }
+.kp-u-s { width: var(--unit-w); height: var(--unit-h); }
+.kp-u-m { width: calc(2 * var(--unit-w) + var(--unit-gap)); height: var(--unit-h); }
+.kp-u-l { width: calc(2 * var(--unit-w) + var(--unit-gap)); height: calc(2 * var(--unit-h) + var(--unit-gap)); }
+.kp-card.kp-piece { position: absolute; border-radius: var(--r-lg); padding: var(--piece-pad); overflow: hidden; display: flex; flex-direction: column; gap: var(--s1); }
+.kp-piece.kp-u-f { border-radius: var(--r); padding: 0 var(--s3); flex-direction: row; align-items: center; gap: var(--s2); }
+.kp-piece.kp-note { background: var(--paper); }
+.kp-piece-head { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.kp-piece-name { font-size: var(--text-head); line-height: var(--lh-piece-name); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-u-l .kp-piece-name { font-size: var(--text-count); }
+.kp-piece-line { font-size: var(--text-more); color: var(--text2); line-height: var(--lh-piece-line); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.kp-piece-line.kp-q { color: var(--text); font-weight: var(--weight-ui); }
+.kp-piece-foot { margin-top: auto; display: flex; align-items: center; gap: var(--s2); font-size: var(--text-line); color: var(--text3); font-variant-numeric: var(--figures); }
+.kp-piece-foot b { color: var(--text); font-weight: var(--weight-display); font-size: var(--text-name); font-variation-settings: "ROND" var(--round-name); }
+.kp-piece-foot .kp-go { margin-left: auto; }
+.kp-thumb { border-radius: var(--r-item); box-shadow: var(--mark-edge); flex: none; }
+.kp-rows { display: flex; flex-direction: column; }
+.kp-rows > div { display: flex; align-items: center; gap: var(--s2); font-size: var(--text-more); padding: var(--piece-row-pad) 0; border-top: var(--hair) solid var(--hairline); min-width: 0; }
+.kp-rows > div > span:not(.kp-tab-slot) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-rows i.kp-t { font-style: normal; color: var(--text3); font-variant-numeric: var(--figures); width: var(--row-time-w); flex: none; }
+.kp-more-btn { position: absolute; top: var(--card-pad); right: var(--card-pad); width: var(--case-chip-size); height: var(--case-chip-size); border-radius: 50%; background: var(--field); display: grid; place-items: center; opacity: 0; transition: opacity var(--fade-time) var(--fade); }
+.kp-more-btn .kp-icon { width: var(--case-chip-icon); height: var(--case-chip-icon); }
+.kp-piece.kp-is-hover .kp-more-btn { opacity: 1; }
+
+/* the signs on a piece: the tab's corner on the kind's icon, the same at every size; done is a tick until seen */
+.kp-piece .kp-tab-slot { color: var(--text); }
+.kp-piece .kp-corner { box-shadow: 0 0 0 var(--corner-ring) var(--card); }
+.kp-corner-done { border-radius: 50%; background: var(--signal-good); display: block; }
+.kp-corner-done svg { display: block; width: 100%; height: 100%; }
+.kp-piece:not(.kp-u-f) .kp-piece-head .kp-tab-slot, .kp-find-row .kp-tab-slot { width: var(--icon); height: var(--icon); }
+.kp-piece:not(.kp-u-f) .kp-piece-head .kp-corner, .kp-find-row .kp-corner { width: var(--corner-l); height: var(--corner-l); top: calc(var(--corner-l) * -0.4); right: calc(var(--corner-l) * -0.4); }
+.kp-tally .kp-corner-run, .kp-piece-head .kp-corner-run, .kp-find-row .kp-corner-run, .kp-far-label .kp-corner-run, .kp-far-icon .kp-corner-run, .kp-pip .kp-corner-run { mask: radial-gradient(circle, transparent calc(var(--corner-hole-l) - 0.3px), #000 var(--corner-hole-l)); }
+.kp-unseen { transform: rotate(var(--unseen-tilt)); }
+.kp-sign { position: relative; display: inline-block; flex: none; width: var(--corner); height: var(--corner); }
+.kp-sign.kp-corner { position: relative; top: auto; right: auto; box-shadow: none; }
+.kp-tally { display: inline-flex; align-items: center; gap: var(--s2); }
+.kp-tally .kp-sign { width: var(--corner-l); height: var(--corner-l); }
+.kp-tally > span { display: inline-flex; align-items: center; gap: var(--s1); font-weight: var(--weight-display); font-size: var(--text-name); font-variant-numeric: var(--figures); color: var(--text); font-variation-settings: "ROND" var(--round-name); }
+.kp-runs { display: inline-flex; align-items: center; gap: var(--runs-gap); }
+.kp-runs i { width: var(--run-w); height: var(--run-h); border-radius: var(--r-run); background: var(--signal-good); opacity: 0.55; }
+.kp-runs i.kp-bad { background: var(--signal-bad); opacity: 1; }
+.kp-runs i.kp-last { opacity: 1; }
+
+/* under the hand: pointed at peels, picked is an ink ring outside the white edge, carried lifts a level above with its
+   landing spot on the ground and a snap guide; inside a folder things lie flat */
+.kp-piece.kp-is-hover { transform: var(--peeled); }
+.kp-piece.kp-is-hover::after { opacity: 1; }
+.kp-picked { box-shadow: var(--depth-picked), var(--rim) !important; }
+.kp-carried { transform: var(--carried); box-shadow: var(--depth-carried), var(--rim) !important; z-index: 5; }
+.kp-spot { position: absolute; border-radius: var(--r-lg); background: var(--spot); box-shadow: var(--spot-edge); }
+.kp-guide { position: absolute; background: var(--guide); }
+.kp-ground.kp-inside .kp-piece { box-shadow: var(--depth-flat); }
+.kp-ground.kp-inside .kp-piece::after { display: none; }
+.kp-ground.kp-inside .kp-piece .kp-corner { box-shadow: 0 0 0 var(--corner-ring) var(--card); }
+.kp-ground.kp-inside .kp-picked { box-shadow: var(--picked-flat) !important; }
+
+/* a row: Where's calm row, one line, the icon carries folder and state; its detail shows only on the row you're on */
+.kp-find-row { display: flex; align-items: center; gap: var(--s2); height: var(--h-row); padding: 0 var(--s2); border-radius: var(--r-item); min-width: 0; color: var(--text); }
+.kp-find-row > span:not(.kp-tab-slot) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-find-row > span b { font-weight: var(--weight-display); }
+.kp-find-row > em { margin-left: auto; font-style: normal; color: var(--text3); font-size: var(--text-line); display: flex; align-items: center; gap: var(--s1); flex: none; font-variant-numeric: var(--figures); }
+.kp-find-row:not(.kp-on) > em { display: none; }
+.kp-find-row.kp-on { background: var(--hover-tint); }
+
+/* what a session made, as previews; names wrap between words or at a hyphen, never cut */
+.kp-made { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.kp-made-row { display: flex; align-items: center; gap: var(--s2); min-width: 0; font-size: var(--text-line); font-weight: var(--weight-ui); color: var(--text); }
+.kp-made-row > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-made-row .kp-thumb { width: var(--made-thumb-w); height: var(--made-thumb-h); }
+.kp-made-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.kp-made-grid > div { display: flex; flex-direction: column; gap: var(--made-gap); min-width: 0; font-size: var(--text-line); font-weight: var(--weight-ui); }
+.kp-made-grid > div > span, .kp-thumbs > div > span { line-height: var(--lh-thumb-name); overflow-wrap: normal; word-break: normal; }
+.kp-made-grid .kp-thumb { height: var(--made-preview-h); }
+.kp-cols { display: flex; gap: var(--s4); height: 100%; min-height: 0; }
+.kp-cols > .kp-col { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; flex: 1; }
+.kp-cols > .kp-col-side { flex: none; width: var(--col-side-w); display: flex; flex-direction: column; gap: var(--s1); min-width: 0; padding-top: var(--col-side-top); }
+
+/* a holder: a rule over every folder, not a place; a stack of white index cards whose depth says how much is inside
+   (one edge under 10, two under 100, three beyond). Its face shows rows or previews from what it holds, never from
+   which holder it is. */
+.kp-hold { overflow: hidden; }
+.kp-hold.kp-deep-1 { box-shadow: var(--depth-rest), var(--rim), var(--stack-1); }
+.kp-hold.kp-deep-2 { box-shadow: var(--depth-rest), var(--rim), var(--stack-2); }
+.kp-hold.kp-deep-3 { box-shadow: var(--depth-rest), var(--rim), var(--stack-3); }
+.kp-hold .kp-piece-head:first-child { padding-bottom: var(--hold-head-pad); margin: 0 calc(var(--piece-pad) * -1); padding-left: var(--piece-pad); padding-right: var(--piece-pad); border-bottom: var(--hair) solid var(--hairline); }
+.kp-hold .kp-find-row { height: var(--hold-row-h); padding: 0 var(--hold-row-px); border-radius: 0; }
+.kp-hold .kp-find-row + .kp-find-row { border-top: var(--hair) solid var(--hairline); }
+.kp-hold .kp-label.kp-day { margin: var(--s2) var(--hold-row-px) var(--hair); display: flex; justify-content: space-between; }
+.kp-hold .kp-label.kp-day em { font-style: normal; text-transform: none; letter-spacing: 0; font-variant-numeric: var(--figures); }
+.kp-hold .kp-chips { display: flex; gap: var(--s1); padding: var(--hold-chips-top) 0 0; flex-wrap: nowrap; }
+.kp-hold .kp-chip { font-size: var(--text-line); font-weight: var(--weight-ui); padding: var(--chip-py) var(--chip-px); border-radius: var(--r-pill); color: var(--text2); white-space: nowrap; display: inline-flex; align-items: center; gap: var(--s1); }
+.kp-hold .kp-chip.kp-on { background: var(--solid); color: var(--on-solid); box-shadow: var(--relief); }
+.kp-hold .kp-chip:not(.kp-on) { box-shadow: var(--relief-soft); background: var(--card); }
+.kp-hold-total { display: flex; align-items: baseline; gap: var(--made-gap); font-size: var(--text-line); color: var(--text3); font-variant-numeric: var(--figures); }
+.kp-hold-total b { font-size: var(--text-hold-total); line-height: 1; letter-spacing: var(--title-k); color: var(--text); font-weight: var(--weight-display); font-variation-settings: "ROND" var(--round-name); }
+.kp-hold-says { display: flex; flex-direction: column; gap: var(--runs-gap); margin-top: var(--s2); }
+.kp-hold-says .kp-sign { width: var(--corner-l); height: var(--corner-l); flex: none; }
+.kp-hold-says > span { display: flex; align-items: center; gap: var(--s1); font-size: var(--text-line); color: var(--text2); }
+.kp-hold-says > span b { color: var(--text); font-weight: var(--weight-display); font-variant-numeric: var(--figures); font-variation-settings: "ROND" var(--round-name); }
+.kp-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--thumbs-gap); align-items: start; }
+.kp-thumbs > div { display: flex; flex-direction: column; gap: var(--runs-gap); min-width: 0; font-size: var(--text-line); font-weight: var(--weight-ui); color: var(--text2); }
+.kp-thumbs .kp-thumb { height: var(--thumb-h); position: relative; }
+.kp-hold.kp-u-s .kp-thumbs .kp-thumb { height: var(--thumb-h-s); }
+.kp-thumbs .kp-thumb .kp-ai { position: absolute; right: var(--thumb-star-in); top: var(--thumb-star-in); width: var(--pill-icon); height: var(--pill-icon); color: var(--text); }
+.kp-fan { position: relative; height: 100%; }
+.kp-fan .kp-thumb { position: absolute; width: var(--fan-w); height: var(--fan-h); box-shadow: var(--mark-edge), var(--slip-shadow); }
+
+/* zoomed out (R5): under 50% shapes shrink and words don't; each thing is its footprint plus one label at screen size */
+.kp-far { position: absolute; border-radius: var(--r-item); background: var(--card); box-shadow: var(--depth-rest), var(--rim); }
+.kp-far.kp-far-note { background: var(--paper); }
+.kp-far.kp-far-hold { box-shadow: var(--depth-rest), var(--rim), var(--stack-far); }
+.kp-far.kp-far-case { background: var(--case); padding: var(--far-case-pad); }
+.kp-far.kp-far-case > i { display: block; width: 100%; height: 100%; border-radius: var(--r-far-in); }
+.kp-far.kp-unseen { transform: rotate(var(--unseen-tilt)); }
+.kp-far-label { position: absolute; display: flex; align-items: center; gap: var(--made-gap); height: var(--h-chip); padding: 0 var(--far-label-pr) 0 var(--s1); border-radius: var(--r-item); font-size: var(--text-line); font-weight: var(--weight-display); font-variation-settings: "ROND" var(--round-name); color: var(--text); white-space: nowrap; min-width: 0; z-index: 2; }
+.kp-far-label > span:last-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kp-far-label.kp-on-ground { background: color-mix(in oklab, var(--card) 88%, transparent); box-shadow: var(--rim); }
+.kp-far-icon { position: absolute; z-index: 2; }
+.kp-far-label .kp-tab-slot, .kp-pip .kp-tab-slot, .kp-far-icon .kp-tab-slot { width: var(--icon); height: var(--icon); flex: none; }
+.kp-far-label .kp-corner, .kp-pip .kp-corner, .kp-far-icon .kp-corner { width: var(--corner-l); height: var(--corner-l); top: calc(var(--corner-l) * -0.4); right: calc(var(--corner-l) * -0.4); box-shadow: 0 0 0 var(--corner-ring) var(--card); }
+
+/* a pip (R7): something that needs you is off the edge of the view; it points the way, a press glides there */
+.kp-pip { position: absolute; display: flex; align-items: center; gap: var(--thumbs-gap); height: var(--pip-h); padding: 0 var(--card-pad) 0 var(--thumbs-gap); border-radius: var(--r-pill); background: var(--solid); color: var(--on-solid); box-shadow: var(--relief); font-size: var(--text-line); font-weight: var(--weight-display); white-space: nowrap; z-index: 5; }
+.kp-pip > em { font-style: normal; opacity: 0.6; }
+.kp-pip .kp-tab-slot { background: var(--card); border-radius: var(--r-digit); color: var(--text); }
 
 @media (prefers-reduced-motion: reduce) {
-  .kp-card, .kp-card::after, .kp-box .kp-lid, .kp-box .kp-glyph, .kp-slip, .kp-window, .kp-digit, .kp-tip { transition-property: opacity; }
+  .kp-corner-run, .kp-case-run i { animation: none; }
+  .kp-tool .kp-tool-b { transition: none; }
+  .kp-case, .kp-case::after, .kp-case-slip, .kp-case-mesh, .kp-card, .kp-card::after, .kp-box .kp-lid, .kp-box .kp-glyph, .kp-slip, .kp-window, .kp-tip, .kp-more-btn { transition-property: opacity; }
 }

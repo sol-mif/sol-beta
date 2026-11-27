@@ -29,7 +29,7 @@ const learner = () => seams().learner ?? localLearner;
 
 // ---------------------------------------------------------------- the person-only acts: an AI that calls one is refused
 
-const CAMERA = ["pan", "zoom", "enter", "leave", "in", "out", "jump", "goto", "dive", "map", "back", "fwd", "recent", "markGo", "markSet", "door", "drawer", "pane", "next", "follow"];
+const CAMERA = ["pan", "zoom", "enter", "leave", "in", "out", "jump", "goto", "dive", "map", "back", "fwd", "recent", "door", "drawer", "pane", "next", "follow"];
 export const REFUSE: Record<string, string> = {
   camera: "Moving the camera is yours; I can point at it instead.",
   answer: "Accepting or refusing a change is yours; I can ask.",
@@ -62,7 +62,7 @@ PERSON_ONLY.see_pieces = "camera"; for (const n of ["use_piece", "piece_state", 
 for (const n of ["fold", "resize", "offCanvas"]) PERSON_ONLY[n] = "placed";
 /* BR1 (#1615): keeping a suggested setup is the person's; the tab row's moves move what they see (an AI asks through the engine's three verbs) */
 for (const n of ["wsPreview", "wsSkip", "wsKeep", "wsDiscard", "wsUndo", "tabOffer", "tabUndo", "tabUndoGone"]) PERSON_ONLY[n] = "setting";
-for (const n of ["tabNew", "tabOpen", "tabFront", "tabClose", "tabDrop"]) PERSON_ONLY[n] = "camera";   // tabNew: the tab row's ＋ (Look 1 A3)
+for (const n of ["tabNew", "tabOpen", "tabFront", "tabClose", "tabDrop", "tabKey"]) PERSON_ONLY[n] = "camera";   // tabNew: the tab row's ＋ (Look 1 A3)
 export function refusal(name: string, args: Any): string | null {
   if (PERSON_ONLY[name]) return REFUSE[PERSON_ONLY[name]];
   if (name === "remove_line") { const l = seams().diary?.byId(args?.line); if (l && l.mine) return REFUSE.words; }
@@ -500,7 +500,7 @@ function newestSession(r: Row): string | null {
 
 /** each person move: the function an AI uses for the same end (the AI then proposes when the move is the person's alone) */
 export const MOVE_FN: Record<string, string> = {
-  back: "point", fwd: "point", out: "point", map: "look", dive: "read", markSet: "look", markGo: "point", recent: "point", goto: "point",
+  back: "point", fwd: "point", out: "point", map: "look", dive: "read", recent: "point", goto: "point",
   next: "needs", beside: "beside", follow: "read", needs: "needs", undoFix: "offer", offer: "offer", talk: "redirect", pane: "read", door: "point", drawer: "point",
   tooMuch: "offer", applyFix: "offer", pan: "point", zoom: "look", enter: "read", leave: "point", in: "read", jump: "point",
   start: "start", split_run: "split_run", pass: "pass", redirect: "redirect", pause: "pause", resume: "resume", stop: "stop", check: "check",
@@ -520,7 +520,7 @@ export const MOVE_FN: Record<string, string> = {
   see_seats: "look", sign_in: "offer", remind_later: "offer",   // slice 6b (agent.js round 6)
   fold: "place", resize: "place", offCanvas: "place", nest: "place",   // BR1 pieces by hand; a folder in a folder (#1615)
   wsPreview: "offer", wsSkip: "offer", wsKeep: "offer", wsDiscard: "offer", wsUndo: "offer",   // BR1 carry (#1615): a setup Sol suggests is the person's to keep
-  tabNew: "start", tabOpen: "read", tabFront: "point", tabClose: "point", tabDrop: "place", tabOffer: "offer", tabUndo: "offer", tabUndoGone: "offer",   // BR1 tabs (#1615): an AI has the engine's open_piece, take_to_tab, put_back
+  tabNew: "start", tabOpen: "read", tabFront: "point", tabKey: "point", tabClose: "point", tabDrop: "place", tabOffer: "offer", tabUndo: "offer", tabUndoGone: "offer",   // BR1 tabs (#1615): an AI has the engine's open_piece, take_to_tab, put_back
 };
 /** each function: the person's moves that do or meet the same */
 export const FN_MOVE: Record<string, string[]> = {

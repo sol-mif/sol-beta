@@ -61,7 +61,7 @@ test("go to <name>: a folder named so wins over one whose name only contains it"
 });
 
 test("Waiting on you is the list's name wherever it is a label, and the talk hears both names", () => {
-  for (const [f, re] of [["./next/needs/Needs.tsx", /data-m1="what">Waiting on you<\/h1>/], ["./next/Next.tsx", /data-act="needs"[^>]*>Waiting on you</],
+  for (const [f, re] of [["./next/needs/Needs.tsx", /data-m1="what">Waiting on you<\/h1>/], ["./next/Sidebar.tsx", /data-act="needs"[^\n]*>Waiting on you</],
     ["./next/notes/read.ts", /\{ id: "needs", say: "Waiting on you" \}/], ["./next/auto/model.ts", /say: "Waiting on you"/],
     ["./next/settings/model.ts", /l: "Waiting on you", k: \["attention"\]/]] as const) assert.match(src(f), re, f);
   const work = src("./next/work/read.ts");

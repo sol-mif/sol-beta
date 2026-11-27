@@ -114,6 +114,10 @@ body.pl-dragging .pl { cursor: grabbing; }
 /* today's page, at its place */
 .pl-diary { position: absolute; overflow: auto; border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); box-sizing: border-box; }
 .pl-diary[hidden] { display: none; }
+/* at Far the Diary is a sticker card (kit DiaryCard, #1879 step 4): its section only holds the place, and the strip of handles
+   above the card shows while the hand is on it */
+.pl-diary:has(.kp-diary) { overflow: visible; background: none; box-shadow: none; border-radius: 0; pointer-events: none; }
+.pl-diary .kp-diary-pos { margin-top: var(--s8); pointer-events: auto; cursor: pointer; }
 /* its words fill the piece as wide as it stands (My day's wide Diary, or one pulled wide by hand), never its left half
    (BR1 conform 1, narrow.html's My day); a page elsewhere keeps the reading width (.dy) */
 .pl-diary .dy { max-width: none; }

@@ -208,7 +208,7 @@ export function fromRow(r: Row | null | undefined): string | null {
 }
 function refusedKind(r: Row): string {
   const n = r.fn;
-  if (["pan", "zoom", "enter", "leave", "in", "out", "jump", "goto", "dive", "map", "back", "fwd", "recent", "markGo", "markSet", "door", "drawer", "pane", "next", "follow", "flip"].includes(n)) return "camera";
+  if (["pan", "zoom", "enter", "leave", "in", "out", "jump", "goto", "dive", "map", "back", "fwd", "recent", "door", "drawer", "pane", "next", "follow", "flip"].includes(n)) return "camera";
   if (["answer", "accept", "refuse", "keep"].includes(n)) return "answer";
   if (["remove_region", "keep_region", "remove"].includes(n)) return "project";
   return "setting";

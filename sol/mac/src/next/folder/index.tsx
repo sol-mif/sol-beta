@@ -208,6 +208,7 @@ export default function FolderView() {
           <Placed rid={v.rid} />
           <span className="fv-acts">
             <button className="fv-ic" data-folder-page={v.rid} onClick={() => M.folder_page(v.rid)} title={`Open ${r.name} up as a page: what's working, what changed, what's coming up, its files`} aria-label={`Open ${r.name} as a page`}>⤢</button>
+            <button className="fv-ic" data-folder-tab={v.rid} onClick={() => M.tabOpen(`folder:${v.rid}`, true)} title={`Keep ${r.name} as a tab`} aria-label={`Keep ${r.name} as a tab`}>◫</button>
             <button className="fv-ic" data-folder-close={v.rid} onClick={() => M.page(null)} title="Close this folder (Esc)" aria-label="Close this folder">×</button>
           </span>
         </div>

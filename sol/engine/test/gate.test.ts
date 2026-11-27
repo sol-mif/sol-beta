@@ -441,7 +441,7 @@ test("lint: the svg and font exemption lists hold what broke the rule when it la
 
 test("the exemption lists only shrink: each is pinned at its length when the kit was enforced (#1879), and may not grow", () => {
   // lower a number when its list shrinks; raising one is the thing this test is here to stop
-  const PINNED = { TOKENS_LEGACY: 37, SVG_LEGACY: 23, FONT_LEGACY: 43 };
+  const PINNED = { TOKENS_LEGACY: 37, SVG_LEGACY: 22, FONT_LEGACY: 43 };
   assert.ok(TOKENS_LEGACY.length <= PINNED.TOKENS_LEGACY, `TOKENS_LEGACY grew to ${TOKENS_LEGACY.length}; the list only shrinks`);
   assert.ok(SVG_LEGACY.length <= PINNED.SVG_LEGACY, `SVG_LEGACY grew to ${SVG_LEGACY.length}; the list only shrinks`);
   assert.ok(FONT_LEGACY.length <= PINNED.FONT_LEGACY, `FONT_LEGACY grew to ${FONT_LEGACY.length}; the list only shrinks`);

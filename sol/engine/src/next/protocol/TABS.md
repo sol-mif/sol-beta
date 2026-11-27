@@ -19,6 +19,10 @@ the canvas: closing one moves nothing. The Canvas tab is always first and is nev
   closing brings the Canvas forward. `{ id: "canvas" }` is refused.
 - `next.tab.front { id }` → the row; `{ id: "canvas" }` (or null) is the Canvas. A fresh tab is fresh no longer.
 - `next.tab.quiet { kind }` → the row: Sol does not offer "open these as tabs" for that kind again today.
+A folder can be kept as a tab: `next.tab.open { id: "folder:<folder id>", by: "person", front: true }` keeps `{ id, by,
+kind: "folder", at }`. A folder's id always carries `kind: "folder"` (sent without, or with another kind, it is set), and
+`kind: "folder"` on any other id is dropped. It is kept, fronted and closed like any tab (the window opens the folder's
+page form for it) and is not counted toward `taken`: the offer below is for sessions and pages.
 The window offers once, after four of one kind taken out in a day: "You've taken 4 sessions out to tabs today. Open
 sessions as tabs from now on?" Yes keeps the knob `open-session` (or `open-page`) at `tab` through `next.fit.set
 { knob, scope: "~", take: "tab", source: "Sol offered" }` (S15); "Keep in place" sends `next.tab.quiet`.

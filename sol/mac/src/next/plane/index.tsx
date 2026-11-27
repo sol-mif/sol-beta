@@ -10,13 +10,13 @@
 // or ctrl, ⌘+ / ⌘−; a piece or a folder dragged is placed (M.place). The view reads and presses; it never changes D.
 // Signed: marcocyl04-ux's agent, the port's slice 1 (#1615).
 import { memo, useEffect, useLayoutEffect, useRef, type CSSProperties, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactElement } from "react";
-import { D, S, M, SCEN, SCN, above, type Ask, asksInRegion, open, piecesIn, piecesShown, regionOf, sessions, useNext, render, dataVer, hooks, camOnlyNow, parentOf, ancestors, type Piece, type Region } from "../cv/index.ts";
+import { D, S, M, MODE, SCEN, SCN, above, type Ask, asksInRegion, open, piecesIn, piecesShown, regionOf, sessions, useNext, render, dataVer, hooks, camOnlyNow, parentOf, ancestors, type Piece, type Region } from "../cv/index.ts";
+import { K, awayWords } from "../keeps.ts";   // #1879 step 3: how long the person was away
 import * as L from "./layout.ts";
 import { Face, FoldLine, AskRow } from "./Face.tsx";
 import { cullFar } from "./cull.ts";
 import { groupFar } from "./groupFar.ts";   // the infinite canvas (BR1, #1615, F): cards held at their size, the ones that collide one group
 import { hold } from "./size.ts";
-import { roomUnder } from "./raise-state.ts";
 import { changedWords } from "../lead/rules.ts";
 import { toFit } from "./fit.ts";   // which cards fitCards fits: never a folded tab (#1615)
 import { Slot, type SlotProps } from "../slots.ts";
@@ -79,10 +79,10 @@ function labelShown(rid: string): boolean {
 
 /** Far: a folder as its card (shell.js regionCard), drawn as a folder (BR1, Folder.tsx); under the camera, so a pan
  *  leaves it as it was (#1633). What it says is drawn again when the data changes (v), not when the camera moves it */
-const RegionCard = memo(function RegionCard({ r, q, z, front, sel, room }: { r: Region; q: Rect; z: number; front: boolean; sel: boolean; v: number; room: number }) {
+const RegionCard = memo(function RegionCard({ r, q, z, front, sel }: { r: Region; q: Rect; z: number; front: boolean; sel: boolean; v: number }) {
   const cls = `pl-card ${tint(r.id)}${sel ? " pl-sel" : ""}`;
   if (L.folded(r.id)) return <FolderTab r={r} cls={cls} front={front} style={flat(q.x, q.y, q.w, undefined, z)} w={q.w * z} />;
-  return <FolderCard r={r} cls={cls} front={front} style={flat(q.x, q.y, q.w, q.h, z)} w={q.w * z} h={q.h * z} room={room} quiet={menuOn(r.id)} extra={<More id={r.id} label={r.name} />} />;
+  return <FolderCard r={r} cls={cls} front={front} style={flat(q.x, q.y, q.w, q.h, z)} w={q.w * z} h={q.h * z} quiet={menuOn(r.id)} extra={<More id={r.id} label={r.name} />} />;
 });
 
 /** a face, its one line and a folder's board as they read: drawn again when the data changes, not when the camera moves
@@ -200,7 +200,9 @@ function Summary() {
   const o = open(), h = hour(), first = o[0], n = above(), fx = firstWords();   // round 6 · F1: the one count
   const movedN = D.regions.filter((r) => piecesIn(r.id).some((p) => p.kind === "session") || asksInRegion(r.id).length).length;
   const tot = D.regions.reduce((s, r) => s + costOf(r.id), 0);
-  const span = h === "morning" ? `While you were away · 8 hours · ${movedN} place${movedN === 1 ? "" : "s"} moved` : `Since you last looked${h ? " · " + h : ""} · ${movedN} place${movedN === 1 ? "" : "s"} moved`;
+  // the length of the away is the engine's last-present time (#1879 step 3); the fixture says 8 hours as it always did
+  const gone = MODE === "live" ? awayWords(K().away) : h === "morning" ? "8 hours" : "";
+  const span = gone ? `While you were away · ${gone} · ${movedN} place${movedN === 1 ? "" : "s"} moved` : `Since you last looked${h ? " · " + h : ""} · ${movedN} place${movedN === 1 ? "" : "s"} moved`;
   const firstAt = first ? regionOf(D.pieces[first.piece]?.region)?.name ?? "" : "";
   return (
     <div className="pl-sum">
@@ -314,7 +316,7 @@ export default function Plane(_p: SlotProps) {
   if (band === "far") {
     const whole = cullFar(items, vis);   // S32: at most 12 places whole at Far, the rest in count lines (plane/cull.ts)
     const g = groupFar(items, whole, vis);   // the infinite canvas: each card held at its size, the ones that would overlap one group
-    D.regions.forEach((r, i) => { const q = g.at(r.id); if (q && !parentOf(r.id) && !L.isOff(r.id) && whole(r.id) && g.alone(r.id) && vis(q)) items.push(<RegionCard key={r.id} r={r} q={q} z={z} front={L.inView(r.id)} sel={i === S.sel % D.regions.length} v={dataVer()} room={g.room(r.id)} />); });
+    D.regions.forEach((r, i) => { const q = g.at(r.id); if (q && !parentOf(r.id) && !L.isOff(r.id) && whole(r.id) && g.alone(r.id) && vis(q)) items.push(<RegionCard key={r.id} r={r} q={q} z={z} front={L.inView(r.id)} sel={i === S.sel % D.regions.length} v={dataVer()} />); });
     // what the AI made unasked sits under today's page: its one line, at its place
     if (!D.pos[L.DIARY]?.folded && !L.isOff(L.DIARY)) for (const p of L.diaryPieces()) if (vis(D.pos[p.id])) items.push(<PieceOn key={p.id} p={p} full={false} sel={false} far />);
     items.push(...holderItems(z, true, vis));   // the holders, held like a folder's card
@@ -331,8 +333,7 @@ export default function Plane(_p: SlotProps) {
       if (up && (L.tucked(r.id) || !L.openAt(up))) continue;
       // its raise in the room its cell leaves above the next folder or piece in its folder (raise.ts roomUnder)
       if (up && !L.openAt(r.id)) {
-        const room = roomUnder(q, [...L.subs(up), ...L.onPlane(up).map((p) => p.id)].filter((id) => id !== r.id).map((id) => D.pos![id]).filter(Boolean), z);
-        items.push(<RegionCard key={"a:" + r.id} r={r} q={q} z={z} front={L.inView(r.id)} sel={false} v={dataVer()} room={room} />);
+        items.push(<RegionCard key={"a:" + r.id} r={r} q={q} z={z} front={L.inView(r.id)} sel={false} v={dataVer()} />);
         continue;
       }
       if (L.folded(r.id)) { items.push(<FolderTab key={"a:" + r.id} r={r} cls={`pl-card ${tint(r.id)}`} front={here} style={flat(q.x, q.y, q.w, undefined, z)} w={q.w * z} />); continue; }

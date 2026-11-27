@@ -68,7 +68,7 @@ export type Tally = {
 export type State = {
   dist: Dist; region: string | null; piece: string | null; pane: string; beside: string | null; part: string | null;
   keysSide: string; sel: number; cam: Cam; page: string | null;
-  hist: string[]; fwd: string[]; marks: Record<number, string>; recent: string[];
+  hist: string[]; fwd: string[]; recent: string[];
   askHere: string | null; askLine: string | null; peek: string | null; pending: string[]; pendAt: Record<string, number>;
   calm: boolean; fix: string | null; follow: string | null; tmStep?: number;
   term: Record<string, unknown>; doc: Record<string, string>;

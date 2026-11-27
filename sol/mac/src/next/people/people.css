@@ -106,10 +106,6 @@
 .sidepeople .pk.away { background: color-mix(in srgb, var(--a2) 65%, var(--ink4)); }
 .sidepeople .pk.gone { background: var(--ink4); }
 .sidepeople .allrow { color: var(--ink3); }
-/* the sidebar never scrolls on a people page: the AIs fold into their heading, then the folders into the Diary's row */
-.nx-side.fold-ais #sideais { display: none; }
-.nx-side.fold-regions #sideregions .nx-reg:not([data-zone-go]), .nx-side.fold-regions #sideregions [data-folders-head] { display: none; }   /* the heading goes with its folders (H4) */
-.nx-side .nx-regmore .nx-rn { color: var(--ink3); }
 
 /* ---- Needs you: the people's waits and cards, under the canvas's asks (P3) ---- */
 .pplneeds { max-width: 780px; margin: var(--s8) auto 0; padding: 0 var(--s8) var(--s12); }

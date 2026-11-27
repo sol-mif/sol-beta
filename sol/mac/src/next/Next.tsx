@@ -1,43 +1,39 @@
 // The new face's shell (#1604, docs/port/slices.md "Before the night: the prep"; the mockup's merge/shell.html and
-// shell.js): the sidebar (Find, Waiting on you, New session, Working now, the folders, Cowork,
-// Social, Settings), the tab row on top (the Canvas tab with the crumb, a tab per piece taken out, ＋; the keys for here and Shortcuts on its hover), the view routed over S
+// shell.js): the sidebar (Sidebar.tsx; Find, Waiting on you, New session, then Check in and Live, or with a tab in front
+// Running elsewhere and Recent; Your AIs, Plans, Cowork, Social, Settings in the foot), the tab row on top (the Canvas tab with the crumb, a tab per piece taken out, ＋; the keys for here and Shortcuts on its hover), the view routed over S
 // into the slices' named slots (slots.ts), the ask line, the talk pill, Find (⌘P), the outline twin, the pop-ups' root and the frame's line.
 // DOM hooks the counts read: #view #line #crumb #press #outline #overlay #say. Live (a real Sol) the store starts empty
 // and the wires fill it; the dev page (dev.tsx) loads the fixture and draws <Shell/> itself.
 // Signed: marcocyl04-ux's agent, the port's prep (#1615).
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type MouseEvent as RMouseEvent } from "react";
 import {
-  D, S, M, SCEN, act, asksInRegion, attach, answer, findByWords, hooks, lineAsk, open, piecesIn, regionOf, say, setMode,
-  useNext, folderOrder, SCN, ancestors,
+  D, S, M, act, asksInRegion, attach, answer, findByWords, hooks, lineAsk, open, piecesIn, regionOf, say, setMode,
+  useNext, folderOrder, ancestors,
 } from "./cv/index.ts";
 import type { Engine } from "./cv/wire/types.ts";
 import { Slot, warm, type SlotName, type SlotProps } from "./slots.ts";
-import { crumbOf, needsCount, onPeople } from "./people/queue.ts";   // slices 8+9: the people's pages, crumb and count
-import { fitSide, setSideFolded, sideFolded, type SideList } from "./side.ts";   // round 6 · F2: the sidebar fits; Look 1 A1: its lists fold
+import { crumbOf, onPeople } from "./people/queue.ts";   // slices 8+9: the people's pages, crumb and count
 import { FitPal, FitsLayer, TopFold } from "./fits/views.tsx";   // slice R8 (#1615): ⌘P finds fits, the knob card, the bar's ⋯ (requests/fits.md)
+import Sidebar from "./Sidebar.tsx";   // the sidebar, from the frame drawing (#1879 step 1)
 import Bar from "./bar/Bar.tsx";   // the bottom bar (#1615, BR1: Marco's decision 2026-11-21)
 import { barHere } from "./bar/here.ts";   // where the bar is drawn: has-bar leaves room for it (BR1 conform 2)
 import { isOff, titleOf } from "./plane/layout.ts";   // a session by its task, never an agent (Marco, 2026-11-21)
 import { markChrome } from "./chrome.ts"; markChrome();   // the Mac app's window buttons: the root is marked once, the sidebar keeps clear of them (#1615)
-import { grabRow, wasDrag } from "./sideorder.ts";   // walk note item 8: a folder's row drags to its place among the folders
-import { onShelf } from "./shelf/model.ts";
-import { live } from "./movein/state.ts";   // #1816 round 2: what the person's words left out, "Not sorted yet"
 import { To } from "./plane/Raise.tsx";
 import { focusNow, holdTo, letGo, sendTo, toNow, toOf, useHand } from "./plane/raise-state.ts";   // BR1 quiet canvas (#1615): the bar's To follows the hand
 import Tabs from "./tabs/Tabs.tsx";   // BR1 tabs (#1615): the row on top of the canvas
 import { layerVars, boxOf, room } from "./layers.ts";   // BR1 root part 1: the four layers
 import { Overlay, OverlayRoot, Pop } from "./Overlay.tsx";
 import { frame, FrameLine } from "./frame.tsx";
-import { FolderMark, taskOf } from "./tabs/Label.tsx";
-import { apartOf, askHint, folderPath, placeOf, sayToo } from "./place.ts";   // BR1 root part 2: what a place is
-import { viewNow } from "./atwork/count.ts";   // the sidebar's Working now: what See what's at work reads (builder F)
-import { openAt } from "./atwork/act.ts";
+import { paintOfRegion, taskOf } from "./tabs/Label.tsx";
+import { Mark, type Paint } from "../kit/Signs";
+import { askHint, folderPath, sayToo } from "./place.ts";   // BR1 root part 2: what a place is
 import Attach from "./markup/Attach.tsx";   // BR1 3c: the talk pill's attach menu (P)
 import Kept from "./kept/Kept.tsx";   // BR1 Q1: a piece kept open beside the canvas (builder E)
 import Tips from "./tips/Tips.tsx";   // BR1 (#1615): the first Keep open, As a tab and reply each show one tip (builder P9)
 import { tipAt } from "./tips/tips-state.ts";
 import Learn from "./learn/Learn.tsx";   // BR1 (#1615, learn.html): the end card, the walks (builder T-face)
-import { barAsk, helpAsk, helpOpen, helpShown } from "./learn/help-state.ts";   // and Help, a session as a tab
+import { barAsk, helpAsk, helpShown } from "./learn/help-state.ts";   // and Help, a session as a tab
 import { isHowTo } from "./learn/answers.ts";   // a "how do I…" on the canvas bar is Help's (learn.html part 3, note 9)
 import BarLine from "./learn/BarLine.tsx";
 import { ShellLine } from "../cowork/ShellLine";   // the app updates itself (#1824, J1b): the same Restart Sol line as the old face
@@ -68,7 +64,7 @@ export default function Next({ e }: { e: Engine }) {
  *  verbs, Where, zoom, Arrange, Add and Customize, and every move here stays pressable and keyed as it was */
 export const MOVES: [string, string, string][] = [["Back", "back", "⌘["], ["Forward", "fwd", "⌘]"], ["Zoom out", "out", "⌘↑"], ["Zoom in", "dive", "⌘↓"],
   ["The whole canvas", "map", "⌘0"], ["Next ask", "next", "⌘J"], ["Find", "goto", "⌘P"], ["Beside", "beside", "⌘\\"], ["Follow an AI", "follow", "⌘⇧F"],
-  ["Recent", "recent", "⌘E"], ["Set mark 1", "markSet:1", "⌘⇧1"], ["Go to mark 1", "markGo:1", "⌘1"], ["Too much", "tooMuch", "⌘⇧H"]];
+  ["Recent", "recent", "⌘E"], ["Tab 1 is the Canvas, 2–9 the tabs", "tabKey:1", "⌘1–9"], ["Too much", "tooMuch", "⌘⇧H"]];
 
 /** the shell: `only` draws one slot alone in #view (the dev page's ?slot=, for a slice tried before the others land) */
 export function Shell({ only }: { only?: { name: SlotName; props: SlotProps } }) {
@@ -112,7 +108,7 @@ export function Shell({ only }: { only?: { name: SlotName; props: SlotProps } })
         : c === "Slash" && ans ? () => hooks.flash?.(`why: ${D.asks[ans].source} asked; it ranks ${D.asks[ans].rank}`)
         : c === "BracketLeft" ? M.back : c === "BracketRight" ? M.fwd : c === "KeyP" || c === "KeyK" ? () => setFind(true) : c === "KeyJ" ? M.next
         : sh && c === "KeyH" ? M.tooMuch : sh && c === "KeyF" ? () => M.follow() : c === "ArrowUp" ? M.out : c === "ArrowDown" ? () => M.dive()
-        : c === "Digit0" ? M.map : /^Digit[1-9]$/.test(c) ? () => (sh ? M.markSet(+c.slice(5)) : M.markGo(+c.slice(5)))
+        : c === "Digit0" ? M.map : /^Digit[1-9]$/.test(c) && !sh ? () => M.tabKey(+c.slice(5))
         : c === "KeyE" ? () => M.recent(1) : c === "Backslash" ? M.beside : c === "Comma" ? () => M.page(S.page === "settings" ? null : "settings") : null;
       if (f) { e.preventDefault(); f(); }
     };
@@ -211,184 +207,8 @@ function View({ only }: { only?: { name: SlotName; props: SlotProps } }) {
   return <><Slot name="plane" band={band} /><Slot name="agent" band={band} /></>;
 }
 
-/** a folder's row in the sidebar: its place's name, what needs the person as the count, its line on hover (place.ts). A
- *  folder inside a folder (BR1) sits under it, one step in per level, in the canvas's order (folderOrder). A press opens
- *  the folder, as a press on its card does: before, it only moved the canvas to it (H3, BR1 #1615: "pressing la245 in the
- *  sidebar only pans") */
-function PlaceRow({ id }: { id: string }) {
-  const pl = placeOf(id), depth = ancestors(id).length;
-  const on = S.page === "folder" ? S.folder === id : !S.page && S.dist !== "far" && S.region === id;
-  // frame.html §1: the folder's colour mark, its name, and one status dot (asks you, else working), never a count
-  const dot = pl.counts.asks ? { c: "ask", t: `${pl.counts.asks} ${pl.counts.asks === 1 ? "asks" : "ask"} you` } : pl.counts.working ? { c: "run", t: "working" } : null;
-  // walk note item 8: nothing hidden. A folder archived or taken off the canvas (or in one that is) is listed, marked so;
-  // a folder at the top of the canvas drags to another place among them, which moves it there on the canvas (sideorder.ts)
-  const offBy = [id, ...ancestors(id)].find(isOff), off = offBy ? (onShelf(offBy) ? "archived" : "off the canvas") : "";
-  return <a className={`nx-row nx-reg${on ? " on" : ""}${off ? " nx-off" : ""}`} role="button" tabIndex={0} data-act={`folder_open:${id}`} data-region={id} data-off={off || undefined}
-    title={off ? `${pl.line} · ${off}` : pl.line} data-place-line={pl.line} data-depth={depth} style={depth ? { paddingLeft: `calc(var(--s2) + ${depth} * var(--s3))` } : undefined}
-    onPointerDown={(e) => grabRow(e, id)} onClickCapture={(e) => { if (wasDrag()) { e.preventDefault(); e.stopPropagation(); } }}>
-    <RegionMark id={id} /><span className="nx-rn">{pl.name}{apartOf(id) ? <span className="nx-apart" data-apart> {apartOf(id)}</span> : null}</span>{off ? <span className="nx-offw">{off}</span> : dot ? <span className={`nx-dot ${dot.c}`} title={dot.t} aria-label={dot.t} /> : null}</a>;
-}
-
-/** Working now (frame.html §1; Marco, Q5 2026-11-22 14:18): every session at work and every automation running, as See
- *  what's at work reads them (atwork/count.ts), each with its folder's mark, its task, a status dot and its folder ("·
- *  loose" when in none); a press opens it where it is. None: one line. The heading opens See what's at work (builder F's
- *  page, atwork/), its hook [data-working-now]. The rows sit in #sideais, so the sidebar's fit (side.ts) keeps the ones
- *  that fit, asks first, and "+N more" opens the page too */
-/** a list's fold (Look 1 A1): its state, kept across loads, and the heading's press that turns it */
-function useFold(k: SideList): [boolean, (e: RMouseEvent) => void] {
-  const [f, setF] = useState(() => sideFolded(k));
-  return [f, (e) => {
-    if ((e.target as Element).closest?.(".nx-headadd")) return;   // its ＋ or ↗ is its own press
-    setSideFolded(k, !f); setF(!f);
-  }];
-}
-const Chev = ({ open }: { open: boolean }) => <span className={`nx-chev${open ? " open" : ""}`} aria-hidden="true" />;
-
-function WorkingNow() {
-  const rows = viewNow(null).now;
-  const more = () => openAt(null);
-  const [folded, turn] = useFold("ais");
-  return <>
-    {/* the heading folds the list (Look 1 A1); ↗ at its right opens See what's at work, as "+N more" does */}
-    <a className={`nx-label nx-head nx-wkhead${S.page === "atwork" ? " on" : ""}`} id="aisrow" role="button" tabIndex={0} data-working-now data-fold="ais" aria-expanded={!folded} onClick={turn} title={folded ? "Show Working now" : "Fold Working now"}>
-      <Chev open={!folded} /><span className="nx-rn">Working now</span>{rows.length ? <span className="nx-hn">{rows.length}</span> : null}
-      <span className="nx-headadd" role="button" tabIndex={0} data-atwork aria-label="See what's at work" title="See what's at work" onClick={(e) => { e.stopPropagation(); more(); }}>↗</span></a>
-    <div id="sideais" className="nx-wk" aria-label="Working now">
-      {folded ? null : rows.length ? rows.map((r) => {
-        const fail = r.stand === "asks" && /failure/.test(r.line), dot = fail ? "bad" : r.stand === "asks" ? "ask" : r.stand === "held" ? "held" : "run";
-        const st = fail ? "stopped on a failure" : r.stand === "asks" ? "asks you" : r.stand === "held" ? "paused" : r.kind === "auto" ? "automation" : "working";
-        return <a key={r.id} className={`nx-row nx-ai nx-wkrow${S.dist === "near" && S.piece === r.id ? " on" : ""}`} role="button" tabIndex={0} data-act={`goto:${r.id}`} data-working={r.id} title={`${r.name}: ${r.line}`}>
-          <RegionMark id={r.folder} /><span className="nx-wkt"><b className="nx-rn">{r.name}</b>
-            <small className={`nx-st${r.stand === "asks" ? " asks" : ""}`}><span className={`nx-dot ${dot}`} aria-hidden="true" />{st} · {r.folder && regionOf(r.folder) ? regionOf(r.folder)!.name : "loose"}</small></span></a>;
-      }) : <div className="nx-none" data-working-none>No AI is working right now</div>}
-      <a className="nx-row nx-aimore" role="button" tabIndex={0} hidden onClick={more}><span className="nx-rn">more</span></a>
-    </div>
-  </>;
-}
-
-/** Loose sessions (frame.html §1): the sessions in no folder, last under the folders with their count, a press taking you
- *  to the newest; no row while there are none */
-function LooseRow() {
-  const ls = Object.values(D.pieces).filter((p) => p.kind === "session" && !p.inside && !regionOf(p.region));
-  if (!ls.length) return null;
-  const last = ls.reduce((a, b) => (Number(b.born) || 0) > (Number(a.born) || 0) ? b : a);
-  return <a className="nx-row nx-reg nx-loose" role="button" tabIndex={0} data-act={`goto:${last.id}`} data-loose={ls.length}>
-    <RegionMark id={null} /><span className="nx-rn">Loose sessions</span><span className="nx-hn nx-at">{ls.length}</span></a>;
-}
-
-/** #1816 round 2: once the person has said how their folders are, the folders Sol found that their words left out wait
- *  here, never on the canvas. A press lists them beside the sidebar, as "more" does; each is sorted by saying where it
- *  goes in the bar, so the rows are read, not pressed */
-function UnsortedRow() {
-  const [open, setOpen] = useState(false);
-  const row = useRef<HTMLAnchorElement>(null), pop = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (ev: PointerEvent) => { const t = ev.target as Node; if (!row.current?.contains(t) && !pop.current?.contains(t)) setOpen(false); };
-    const esc = (ev: KeyboardEvent) => { if (ev.key === "Escape") { setOpen(false); row.current?.focus(); } };
-    document.addEventListener("pointerdown", away, true); document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("pointerdown", away, true); document.removeEventListener("keydown", esc); };
-  }, [open]);
-  const left = live.words ? [...live.unsorted.values()].sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name)) : [];
-  if (!left.length) return null;
-  const toggle = () => setOpen((o) => !o);
-  const where = (p: string) => p.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/, "~");
-  return <>
-    <a className={`nx-row nx-reg nx-loose${open ? " on" : ""}`} ref={row} role="button" tabIndex={0} aria-haspopup="dialog" aria-expanded={open} data-unsorted={left.length}
-      onClick={toggle} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}>
-      <RegionMark id={null} /><span className="nx-rn">Not sorted yet</span><span className="nx-hn nx-at">{left.length}</span></a>
-    {open ? <Pop ref={pop} className="nx-morepop" role="dialog" aria-label="Not sorted yet" prefer="right" anchor={() => (row.current ? boxOf(row.current) : null)}>
-      <span className="nx-label">Say where these go in the bar, in your own words</span>
-      {left.map((u) => <div key={u.id} className="nx-row" data-unsorted-row={u.id} title={u.path}>
-        <span className="nx-rn">{u.name}</span><span className="nx-hn nx-at">{u.sessions ? `${u.sessions} session${u.sessions === 1 ? "" : "s"}` : where(u.path)}</span></div>)}
-    </Pop> : null}
-  </>;
-}
-
-/** a folder's colour mark, as its card and its tab draw it (tabs/Label.tsx); dashed in no folder (loose) */
-const RegionMark = ({ id }: { id: string | null }) => <FolderMark p={{ id: "", region: id ?? "", kind: "", name: "" }} />;
-
-/** H4: the folders the sidebar has no room for. side.ts fitSide hides their rows, shows this row and writes "+N more" in
- *  it; a press lists those folders beside the sidebar, each going to its folder as its row does (All folders already
- *  showing, a press that only went there did nothing) */
-function FoldersMore() {
-  const [ids, setIds] = useState<string[] | null>(null);
-  const row = useRef<HTMLAnchorElement>(null), pop = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ids) return;
-    const away = (ev: PointerEvent) => { const t = ev.target as Node; if (!row.current?.contains(t) && !pop.current?.contains(t)) setIds(null); };
-    const esc = (ev: KeyboardEvent) => { if (ev.key === "Escape") { setIds(null); row.current?.focus(); } };
-    document.addEventListener("pointerdown", away, true); document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("pointerdown", away, true); document.removeEventListener("keydown", esc); };
-  }, [ids]);
-  const left = () => [...document.querySelectorAll<HTMLElement>("#sideregions .nx-reg[data-region][hidden]")].map((e) => e.dataset.region!);
-  const toggle = () => setIds((o) => (o ? null : left()));
-  const go = (id: string) => { setIds(null); act(`folder_open:${id}`); };
-  return <>
-    <a className={`nx-row nx-reg nx-regmore${ids ? " on" : ""}`} ref={row} role="button" tabIndex={0} aria-haspopup="dialog" aria-expanded={!!ids} data-regmore hidden
-      onClick={toggle} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}><span className="nx-rn">more</span></a>
-    {ids ? <Pop ref={pop} className="nx-morepop" role="dialog" aria-label="More folders" prefer="right" anchor={() => (row.current ? boxOf(row.current) : null)}>
-      {ids.map((id) => <a key={id} className="nx-row" role="button" tabIndex={0} data-more={id} style={ancestors(id).length ? { paddingLeft: `calc(var(--s2) + ${ancestors(id).length} * var(--s3))` } : undefined}
-        onClick={() => go(id)} onKeyDown={(ev) => { if (ev.key === "Enter") go(id); }}><span className="nx-rn">{placeOf(id).name}</span></a>)}
-    </Pop> : null}
-  </>;
-}
-
-function Sidebar() {
-  // the canvas's folders in its order, every one (walk note item 8): one archived, taken off the canvas, or inside one
-  // that is, is listed too and says so (PlaceRow)
-  const [fFolded, turnF] = useFold("regions");
-  const fs = folderOrder(), who = SCN ? SCEN[SCN]?.label.split(" · ")[0] : "";
-  const nav = useRef<HTMLElement>(null);
-  // round 6 · F2: the sidebar never scrolls: after each draw, and again when it changes size, the AIs keep the whole rows
-  // that fit, then "+N more"; then they fold to their heading, then the folders fold (side.ts)
-  useLayoutEffect(() => { if (nav.current) fitSide(nav.current); });
-  useEffect(() => {
-    const sd = nav.current, ss = sd?.querySelector(".nx-scroll");
-    if (!sd || !ss || typeof ResizeObserver === "undefined" || typeof MutationObserver === "undefined") return;
-    // rows that arrive late (a lazy slot's, the people's) fit too; the fit's own changes are not heard
-    const mo = new MutationObserver(() => fit()), watch = () => mo.observe(ss, { childList: true, subtree: true });
-    const fit = () => { mo.disconnect(); fitSide(sd); mo.takeRecords(); watch(); };
-    const ro = new ResizeObserver(() => fit());
-    ro.observe(ss); watch();
-    return () => { ro.disconnect(); mo.disconnect(); };
-  }, []);
-  return (
-    <nav className="nx-side" id="side" aria-label="Sidebar" ref={nav}>
-      <div className="nx-drag" data-tauri-drag-region aria-hidden="true" />
-      {who ? <div className="nx-me"><span className="nx-av">{who[0]}</span><b>{who}</b></div> : null}
-      {/* frame.html §1, as Marco ruled it whole (Q5–Q7, 2026-11-22 14:18 and 14:51): Find, what waits on you, a new session;
-          Working now; the folders; Cowork, Social and Settings at the foot. No At work, Shelf, You, Archived or "Hand a task
-          to an AI" row: the chat bar is where a task is handed over, and what is put aside or kept is reached through the
-          holders on the canvas (holders.html). The canvas is the Canvas tab, and the Diary a piece on it */}
-      <a className="nx-row" id="findrow" role="button" tabIndex={0} data-act="goto">Find<span className="nx-k">⌘K</span></a>
-      <a className={`nx-row${!S.page && S.dist === "needs" ? " on" : ""}`} id="needsrow" role="button" tabIndex={0} data-act="needs" data-f="one count: Cowork waits + Social cards">Waiting on you<span className="nx-k">⌘J</span><span className={`nx-n${needsCount() ? "" : " zero"}`} id="needn">{needsCount()}</span></a>
-      <a className="nx-row" id="newrow" role="button" tabIndex={0} data-act="tabNew" data-new-session><span className="nx-plus" aria-hidden="true">＋</span>New session<span className="nx-k">⌘N</span></a>
-      <div className="nx-scroll">
-        <WorkingNow />
-        <div className="nx-regions" id="sideregions" aria-label="Folders">
-          <a className="nx-label nx-head" data-folders-head role="button" tabIndex={0} data-fold="regions" aria-expanded={!fFolded} onClick={turnF} title={fFolded ? "Show Folders" : "Fold Folders"}>
-            <Chev open={!fFolded} /><span className="nx-rn">Folders</span><span className="nx-headadd" role="button" tabIndex={0} data-act="newFolder" data-newfolder aria-label="Make a folder" title="Make a folder">＋</span></a>
-          {fFolded ? null : <>
-            {fs.map((id) => <PlaceRow key={id} id={id} />)}
-            <FoldersMore />
-            <LooseRow />
-            <UnsortedRow />
-          </>}
-        </div>
-      </div>
-      <div className="nx-foot">
-        <Slot name="peopleside" />
-        {/* learn.html part 1 note 3: Help sits above Settings; the walks replay from there and its session opens there */}
-        <a className={`nx-row lr-helprow${helpShown() && !S.page ? " on" : ""}`} role="button" tabIndex={0} data-help-row onClick={() => helpOpen()}><span className="lr-q" aria-hidden="true">?</span>Help</a>
-        <a className={`nx-row${S.page === "settings" ? " on" : ""}`} role="button" tabIndex={0} data-act="page:settings" data-go="settings">Settings<span className="nx-k">⌘,</span></a>
-      </div>
-    </nav>
-  );
-}
-
 function Top({ moves, setMoves }: { moves: boolean; setMoves: (f: (m: boolean) => boolean) => void }) {
-  const seg: { id: string; label: string; act?: string }[] = [];
+  const seg: { id: string; label: string; act?: string; paint?: Paint }[] = [];
   if (onPeople(S.page)) seg.push(...crumbOf(S.page));
   else if (S.page === "folder" && regionOf(String(S.folder ?? ""))) {   // BR1 C: an opened folder; H3: every folder it sits in, outermost first, each opening its own
     const path = folderPath(String(S.folder));
@@ -399,7 +219,7 @@ function Top({ moves, setMoves }: { moves: boolean; setMoves: (f: (m: boolean) =
   else {
     seg.push({ id: "canvas", label: "All folders", act: "map" });
     const r = S.dist !== "far" ? regionOf(S.region) : undefined;
-    if (r) seg.push({ id: "region", label: r.name, act: `goto:${r.id}` });
+    if (r) seg.push({ id: "region", label: r.name, act: `goto:${r.id}`, paint: paintOfRegion(r.id) });
     const p = S.dist === "near" && S.piece ? D.pieces[S.piece] : undefined;
     if (p) seg.push({ id: "piece", label: `${taskOf(p)}${S.beside && D.pieces[S.beside] ? ` ‖ ${taskOf(D.pieces[S.beside])}` : ""}` });   // BR1: the task, not the AI (#1615)
     if (S.calm) seg.push({ id: "calm", label: "Too much" });
@@ -415,7 +235,7 @@ function Top({ moves, setMoves }: { moves: boolean; setMoves: (f: (m: boolean) =
   const crumb = (
     <span className="nx-crumb" id="crumb" role="navigation" aria-label="You are here">
       {/* the calm screen (BR1 item 3): a crumb is a way back, a link (the breadcrumb pattern); the last is where you are */}
-      {seg.map((s, i) => { const last = i === seg.length - 1; return <span key={s.id}>{i ? <span className="nx-sl">/</span> : null}<a id={i ? undefined : "canvasrow"} role={s.act && !last ? "link" : undefined} tabIndex={s.act && !last ? 0 : undefined} aria-current={last ? "page" : undefined} data-act={last ? undefined : s.act}>{s.label}</a></span>; })}
+      {seg.map((s, i) => { const last = i === seg.length - 1; return <span key={s.id}>{i ? <span className="nx-sl">›</span> : null}<a id={i ? undefined : "canvasrow"} role={s.act && !last ? "link" : undefined} tabIndex={s.act && !last ? 0 : undefined} aria-current={last ? "page" : undefined} data-act={last ? undefined : s.act}>{s.paint ? <Mark paint={s.paint} size="tiny" /> : null}{s.label}</a></span>; })}
     </span>
   );
   return (

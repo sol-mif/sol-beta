@@ -9,8 +9,10 @@
 //   <Icon name="folder" />            18px, the size token --icon
 //   <Icon name="done" small />        15px, --icon-s
 //   <BoxGlyph inside="kept" />        the check-in box: its body, its lid (class kp-lid) and the glyph under it (kp-glyph); BoxIcon moves them
+//   <TabIcon name="session" paint="api" digit={3} />   a tab's icon: the glyph says what, the folder's colour fills it, ⌘ held turns it into its number
 //   <Progress p={0.4} />              a running session's ring, p from 0 to 1
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { markOf, type Paint } from "./Signs";
 
 const CUT = "var(--icon-cut, var(--card))";
 const SQ = <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.6" fill="none" stroke="currentColor" strokeWidth="2.1" />;
@@ -101,6 +103,45 @@ export function Progress({ p, small }: { p: number; small?: boolean }) {
     <svg className={`kp-ring${small ? " kp-ring-s" : ""}`} viewBox="0 0 16 16" aria-hidden="true">
       <circle cx="8" cy="8" r={r} fill="none" className="kp-ring-track" strokeWidth="2.4" />
       <circle cx="8" cy="8" r={r} fill="none" className="kp-ring-run" strokeWidth="2.4" strokeLinecap="round" strokeDasharray={`${run.toFixed(1)} ${c.toFixed(1)}`} transform="rotate(-90 8 8)" />
+    </svg>
+  );
+}
+
+// ---- a tab's icon (#1879 step 2; decisions.md 2026-11-25, "One rule for a tab" and "the set is decided") ----
+/** what the folder's colour fills in each kind of tab: the shape the outline draws */
+const SHELLS: Partial<Record<IconName, ReactNode>> = {
+  folder: <path d={FOLDER_PATH} />, session: <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.6" />, starter: <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.6" />,
+  page: <rect x="5" y="3.2" width="14" height="17.6" rx="4.4" />, note: <path d={NOTE_PATH} />,
+};
+const SQUARE = <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.6" />;
+/** the folder's colour poured into a shape: a clip and a box carrying the mark's gradient */
+function Fill({ id, paint, shape }: { id: string; paint: Paint; shape: ReactNode }) {
+  return (
+    <>
+      <clipPath id={id}>{shape}</clipPath>
+      <foreignObject x="0" y="0" width="24" height="24" clipPath={`url(#${id})`}><div className="kp-fill" style={{ background: markOf(paint) }} /></foreignObject>
+    </>
+  );
+}
+/** a tab's icon at the tab's size. `paint` is its folder's mark (none: white, in no folder). `digit` is its ⌘ number,
+ *  drawn in the same shell and colour and shown while the row is held (`.kp-held`, parts.css); past nine there is none */
+export function TabIcon({ name, paint, digit }: { name: IconName; paint?: Paint; digit?: number }) {
+  const id = useId(), has = digit != null && digit >= 1 && digit <= 9;
+  const shell = SHELLS[name];
+  return (
+    <svg className={`kp-icon kp-icon-s${has ? " kp-has-num" : ""}`} viewBox="0 0 24 24" aria-hidden="true">
+      <g className="kp-what">{paint && shell ? <Fill id={`${id}w`} paint={paint} shape={shell} /> : null}{ICONS[name]}</g>
+      {has ? <g className="kp-num">{paint && name !== "canvas" ? <Fill id={`${id}n`} paint={paint} shape={SQUARE} /> : null}{SQ}<text x="12" y="16.4" textAnchor="middle" className="kp-icon-num">{digit}</text></g> : null}
+    </svg>
+  );
+}
+
+/** a folder case's pocket (#1879 step 4; decisions.md 2026-11-25, the folders on the canvas): the front of the case,
+ *  drawn once at one size and stretched to the case, so the notch for its slip stays where the drawing has it */
+export function Pocket() {
+  return (
+    <svg className="kp-case-pocket" viewBox="0 0 158 142" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,54 Q0,40 14,40 L60,40 C72,40 74,56 88,56 L158,56 L158,142 L0,142 Z" />
     </svg>
   );
 }

@@ -1,6 +1,5 @@
-/* The folder (#1615; Marco's decision 2026-11-21, mine/look/br1/bar-folder.html): at Far a back panel in the tint with a
-   tab, papers peeking out, a front panel with the name and at most two status lines; on hover or focus the front tips
-   forward, the papers rise and the contents card opens beside it. Opened at Middle (.pl-area) it is the folder's body in
+/* The folder (#1615; Marco's decision 2026-11-21, mine/look/br1/bar-folder.html; at Far a case from the frame drawing,
+   #1879 step 4, kit/FolderCase.tsx); on hover or focus the case peels and the contents card opens beside it. Opened at Middle (.pl-area) it is the folder's body in
    a light tint, its tab carrying the name and the status chips. Every space, size, height and corner is the scale's,
    every colour, shadow and curve the next set's (--tint from the folder's place, --card, --ink*, --line, --good, --bad,
    --asks, --run, --shadow*, --d-*, --e-*). Signed: marcocyl04-ux's agent, the port's BR1 folder (#1615). */
@@ -10,32 +9,10 @@
 .pl-card.fo.pl-sel { box-shadow: none; }
 .pl-card.fo.fo-on, .pl-card.fo:focus-within { z-index: var(--z-lift); }
 .pl-card.fo:focus-visible { outline: none; }
-.pl-card.fo:focus-visible .fo-front { outline: 2px solid var(--ink); outline-offset: 1px; }
-
-.fo-back { position: absolute; left: 0; right: 0; top: var(--s4); bottom: 0; border-radius: 0 var(--r-card) var(--r-card) var(--r-card);
-  background: color-mix(in oklab, var(--tint), var(--ink) 14%); }
-.fo-back::before { content: ""; position: absolute; left: 0; top: calc(1px - var(--s4)); width: 42%; height: var(--s4); border-radius: var(--r-row) var(--r-card) 0 0; background: inherit; }
-
-.fo-sheets { position: absolute; left: var(--s3); right: var(--s3); top: calc(var(--s4) + var(--s3)); height: 44%; transition: transform var(--d-land) var(--e-reveal); }
-.fo-sheet { position: absolute; left: 0; right: 0; top: 0; height: 100%; border-radius: var(--r-chip); background: var(--card); box-shadow: 0 1px 1px var(--line), inset 0 0 0 1px var(--line); transition: transform var(--d-land) var(--e-reveal); }
-.fo-sheet:nth-child(1) { transform: translateY(var(--s2)) rotate(-1.5deg); }
-.fo-sheet:nth-child(2) { left: var(--s1); right: 0; transform: translateY(var(--s1)) rotate(1.2deg); }
-.fo-sheet:nth-child(3) { left: 1px; right: var(--s1); transform: rotate(-0.4deg); }
-
-.fo-front { position: absolute; left: 0; right: 0; bottom: 0; top: 34%; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s3) var(--s2);
-  border-radius: var(--r-row); box-sizing: border-box; overflow: hidden; color: var(--ink);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--tint) 70%, var(--card)), var(--tint));
-  box-shadow: var(--shadow); border-top: 1px solid color-mix(in oklab, var(--card) 60%, transparent);
-  transform-origin: 50% 100%; transition: transform var(--d-land) var(--e-reveal), box-shadow var(--d-land) var(--e-reveal); }
-.pl-card.fo.pl-sel .fo-front { box-shadow: var(--shadow-up), inset 0 0 0 1px var(--ink3); }
-.fo .pl-ph { gap: var(--s2); }
-.fo .pl-pn { flex: 0 1 auto; min-width: 0; font-size: var(--t-read); line-height: var(--t-read-line); font-weight: 700; }
-.fo .pl-dot { display: none; }
-/* the tab carries what is yours in it (slice 12's chip), so the name keeps the front's width */
-.fo-tab { position: absolute; left: var(--s2); top: 0; height: var(--s4); display: flex; align-items: center; z-index: var(--z-lift); }
-.fo-tab .yours { height: var(--s4); line-height: var(--s4); padding: 0 var(--s1); font-size: var(--t-label); white-space: nowrap; background: none; color: color-mix(in oklab, var(--ink), var(--tint) 20%); }
-.fo .ld-far { font-size: var(--t-head); line-height: var(--t-head-line); }
-.fo .ld-far .ld-t { overflow-wrap: break-word; }
+.pl-card.fo:focus-visible .kp-case { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: var(--r-case); }
+/* a folder at Far is a case (kit FolderCase, #1879 step 4): it fills the card's box; the card's hover is the case's peel */
+.pl-card.fo > .kp-case { width: 100%; height: 100%; }
+.pl-card.fo .pc-more { color: var(--text); }
 
 /* a session's mark: its folder's colour as a small tab, dashed when loose; its one label (automation or seat) as a pill
    (a session is not an agent: no name, no face; mine/look/br1/frame.html parts 1, 2, 5) */
@@ -81,11 +58,6 @@
 .fo.fo-on .fo-pcap, .fo:focus-within .fo-pcap, .fo-pcap:has(> .bc[aria-expanded="true"]) { display: block; }
 .pl-card.fo.fo-pwas { outline: 1.5px dashed var(--ink3); outline-offset: var(--s1); border-radius: var(--r-card); }
 
-/* hover and focus: the front tips forward, the papers rise */
-.fo.fo-on .fo-front, .fo:focus-within .fo-front { transform: rotateX(-24deg); box-shadow: var(--shadow-up); }
-.fo.fo-on .fo-sheets, .fo:focus-within .fo-sheets { transform: translateY(calc(var(--s4) * -1)); }
-.fo.fo-on .fo-sheet:nth-child(1) { transform: translateY(var(--s2)) rotate(-4deg); }
-.fo.fo-on .fo-sheet:nth-child(2) { transform: translateY(var(--s1)) rotate(3deg); }
 
 /* the contents card: a pop-up beside the folder (Overlay.tsx), right when it fits, else left, below or above; its padding
    on the folder's side carries the pointer across */
@@ -123,10 +95,5 @@ body.pl-dragging .fo-peek { display: none; }
 .fo-pkf { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); margin-top: var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink2); }
 
 @media (prefers-reduced-motion: reduce) {
-  .fo-front, .fo-sheets, .fo-sheet { transition: none; }
-  .fo.fo-on .fo-front, .fo:focus-within .fo-front { transform: none; }
-  .fo.fo-on .fo-sheets, .fo:focus-within .fo-sheets { transform: none; }
-  .fo.fo-on .fo-sheet:nth-child(1) { transform: translateY(var(--s2)) rotate(-1.5deg); }
-  .fo.fo-on .fo-sheet:nth-child(2) { transform: translateY(var(--s1)) rotate(1.2deg); }
   .fo-pk, .fo-run .fo-d, .fo-bar i { animation: none; }
 }

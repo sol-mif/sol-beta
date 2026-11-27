@@ -34,7 +34,6 @@ export const SHARED: Phrase[] = [
   one(["closer", "zoom closer"], () => (M.zoom ? M.zoom(ZSTEP) : null)), one(["further", "zoom further"], () => (M.zoom ? M.zoom(1 / ZSTEP) : null)),
   one(["undo the fix"], () => M.undoFix()),
   one(["too much", "this is a lot"], () => M.tooMuch()),
-  { hears: /^set mark (\d)$/, run: (m) => M.markSet(+m[1]) }, { hears: /^mark (\d)$/, run: (m) => M.markGo(+m[1]) },
   { hears: /^go to (.+)$/, run: (m) => { const id = findByWords(m[1]); return id ? M.goto(id) : null; } },
   { hears: /^yes$/, run: () => { const id = lineAsk(); return id ? done(answer(id), id) : null; } },
 ];

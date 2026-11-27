@@ -28,6 +28,6 @@ test("the band is keyed on the mark, is a drag region, and counts in the scale's
   assert.match(css, /:root\[data-chrome="mac"\] \.nx-side \{ padding-top: var\(--s12\); \}/);
   assert.match(css, /:root\[data-chrome="mac"\] \.nx-drag \{[^}]*height: var\(--s12\)/);
   assert.match(css, /^\.nx-drag \{ display: none; \}/m, "off the Mac the drag strip draws nothing");
-  const tsx = readFileSync(join(NEXT, "Next.tsx"), "utf8");
+  const tsx = readFileSync(join(NEXT, "Sidebar.tsx"), "utf8");   // the sidebar is its own file since #1879 step 1
   assert.match(tsx, /className="nx-drag" data-tauri-drag-region/);
 });

@@ -9,7 +9,7 @@
 // Arrange lays the folders out again by rule in an order (plane/layout.ts arrange), face state for the session, undone
 // from its own line. A new kind of thing becomes a tile in Add, never a new button here.
 // Signed: marcocyl04-ux's agent, the port's BR1 bar (#1615).
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as RMouseEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as RMouseEvent } from "react";
 import { D, S, M, hooks, isReady, asksInRegion, piecesIn, render, useNext, viewSize, toPlane, type Piece } from "../cv/index.ts";
 import * as L from "../plane/layout.ts";
 import { needsCount } from "../people/queue.ts";
@@ -20,6 +20,8 @@ import { customizeButton } from "../fitmode/button.ts";   // Customize replaces 
 import Add from "../add/Add.tsx";   // Add's card lives in add/ (BR1 item 3, builder F)
 import { Overlay } from "../Overlay.tsx";   // BR1 root part 1: the cards are pop-ups
 import { frame } from "../frame.tsx";   // and what a move by hand did is the frame's line
+import { Tool, ToolBar, ToolSep, ToolZoom } from "../../kit/ToolBar";   // the row, drawn by the kit (#1879 step 5)
+import type { IconName } from "../../kit/icons";
 import "./bar.css";
 
 type Card = "where" | "arrange" | "add";
@@ -81,30 +83,24 @@ export default function Bar() {
   if (!shown) return <FitInPlace />;   // a look or size kept for a place stays drawn with the bar away
 
   const press = (k: Card) => (e: RMouseEvent) => { e.stopPropagation(); byKey.current = e.detail === 0; setCard((c) => (c === k ? null : k)); };
-  const btn = (k: Card, label: string, icon: ReactNode) => (
-    <button type="button" className="bar-b" data-bar={k} aria-pressed={card === k} aria-haspopup="dialog" aria-expanded={card === k} onClick={press(k)}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">{icon}</svg>{label}
-    </button>
+  const btn = (k: Card, label: string, icon: IconName) => (
+    <Tool icon={icon} label={label} data-bar={k} pressed={card === k} aria-haspopup="dialog" aria-expanded={card === k} onClick={press(k)} />
   );
   const close = () => setCard(null);
   const cu = customizeButton();
   return (
     <>
-      <div className="bar" id="bar" role="toolbar" aria-label="The canvas: where, zoom, arrange, add, customize" ref={bar} onClick={(e) => e.stopPropagation()}>
-        {btn("where", "Where", <><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" /><path d="M9 4v14M15 6v14" /></>)}
-        <div className="bar-zoom" role="group" aria-label="Zoom">
-          <button type="button" className="bar-z" data-bar-zoom="out" aria-label="Zoom out" title="Zoom out (⌘−)" disabled={band === "far" && !folder} onClick={() => M.out()}>−</button>
-          <span className="bar-zl" data-bar-zoom-label aria-live="polite">{BANDS[band!]}</span>
-          {/* over an opened folder, − closes it (M.out); + has nothing nearer to go to that the page would not hide */}
-          <button type="button" className="bar-z" data-bar-zoom="in" aria-label="Zoom in" title="Zoom in (⌘+)" disabled={band === "near" || folder} onClick={() => M.dive()}>+</button>
-        </div>
-        {btn("arrange", "Arrange", <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><path d="M17.5 14v7M14 17.5h7" /></>)}
-        {btn("add", "Add", <path d="M12 5v14M5 12h14" />)}
-        <button type="button" className="bar-b" data-bar={cu.id} aria-pressed={cu.pressed} onClick={(e) => { e.stopPropagation(); setCard(null); cu.onPress(); }}>
-          {/* on, it says how to leave: Done (a first-timer pressed around for the way out; BR1 item 3) */}
-          <svg viewBox="0 0 24 24" aria-hidden="true">{cu.pressed ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : cu.icon.map((d) => <path key={d} d={d} />)}</svg>{cu.pressed ? "Done" : cu.label}
-        </button>
-      </div>
+      <ToolBar className="bar" id="bar" label="The canvas: where, zoom, arrange, add, customize" ref={bar} onClick={(e) => e.stopPropagation()}>
+        {btn("where", "Where", "where")}
+        {/* over an opened folder, − closes it (M.out); + has nothing nearer to go to that the page would not hide */}
+        <ToolZoom label={BANDS[band!]} outTitle="Zoom out (⌘−)" inTitle="Zoom in (⌘+)" outOff={band === "far" && !folder} inOff={band === "near" || folder} onOut={() => M.out()} onIn={() => M.dive()} />
+        <ToolSep />
+        {btn("arrange", "Arrange", "arrange")}
+        {/* Add is the solid button always (the frame drawing's); it shows no other pressed look */}
+        <Tool solid icon="plus" label="Add" data-bar="add" pressed={card === "add"} aria-haspopup="dialog" aria-expanded={card === "add"} onClick={press("add")} />
+        {/* on, it says how to leave: Done (a first-timer pressed around for the way out; BR1 item 3) */}
+        <Tool icon={cu.icon} label={cu.pressed ? "Done" : cu.label} data-bar={cu.id} pressed={cu.pressed} onClick={(e) => { e.stopPropagation(); setCard(null); cu.onPress(); }} />
+      </ToolBar>
       {card ? (<Overlay>
         <div className={`bar-card bar-c-${card}`} id="bar-card" data-bar-card={card} role="dialog" aria-label={{ where: "Where to go", arrange: "Arrange", add: "Add to the canvas" }[card]} ref={box} onClick={(e) => e.stopPropagation()}>
           {card === "where" ? <Where close={close} /> : card === "arrange" ? <Arrange did={did} setDid={setDid} /> : <Add close={close} here={here} />}

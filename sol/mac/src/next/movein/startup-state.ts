@@ -22,7 +22,7 @@ export const SEEN = "sol.next.startup.seen";
 /** `up` the start-up is over the window; `day` its first screen, "What do you do, day to day?" (migration.html A), is
  *  up and the beats wait for it; `words` what the person wrote there; `pressed` "Let’s move in" was pressed and the read
  *  has not answered yet; `decided` the engine's first word came (judged once per window); `from` where its beats start (s) */
-export const sup = { up: false, day: false, words: "", pressed: false, decided: false, from: 0, owed: 0 };   // owed: the read answers "Let’s move in" still waits for (read 2, and read 1 before it)
+export const sup = { up: false, day: false, words: "", told: false, pressed: false, decided: false, from: 0, owed: 0 };   // owed: the read answers "Let’s move in" still waits for (read 2, and read 1 before it); told: the words reached the engine
 
 const seen = (): boolean => { try { return globalThis.localStorage?.getItem(SEEN) === "1"; } catch { return false; } };
 const markSeen = (): void => { try { globalThis.localStorage?.setItem(SEEN, "1"); } catch { /* a private window: it may play again */ } };
@@ -37,7 +37,7 @@ export function firstWord(kept: unknown): void {
 
 /** up from the day-to-day question (`day`), or straight into the beats at `from` seconds (the dev page's stills) */
 export function up(from = 0, day = true): void {
-  sup.up = true; sup.day = day; sup.pressed = false; sup.from = from; sup.owed = 0;
+  sup.up = true; sup.day = day; sup.pressed = false; sup.from = from; sup.owed = 0; sup.told = false;
   show(true);
   render();
 }
@@ -50,9 +50,9 @@ export function dayDone(words: string): void {
   if (!sup.up || !sup.day) return;
   sup.words = words.trim();
   if (sup.words && MODE === "live" && link.e) {
-    link.e.send({ type: "next.you.day", words: sup.words });
+    sup.told = link.e.send({ type: "next.you.day", words: sup.words }) !== false;
     sup.owed = live.answered ? 1 : 2;
-    askRead();
+    askRead();   // lost with a link going down, it is asked again when the link is back (live.ts relinked)
   }
   sup.day = false;
   render();
@@ -62,11 +62,21 @@ export function dayDone(words: string): void {
 const found = (): boolean => (MODE === "live" ? !!live.data[LIVE]?.rows.some((r) => r.k === "place") : !!DATA[SCN]?.rows.some((r) => r.k === "place"));
 const answered = (): boolean => MODE !== "live" || (live.answered && sup.owed === 0);
 
-/** "Let’s move in": seen from now on; the move-in at once when the read has answered, else when it does */
+/** how long "Having a look around…" waits for the read before Sol opens without it: a read the engine never answers
+ *  (it failed on this Mac) never holds the window; the move-in is then one press away (Settings › Bring in what you have) */
+export const LOOK_MS = 30_000;
+let looking: ReturnType<typeof setTimeout> | null = null;
+
+/** "Let’s move in": seen from now on; the move-in at once when the read has answered, else when it does, or after
+ *  LOOK_MS without it */
 export function letsMoveIn(): void {
   if (!sup.up) return;
   markSeen();
-  if (answered()) go(); else { sup.pressed = true; render(); }
+  if (answered()) return go();
+  sup.pressed = true;
+  if (looking) clearTimeout(looking);
+  looking = setTimeout(() => { looking = null; if (sup.up && sup.pressed) go(); }, LOOK_MS);
+  render();
 }
 
 /** the read answered (live.ts heard): one fewer owed; a press waiting for the last goes on */
@@ -76,6 +86,7 @@ export function readHeard(): void {
 }
 
 function go(): void {
+  if (looking) { clearTimeout(looking); looking = null; }
   sup.up = false; sup.pressed = false;
   show(false);
   if (found()) M.move_in(MODE === "live" ? LIVE : SCN);

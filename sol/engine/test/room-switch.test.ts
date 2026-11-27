@@ -47,7 +47,10 @@ test("q6: moved to complete, the card reaches a complete-mode Sol and still not 
 });
 
 test("q6: the window is sent reach.room's reading wherever it differs from the bare setting, by mode, env and hand", () => {
-  assert.equal(table["reach.room"], "complete", "the card stands at complete today (stations.json, #1786)");
+  const at = table["reach.room"];
+  assert.equal(at, "product", "the card stands at product today (stations.json, #1786)");
+  // read as it stood at complete, so product reads off with nothing set: the window is sent only what differs
+  table["reach.room"] = "complete";
   process.env.SOL_VERSION = "concept";
   assert.deepEqual(S.readings().reach, { room: true }, "concept: on, and the window hears it");
   process.env.SOL_VERSION = "product";
@@ -63,6 +66,7 @@ test("q6: the window is sent reach.room's reading wherever it differs from the b
   assert.deepEqual(S.readings().reach, { room: true }, "the env before the setting, sent as the engine reads it");
   delete process.env.SOL_REACH_ROOM;
   // a person's false stays theirs (a null patch never takes it away): the last test here, so the others read the station
+  table["reach.room"] = at;
 });
 
 test("q6: the press on a block comes and goes with reach.room: compose and update offer asks only while it is on", async () => {

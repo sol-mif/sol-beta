@@ -573,7 +573,6 @@ export function fontValues(text: string, code = false): { line: number; decl: st
 export const SVG_LEGACY: readonly string[] = [
   "sol/mac/src/next/add/Add.tsx",
   "sol/mac/src/next/auto/index.tsx",
-  "sol/mac/src/next/bar/Bar.tsx",
   "sol/mac/src/next/because/Because.tsx",
   "sol/mac/src/next/cowork/Cowork.tsx",
   "sol/mac/src/next/diary/index.tsx",
@@ -593,7 +592,6 @@ export const SVG_LEGACY: readonly string[] = [
   "sol/mac/src/next/plane/index.tsx",
   "sol/mac/src/next/session/Port.tsx",
   "sol/mac/src/next/social/Social.tsx",
-  "sol/mac/src/next/tabs/Tabs.tsx",
 ];
 export const FONT_LEGACY: readonly string[] = [
   "sol/mac/src/next/agent/agent.css",

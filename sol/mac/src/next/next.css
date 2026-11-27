@@ -31,7 +31,6 @@
 .nx-row.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
 /* H4: the folders the sidebar has no room for, listed beside it (Next.tsx FoldersMore); the Shelf's list's frame (shelf.css .sh-pop) */
 .nx-morepop { display: flex; flex-direction: column; min-width: 200px; max-height: min(480px, 70vh); overflow: auto; padding: var(--s2); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow-up), inset 0 0 0 1px var(--line); }
-.nx-regions { display: flex; flex-direction: column; gap: var(--s1); }   /* flush with Find, as frame.html draws it (builder G) */
 /* BR1 (#1615): a name is never cut; a long one wraps, anywhere when it has no spaces, and the row grows */
 .nx-rn { min-width: 0; overflow-wrap: anywhere; }
 .nx-k { margin-left: auto; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); white-space: nowrap; }
@@ -41,57 +40,19 @@
 .nx-label { display: block; padding: var(--s2) var(--s2) var(--s1); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
 .nx-pressable { cursor: pointer; border-radius: var(--r-row); }
 .nx-pressable:hover, .nx-pressable.on { color: var(--ink); background: var(--hover); }
-.nx-st { margin-left: auto; font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink4); white-space: nowrap; flex: none; }
-.nx-st.asks { color: var(--ink2); }
-/* the calm screen (BR1 item 3): an automation's row is its name, wrapped whole across the row, and under it what it is and
-   where ("automation · api"), as in zones out; the name never shares its width with the words beside it */
-.nx-ai { flex-wrap: wrap; row-gap: 0; }
-.nx-ai .nx-rn { flex: 1 1 100%; overflow-wrap: break-word; }
-.nx-ai .nx-st { margin-left: 0; white-space: normal; flex: 1 1 100%; }
+/* the sidebar of the frame drawing (#1879 step 1, Sidebar.tsx): a row's icon, a box's list, the way back from "N more live" */
+.nx-row > .kp-icon { flex: none; color: var(--ink3); }
+.nx-boxlist { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); }
+.nx-back { color: var(--ink3); }
+.nx-scroll { padding: 0 var(--s1) var(--s2); }
 .nx-aura { display: inline-block; width: 12px; height: var(--s3); border-radius: var(--r-pill); background: conic-gradient(var(--a1), var(--a2), var(--a3), var(--a1)); flex: none; }
 .nx-aura.still { opacity: 0.5; }
 .nx-foot { padding-top: var(--s2); box-shadow: inset 0 1px 0 var(--line); }
-/* frame.html §1 (builder G, BR1): a section's heading with its count or its ＋ at the right; ＋ New session; Working now's
-   rows, each its folder's mark, its task, and under it a status dot, the status and the folder; a folder row's one dot */
-.nx-head { display: flex; align-items: center; gap: var(--s2); padding-right: var(--s2); font-weight: 600; color: var(--ink2); }
 .nx-side .nx-row { box-sizing: border-box; }   /* a row is the row height, its padding inside: frame.html's rhythm */
-.nx-head .nx-rn { flex: 1; min-width: 0; }
-a.nx-head { cursor: pointer; border-radius: var(--r-row); }
-a.nx-head:hover, a.nx-head.on { color: var(--ink2); }
-.nx-hn { font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
-.nx-headadd { display: inline-grid; place-items: center; width: var(--s4); height: var(--s4); border-radius: var(--r-chip); color: var(--ink3); cursor: pointer; }
-.nx-headadd:hover { background: var(--hover); color: var(--ink); }
-/* Look 1 A1: a list's heading folds it; the chevron points right when folded, down when open */
-.nx-chev { flex: none; width: 6px; height: 6px; margin: 0 2px 0 -2px; border: solid var(--ink3); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform var(--d-turn) ease; }
-.nx-chev.open { transform: rotate(45deg); margin-top: -3px; }
-a.nx-head:hover .nx-chev { border-color: var(--ink); }
-.nx-plus { color: var(--ink3); }
-/* Find's and Waiting on you's marks, drawn before their words as frame.html does (the words stay the row's own text) */
-#findrow::before, #needsrow::before { color: var(--ink3); }
-#findrow::before { content: "⌕"; }
-#needsrow::before { content: "◎"; }
-.nx-wk { display: flex; flex-direction: column; gap: var(--s1); }
-.nx .nx-wkrow { align-items: flex-start; flex-wrap: nowrap; }
-.nx-wkrow .fmark { margin-top: var(--s1); }
-.nx-wkt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.nx-wkt .nx-rn { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nx .nx-wkt .nx-st { margin-left: 0; display: flex; align-items: center; gap: var(--s1); overflow: hidden; text-overflow: ellipsis; color: var(--ink3); flex: none; }
-.nx-none { padding: var(--s1) var(--s2); font-size: var(--t-label); line-height: var(--t-label-line); color: var(--ink3); }
 .nx-dot { width: 7px; height: 7px; border-radius: var(--r-pill); flex: none; background: var(--ink4); }
 .nx-dot.ask { background: var(--asks); }
 .nx-dot.run { background: var(--run); }
 .nx-dot.bad { background: var(--bad); }
-.nx-reg > .nx-dot { margin-left: auto; }
-.nx-reg .fmark, .nx-loose .fmark { flex: none; }
-/* walk note item 8: a folder archived or off the canvas is listed, quieter, saying so; a top folder's row drags among them */
-.nx-reg.nx-off { color: var(--ink3); }
-.nx-reg.nx-off .fmark { opacity: 0.5; }
-.nx-offw { margin-left: auto; flex: none; font-size: 11px; color: var(--ink4); }
-.nx-reg.nx-dragging { opacity: 0.5; }
-.nx-reg.nx-drop-before { box-shadow: inset 0 2px 0 var(--ink); }
-.nx-reg.nx-drop-after { box-shadow: inset 0 -2px 0 var(--ink); }
-.nx-loose { color: var(--ink3); }
-.nx-at { margin-left: auto; }
 
 /* the main column: the top bar, then the view */
 .nx-main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -188,7 +149,6 @@ body.pl-dragging .nx-talk.nx-talk-over { box-shadow: var(--shadow-up), inset 0 0
 /* what only a screen reader reads */
 .nx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* the calm screen (BR1 item 3): a name another folder also has carries its nearest differing parent, in grey (place.ts apartOf) */
-.nx-apart { color: var(--ink4); }
 /* a part whose code never came, after one reload (slots.ts Missing): its line and a Reload, never a blank or white window */
 .nx-missing { display: flex; align-items: center; gap: var(--s2); padding: var(--s3); color: var(--ink3); font-size: var(--t-label); line-height: var(--t-label-line); }
 .nx-missing button { color: var(--ink); text-decoration: underline; cursor: pointer; }

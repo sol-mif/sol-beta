@@ -102,13 +102,15 @@ const TODAY: Record<string, string> = { "stage.whole": "settled", "tools.cards":
   // view.home and view.cowork went to product on 2026-11-20 and came back to complete on 2026-11-22 (#1637, Frank): a
   // tester's Sol is Build only until the new interface's move-in; on for the team (concept) and at complete, off at product
   "view.home": "complete", "view.cowork": "complete",
-  // moved on by the station check of 2026-11-22 (#1786), to complete and not product while a tester's Sol is Build only
-  // (#1637): on for the team (concept) and at complete, off at product
-  "agents.mode": "complete", "reach.room": "complete",
+  // moved on by the station check of 2026-11-22 (#1786) to complete while a tester's Sol was Build only (#1637); #1637
+  // closed on 2026-11-25 (BR1 retired the split), so the station check of 2026-11-25 (#1786) moved them on to product
+  "agents.mode": "product", "reach.room": "product",
+  // moved on by the station check of 2026-11-25 (#1786), straight to product: on a tester's Sol too
+  "work.liveContext": "product", "map.grown": "product",
   // the new face (#1615, BR1 join, Frank 2026-11-23): ring 3 of docs/port/switch.md, on for the team and a tester's Sol
   // unless they turned it off by hand
   "ui.next": "product" };
-const AT_PRODUCT = new Set(["onboarding.reads", "open.for", "home.whole", "reach.tools", "ui.next"]);
+const AT_PRODUCT = new Set(["onboarding.reads", "open.for", "home.whole", "reach.tools", "reach.room", "work.liveContext", "map.grown", "ui.next", "agents.mode"]);
 /** every switch at hand, so a test tries one station at a time */
 const allHand = () => { for (const k of Object.keys(V.STAGES)) (V.STAGES as Record<string, string>)[k] = "hand"; };
 const putBack = () => {
@@ -315,7 +317,7 @@ test("a face is sent the engine's reading: nothing added for the engine's switch
   for (const ch of [null, "dev", "beta"] as const) {
     F.noteChannel(ch);
     // reach.room's reading too (#1740): the Agents' room's page follows it in the window
-    assert.deepEqual(F.readings(), { stage: { whole: true }, ...(ch !== null ? { home: { whole: true }, ui: { next: true } } : {}), ...(ch === "dev" ? { reach: { room: true } } : {}), window: W(ch === "dev") }, `stage.whole settled, home.whole, reach.room (#1740, concept: dev only) and the window's eleven at concept, channel ${ch}`);
+    assert.deepEqual(F.readings(), { stage: { whole: true }, ...(ch !== null ? { home: { whole: true }, ui: { next: true } } : {}), ...(ch !== null ? { reach: { room: true } } : {}), window: { ...W(ch === "dev"), ...(ch !== null ? { "agents.mode": true } : {}) } }, `stage.whole settled, home.whole, reach.room (#1740) and agents.mode at product (#1786), the rest of the window's eleven at concept, channel ${ch}`);
   }
   allHand();
   for (const ch of [null, "dev", "beta"] as const) { F.noteChannel(ch); assert.deepEqual(F.readings(), { window: W(false) }, `all at hand, channel ${ch}: today's settings and the window's eleven off`); }
@@ -402,7 +404,7 @@ test("SOL_VERSION=product: the eight engine switches at concept all off, stage.w
       assert.equal(F.versionMode(), "product");
       assert.deepEqual(reads(F), Object.fromEntries(ENGINE_CONCEPT.map((n) => [n, AT_PRODUCT.has(n)])), `channel ${ch}`);
       assert.equal(F.stageWhole(), true, "stage.whole is settled");
-      assert.deepEqual(F.readings(), { stage: { whole: true }, home: { whole: true }, ui: { next: true }, window: W(false) }, "home.whole and ui.next stand at product (#1717, #1615); view.home and view.cowork at complete (#1637): off on a tester's Sol");
+      assert.deepEqual(F.readings(), { stage: { whole: true }, home: { whole: true }, ui: { next: true }, reach: { room: true }, window: { ...W(false), "agents.mode": true } }, "home.whole, ui.next, reach.room and agents.mode stand at product (#1717, #1615, #1786); view.home and view.cowork at complete (#1637): off on a tester's Sol");
     }
     process.env.SOL_VERSION = "concept";
     F.noteChannel("beta");
@@ -418,8 +420,8 @@ test("the window's block: its eight switches, each by its station in this mode; 
     for (const [mode, on] of [["concept", true], ["complete", false], ["product", false]] as const) {
       F.patchSettings({ version: mode });
       assert.deepEqual(Object.keys(F.readings().window).sort(), WINDOW, mode);
-      // view.home and view.cowork stand at complete (#1637), agents.mode too (#1786): on in concept and complete, off at product
-      assert.deepEqual(F.readings().window, { ...W(on), "view.home": mode !== "product", "view.cowork": mode !== "product", "agents.mode": mode !== "product" }, `${mode}: the eight at concept`);
+      // view.home and view.cowork stand at complete (#1637): on in concept and complete, off at product; agents.mode at product (#1786): on in all three
+      assert.deepEqual(F.readings().window, { ...W(on), "view.home": mode !== "product", "view.cowork": mode !== "product", "agents.mode": true }, `${mode}: the eight at concept`);
     }
     table["cross"] = "product";
     table["build.snap"] = "complete";

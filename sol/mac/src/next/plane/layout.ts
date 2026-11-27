@@ -69,7 +69,18 @@ export { viewSize, toScreen, toPlane, rectOn };
  *  scale), so a question at rest never covers the folder below */
 export const RAISE_PX = 118;
 export const Z_GAP = 200, R_GAP = 96, LABEL_H = 110, DIARY_W = 3 * CELL_W - (CELL_W - PIECE_W), ZONE_MIN_W = 700, PAGE_MIN_H = 1000;
-const ROW_GAP = Math.max(R_GAP, Math.round(RAISE_PX / Z_PERSON));
+/** #1879 step 4: a folder at rest is its case, one size (the kit's FolderCase at the person's scale: 185 × 165 px), laid out on a
+ *  grid of equal cells with one gap both ways. A folder whose opened area (regionBox) is bigger than a cell takes whole
+ *  cells (one whose area runs a gap past a cell leans into the gap under it (two gaps at most), the next row's top margin takes it); the case is drawn at the cell's corner, never stretched to the area */
+export const CASE_W = Math.round(185 / Z_PERSON), CASE_H = Math.round(165 / Z_PERSON), CASE_GAP = 120;
+const ROW_GAP = CASE_GAP;
+/** the case as drawn at a folder's place: its corner, its own size */
+export const caseRect = (q: Rect): Rect => ({ x: q.x, y: q.y, w: CASE_W, h: CASE_H });
+/** the cells a folder's area takes, as the width and height the layout reserves for it */
+export function slotBox(rid: string): { cols: number; w: number; h: number } {
+  const b = regionBox(rid), sc = Math.max(1, Math.ceil(b.w / (CASE_W + CASE_GAP))), sr = Math.max(1, Math.ceil((b.h - 2 * CASE_GAP) / (CASE_H + CASE_GAP)));
+  return { cols: b.cols, w: sc * (CASE_W + CASE_GAP) - CASE_GAP, h: sr * (CASE_H + CASE_GAP) - CASE_GAP };
+}
 /** BR1 (#1615, decided 11:35): the Diary is a piece with its own size. The rule's page fills what the folders leave, but
  *  never wider than this: a plane zoomed far out (hundreds of sessions, many folders) drew it 40 000 units wide, over
  *  every folder. Wider than any example scenario's (denise: 2628), so those are as they were */
@@ -206,6 +217,8 @@ function placeInside(rid: string, depth = 0): void {
     placeInside(c, depth + 1);
   });
 }
+/** a folder's opened area, the size its place keeps */
+const areaOf = (rid: string) => { const b = regionBox(rid); return { w: Math.max(b.w, CASE_W), h: Math.max(b.h, CASE_H) }; };
 export type Box = { r: { id: string }; cols: number; w: number; h: number };
 type Flow = { at: { q: Box; x: number; y: number }[]; w: number; h: number };
 /** the folders in a row that wraps at W (pieces.html "Both", frame.html §1): left to right, a new row when the next
@@ -215,7 +228,7 @@ export function flow(qs: Box[], W: number): Flow {   // the sidebar's reorder la
   let x = 0, y = 0, rh = 0, w = 0;
   for (const q of qs) {
     if (x > 0 && x + q.w > W) { x = 0; y += rh + ROW_GAP; rh = 0; }
-    at.push({ q, x, y }); w = Math.max(w, x + q.w); rh = Math.max(rh, q.h); x += q.w + R_GAP;
+    at.push({ q, x, y }); w = Math.max(w, x + q.w); rh = Math.max(rh, q.h); x += q.w + CASE_GAP;
   }
   return { at, w: at.length ? w : ZONE_MIN_W, h: at.length ? y + rh : 0 };
 }
@@ -247,7 +260,7 @@ export function layoutPlane(): void {
   // kept the place) holds no cell's place: only placeInside scales a place (Pos.s). Kept, it sat shrunk in its old
   // folder's cell, beside the others that were there, and the canvas drew them as one stack apart from the row (BR1, #1615)
   for (const r of tops()) if (D.pos[r.id]?.s !== undefined) delete D.pos[r.id];
-  const qs: Box[] = arranged().map((r) => ({ r, ...regionBox(r.id) }));
+  const qs: Box[] = arranged().map((r) => ({ r, ...slotBox(r.id) }));
   const { w: vw, h: vh } = viewSize(), sa = safe("far"), z = Z_PERSON;
   const AW = (vw - sa.l - sa.r) / z, ah = vh - sa.t - sa.b;
   // folders already on the plane (the person's, or saved) keep their places, so the page ends a gap before the first of them
@@ -257,7 +270,7 @@ export function layoutPlane(): void {
   // what runs past the foot continues below and is reached by a pan, never shrunk (rule (d))
   const f = flow(qs, Math.max(0, ...qs.map((q) => q.w), AW - fx));
   D.zones = { diary: { x: 0, w: dw }, page: { x: 0, y: LABEL_H, w: dw, h }, bottom: LABEL_H + h, fit: +z.toFixed(4) };
-  if (!held.length) for (const { q, x, y } of f.at) D.pos[q.r.id] = { x: fx + x, y: LABEL_H + y, w: q.w, h: q.h, cols: q.cols, by: "rule", touched: false, at: 0 };
+  if (!held.length) for (const { q, x, y } of f.at) D.pos[q.r.id] = { x: fx + x, y: LABEL_H + y, ...areaOf(q.r.id), cols: q.cols, by: "rule", touched: false, at: 0 };
   adopt(Math.max(0, ...qs.map((q) => q.w), AW - fx));
   for (const r of tops()) placeInside(r.id);
   for (const r of D.regions) if (D.pos[r.id]) slots(r.id, colsOf(r.id)).forEach((p, i) => { if (p && !D.pos![p.id]) D.pos![p.id] = { ...cellAt(r.id, i), by: "rule", touched: false, at: 0 }; });
@@ -475,22 +488,22 @@ const foldersX = (): number => {
  *  under what is there */
 function adopt(W: number): void {
   for (const r of tops().filter((r) => !D.pos![r.id])) {   // one inside a folder is placed in its cell (placeInside)
-    const box = regionBox(r.id), x0 = foldersX(), c = { x: x0, y: LABEL_H, w: box.w, h: box.h };
+    const box = slotBox(r.id), area = areaOf(r.id), x0 = foldersX(), c = { x: x0, y: LABEL_H, w: box.w, h: box.h };
     const taken = tops().filter((q) => q.id !== r.id && D.pos![q.id]).map((q) => D.pos![q.id]);
-    const room = (x: number, y: number) => !taken.some((q) => overlaps({ x: x - R_GAP / 2, y: y - ROW_GAP / 2, w: box.w + R_GAP, h: box.h + ROW_GAP }, q));
+    const room = (x: number, y: number) => !taken.some((q) => overlaps({ x: x - CASE_GAP / 2, y: y - ROW_GAP / 2, w: box.w + CASE_GAP, h: box.h + ROW_GAP }, q));
     const rows = [...new Set([LABEL_H, ...taken.filter((q) => !q.folded).map((q) => q.y)])].sort((a, b) => a - b);
     let at: { x: number; y: number } | null = null;
     for (const y of rows) {
       for (let x = x0, n = 0; x + box.w <= x0 + W && n <= taken.length; n++) {
         if (room(x, y)) { at = { x, y }; break; }
         const hit = taken.filter((q) => q.x + q.w + R_GAP > x && q.y < y + box.h && y < q.y + q.h).sort((a, b) => a.x - b.x)[0];
-        x = hit ? Math.max(x + 1, hit.x + hit.w + R_GAP) : x + box.w + R_GAP;
+        x = hit ? Math.max(x + 1, hit.x + hit.w + CASE_GAP) : x + box.w + CASE_GAP;
       }
       if (at) break;
     }
     if (at) { c.x = at.x; c.y = at.y; }
     else for (let n = 0; n <= taken.length; n++) { const hit = taken.find((q) => overlaps(c, q)); if (!hit) break; c.y = hit.y + hit.h + ROW_GAP; }
-    D.pos![r.id] = { ...c, cols: box.cols, by: "rule", touched: false, at: now() };
+    D.pos![r.id] = { ...c, w: area.w, h: area.h, cols: box.cols, by: "rule", touched: false, at: now() };
   }
 }
 /** Arrange (the bar, #1615): the person's order of the folders for this session, face state only (no store keeps it yet).
@@ -567,7 +580,7 @@ function growRegion(rid: string): void {
  *  with it; the person's places never move */
 function pushBelow(rid: string, old: number, dy: number): void {
   const R = D.pos![rid];
-  const below = tops().filter((r) => r.id !== rid && D.pos![r.id] && D.pos![r.id].y >= old - 1 && D.pos![r.id].x < R.x + R.w && R.x < D.pos![r.id].x + D.pos![r.id].w);
+  const below = tops().filter((r) => r.id !== rid && D.pos![r.id] && D.pos![r.id].y >= Math.min(old, R.y + CASE_H) - 1 && D.pos![r.id].x < R.x + R.w && R.x < D.pos![r.id].x + D.pos![r.id].w);
   for (const r of below) {
     const inner = D.regions.filter((x) => ancestors(x.id).includes(r.id)).map((x) => x.id), ps = [r.id, ...inner].flatMap((id) => onPlane(id));
     if (D.pos![r.id].by === "person" || ps.some((p) => D.pos![p.id] && D.pos![p.id].by === "person")) continue;   // the person's places never move

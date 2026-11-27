@@ -20,6 +20,9 @@ import { clean, type Run, type Traces, type Worked } from "../settings/worked-re
 import { tintOf } from "../plane/layout.ts";
 import { sampleTraces } from "../settings/worked-seed.ts";
 import * as B from "./book.ts";
+import { fitCount, newestFirst } from "./rows.ts";
+import { DiaryCard, paintAt, type DiaryRow } from "../../kit/index.ts";
+import { K } from "../keeps.ts";   // #1879 step 3: the last time the person was present
 import { changedWords } from "../lead/rules.ts";
 import { answerHere, askRegion, askSaid, needList } from "./asks.ts";   // the asks at rest, said once for the Diary and the canvas's line
 import { shelfNow, shelvedOf, subscribe as onShelf, takeBack } from "../shelf/model.ts";   // a move-in line's Bring back (BR1 first-timer, builder F)
@@ -412,18 +415,26 @@ function NeedHere({ room, scope }: { room: number; scope: string }) {
   return <button className="dy-need" data-m1="needs" title={t} onClick={go}>{inner}</button>;
 }
 
-function Story({ k, band }: { k: number; band: string }) {
+/** the night's line and its span, said once for the page's story and the canvas's card: while you were away counts from the
+ *  last time the person was present (the engine keeps it, #1879 step 3), not from when this window loaded */
+export function told(k: number) {
   const b = B.book(), h = k === 0 ? B.headline() : null;
   const n = k === 0 ? above() : 0;
-  const night = B.lines(k).filter((l) => l.who !== "person" && B.pageOf(l.t) === k && l.t < b.start && k === 0);
-  const old = k !== 0 ? B.lines(k).find((l) => l.kind === "headline") : null;
-  if (old) return <p className="dy-story dy-folded" data-m1="what"><span className="dy-aura still" /><span className="dy-sl">The morning</span>{old.what}</p>;
-  if (k !== 0) return null;
+  const away = B.LIVE ? K().away : null, from = away ? B.loc(away) : -Infinity;
+  const night = B.lines(k).filter((l) => l.who !== "person" && B.pageOf(l.t) === k && l.t < b.start && l.t >= from && k === 0);
   const ss = sessions().slice().sort((x, y) => (y.files ?? 0) - (x.files ?? 0)), lab = SCEN[b.name]?.label || "";
   const when = /2am/.test(lab) ? "tonight" : /11pm/.test(lab) ? "since you last looked" : "overnight";
   const text = h ? h.text : night.length && ss.length ? `${B.taskOf(ss[0])} ${changedWords(ss[0].files)} in ${bare(regionOf(ss[0].region)?.name)} ${when}.` : night.length ? `${night.length} thing${night.length === 1 ? "" : "s"} happened ${when}.`
     : n ? `${needWords(n)} this morning.` : "A quiet start: nothing moved overnight.";
   const span = night.length ? `While you were away · ${B.hm(night[0].t)} to ${B.hm(night[night.length - 1].t)}` : "This morning";
+  return { h, text, span, away: night.length > 0 };
+}
+function Story({ k, band }: { k: number; band: string }) {
+  const b = B.book();
+  const old = k !== 0 ? B.lines(k).find((l) => l.kind === "headline") : null;
+  if (old) return <p className="dy-story dy-folded" data-m1="what"><span className="dy-aura still" /><span className="dy-sl">The morning</span>{old.what}</p>;
+  if (k !== 0) return null;
+  const { h, text, span } = told(k);
   if (b.read) return <button className="dy-story dy-folded" data-front data-m1="what" onClick={() => fold(false)}><span className="dy-aura still" /><span className="dy-sl">The night</span>{text}<span className="dy-go">›</span></button>;
   return (
     <section className="dy-story" data-front data-part="The night">
@@ -510,6 +521,66 @@ function Write({ scope = null }: { scope?: string | null }) {
   );
 }
 
+// ---------------------------------------------------------------- the Diary on the canvas, a sticker (#1879 step 4)
+
+/** the folder's paint, the one its sidebar card and tab wear */
+const paintOf = (rid: string | null | undefined) => (rid && regionOf(rid) ? paintAt(Math.max(0, tintOf(rid))) : null);
+/** a line's words as a row: who it is from in bold, then what it says without the name said twice */
+function rowOf(l: B.Line, take: B.Take): DiaryRow & { t: number } {
+  const who = l.mine || l.who === "person" ? "You" : l.who === B.VOICE ? "Your AI" : B.sayWho(l.who, l.region);
+  const said = cap(warm(l, take.tone)), rest = said.toLowerCase().startsWith(who.toLowerCase() + " ") ? said.slice(who.length + 1) : said;
+  return { id: l.id, t: l.t, time: B.hm(l.t), title: who, detail: cap(rest), paint: paintOf(l.region), ask: waiting(askOf(l)) };
+}
+/** every row of the day, newest first: the lines and the asks waiting now (the ones no line already says) */
+export function dayRows(k: number): (DiaryRow & { t: number })[] {
+  const b = B.book(), ls = B.lines(k).filter((l) => l.kind !== "headline" && l.kind !== "week" && !noteOf(l));
+  const loud = b.take.keeps === "everything" ? ls : ls.filter((l) => !l.small || waiting(askOf(l)));
+  const lined = new Set(ls.map((l) => l.asked).filter(Boolean));
+  const asks = k === 0 ? open().filter((a) => !lined.has(a.id)).map((a) => {
+    const s = askSaid(a), at = typeof a.at === "number" ? a.at : null;
+    return { id: a.id, t: at ?? Infinity, time: at != null ? B.hm(at) : "now", title: `${s.who} asked you`, detail: cap(s.words), paint: paintOf(s.region), ask: true };
+  }) : [];
+  return newestFirst([...loud.map((l) => rowOf(l, b.take)), ...asks]);
+}
+/** the Diary at rest on the canvas: the card as drawn, its rows the day's lines newest first, as many as it has room for
+ *  (measured: the card's room is the piece's box), then "+N more". A press anywhere on it opens the Diary up close */
+function CanvasDiary({ pos }: { pos?: React.CSSProperties }) {
+  useNext((_, s) => s.cam);
+  const b = B.book(), k = b.showing, rows = dayRows(k), { n: count, after } = needList();
+  const { text, span, away } = k === 0 ? told(k) : { text: B.lines(k).find((l) => l.kind === "headline")?.what ?? "", span: "", away: false };
+  const earlier = Object.keys(b.pages).map(Number).some((x) => x < k);
+  const root = useRef<HTMLDivElement>(null), sig = rows.map((r) => r.id).join();
+  const [fit, setFit] = useState<{ sig: string; n: number }>({ sig: "", n: Infinity });
+  const n = fit.sig === sig ? fit.n : rows.length;   // new rows: all of them first, then measured
+  useLayoutEffect(() => {
+    const el = root.current, box = el?.closest<HTMLElement>(".pl-diary");
+    if (!el || !box) return;
+    const measure = () => {
+      // the piece's box is the room; the card starts where the wrapper does (its handles' strip above it)
+      const all = [...el.querySelectorAll<HTMLElement>(".kp-diary-row")], at = el.getBoundingClientRect().top, room = box.getBoundingClientRect().bottom - at, pad = parseFloat(getComputedStyle(el.firstElementChild!).paddingBottom || "0");
+      const more = el.querySelector<HTMLElement>(".kp-diary-more"), moreH = more ? more.offsetHeight : (all[0]?.offsetHeight ?? 0) / 2;
+      const ends = all.map((r) => r.getBoundingClientRect().bottom - at), next = fitCount(all.length === rows.length ? ends : [], room - pad, moreH);
+      if (all.length === rows.length && (fit.sig !== sig || fit.n !== next)) setFit({ sig, n: next });
+    };
+    measure();
+  });
+  // the piece's box changed (pulled, or the window): measure from all the rows again
+  useLayoutEffect(() => {
+    const box = root.current?.closest<HTMLElement>(".pl-diary");
+    if (!box || typeof ResizeObserver === "undefined") return;
+    let was = box.clientHeight;
+    const ro = new ResizeObserver(() => { if (box.clientHeight !== was) { was = box.clientHeight; setFit({ sig: "", n: Infinity }); } });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={root} className="kp-diary-pos" style={pos} data-diary data-day={k} data-form="card">
+      <DiaryCard date={B.dateWords(k)} day={new Date(B.TODAY0 + k * B.DAY).getUTCDate()} count={count} waiting={after} away={away ? span : null} headline={text}
+        rows={rows.slice(0, n)} more={Math.max(0, rows.length - n)} onPrev={earlier ? () => M.flip(-1) : null} onNext={k < 0 ? () => M.flip(1) : null} />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- the page
 
 let askedWorked = false;
@@ -520,7 +591,7 @@ export default function Diary({ band = "middle", part, scope: sc }: SlotProps & 
   const [room, setRoom] = useState(Infinity);
   // the diary has the keys after a press inside it (the keys are in cv/moves/life.ts)
   useEffect(() => {
-    const down = (e: PointerEvent) => focusDiary(!!(e.target as Element | null)?.closest?.(".dy"));
+    const down = (e: PointerEvent) => focusDiary(!!(e.target as Element | null)?.closest?.(".dy, .kp-diary"));
     document.addEventListener("pointerdown", down, true);
     return () => document.removeEventListener("pointerdown", down, true);
   }, []);
@@ -549,6 +620,7 @@ export default function Diary({ band = "middle", part, scope: sc }: SlotProps & 
   // its form as every piece's (form.ts formOf): whole at DY_WHOLE or wider; near, the narrow page, while its date fits;
   // far, the bare page. At Far a page short of whole is the short form, its day's lines only
   const f = formOf({ near: [[date, "head"]], far: [] }, room, Infinity, DY_WHOLE, DY_PAD), wide = f === "whole", short = band === "far" && !wide, form = short ? "far" : "middle";
+  if (!scope && band === "far") return <CanvasDiary pos={pos} />;
   if (f === "far") return <article ref={el} className="dy dy-bare" data-diary data-day={k} data-form="far" data-scope={scope ?? undefined} style={pos} title={here ? `${date} · ${here}` : date} />;
   return (
     <article ref={el} className={`dy${short ? " dy-far" : ""}${wide ? "" : " dy-narrow"}${b.focus ? " dy-focus" : ""}`} data-diary data-day={k} data-scope={scope ?? undefined} style={pos}>

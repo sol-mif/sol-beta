@@ -23,7 +23,13 @@ const HERE = join(import.meta.dirname, "kit-stills");
 const APPROVED = join(HERE, "approved.json");
 const UPDATE = process.env.SOL_STILLS_UPDATE === "1";
 /** the sidebar's named states (stage-stills.tsx STATES), in the order the plan names them (#1879) */
-export const STATES = ["rest", "box-open", "more-live", "tab-front", "cmd-held", "empty", "heavy"] as const;
+export const STATES = ["rest", "box-open", "more-live", "tab-front", "cmd-held", "empty", "heavy",
+  // the tab row's (#1879 step 2): the Canvas in front, a session in front, ⌘ held, the three corners, an AI's fresh tab, a folder kept, +N with ✦, the crumb, the automation pill
+  "tabs-canvas", "tabs-session", "tabs-held", "tabs-corners", "tabs-ai", "tabs-folder", "tabs-overflow", "tabs-crumb", "tabs-pill",
+  // the canvas's (#1879 step 4): a folder's case at rest, peeled, working, quiet, a long name, no deadline; the Diary at rest with rows and +N, and with nothing while away
+  "case-rest", "case-peeled", "case-working", "case-quiet", "case-long", "case-no-deadline", "diary-rest", "diary-quiet",
+  // the bar's tools (#1879 step 5): at rest, a card open (Where pressed), Customize on (Done), the zoom at One folder
+  "bar-rest", "bar-card", "bar-customize", "bar-zoom"] as const;
 const DIFF = 6, SHARE = 0.0002;
 const ORIGIN = "http://stills.sol.test";
 const TYPES: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".json": "application/json" };

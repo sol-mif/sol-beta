@@ -5,6 +5,8 @@
 // Signed: marcocyl04-ux's agent, BR1 tabs (#1615).
 import { regionOf, type Piece } from "../cv/index.ts";
 import { tintOf } from "../plane/layout.ts";
+import { paintAt, type Paint } from "../../kit/Signs";
+import type { IconName } from "../../kit/icons";
 
 const words = (s: string) => s.replace(/[-_]+/g, " ").trim();
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -24,3 +26,12 @@ export function RunPill({ p }: { p: Piece }) {
   const a = typeof p.automation === "string" && p.automation ? `automation · ${p.automation}` : typeof p.seat === "string" && p.seat ? `seat · ${p.seat}` : null;
   return a ? <span className="fpill" title={a}>{a}</span> : null;
 }
+
+/** a folder's paint on a tab (decisions.md 2026-11-25: the folder's colour fills its tab's icon): the same paint its case
+ *  wears on the canvas and its card in the sidebar (tintOf); undefined for a piece in no folder (white) */
+export function paintOfRegion(rid: string | null | undefined): Paint | undefined {
+  const t = rid ? tintOf(rid) : -1;
+  return t < 0 ? undefined : paintAt(t);
+}
+/** what a tab's glyph says it is: a session, a new session not started, a note, a made page */
+export const iconOf = (p: Piece): IconName => (p.kind === "session" ? "session" : p.kind === "starter" ? "starter" : p.kind === "note" || p.kind === "sticky" ? "note" : "page");

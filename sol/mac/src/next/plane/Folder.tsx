@@ -13,12 +13,11 @@ import { boxOf, type Rect } from "../layers.ts";
 import { MODE, asksOn, piecesIn, regionOf, useNext, type Piece, type Region } from "../cv/index.ts";
 import { lastChange } from "./last.ts";   // the peek's foot (conform 22)
 import { apartOf, placeOf, ranked, type Place } from "../place.ts";
-import { farWord, fits, folderSays, formOf, nearLine, wordsShown } from "../form.ts";
+import { folderSays, formOf, wordsShown } from "../form.ts";
 import * as L from "./layout.ts";
 import { stateOf } from "./Face.tsx";
-import { multi, leadBits, leadStill } from "../lead/rules.ts";
+import { multi, leadBits } from "../lead/rules.ts";
 import Yours from "../pieces/Yours.tsx";
-import Known from "../movein/you/Badge.tsx";
 import Because, { knownNow } from "../because/Because.tsx";   // BR1 item 4: F's because, on a folder Sol placed
 import { PLACED_W } from "../because/place.ts";
 import { placementOf, pointWas, unseenNow, useWas } from "./placed.ts";
@@ -26,8 +25,9 @@ import { lookAsk, looksLive } from "../cv/wire/look.ts";
 import { LOOKS } from "../folder/parts/fixture.ts";
 import { frontOf } from "../folder/setup/front.ts";
 import { fsAsk, setupOf } from "../cv/moves/setup.ts";
-import Raise from "./Raise.tsx";   // BR1 quiet canvas (#1615): the folder's one raise, and focus follows the hand
-import { leave, point, raiseOf, useHand, type Dist } from "./raise-state.ts";
+import { leave, point, useHand } from "./raise-state.ts";
+import { caseOf } from "./case.ts";
+import { FolderCase, paintAt } from "../../kit/index.ts";
 import "./folder.css";
 
 /** derived, because the data has no money: about $0.40 a working AI a night (shell.js costOf) */
@@ -107,24 +107,14 @@ function Peek({ r, anchor }: { r: Region; anchor: () => Rect | null }) {
   );
 }
 
-/** a session of many parts: one line on the folder's front, its task and its parts, never who leads it (the lead slice's
- *  FarLeads, said without the agent's name: a session is not an agent) */
 const leadsOf = (rid: string) => piecesIn(rid).filter(multi);
 const leadWords = (p: Piece) => titleOf(p) + leadBits(p).slice(1).map((x) => ` · ${x}`).join("");
-function Leads({ ps }: { ps: Piece[] }) {
-  return ps.length ? <div className="ld-fars">{ps.map((p) => (
-    <p key={p.id} className={`ld-line ld-far${leadStill(p) ? " fo-held" : ""}`} data-lead-line={p.id}><Mark p={p} />
-      <span className="ld-t"><b>{titleOf(p)}</b>{leadBits(p).slice(1).map((x) => ` · ${x}`).join("")}</span></p>
-  ))}</div> : null;
-}
 /** the front panel's share of the card's height (folder.css .fo-front top: 34%) */
 const FRONT = 0.66;
-/** a card this wide on screen is near (quiet.html §5), its raises saying more at rest; narrower than FAR_W it is far, dots only */
-const NEAR_W = 320, FAR_W = 160;
 
 /** Far: the folder at rest, its contents card on hover or focus. The section is the plane's card: its class, data and
  *  place are the caller's; this draws what its form holds at `w` × `h` screen px, its raise in `room` px under it */
-export function FolderCard({ r, cls, style, front, extra, quiet, w, h, room }: { r: Region; cls: string; style: CSSProperties; front: boolean; extra?: ReactNode; quiet?: boolean; w: number; h: number; room?: number }) {
+export function FolderCard({ r, cls, style, front, extra, quiet, w, h }: { r: Region; cls: string; style: CSSProperties; front: boolean; extra?: ReactNode; quiet?: boolean; w: number; h: number; room?: number }) {
   const [peek, setPeek] = useState(false);
   const own = useRef<HTMLElement | null>(null);
   const at = () => (own.current ? boxOf(own.current) : null);
@@ -138,19 +128,16 @@ export function FolderCard({ r, cls, style, front, extra, quiet, w, h, room }: {
     if (to instanceof Element && to.closest(`[data-peek="${r.id}"]`)) return;
     setPeek(false);
   };
-  const pl = placeOf(r.id), n = pl.counts.pieces, sheets = n <= 1 ? 1 : n <= 3 ? 2 : 3, a = pl.counts.asks, tone = toneOf(pl);
+  const pl = placeOf(r.id);
   const leads = leadsOf(r.id), fh = h * FRONT, says = folderSays(pl, leads.map(leadWords), w, fh);
-  const form = formOf(says, w, fh, Infinity), near = form === "near", shown = near ? 0 : wordsShown(says, w, fh), words = near || shown > 0;
-  const word = shown > 1 ? farWord(pl) : "";
-  // how much its raise says at rest (quiet.html §5): the card's size on screen (the person's scale is the middle)
-  const dist: Dist = w < FAR_W ? "far" : w >= NEAR_W ? "near" : "mid", asking = raiseOf(r.id).k === "ask";
+  const form = formOf(says, w, fh, Infinity), words = form === "near" || wordsShown(says, w, fh) > 0;
   // the second line and the "due today" badge (BR1 conform #21): from the folder's own parts, asked once per folder drawn;
   // the second line only where it fits under the first, whole
   const live = MODE !== "fixture";
   useEffect(() => { if (live) { lookAsk(r.id); fsAsk(r.id); } }, [live, r.id]);
   // its setup picks which part goes on the front (setup.html §3, builder F10); none said, the line is cardOf's as before
   const card = useNext(() => { const c = frontOf((live ? looksLive() : LOOKS)[r.id], setupOf(r.id)); return `${c.due ? 1 : 0}${c.line}`; });
-  const due = card[0] === "1", more = card.slice(1), two = near && !!more && fits([...says.near, [more, "head"]], w, fh);
+  const c = caseOf(pl, card.slice(1));
   // the keys (BR1 item 5): the chosen card is the canvas's one Tab stop, named as it reads; ← → move the choice, and the
   // keys follow it when they were on the canvas already
   const sel = /\bpl-sel\b/.test(cls);
@@ -163,22 +150,12 @@ export function FolderCard({ r, cls, style, front, extra, quiet, w, h, room }: {
   return (
     <section ref={own} className={`${cls} fo fo-${words ? form : "shape"}${peek ? " fo-on" : ""}${focused ? " fo-focus" : ""}${was ? " fo-pwas" : ""}`} data-front={front ? "" : undefined} data-region={r.id} data-part={pl.name} data-form={form} data-placed={pm ? (pm.dot ? "new" : "") : undefined} tabIndex={sel ? 0 : -1} role="group" aria-roledescription="folder" aria-label={`${pl.name}: ${pl.line}${pm?.dot ? " · your AI put it here" : ""}`} style={style}
       title={words ? undefined : `${pl.name}: ${pl.line}`} onPointerEnter={on} onPointerLeave={off} onFocus={on} onBlur={off}>
-      <div className="fo-back" aria-hidden="true" />
-      <div className="fo-tab"><Yours rid={r.id} band="far" /><Known rid={r.id} />{extra}</div>   {/* its ⋯ on the tab, shown at rest (A9): the corner is the raise's pip, the side the contents card, below the raise */}
-      <div className="fo-sheets" aria-hidden="true">{Array.from({ length: sheets }, (_, i) => <span key={i} className="fo-sheet" />)}</div>
-      <div className="fo-front">
-        {words ? <div className="pl-ph"><span className="pl-dot" /><h2 className="pl-pn">{pl.name}{apartOf(r.id) ? <span className="fo-apart" data-apart> {apartOf(r.id)}</span> : null}</h2></div> : null}
-        {near ? <Leads ps={leads} /> : null}
-        {near ? <div className={`fo-sig fo-${tone}`} data-sig={tone} data-place-line><span className="fo-d" /><span className="fo-sw">{nearLine(says)}</span></div>
-          : word ? <div className={`fo-sig fo-${tone}`} data-sig={tone} data-place-word><span className="fo-d" /><span className="fo-sw">{word}</span></div> : null}
-        {two ? <div className={`fo-sig fo-two fo-${due ? "bad" : "quiet"}`} data-sig-two><span className="fo-d" /><span className="fo-sw">{more}</span></div> : null}
-      </div>
-      {a && near ? <span className="fo-badge" data-badge>{needsWords(a)}</span> : a && !word ? <span className="fo-badge fo-dot" data-badge aria-label={needsWords(a)} />
-        : due && words ? <span className="fo-badge fo-due" data-badge="due">due today</span> : null}
+      <FolderCase name={pl.name + (apartOf(r.id) ? ` ${apartOf(r.id)}` : "")} paint={paintAt(Math.max(0, L.tintOf(r.id)))} sub={c.sub} count={c.count} next={c.next}
+        working={c.working && "working"} quiet={c.quiet} hover={peek || focused} more={extra} lid={<Yours rid={r.id} band="far" />} />
       {pm?.dot ? <span className="fo-pdot" data-placed-dot aria-hidden="true" /> : null}
       {pm ? <div className="fo-pcap" data-placed-cap><Because ks={[pm.k]} all={pm.all ?? undefined} words={PLACED_W} here={r.id} /></div> : null}
-      {peek && !quiet && !asking ? <Peek r={r} anchor={at} /> : null}   {/* one pop-up at a time: its ⋯ menu open, no contents card; a raise asking is the one thing under the hand */}
-      <Raise rid={r.id} dist={dist} h={h} said={peek && !quiet} room={room} />
+      {peek && !quiet ? <Peek r={r} anchor={at} /> : null}   {/* one pop-up at a time: its ⋯ menu open, no contents card; nothing else hangs under the case */}
+      {/* #1879: at rest a folder is its case only, nothing under it; its asks are in its count, the sidebar and the Diary, the open folder */}
     </section>
   );
 }

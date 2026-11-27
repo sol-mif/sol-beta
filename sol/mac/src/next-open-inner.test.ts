@@ -60,6 +60,6 @@ test("an opened folder keeps the bar, another page does not; the bar's − close
   assert.equal(CV.M.out().ok, true);
   assert.equal(CV.S.page, null, "− (M.out) closes the opened folder");
   const bar = readFileSync(new URL("./next/bar/Bar.tsx", import.meta.url), "utf8");
-  assert.match(bar, /disabled=\{band === "far" && !folder\} onClick=\{\(\) => M\.out\(\)\}/, "− stays pressable over an opened folder at far");
+  assert.match(bar, /outOff=\{band === "far" && !folder\}.*onOut=\{\(\) => M\.out\(\)\}/, "− stays pressable over an opened folder at far");
   assert.match(bar, /S\.page === "folder" && S\.folder/, "Add drops into the opened folder");
 });

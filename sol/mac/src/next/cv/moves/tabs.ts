@@ -6,10 +6,12 @@
 // behind, marked ✦, and comes forward only when asked and only while the person is not typing in the talk bar; an AI
 // closing the person's tab leaves a line with Undo. After four of a kind taken out in a day, Sol offers once to open that
 // kind as tabs (the knobs open-session and open-page, kept as fits with source "Sol offered").
+// A folder can be kept as a tab (#1879 step 2; decisions.md 2026-11-25): its tab id is `folder:<folder id>`, its kind
+// "folder", and it opens the folder's page form (folder_open as "page"); it is no piece, so it never draws Near.
 // Live, each move sends one next.tab.* and the row is the engine's (cv/wire/tabs.ts); on the dev page and in tests the
 // row is kept here alone. Named tab* so none meets a shared move. The row is tabs/Tabs.tsx.
 // Signed: marcocyl04-ux's agent, BR1 tabs (#1615).
-import { D, M, MODE, S, findByWords, go, hooks, render, snap, spotFor, toPlane, done, type Done, type Moves, type Piece } from "../core.ts";
+import { D, M, MODE, S, findByWords, go, hooks, regionOf, render, snap, spotFor, toPlane, done, type Done, type Moves, type Piece } from "../core.ts";
 import type { Engine } from "../wire/types.ts";
 import { W } from "./settings.ts";
 import { send as sendSettings } from "../../settings/link.ts";
@@ -24,6 +26,17 @@ export type TabsState = {
   back: string | null;
 };
 export const OFFER_AT = 4;
+/** a folder kept as a tab stands under this id: `folder:` and the folder's id */
+export const FOLDER_TAB = "folder:";
+/** the folder a tab id names, if it is a folder's tab */
+export const folderOfTab = (id: string): string | null => (id.startsWith(FOLDER_TAB) && id.length > FOLDER_TAB.length ? id.slice(FOLDER_TAB.length) : null);
+/** is a tab's subject here: a piece on the canvas, or a folder that exists */
+export const tabSubject = (id: string): boolean => { const f = folderOfTab(id); return f ? !!regionOf(f) : !!D.pieces[id]; };
+/** the folder tab drawn now: its folder open as a page, and the tab in front */
+export const folderTabShown = (): string | null => {
+  const t = TB(), f = t.front ? folderOfTab(t.front) : null;
+  return f && S.page === "folder" && S.folderAs === "page" && S.folder === f ? t.front : null;
+};
 /** a piece's kind as the knobs and the offer count it */
 export const kindOf = (p: Piece | undefined): "session" | "page" => (p?.kind === "session" ? "session" : "page");
 /** the knob that says how a kind opens */
@@ -75,10 +88,10 @@ const typing = () => { const el = typeof document !== "undefined" ? document.act
 
 /** the row as kept here, changed as the engine would (the dev page, and live before the engine answers) */
 function openHere(id: string, by: Tab["by"], front: boolean) {
-  const t = TB(), p = D.pieces[id], kind = kindOf(p);
+  const t = TB(), p = D.pieces[id], kind = folderOfTab(id) ? "folder" : kindOf(p);
   if (!t.tabs.some((x) => x.id === id)) {
     t.tabs.push({ id, by, kind, ...(by === "ai" ? { fresh: true as const } : {}), at: Date.now() });
-    if (by === "person") { const d = today(), c = t.taken[kind]; t.taken[kind] = { day: d, n: c && c.day === d ? c.n + 1 : 1 }; }
+    if (by === "person" && kind !== "folder") { const d = today(), c = t.taken[kind]; t.taken[kind] = { day: d, n: c && c.day === d ? c.n + 1 : 1 }; }
   }
   if (front) frontHere(id);
 }
@@ -108,7 +121,7 @@ export function swapTab(was: string, now: string): boolean {
 const opening = new Set<string>(), closing = new Set<string>();
 function sendOpen(id: string, by: Tab["by"], front: boolean, swapped?: string) {
   opening.add(id); closing.delete(id);
-  send({ type: "next.tab.open", id, by, kind: kindOf(D.pieces[id]), ...(front ? { front: true } : {}), ...(swapped ? { swapped } : {}) });
+  send({ type: "next.tab.open", id, by, kind: folderOfTab(id) ? "folder" : kindOf(D.pieces[id]), ...(front ? { front: true } : {}), ...(swapped ? { swapped } : {}) });
 }
 function sendClose(id: string) { closing.add(id); opening.delete(id); send({ type: "next.tab.close", id }); }
 hooks.onLoad.push(() => { opening.clear(); closing.clear(); });
@@ -128,14 +141,17 @@ function frontHere(id: string | null) {
   const t = TB();
   if (id && !t.tabs.some((x) => x.id === id)) return;
   if (id) {
-    if (!tabShown()) t.back = snap();
+    if (!tabShown() && !folderTabShown()) t.back = snap();
     t.front = id;
     t.tabs = t.tabs.map((x) => (x.id === id && x.fresh ? { id: x.id, by: x.by, kind: x.kind, at: x.at } : x));
+    const fid = folderOfTab(id);
+    if (fid) { M.folder_open(fid, "page"); return; }
     const sp = spotFor(id);
     if (sp) go(sp, "tab");
   } else {
-    const was = tabShown(), back = t.back;
+    const was = tabShown(), back = t.back, fold = folderTabShown();
     t.front = null;
+    if (fold) M.page(null);
     if (was) {
       if (back) { const o = JSON.parse(back); go({ ...o, page: null }, "tab"); }
       else go({ dist: "far", piece: null, beside: null, page: null }, "tab");
@@ -147,7 +163,7 @@ function frontHere(id: string | null) {
 const moves: Moves = {
   /** take a piece out to a tab: in front (⤢, a drag onto the row), or behind (⌘-click); by an AI, always behind */
   tabOpen: (id: string, front = true, by: Tab["by"] = "person") => {
-    if (!D.pieces[id]) return { ok: false, why: "that piece isn't here", undo: () => {} };
+    if (!tabSubject(id)) return { ok: false, why: folderOfTab(id) ? "that folder isn't here" : "that piece isn't here", undo: () => {} };
     const had = TB().tabs.some((x) => x.id === id), f = front && by === "person";
     openHere(id, by, f);
     if (live()) sendOpen(id, by, f);
@@ -172,6 +188,12 @@ const moves: Moves = {
     if (live()) send({ type: "next.tab.front", id: to ?? "canvas" });
     render();
     return done(true, to ?? "canvas", () => { moves.tabFront(was); });
+  },
+  /** ⌘1–⌘9 (decisions.md 2026-11-25): ⌘1 is the Canvas, ⌘2–⌘9 the tabs left to right; a tab past nine has no number */
+  tabKey: (n: number) => {
+    const row = TB().tabs.filter((x) => tabSubject(x.id)), id = n === 1 ? null : row[n - 2]?.id;
+    if (n < 1 || n > 9 || (n > 1 && !id)) return { ok: false, why: "no tab has that number", undo: () => {} };
+    return moves.tabFront(id ?? null);
   },
   /** a tab dragged down onto the canvas: closed, and the piece placed where it was dropped (sx, sy: on #view), so a
    *  folder it lands in holds it (the plane's place); dropped on a tab's own view, it is only closed */

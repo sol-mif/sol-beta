@@ -34,8 +34,6 @@
 .pl-gathered .pl-piece:is(:hover, :focus-within) .pl-ask .pl-pri { opacity: 1; pointer-events: auto; }
 /* a folder's ⋯ sits on its tab after what is yours, quiet at rest and full under the hand: the corner is the raise's pip,
    the side the contents card and below it the raise, so nothing the hover opens ever covers it; the piece's ⋯ chip, since the tab's paper is narrower than what it holds (A9) */
-.fo-tab > .pc-more { width: var(--s6); height: var(--s4); line-height: var(--s4); margin-left: var(--s1); color: var(--ink3); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
-.fo:is(:hover, :focus-within) .fo-tab > .pc-more { color: var(--ink); }
 /* on a session's face: its top right corner */
 .pl-piece > .pc-more { position: absolute; right: var(--s1); top: var(--s1); z-index: var(--z-lift); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
 .pl-lab .pc-more { margin-left: var(--s1); pointer-events: auto; }
@@ -66,6 +64,9 @@
    it, fold and ⋯ as chips at its top right, and a corner to pull; plane.css .pl-diary .dy leaves the strip room */
 .pc-dyhd { position: absolute; z-index: var(--z-lift); display: flex; justify-content: flex-end; align-items: center; gap: var(--s1); height: var(--s6); padding: 0 var(--s2); box-sizing: border-box; transform: translateY(var(--s2)); pointer-events: none; }
 .pc-dyhd > * { pointer-events: auto; }
+/* the handles stay out of the drawing until the hand is on the Diary or one of them (they are still keys' stops) */
+.pl-wrap:has(.pl-diary .kp-diary) :is(.pc-dyhd, .pc-rs) { opacity: 0; transition: opacity var(--d-turn) var(--e-arrive); }
+.pl-wrap:has(.pl-diary .kp-diary:hover, .pc-dyhd:hover, .pc-rs:hover, .pc-dyhd:focus-within, .pc-rs:focus-visible) :is(.pc-dyhd, .pc-rs) { opacity: 1; }
 .nx .pc-dyhd > .pc-grip { position: absolute; left: 50%; top: calc(var(--s2) * -1); width: var(--s8); height: var(--s4); transform: translateX(-50%); }
 .pc-grip > .pc-bar { display: block; width: var(--s6); height: var(--s1); border-radius: var(--r-pill); background: var(--ink4); }
 .pc-grip:hover > .pc-bar { background: var(--ink2); }

@@ -8,23 +8,36 @@
 // offer once a kind has been taken out four times today, and the line an AI leaves when it puts a tab of the person's
 // back, with Undo. DOM hooks: #tabs, [data-tab], [data-tab-offer], [data-tab-undo]; a piece dragged onto #tabs opens
 // there (plane/index.tsx).
+// #1879 step 2 (decisions.md 2026-11-25): each tab is the kit's TabFace: its folder's colour fills its glyph, the glyph
+// says what it is, a corner says how it is (asks, working, failed); holding ⌘ turns each glyph into its number (⌘1 the
+// Canvas, ⌘2–⌘9 the tabs, M.tabKey); a folder kept as a tab (id `folder:<id>`) opens the folder's page; ✦ rides on +N.
 // Signed: marcocyl04-ux's agent, BR1 tabs (#1615); the row on top, builder G.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 import { D, M, asksOn, useNext, type Piece } from "../cv/index.ts";
-import { TB, offerNow, tabShown, type Tab } from "../cv/moves/tabs.ts";
+import { TB, folderOfTab, folderTabShown, offerNow, tabShown, tabSubject, type Tab } from "../cv/moves/tabs.ts";
 import { boxOf, room } from "../layers.ts";
 import { Pop } from "../Overlay.tsx";
-import { FolderMark, RunPill, taskOf } from "./Label.tsx";
+import { FolderMark, iconOf, paintOfRegion, taskOf } from "./Label.tsx";
+import { regionOf } from "../cv/index.ts";
+import { Icon, TabIcon } from "../../kit/icons";
+import { TabFace, useCmdHeld } from "../../kit/Tab";
 import "./tabs.css";
 
 /** a tab's title: the piece's task (a session is not its AI: no AI's name or face on a tab) */
 const titleOf = taskOf;
-/** the one status a tab behind keeps: asks you, working, or nothing */
-function dotOf(p: Piece): { c: string; t: string } | null {
-  if (asksOn(p.id).length) return { c: "ask", t: "asks you" };
-  if (p.kind === "session" && p.term && !p.term.waiting) return { c: "run", t: "working" };
-  if (p.state === "failing" || p.state === "bad") return { c: "bad", t: "something failed" };
-  return null;
+/** the one corner a tab behind keeps: asks you, working, failed, or nothing (the drawing's three) */
+function cornerOf(p: Piece): "ask" | "run" | "bad" | undefined {
+  if (asksOn(p.id).length) return "ask";
+  if (p.kind === "session" && p.term && !p.term.waiting) return "run";
+  if (p.state === "failing" || p.state === "bad") return "bad";
+  return undefined;
+}
+/** a tab's face as the kit draws it: a piece's, or a folder kept as a tab */
+function faceOf(id: string): { name: string; icon: "folder" | ReturnType<typeof iconOf>; paint: ReturnType<typeof paintOfRegion>; corner?: "ask" | "run" | "bad"; pill?: string } {
+  const fid = folderOfTab(id);
+  if (fid) { const r = regionOf(fid); return { name: r?.name ?? fid, icon: "folder", paint: paintOfRegion(fid) }; }
+  const p = D.pieces[id];
+  return { name: titleOf(p), icon: iconOf(p), paint: paintOfRegion(p.region), corner: cornerOf(p), pill: typeof p.automation === "string" && p.automation ? p.automation : undefined };
 }
 
 /** fold the tabs that do not fit into "+N": unhide every tab, then hide from the end of the row, never the
@@ -51,7 +64,7 @@ function fitTabs(row: HTMLElement): string[] {
  *  piece taken out, "+N" for those that do not fit, and ＋ New session; `children` sit at its right end (the keys) */
 export default function Tabs({ crumb, children }: { crumb: ReactNode; children?: ReactNode }) {
   useNext(() => 0);
-  const t = TB(), shown = tabShown(), offer = offerNow(), row = useRef<HTMLDivElement>(null);
+  const t = TB(), shown = tabShown(), folderShown = folderTabShown(), cmd = useCmdHeld(), offer = offerNow(), row = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: string; sx: number; sy: number; el: HTMLElement; moved: boolean } | null>(null);
   const swallow = useRef(false);
   const moreBtn = useRef<HTMLButtonElement>(null);
@@ -107,43 +120,41 @@ export default function Tabs({ crumb, children }: { crumb: ReactNode; children?:
   };
   const front = (id: string | null) => { if (!swallow.current) M.tabFront(id); };
 
-  const tabs = t.tabs.filter((x) => D.pieces[x.id]);
+  const tabs = t.tabs.filter((x) => tabSubject(x.id));
+  const inFront = shown ?? folderShown;
+  const moreAi = cut.some((id) => tabs.find((x) => x.id === id)?.fresh);
   const undoP = t.undo ? D.pieces[t.undo.tab.id] : undefined;
   return (
-    <header className="nx-top tbar" id="top" data-tabs-n={tabs.length}>
-      <div className="tb-row" id="tabs" role="tablist" aria-label="Tabs" ref={row}>
+    <header className="nx-top tbar kp-part" id="top" data-tabs-n={tabs.length}>
+      <div className={`nx-tabrow kp-tabs${cmd ? " kp-held" : ""}`} id="tabs" role="tablist" aria-label="Tabs" ref={row}>
         {/* the Canvas tab: in front, its words are the crumb, each step a way back; behind a tab, one press brings it to the front */}
-        <div className={`tb-tab tb-canvas${shown ? "" : " on"}`} role="tab" aria-selected={!shown} tabIndex={shown ? 0 : -1} data-tab="canvas" title={shown ? "Canvas" : undefined}
-          onClick={() => { if (shown) front(null); }} onKeyDown={(e) => { if (shown && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); front(null); } }}>
-          <svg className="tb-mark tb-icon" viewBox="0 0 16 16" strokeWidth="1.4" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg>
-          {shown ? <span className="nx-crumb" id="crumb"><span>Canvas</span></span> : crumb}
+        <div className={`tb-tab tb-canvas kp-tab${inFront ? "" : " on kp-front"}`} role="tab" aria-selected={!inFront} tabIndex={inFront ? 0 : -1} data-tab="canvas" title={inFront ? "Canvas" : undefined}
+          onClick={() => { if (inFront) front(null); }} onKeyDown={(e) => { if (inFront && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); front(null); } }}>
+          <span className="kp-tab-slot"><TabIcon name="canvas" digit={1} /></span>
+          {inFront ? <span className="nx-crumb" id="crumb"><span>Canvas</span></span> : crumb}
         </div>
-        {tabs.map((x: Tab) => {
-          const p = D.pieces[x.id], on = shown === x.id, dot = on ? null : dotOf(p), name = titleOf(p);
+        {tabs.map((x: Tab, i) => {
+          const f = faceOf(x.id), on = inFront === x.id, corner = on ? undefined : f.corner;
           return (
-            <div key={x.id} className={`tb-tab${on ? " on" : ""}${x.fresh ? " fresh" : ""}`} role="tab" aria-selected={on} tabIndex={0} data-tab={x.id} title={name}
+            <div key={x.id} className={`tb-tab kp-tab${on ? " on kp-front" : ""}${x.fresh ? " fresh" : ""}`} role="tab" aria-selected={on} tabIndex={0} data-tab={x.id} title={f.name}
               onPointerDown={(e) => down(e, x.id)} onClick={() => front(x.id)}
               onAuxClick={(e) => { if (e.button === 1) M.tabClose(x.id); }}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); front(x.id); } }}>
-              <FolderMark p={p} />
-              <span className="tb-name">{name}</span>
-              <RunPill p={p} />
-              {x.fresh ? <span className="tb-ai" title="Your AI opened this tab">✦</span> : null}
-              {dot ? <span className={`tb-dot ${dot.c}`} title={dot.t} /> : null}
-              <button className="tb-x" aria-label={`Close ${name}; it stays on the canvas`} onClick={(e) => { e.stopPropagation(); M.tabClose(x.id); }}>×</button>
+              <TabFace label={f.name} icon={f.icon} paint={f.paint} corner={corner} pill={f.pill} fresh={x.fresh} digit={i + 2 <= 9 ? i + 2 : undefined} />
+              <button className="tb-x" aria-label={`Close ${f.name}; ${folderOfTab(x.id) ? "the folder stays on the canvas" : "it stays on the canvas"}`} onClick={(e) => { e.stopPropagation(); M.tabClose(x.id); }}><Icon name="close" small /></button>
             </div>
           );
         })}
         <button ref={moreBtn} className="tb-tab tbar-more" hidden aria-haspopup="menu" aria-expanded={menu} title="The tabs that do not fit"
-          onClick={(e) => { e.stopPropagation(); setMenu((m) => !m); }}><span>+0</span></button>
+          onClick={(e) => { e.stopPropagation(); setMenu((m) => !m); }}><span>+0</span>{moreAi ? <Icon name="ai" className="kp-ai" /> : null}</button>
         <button className="tb-new" data-act="tabNew" data-new-session aria-label="New session" title="New session ⌘N">＋</button>
       </div>
       {children}
       {menu && cut.length ? (
         <Pop id="tabmore" className="tb-menu" role="menu" prefer="below" align="end" anchor={() => (moreBtn.current ? boxOf(moreBtn.current) : null)}>
-          {cut.map((id) => { const p = D.pieces[id]; return p ? (
+          {cut.map((id) => { const p = D.pieces[id], fid = folderOfTab(id), name = faceOf(id).name; return p || fid ? (
             <button key={id} className="nx-mv" role="menuitem" data-tabmore={id} onClick={(e) => { e.stopPropagation(); setMenu(false); M.tabFront(id); }}>
-              <FolderMark p={p} /><span className="tb-name">{titleOf(p)}</span>
+              {p ? <FolderMark p={p} /> : null}<span className="tb-name">{name}</span>
             </button>
           ) : null; })}
         </Pop>

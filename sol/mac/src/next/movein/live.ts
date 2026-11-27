@@ -197,12 +197,24 @@ export function heard(m: Read): void {
   readHeard();
 }
 
-/** ask the engine to read again; `open`: the screen opens when it answers (Settings › Bring in what you have) */
+/** ask the engine to read again; `open`: the screen opens when it answers (Settings › Bring in what you have). False
+ *  when nothing went out (no link, or the socket not open: socket.ts queues nothing) */
 export function askRead(open = false): boolean {
   if (!link.e) return false;
   link.openOnAnswer = open;
-  link.e.send({ type: "next.movein.read" });
-  return true;
+  return link.e.send({ type: "next.movein.read" }) !== false;
+}
+
+/** the link is up again (wire movein.ts, on every "open"): what went out on the old link was lost with it and nothing
+ *  asked there is answered on the new one, so a read never answered, or one the start-up still waits for, is asked
+ *  again, once (the start-up then owes that one answer). Isaac's update, 2026-11-25: the read went out while the engine
+ *  renewed itself, and "Having a look around…" waited for it for ever */
+export function relinked(): void {
+  if (!link.e) return;
+  if (sup.words && !sup.told) sup.told = link.e.send({ type: "next.you.day", words: sup.words }) !== false;
+  if (live.answered && sup.owed === 0) return;
+  if (sup.owed > 0) sup.owed = 1;
+  askRead(link.openOnAnswer);
 }
 
 /** These are mine, live: the choices kept by the engine, each kept app project a folder of Sol's, then applied */

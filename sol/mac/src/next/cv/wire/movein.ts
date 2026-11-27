@@ -1,6 +1,7 @@
 // owned by slice 11 (the move-in), docs/port/slices.md "Night 2, outlined"
 // The move-in's wire (BR1, #1615; map.md "The move-in read": next/carry.ts, carry-apps.ts, next.movein.read/keep/lead).
 //   attach                 next.movein.read once: what Sol's folders, Claude Code and Codex hold on this Mac (read only)
+//   open (the link up)     the read again while it was never answered or the start-up waits for it (live.ts relinked)
 //   next.movein            the read → the screen's rows (movein/live.ts heard); its `lead` and `kept` → D.movein
 //   next.movein.kept       what the engine kept (after a keep or a lead) → D.movein; its batch, a Back done or refused
 //                          (movein/live.ts keptHeard: refused, the read opens again)
@@ -8,7 +9,7 @@
 //                          list of folders kept (engine movein.ts keptFolders), each drawn (movein/live.ts foldersHeard)
 //   work.sessions, home.places, next.state   the plane redrew its folders: the choices made are applied again
 // The fixture never runs this. Signed: marcocyl04-ux's agent, port slice 11 (#1615); live in BR1.
-import { applyLive, foldersHeard, heard, keptHeard, link, listHeard, movedHeard, type Read } from "../../movein/live.ts";
+import { applyLive, foldersHeard, heard, keptHeard, link, listHeard, movedHeard, relinked, type Read } from "../../movein/live.ts";
 import { heardFrom } from "../../movein/seenFirst.ts";
 import { firstWord } from "../../movein/startup-state.ts";
 import type { Engine } from "./types.ts";
@@ -25,8 +26,9 @@ export function attach(e: Engine): () => void {
   link.e = e;
   const off = e.subscribe((m: Msg) => {
     const t = m?.type;
+    if (t === "open") relinked();   // the link back up: a read lost with the old one is asked again
     // a folder the move-in's read nests (another copy of a repo, BR1 order 4e) is said on the frame's line, as the plane's are
-    if (t === "next.movein") { firstWord(m.kept ?? null); heardFrom({ lead: m.lead }); heard(m); tellNests(); }
+    else if (t === "next.movein") { firstWord(m.kept ?? null); heardFrom({ lead: m.lead }); heard(m); tellNests(); }
     else if (t === "next.movein.kept") { heardFrom(m.movein ?? null); keptHeard(m); applyLive(); tellNests(); }
     else if (t === "next.state") { if ("movein" in m) { firstWord(m.movein ?? null); heardFrom(m.movein ?? null); movedHeard(m.movein); } foldersHeard(m.folders); applyLive(); tellNests(); }
     else if (t === "work.sessions" || t === "home.places") queueMicrotask(() => { applyLive(); tellNests(); });   // after the plane's wire drew them

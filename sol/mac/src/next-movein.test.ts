@@ -11,7 +11,7 @@ import "./next/cv/fixture.ts";
 import { DATA, answerTo, apply, blank, gone, linesOf, rowMove, tally, type Choices } from "./next/movein/data.ts";
 import { DONE, clear, ed, st } from "./next/movein/state.ts";
 import { answer, items } from "./next/people/queue.ts";
-import { applyLive, backLive, choicesOf, footOf, fromRead, heard, keepLive, keptHeard, keptN, link, toKeep } from "./next/movein/live.ts";
+import { applyLive, backLive, choicesOf, footOf, fromRead, heard, keepLive, keptHeard, keptN, link, relinked, toKeep } from "./next/movein/live.ts";
 import { live, LIVE } from "./next/movein/state.ts";
 import { FITS_PX, fx, heldByHand, layOutAgain, leadShown, heardFrom, heardLead, leadNow, setLead, startLead, win } from "./next/movein/seenFirst.ts";
 import { CODER_READ } from "./next/movein/fixture.ts";
@@ -19,7 +19,7 @@ import { DIARY, Z_PERSON, dragFolder, fold, layoutPlane, moveDiary } from "./nex
 import { groupFar } from "./next/plane/groupFar.ts";
 import { forgettable, known, ofPart } from "./next/known.ts";
 import { wanted } from "./next/movein/welcomeWhen.ts";
-import { SEEN, dayDone, firstWord, letsMoveIn, sup } from "./next/movein/startup-state.ts";
+import { LOOK_MS, SEEN, dayDone, firstWord, letsMoveIn, sup } from "./next/movein/startup-state.ts";
 import { placeFrom, placeOf } from "./next/place.ts";
 import { rowOfFolder } from "./next/movein/state.ts";
 import { earlier } from "./next/folder/head.ts";
@@ -665,6 +665,59 @@ test("the first-launch start-up: up once when nothing was ever kept and this Mac
     assert.ok(!sup.up, "something was kept: no start-up");
     reset(); store.set(SEEN, "1"); firstWord(null);
     assert.ok(!sup.up, "seen on this Mac: no start-up");
+  } finally {
+    reset();
+    if (had) Object.defineProperty(globalThis, "localStorage", had); else delete (globalThis as { localStorage?: unknown }).localStorage;
+    link.e = was; CV.setMode("fixture"); clear();
+    live.ready = false; live.data = {}; live.asked = false; live.answered = false; live.batch = null; live.folders = []; live.kept = []; st.open = null; CV.load("dev-morning");
+  }
+});
+
+test("the start-up never waits for ever: a read lost with the link (the engine renewing) is asked again when it is back, and with no answer Sol opens after LOOK_MS (Isaac's update, 2026-11-25)", (t) => {
+  const store = new Map<string, string>(), had = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); } } });
+  // a link that can be down: socket.ts puts nothing on a socket that is not open, and says false
+  const sent: Sent[] = [], was = link.e;
+  let down = false;
+  link.e = { send: (m: Sent) => { if (down) return false; sent.push(m); return true; }, subscribe: () => () => {} } as never;
+  const reset = () => { sup.up = false; sup.day = false; sup.words = ""; sup.told = false; sup.pressed = false; sup.decided = false; sup.from = 0; sup.owed = 0; };
+  const fresh = () => { st.open = null; live.ready = false; live.data = {}; live.answered = false; store.clear(); reset(); clear(); CV.load("empty"); CV.setMode("live"); };
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    // read 1 lost at attach (the link not open yet): the start-up comes up on next.state, and the press waits
+    fresh(); firstWord(null); dayDone("");
+    letsMoveIn();
+    assert.ok(sup.up && sup.pressed, "having a look around");
+    sent.length = 0;
+    relinked();
+    assert.deepEqual(sent.map((m) => m.type), ["next.movein.read"], "the link up again: the read asked again");
+    heard({ ...CODER_READ, kept: null } as never);
+    assert.ok(!sup.up && st.open === LIVE, "its answer takes the start-up down and opens the move-in");
+    // the words and read 2 both lost while the engine renewed: both go again, the press waits for that one answer
+    fresh(); firstWord(null);
+    heard({ ...CODER_READ, kept: null } as never);   // read 1 answered before the words
+    down = true; sent.length = 0;
+    dayDone("I teach");
+    assert.equal(sent.length, 0, "nothing went out");
+    letsMoveIn();
+    assert.ok(sup.pressed, "read 2 owed");
+    down = false; relinked();
+    assert.deepEqual(sent.map((m) => m.type), ["next.you.day", "next.movein.read"], "the words, then the read, once each");
+    relinked();
+    assert.equal(sent.filter((m) => m.type === "next.you.day").length, 1, "the words told once");
+    heard({ ...CODER_READ, kept: null } as never);
+    assert.ok(!sup.up, "one answer is enough");
+    // a link up with nothing owed asks nothing
+    sent.length = 0; relinked();
+    assert.equal(sent.length, 0, "answered and nothing owed: no read");
+    // the engine never answers: Sol opens after LOOK_MS, never stays on the line
+    fresh(); firstWord(null); dayDone("");
+    letsMoveIn();
+    t.mock.timers.tick(LOOK_MS - 1);
+    assert.ok(sup.up, "still looking just before");
+    t.mock.timers.tick(1);
+    assert.ok(!sup.up && !sup.pressed, "no answer: the start-up goes");
+    assert.equal(store.get(SEEN), "1", "and it was marked seen at the press, so it does not come back");
   } finally {
     reset();
     if (had) Object.defineProperty(globalThis, "localStorage", had); else delete (globalThis as { localStorage?: unknown }).localStorage;

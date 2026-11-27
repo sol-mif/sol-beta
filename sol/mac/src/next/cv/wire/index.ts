@@ -20,6 +20,7 @@ const WIRES = { plane, needs, near, life, ais, settings, engine, people, movein,
 import { attach as fits } from "./fits.ts"; Object.assign(WIRES, { fits });   // slice R8 (#1615)
 import { attach as workspace } from "./workspace.ts"; Object.assign(WIRES, { workspace });   // BR1 carry (#1615): Workspace changes
 import { attach as tabs } from "./tabs.ts"; Object.assign(WIRES, { tabs });   // BR1 tabs (#1615): the row on top of the canvas
+import { attach as keeps } from "./keeps.ts"; Object.assign(WIRES, { keeps });   // #1879 step 3: last present, seen, pinned, each folder's last use
 import { attach as canvas } from "./canvas.ts"; Object.assign(WIRES, { canvas });   // BR1 B (#1615): the bar is always agentic
 import { attach as stable } from "./stable.ts"; Object.assign(WIRES, { stable });   // BR1 lane G (#1615): a new version, on the frame's line
 

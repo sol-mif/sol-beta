@@ -37,6 +37,10 @@ export { StickerCard } from "./StickerCard";
 export { BoxIcon, BoxCard } from "./BoxIcon";
 export { Key, type KeyState } from "./Key";
 export { FolderCard, runningLine } from "./FolderCard";
+export { FolderCase } from "./FolderCase";
+export { DiaryCard, type DiaryRow } from "./DiaryCard";
 export { Tab, Tabs, useCmdHeld, type TabItem } from "./Tab";
 export { Mark, Dot, Count, PAINTS, paintAt, windowOf, markOf, type Paint } from "./Signs";
 export { Icon, ICONS, ICON_USE, BoxGlyph, BOX_INSIDE, Progress, type IconName, type BoxInside } from "./icons";
+// the bar's tools (#1879 step 5)
+export { ToolBar, Tool, ToolZoom, ToolSep } from "./ToolBar";

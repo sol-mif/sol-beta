@@ -220,21 +220,31 @@ test("agents.mode is turned by the person's word as the views are: the window re
   r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": null } }, yes: "back to normal" }, { sessionId: "w2" });
   assert.equal(r.isError, undefined, txt(r));
   assert.equal(S.getSettings().switches, undefined);
-  // on by word only where its card stands in this Sol's version: at concept, a tester's Sol (product) has none of it yet
+  // on by word only where its card stands in this Sol's version: were it short of product, a tester's Sol has none of it
+  // yet; product/agents stands at product (#1786), so a tester's Sol (product) turns it on
+  const V = await import("../src/versions.ts");
+  const table = V.STAGES as Record<string, string>, at = table["agents.mode"];
   const was = process.env.SOL_VERSION;
   try {
     process.env.SOL_VERSION = "product";
     O.heard("w2", "turn agents on please");
+    table["agents.mode"] = "complete";
     r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": true } }, yes: "turn agents on" }, { sessionId: "w2" });
     assert.equal(r.isError, true, txt(r));
     assert.match(txt(r), /not part of this Sol yet/);
     assert.equal(S.getSettings().switches, undefined);
+    table["agents.mode"] = at;
+    assert.equal(at, "product", "the card stands at product today (stations.json, #1786)");
+    r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": true } }, yes: "turn agents on" }, { sessionId: "w2" });
+    assert.equal(r.isError, undefined, txt(r));
+    assert.equal(S.readings().window["agents.mode"], true);
+    S.patchSettings({ switches: { "agents.mode": null } });
     process.env.SOL_VERSION = "concept";
     r = await T.runSolTool("set_setting", { patch: { switches: { "agents.mode": true } }, yes: "turn agents on" }, { sessionId: "w2" });
     assert.equal(r.isError, undefined, txt(r));
     assert.equal(S.readings().window["agents.mode"], true);
     S.patchSettings({ switches: { "agents.mode": null } });
-  } finally { process.env.SOL_VERSION = was; }
+  } finally { process.env.SOL_VERSION = was; table["agents.mode"] = at; }
 });
 
 test("asking a teammate's agent and the agents' room turn off at the person's word, and never back on by a seat (the door on #1718, question 4; #36)", async () => {
@@ -256,17 +266,14 @@ test("asking a teammate's agent and the agents' room turn off at the person's wo
   }
   assert.deepEqual(said.slice(-2).map((m) => [m.type, (m as { what?: string }).what, (m as { drawer?: string }).drawer]),
     [["open.for", "settings", "me"], ["open.for", "settings", "me"]], "each time, Settings opens on me, at the switch, for the person's press");
-  // the room's card stands at concept, short of this tester's Sol (product): their Sol has none of it yet, so no way on
+  // the room's card stands at product (#1786): a tester's Sol has it, and back on is still the person's own press
   const was = process.env.SOL_VERSION;
   process.env.SOL_VERSION = "product";
   O.heard("r1", "turn the agents room on");
-  const before = said.length;
   r = await T.runSolTool("set_setting", { patch: { switches: { "reach.room": true } }, yes: "agents room on" }, { sessionId: "r1" });
   process.env.SOL_VERSION = was;
   assert.equal(r.isError, true, txt(r));
-  assert.match(txt(r), /not part of this Sol yet/);
-  assert.doesNotMatch(txt(r), /one press|Settings is open/);
-  assert.equal(said.length, before, "Settings is not opened: there is nothing to turn on");
+  assert.match(txt(r), /only turns off by asking/);
   assert.equal(S.getSettings().reach?.room, false);
   O.heard("r1", "put the room back to default");
   r = await T.runSolTool("set_setting", { patch: { switches: { "reach.room": null } }, yes: "back to default" }, { sessionId: "r1" });
@@ -371,10 +378,11 @@ test("the engine cards' switches turn on the person's word, and the reading foll
   }
   assert.deepEqual(reads(), [true, false, false]);
   assert.equal(S.getSettings().open?.for, true);
-  // a tester's Sol (product) has none of the three cards yet: off goes through, on is not offered
+  // a tester's Sol (product): work.liveContext and map.grown stand at product (#1786), log.kinds at concept is not there
+  // yet: off goes through, on is not offered
   process.env.SOL_VERSION = "product";
-  O.heard("e1", "turn the grown map on");
-  r = await T.runSolTool("set_setting", { patch: { switches: { "map.grown": true } }, yes: "grown map on" }, { sessionId: "e1" });
+  O.heard("e1", "turn the narrow log on");
+  r = await T.runSolTool("set_setting", { patch: { switches: { "log.kinds": true } }, yes: "narrow log on" }, { sessionId: "e1" });
   assert.equal(r.isError, true);
   assert.match(txt(r), /not part of this Sol yet/);
   O.heard("e1", "turn the live context ring off");

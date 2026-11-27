@@ -67,7 +67,7 @@ test("Denise puts kids in house: drawn in house's cell at a scale, its notes wit
   for (const id of kidsNotes) assert.ok(inside(CV.D.pos![id], K), `${id} inside kids`);
   for (const p of CV.piecesIn("house")) { const q = CV.D.pos![p.id]; if (q) assert.ok(!L.overlaps(q, K), `${p.id} not under kids`); }
   const tops = CV.D.regions.filter((x) => !CV.parentOf(x.id)).map((x) => CV.D.pos![x.id]);
-  for (let i = 0; i < tops.length; i++) for (let j = i + 1; j < tops.length; j++) assert.ok(!L.overlaps(tops[i], tops[j]), `top folders ${i} and ${j} apart`);
+  for (let i = 0; i < tops.length; i++) for (let j = i + 1; j < tops.length; j++) assert.ok(!L.overlaps(L.caseRect(tops[i]), L.caseRect(tops[j])), `top folders ${i} and ${j} apart (their cases at rest; an opened area may lean into the next row)`);
   assert.deepEqual(CV.folderOrder().slice(CV.folderOrder().indexOf("house"), CV.folderOrder().indexOf("house") + 2), ["house", "kids"], "the sidebar lists kids right under house");
   assert.equal(CV.M.nest("house", "kids").ok, false, "house can't go into kids now");
   assert.equal(CV.M.nest("kids", "house").ok, false, "it is in there already");
